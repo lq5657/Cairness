@@ -1,12 +1,12 @@
 ### 任务拆分 — 需求名称
 
-拆分顺序：数据模型 → 接口协议 → 底层实现 → 上层编排 → 入口层
-每个任务 = 可独立提交的原子变更（3-5 个文件）
-每个任务必须精确到文件路径和函数签名
+**拆分顺序：** 数据模型 → 接口协议 → 底层实现 → 上层编排 → 入口层
+**每个任务** = 可独立提交的原子变更（3-5 个文件）
+**每个任务必须精确到**：文件路径 + 函数签名
 
 #### 前置条件
 
-* [ ]  （依赖/配置等前提）
+* [ ] （依赖/配置等前提）
 
 #### Task 1: 任务名
 
@@ -14,3 +14,13 @@
 * **涉及文件** :
   * `internal/service/user_service.go` — 新增/修改，做什么
 * **关键签名** :
+  ```go
+  // 格式示例：
+  // func (s *UserService) Create(ctx context.Context, req *CreateUserReq) (*CreateUserResp, error)
+  // 新增
+  func NewUserManager(cfg *Config) *UserManager
+
+  // 修改
+  func (s *UserService) Create(...) // 新增参数或返回值时注明
+  ```
+* **验收标准** : （task 完成时必须满足的条件）
