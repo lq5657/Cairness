@@ -1,1 +1,28 @@
 # cc_spec
+
+Code Spec — 基于 Claude Code 的多语言 Spec 驱动开发框架。
+
+## 理念
+
+**Code is Cheap, Context is Expensive**
+
+代码是廉价的消耗品，文档（Spec）才是昂贵的核心资产。
+
+## 语言支持
+
+| 语言 | 目录 | 状态 |
+|------|------|------|
+| Golang | `Golang/` | ✅ 可用 |
+
+## 各语言框架
+
+### Golang
+
+基于 Golang 后端项目的 Harness 规范，包含：
+
+* Spec 驱动的开发流程（/propose → /apply → /review）
+* 强制检查点与约束等级
+* 知识沉淀机制
+* 代码质量审查流程
+
+详见 [Golang/README.md](Golang/README.md)
