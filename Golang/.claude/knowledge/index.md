@@ -50,7 +50,18 @@
 
 #### 技术约定
 
-（随实践积累补充）
+* **Goroutine并发退出** : 使用 `golang.org/x/sync/errgroup` 管理并发退出，context 传播取消信号，禁止手动 `sync.WaitGroup` 除非有特殊原因
+* **触发场景** : 新增涉及并发 HTTP 调用/gRPC 调用/goroutine 启动的代码时
+* **errgroup 典型模式** :
+  ```go
+  g, ctx := errgroup.WithContext(ctx)
+  g.Go(func() error {
+      return doSomething(ctx)
+  })
+  if err := g.Wait(); err != nil {
+      // 错误处理
+  }
+  ```
 
 #### 踩坑记录
 
