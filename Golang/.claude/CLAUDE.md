@@ -221,6 +221,11 @@ changes/examples/<change-id>/
 - `/test` 时必须在 `test-spec.md` 记录本次选择的测试层级、原因和更高层测试是否被跳过
 - 对 bugfix，默认至少要有一个回归证据；若无法写 Red→Green，必须说明退化原因与覆盖边界
 
+**发布与回滚要求：**
+- 涉及高风险变更、灰度、开关、配置回拨、数据回填、breaking contract 时，必须应用 `rules/release.md`
+- `/propose` 时必须在 `spec.md` 记录发布方式、开关策略、回滚路径和发布后观察窗口
+- 若无法直接回滚，必须在 `spec.md` 和 `log.md` 中说明前滚或补偿方案
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -285,7 +290,7 @@ changes/examples/<change-id>/
 
 **阶段二 Code Quality**（前置条件：阶段一 PASS）：
 1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全、数据丢失风险
-2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验、接口兼容风险、配置契约风险、可观测性风险
+2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验、接口兼容风险、配置契约风险、可观测性风险、发布回滚风险
 3. [ ] Minor 检查 — Go doc 缺失、import 未清理
 
 **权限边界：**
