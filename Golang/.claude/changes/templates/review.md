@@ -2,6 +2,12 @@
 
 文件位置：`changes/<change-id>/review.md`
 
+填写约束：
+- `Stage 1`、`Stage 2`、`Findings`、`结论` 四部分都必须保留
+- `Stage 1` 固定 5 行，`Stage 2` 固定 3 行
+- `Findings` 仅记录问题；无问题时写一行 `无`
+- `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
+
 ```
 change_id: kebab-case-id
 reviewed_at: YYYY-MM-DD HH:MM
@@ -47,4 +53,3 @@ final_status: pass | fail
 * **Stage 1 结论**：
 * **Stage 2 结论**：
 * **总体结论**：可进入 `/fix` / 可归档
-
