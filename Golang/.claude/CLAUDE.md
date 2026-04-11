@@ -50,7 +50,7 @@
 每次会话开始时：
 
 1. 读取 rules/ 下所有规则文件
-2. 检查 `changes/` 下是否有进行中的变更（排除 `templates/`）
+2. 检查 `changes/` 下是否有进行中的变更（排除 `templates/`、`examples/`）
 3. 报告当前状态，展示命令菜单
 
 ### 变更目录契约
@@ -65,6 +65,14 @@ changes/<change-id>/
 ├── test-spec.md      # 可选；需要测试设计时创建
 └── review.md         # /review 后生成
 ```
+
+示例变更统一放在：
+
+```text
+changes/examples/<change-id>/
+```
+
+`examples/` 仅用于演示完整流程，不视为进行中的真实变更。
 
 #### 变更命名
 

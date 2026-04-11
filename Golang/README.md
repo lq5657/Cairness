@@ -35,10 +35,24 @@
     │   ├── log.md         # 变更日志
     │   ├── test-spec.md   # 测试规格（可选）
     │   └── review.md      # 审查结论
+    ├── examples/          # 端到端示例变更，不参与真实执行态检查
+    │   └── <change-id>/
     └── templates/         # 变更文档模板
 ```
 
 ## 快速开始
+
+## 参考样例
+
+如果你是维护者，建议先阅读 `changes/examples/` 下的完整示例，再看模板。示例展示的是一套从 `/propose` 到 `/review` 的完整产物，而模板只定义单文件结构。
+
+推荐阅读顺序：
+
+1. `changes/examples/user-create-api/spec.md`
+2. `changes/examples/user-create-api/tasks.md`
+3. `changes/examples/user-create-api/test-spec.md`
+4. `changes/examples/user-create-api/review.md`
+5. `changes/examples/user-create-api/log.md`
 
 ### 1. 初始化项目上下文
 
