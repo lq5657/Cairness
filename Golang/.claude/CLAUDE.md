@@ -51,7 +51,7 @@
 
 1. 读取 rules/ 下所有规则文件
 2. 检查 `changes/` 下是否有进行中的变更（排除 `templates/`、`examples/`）
-3. 报告当前状态，包括进行中的 `change-id`、`status`、是否存在依赖或冲突
+3. 报告当前状态，包括进行中的 `change-id`、`status`、分支信息、是否存在依赖或冲突
 4. 展示命令菜单
 
 ### 变更目录契约
@@ -145,7 +145,7 @@ changes/examples/<change-id>/
 
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
 - `tasks.md`：原子化任务拆分、依赖关系、验收标准
-- `log.md`：执行日志、技术决策、踩坑与知识发现
+- `log.md`：执行日志、技术决策、踩坑、分支/冲突处理与知识发现
 - `test-spec.md`：测试范围、优先级、验证计划
 - `review.md`：两阶段审查结果、问题列表、结论
 
@@ -191,6 +191,11 @@ changes/examples/<change-id>/
 - 若存在明显依赖，必须在 `spec.md` 中记录 `depends_on`
 - 若判断可并行推进，必须在 `tasks.md` 写明并发安全理由和冲突规避方式
 
+**Git 与验证要求：**
+- 创建提案时，应同步声明目标工作分支与最低验证等级
+- 默认按“一个 change 一个分支”推进；同一 change 下的多个 task 共享该分支，不为每个 task 单独建分支
+- 若判断当前变更只能做到手工验证或回归验证，必须在 `spec.md` 中预先说明原因和替代证据
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -201,6 +206,7 @@ changes/examples/<change-id>/
 
 **执行要求：**
 - 开始执行时将 `spec.md` 状态改为 `apply`
+- 开始执行前确认当前分支与 `change-id` 匹配，且不在 `main`/`master`
 - 逐 task 执行，每个 task 完成后展示验证证据（`go build ./...` 或 `go test`）
 - 默认遵循 spec/tasks；如果实现中发现 Plan 不足、错误或受实际代码约束无法落地，必须先更新 `spec.md`、`tasks.md`、`log.md`，再继续编码
 - 自动 git commit（一个 task 一个 commit）
@@ -208,7 +214,7 @@ changes/examples/<change-id>/
 
 **失败与恢复：**
 - 如果某个 task 未完成，不得将 `spec.md` 状态改为 `review`
-- 若 `go build ./...`、`go test` 或关键实现失败，当前 task 标记为 `blocked` 或 `partial`
+- 若未达到声明的最低验证等级，或 `go build ./...`、`go test`、链路回归失败，当前 task 标记为 `blocked` 或 `partial`
 - 恢复时必须先说明：上次失败点、已保留的修改、这次准备继续的 task
 
 **并发治理：**
@@ -227,7 +233,7 @@ changes/examples/<change-id>/
 - 默认只处理 `review.md` 中 `status = open` 的 Findings
 - 若用户临时追加新问题，必须先追加到 `review.md` 或 `log.md`，再纳入本轮 `/fix`
 - 增量修正 + 文档同步铁律（`spec.md`/`tasks.md`/`log.md`/`review.md` 全部更新）
-- 每项修复后重新验证
+- 每项修复后重新验证，且验证等级不得低于本次 change 已声明的最低等级
 
 **失败与恢复：**
 - 若部分问题已修复、部分未修复，`review.md` 中 Findings 状态必须区分 `fixed` 与 `open`
@@ -261,6 +267,7 @@ changes/examples/<change-id>/
 **产出要求：**
 - 在 `changes/<变更名>/review.md` 中记录阶段一、阶段二结果
 - 将 `spec.md` 的“审查结论”章节更新为 review 摘要和当前结论
+- 若验证等级不足或证据与风险不匹配，必须在 Findings 中记录
 
 **失败与恢复：**
 - 若 Stage 1 未完成，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`
@@ -273,6 +280,7 @@ changes/examples/<change-id>/
 - `spec.md` 已存在
 - 变更状态为 `apply` 或 `review`
 - 用户同意补充或完善测试
+- 已读取本次 change 声明的最低验证等级
 
 **🚫 强制原则：Red/Green TDD（仅适用于新增或可隔离的实现单元）**
 - 先写测试看到 Red（证明测试有效）
@@ -282,6 +290,7 @@ changes/examples/<change-id>/
 **说明：**
 - `/test` 是 `/apply` 阶段内可并行使用的测试工作流，不要求先完成 `/review`
 - 对历史系统、集成链路、难以稳定制造 Red 的场景，允许退化为“补充回归测试”，但必须在 `test-spec.md` 中说明原因，禁止伪造 Red/Green 证据
+- `/test` 的目标是补足声明的验证等级与证据，而不是只补单元测试数量
 
 **允许退化为回归测试的典型场景：**
 - 历史系统缺少稳定隔离点，无法先构造可重复的 Red
@@ -324,11 +333,13 @@ changes/examples/<change-id>/
 
 #### Git 规范
 
-1. 禁止在默认主分支（`main`/`master`）直接变更；应在功能分支执行
-2. 每个 task/fix 自动 commit
-3. Commit 必须可编译（执行 `go build ./...`）
-4. 禁止自动 push
-5. Message 格式：[<变更名>] <中文简述>
+1. 禁止在默认主分支（`main`/`master`）直接变更；应在与 `change-id` 对应的工作分支执行
+2. 推荐分支命名：`feat/<change-id>`、`fix/<change-id>`
+3. 每个 task/fix 自动 commit；若偏离“一 task 一 commit”，必须在 `log.md` 说明原因
+4. Commit 前必须达到当前 change 声明的最低验证等级；`go build ./...` 仅是最小门槛
+5. 允许将工作分支手动 push 到远程，但禁止 AI 自动 push
+6. 禁止 AI 自动 merge 到 `main`/`master`；主分支合并应由人工审查后执行
+7. Message 格式：`[<变更名>] <中文简述>`
 
 #### 调试流程
 

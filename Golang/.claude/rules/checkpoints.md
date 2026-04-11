@@ -18,6 +18,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
 | `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
 | `/apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
+| `/apply` | [ ] 当前分支与 `change-id` 匹配，且不在 `main`/`master` | rules/git-workflow.md |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
 | `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
@@ -26,6 +27,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
 | `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
 | `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
+| `/test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
 | `/archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §/archive |
 | `/archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
 
@@ -51,10 +53,12 @@ description: "所有命令执行的强制检查点汇总"
 
 | 检查项 | 依据 |
 |--------|------|
+| [ ] 已达到本次 change 声明的最低验证等级 | rules/verification.md |
 | [ ] `go build ./...` 执行成功 | CLAUDE.md §Git规范 |
 | [ ] 涉及资金变更有 REQ-HUMAN-REVIEW 标记 | rules/security.md |
 | [ ] 变更已同步到 changes/ 文档 | CLAUDE.md §变更即记录 |
-| [ ] 当前不在默认主分支（`main`/`master`）上开发 | CLAUDE.md §Git规范 |
+| [ ] 当前不在默认主分支（`main`/`master`）上开发 | rules/git-workflow.md |
+| [ ] commit message 符合 `[<change-id>] <中文简述>` | rules/git-workflow.md |
 
 ---
 
@@ -121,6 +125,7 @@ description: "所有命令执行的强制检查点汇总"
 
 | 检查项 | 结果 |
 |--------|------|
+| [ ] 已达到本次 change 声明的最低验证等级 | |
 | [ ] `go build ./...` 通过 | |
 | [ ] `go test ./...` 通过（如有测试） | |
 | [ ] 每个 task 已单独 commit | |
@@ -144,6 +149,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] P0 测试 Green（核心逻辑覆盖≥80%） | |
 | [ ] `go test -cover` 输出已展示 | |
 | [ ] 测试文件已 commit | |
+| [ ] 验证证据已覆盖声明的最低验证等级 | |
 | [ ] 若未执行严格 Red→Green，test-spec.md 已说明原因 | |
 
 #### ✅ /fix 完成后检查

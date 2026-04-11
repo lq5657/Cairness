@@ -2,6 +2,7 @@
 
 change_id: kebab-case-id
 status: propose | apply | review | done
+verification_level: L1 | L2 | L3 | L4 | L5
 created: YYYY-MM-DD
 
 #### 0. 测试原则
@@ -10,6 +11,7 @@ created: YYYY-MM-DD
 * **First Run the Tests** ：开始前先跑已有测试套件，了解框架和基线
 * **展示工作** ：必须展示 `go test -v` 实际输出，禁止"测试通过"等无证据声明
 * **允许例外但必须记录** ：对历史系统、集成链路或难以稳定制造 Red 的场景，可退化为回归测试，但必须在本文档写明原因
+* **验证等级优先** ：测试计划必须覆盖 `spec.md` 中声明的最低验证等级
 
 #### 1. 测试框架
 
@@ -20,6 +22,15 @@ created: YYYY-MM-DD
 | 增强断言/Mock框架 | Testify (assert/mock) / GoMock |
 | 已有测试数量      |                                |
 | 已有测试风格      |                                |
+
+#### 1.1 验证等级选择
+
+| 项目 | 值 |
+|------|----|
+| 本次最低验证等级 | `L1/L2/L3/L4/L5` |
+| 选择原因 | |
+| 需要展示的证据 | |
+| 若无法完全达到，替代证据 | |
 
 #### 2. 覆盖范围
 
@@ -50,4 +61,5 @@ created: YYYY-MM-DD
 * [ ]  Step 1: 运行已有测试套件 (`go test ./...`)，确认基线
 * [ ]  Step 2: 生成 P0 测试 → 确认 Red → 确认 Green
 * [ ]  Step 3: 生成 P1/P2 测试
-* [ ]  Step 4: 运行完整测试套件，确认覆盖率 (`go test -cover`)
+* [ ]  Step 4: 补足 `verification_level` 对应的链路/集成/手工验证证据
+* [ ]  Step 5: 运行完整测试套件，确认覆盖率 (`go test -cover`)

@@ -5,6 +5,7 @@ change_id: kebab-case-id
 status: propose | apply | review | done
 depends_on: []            # 可选；依赖的 change-id 列表
 parallel_safe: true | false
+branch: feat/<change-id>
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 complexity: 🟢简单 | 🟡中等 | 🔴复杂
@@ -20,6 +21,7 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
   - `done`：归档完成
 - `depends_on` 用于声明跨变更依赖；无依赖时写 `[]`
 - `parallel_safe` 表示该变更是否允许与其他变更并行推进
+- `branch` 用于声明当前 change 绑定的工作分支；若偏离推荐命名，必须在 `log.md` 记录原因
 - 实现中如果发现 spec 不足或错误，必须先更新本文件，再继续编码
 - 若命令执行失败或中断，必须在“执行日志”章节记录 `blocked` / `partial` / `aborted`
 
@@ -78,8 +80,11 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
 #### 9. 测试策略
 
 * **测试范围**：
+* **最低验证等级**：L1 / L2 / L3 / L4 / L5
+* **验证证据要求**：
 * **覆盖率目标**：P0≥80%, P1≥60%
 * **独立 Test Spec**：是/否
+* **若无法达到目标等级的替代方案**：
 
 #### 10. 待澄清
 
