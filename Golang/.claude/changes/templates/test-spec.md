@@ -1,5 +1,6 @@
 ### 单测 Spec — 需求名称
 
+change_id: kebab-case-id
 status: propose | apply | done
 created: YYYY-MM-DD
 
@@ -8,6 +9,7 @@ created: YYYY-MM-DD
 * **Red/Green TDD** ：测试必须先 Red 再 Green，跳过 Red 的测试无法证明有效
 * **First Run the Tests** ：开始前先跑已有测试套件，了解框架和基线
 * **展示工作** ：必须展示 `go test -v` 实际输出，禁止"测试通过"等无证据声明
+* **允许例外但必须记录** ：对历史系统、集成链路或难以稳定制造 Red 的场景，可退化为回归测试，但必须在本文档写明原因
 
 #### 1. 测试框架
 
@@ -34,6 +36,11 @@ created: YYYY-MM-DD
 ##### P2 — 入口层/服务层
 
 ##### 不测试（明确列出原因）
+
+#### Red/Green 例外说明
+
+| 场景 | 原因 | 替代验证方式 |
+|------|------|--------------|
 
 #### 3. 执行计划
 

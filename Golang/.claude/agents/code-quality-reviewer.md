@@ -38,6 +38,8 @@
 
 #### 输出格式
 
+输出内容必须可直接整理进 `changes/<change-id>/review.md` 的 Stage 2 部分。
+
 ```
 ## Code Quality Review — <变更名>
 

@@ -14,11 +14,17 @@ description: "所有命令执行的强制检查点汇总"
 | `/apply` | [ ] tasks.md 存在且至少有一个 task | CLAUDE.md §命令 |
 | `/apply` | [ ] §9 待澄清已全部解决 | CLAUDE.md §命令 |
 | `/apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
+| `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
+| `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
 | `/review` | [ ] spec.md 已读 | CLAUDE.md §命令 |
 | `/review` | [ ] 代码已存在 | CLAUDE.md §命令 |
-| `/test` | [ ] spec.md 已存在且通过 review | CLAUDE.md §命令 |
+| `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
+| `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
+| `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
+| `/archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §/archive |
+| `/archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
 
 ---
 
@@ -45,6 +51,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] `go build ./...` 执行成功 | CLAUDE.md §Git规范 |
 | [ ] 涉及资金变更有 REQ-HUMAN-REVIEW 标记 | rules/security.md |
 | [ ] 变更已同步到 changes/ 文档 | CLAUDE.md §变更即记录 |
+| [ ] 当前不在默认主分支（`main`/`master`）上开发 | CLAUDE.md §Git规范 |
 
 ---
 
@@ -105,6 +112,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] `go test ./...` 通过（如有测试） | |
 | [ ] 每个 task 已单独 commit | |
 | [ ] changes/ 文档已更新 | |
+| [ ] spec.status 已更新为 `review`（全部 task 完成时） | |
 
 #### ✅ /test 完成后检查
 
@@ -113,13 +121,14 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] P0 测试 Green（核心逻辑覆盖≥80%） | |
 | [ ] `go test -cover` 输出已展示 | |
 | [ ] 测试文件已 commit | |
+| [ ] 若未执行严格 Red→Green，test-spec.md 已说明原因 | |
 
 #### ✅ /fix 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
 | [ ] 所有 review 问题已修复 | |
-| [ ] spec/tasks/log 已同步更新 | |
+| [ ] spec/tasks/log/review 已同步更新 | |
 | [ ] `go build ./...` 通过 | |
 
 #### ✅ /archive 完成后检查
@@ -129,6 +138,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 所有知识发现已确认沉淀 | |
 | [ ] log.md 完整可读 | |
 | [ ] 变更目录已归档（status: done） | |
+| [ ] spec.status 已更新为 `done` | |
 
 #### ✅ 每次会话结束时
 

@@ -1,10 +1,22 @@
 ### 需求名称
 
 ```
+change_id: kebab-case-id
 status: propose | apply | review | done
 created: YYYY-MM-DD
+updated: YYYY-MM-DD
 complexity: 🟢简单 | 🟡中等 | 🔴复杂
 ```
+
+#### 文档约束
+
+- 文件位置：`changes/<change-id>/spec.md`
+- `status` 必须与实际阶段一致：
+  - `propose`：提案已确认，尚未开始编码
+  - `apply`：编码进行中，允许 task 边界内的受控偏差
+  - `review`：编码完成，要求 spec 与代码一致
+  - `done`：归档完成
+- 实现中如果发现 spec 不足或错误，必须先更新本文件，再继续编码
 
 #### 1. 背景与目标
 
@@ -66,6 +78,10 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
 |------|------|-------------|------|
 
 #### 13. 审查结论
+
+* **Stage 1 / Spec Compliance**：
+* **Stage 2 / Code Quality**：
+* **总体结论**：可进入 `/fix` / 可归档
 
 #### 14. 确认记录（HARD-GATE）
 

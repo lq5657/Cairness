@@ -9,7 +9,7 @@
 代码是廉价的消耗品，文档（Spec）才是昂贵的核心资产。
 
 * No Spec, No Code — 没有 spec 不写代码
-* Spec is Truth — spec 与代码冲突时，错的一定是代码
+* Spec is Truth — 在 `review/done` 阶段，spec 与代码冲突时，必须先修复偏差
 * 变更即记录 — 任何代码变更必须同步更新文档
 
 ## 目录结构
@@ -25,15 +25,17 @@
 │   └── security.md        # 安全红线
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
-│   └── code-qualily-reviewer.md # 代码质量审查
+│   └── code-quality-reviewer.md # 代码质量审查
 ├── knowledge/
 │   └── index.md           # 知识索引（技术约定、踩坑记录）
 └── changes/
+    ├── <change-id>/       # 单个变更目录
+    │   ├── spec.md        # 需求规格
+    │   ├── tasks.md       # 任务拆分
+    │   ├── log.md         # 变更日志
+    │   ├── test-spec.md   # 测试规格（可选）
+    │   └── review.md      # 审查结论
     └── templates/         # 变更文档模板
-        ├── spec.md        # 需求规格
-        ├── task.md        # 任务拆分
-        ├── log.md         # 变更日志
-        └── test-spec.md   # 测试规格
 ```
 
 ## 快速开始
@@ -64,7 +66,7 @@
 /apply <变更名>
 ```
 
-逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit。
+逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit；全部完成后进入 `review` 状态。
 
 ### 4. 代码审查
 
@@ -72,7 +74,7 @@
 /review <变更名>
 ```
 
-两阶段：Spec Compliance → Code Quality
+两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
 
 ## 命令菜单
 
@@ -83,7 +85,7 @@
 | `/apply <变更名>` | 执行编码 |
 | `/fix <变更名>` | Review 后修正迭代 |
 | `/review <变更名>` | 两阶段审查 |
-| `/test <变更名>` | 生成单测并执行（TDD） |
+| `/test <变更名>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
 | `/archive <变更名>` | 归档 + 知识沉淀 |
 
 ## 约束等级
@@ -112,6 +114,6 @@
 
 本框架适用于：
 
-* 已有 Golang 后端项目（推荐执行 `/init`）
-* 新建 Golang 项目（直接 `/propose` 初始化骨架）
+* 已有 Golang 后端项目（推荐先执行 `/init` 识别真实上下文）
+* 新建 Golang 项目（执行 `/init` 生成初始化建议，再进入 `/propose`）
 * 需要 Spec 驱动开发规范的团队

@@ -15,6 +15,8 @@
 
 #### 输出格式
 
+输出内容必须可直接整理进 `changes/<change-id>/review.md` 的 Stage 1 部分。
+
 ```
 ## Spec Compliance Review — <变更名>
 

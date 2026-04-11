@@ -1,6 +1,6 @@
 # cc_spec
 
-Code Spec — 基于 Claude Code 的多语言 Spec 驱动开发框架。
+Code Spec — 当前以 Claude Code 专用 harness 为主的多语言 Spec 驱动开发框架。
 
 ## 理念
 
@@ -18,9 +18,10 @@ Code Spec — 基于 Claude Code 的多语言 Spec 驱动开发框架。
 
 ### Golang
 
-基于 Golang 后端项目的 Harness 规范，包含：
+基于 Golang 后端项目的 Claude Code Harness 规范，包含：
 
 * Spec 驱动的开发流程（/propose → /apply → /review）
+* 变更目录生命周期（`changes/<change-id>/`）
 * 强制检查点与约束等级
 * 知识沉淀机制
 * 代码质量审查流程
