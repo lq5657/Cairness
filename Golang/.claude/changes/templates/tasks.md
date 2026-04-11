@@ -12,6 +12,15 @@ updated: YYYY-MM-DD
 **每个任务** = 可独立提交的原子变更（3-5 个文件）
 **每个任务必须精确到**：文件路径 + 函数签名
 
+若涉及数据库变更，建议拆分顺序：
+1. migration / schema 准备
+2. 兼容读写或双写逻辑
+3. 数据回填或批处理
+4. 读路径切换
+5. contract 清理
+
+数据库变更默认不要与无关业务逻辑混在同一 task；若确实无法拆分，必须在任务目标和备注中说明原因。
+
 #### 前置条件
 
 * [ ] （依赖/配置等前提）
@@ -37,3 +46,4 @@ updated: YYYY-MM-DD
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
 * **对应 commit** : `[<变更名>] <中文简述>`
 * **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式；若 `parallel_safe = true`，必须说明可并行理由
+* **数据库注意事项** : 若涉及 migration / 回填 / 兼容窗口，说明本 task 处于 expand / migrate / contract 的哪个阶段，以及前后依赖

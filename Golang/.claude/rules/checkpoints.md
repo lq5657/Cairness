@@ -19,6 +19,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
 | `/apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
 | `/apply` | [ ] 当前分支与 `change-id` 匹配，且不在 `main`/`master` | rules/git-workflow.md |
+| `/apply` | [ ] 若涉及数据库变更，已声明 migration 路径、兼容窗口与回滚路径 | rules/database-changes.md |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
 | `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
@@ -96,6 +97,7 @@ description: "所有命令执行的强制检查点汇总"
 - [ ] 安全漏洞
 - [ ] 资金逻辑错误
 - [ ] 并发安全（ Goroutine 泄漏、未加锁竞态）
+- [ ] 数据丢失风险（破坏性 migration、错误回填、旧版本不兼容）
 
 **Important（应修复）：**
 - [ ] 错误被 `_` 忽略吞掉
@@ -128,6 +130,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 已达到本次 change 声明的最低验证等级 | |
 | [ ] `go build ./...` 通过 | |
 | [ ] `go test ./...` 通过（如有测试） | |
+| [ ] 若涉及数据库变更，migration / 代码切换顺序与 spec 一致 | |
 | [ ] 每个 task 已单独 commit | |
 | [ ] changes/ 文档已更新 | |
 | [ ] spec.status 已更新为 `review`（全部 task 完成时） | |

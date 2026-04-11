@@ -196,6 +196,11 @@ changes/examples/<change-id>/
 - 默认按“一个 change 一个分支”推进；同一 change 下的多个 task 共享该分支，不为每个 task 单独建分支
 - 若判断当前变更只能做到手工验证或回归验证，必须在 `spec.md` 中预先说明原因和替代证据
 
+**数据库变更要求：**
+- 涉及 schema、migration、回填、兼容窗口时，必须应用 `rules/database-changes.md`
+- `/propose` 时必须在 `spec.md` 的“数据变更”章节记录 migration 路径、兼容窗口、回滚路径
+- `/apply` 时应按 expand → migrate → contract 的顺序设计 tasks；若不能拆开，必须说明原因
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -209,6 +214,7 @@ changes/examples/<change-id>/
 - 开始执行前确认当前分支与 `change-id` 匹配，且不在 `main`/`master`
 - 逐 task 执行，每个 task 完成后展示验证证据（`go build ./...` 或 `go test`）
 - 默认遵循 spec/tasks；如果实现中发现 Plan 不足、错误或受实际代码约束无法落地，必须先更新 `spec.md`、`tasks.md`、`log.md`，再继续编码
+- 若涉及数据库变更，必须先确认 migration 与代码切换顺序；禁止先写依赖新 schema 的业务代码再补说明
 - 自动 git commit（一个 task 一个 commit）
 - 所有 task 完成后，将 `spec.md` 状态改为 `review`
 
@@ -253,10 +259,10 @@ changes/examples/<change-id>/
 2. [ ] 多余实现检查 — spec 没要求但代码多做了（YAGNI 违规）
 3. [ ] 理解偏差检查 — 做了但做错了方向
 4. [ ] 业务规则落地检查 — `spec.md` 的“业务规则”章节是否全部体现
-5. [ ] 数据变更准确性检查 — `spec.md` 的“数据变更”章节是否准确
+5. [ ] 数据变更准确性检查 — `spec.md` 的“数据变更”章节、migration、兼容策略是否一致
 
 **阶段二 Code Quality**（前置条件：阶段一 PASS）：
-1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全
+1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全、数据丢失风险
 2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验
 3. [ ] Minor 检查 — Go doc 缺失、import 未清理
 
