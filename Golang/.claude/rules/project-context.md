@@ -82,6 +82,17 @@ Repository/DAO
 | 环境差异 | dev/test/staging/prod 的主要差异 | |
 | Feature Flag | 是否使用及管理方式 | |
 
+#### 6.3 可观测性
+
+| 项目 | 当前约定 | 备注 |
+|------|----------|------|
+| 关键日志字段 | request_id / trace_id / user_id / task_id / 其他 | |
+| Metrics | Prometheus / 平台监控 / 无 | |
+| Alerting | 平台告警 / 自定义阈值 / 无 | |
+| Tracing | OpenTelemetry / 自研 / 无 | |
+| 异步任务观测 | 重试、死信、补偿的记录方式 | |
+| 发布观察窗口 | 发布后默认观察哪些指标、多长时间 | |
+
 #### 7. 领域特性与高风险点
 
 | 类型 | 描述 | 备注 |
