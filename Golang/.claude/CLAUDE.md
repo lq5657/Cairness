@@ -216,6 +216,11 @@ changes/examples/<change-id>/
 - `/propose` 时必须在 `spec.md` 的“日志与可观测性”章节记录日志点、关键字段、metrics/告警观察项
 - `/apply` 时禁止只改业务逻辑不补关键链路观测信息
 
+**测试分层要求：**
+- 涉及业务逻辑、缺陷修复、接口链路、数据库访问、异步任务时，必须应用 `rules/testing-strategy.md`
+- `/test` 时必须在 `test-spec.md` 记录本次选择的测试层级、原因和更高层测试是否被跳过
+- 对 bugfix，默认至少要有一个回归证据；若无法写 Red→Green，必须说明退化原因与覆盖边界
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -314,6 +319,7 @@ changes/examples/<change-id>/
 - `/test` 是 `/apply` 阶段内可并行使用的测试工作流，不要求先完成 `/review`
 - 对历史系统、集成链路、难以稳定制造 Red 的场景，允许退化为“补充回归测试”，但必须在 `test-spec.md` 中说明原因，禁止伪造 Red/Green 证据
 - `/test` 的目标是补足声明的验证等级与证据，而不是只补单元测试数量
+- `/test` 必须明确本次优先使用的测试层级（如 unit / repo / transport / chain / integration / manual），并说明为何足以覆盖当前风险
 
 **允许退化为回归测试的典型场景：**
 - 历史系统缺少稳定隔离点，无法先构造可重复的 Red

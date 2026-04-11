@@ -32,6 +32,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
 | `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
 | `/test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
+| `/test` | [ ] 已声明本次测试层级选择与原因 | rules/testing-strategy.md |
 | `/archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §/archive |
 | `/archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
 
@@ -162,6 +163,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] `go test -cover` 输出已展示 | |
 | [ ] 测试文件已 commit | |
 | [ ] 验证证据已覆盖声明的最低验证等级 | |
+| [ ] 已说明为什么当前测试层级足以覆盖本次风险 | |
 | [ ] 若未执行严格 Red→Green，test-spec.md 已说明原因 | |
 
 #### ✅ /fix 完成后检查
