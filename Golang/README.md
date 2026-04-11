@@ -85,6 +85,7 @@
 ```
 
 逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit；全部完成后进入 `review` 状态。
+若中途失败，必须记录 `blocked` / `partial` / `aborted`，而不是静默中断。
 
 ### 4. 代码审查
 
@@ -93,6 +94,10 @@
 ```
 
 两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
+
+## 失败恢复
+
+这套 harness 允许命令失败，但不允许失败后没有记录。任何 `/apply`、`/test`、`/review`、`/fix` 中断，都必须在 `spec.md` 或 `log.md` 中留下可恢复的上下文，再继续下一次执行。
 
 ## 命令菜单
 

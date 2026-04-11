@@ -90,6 +90,25 @@ changes/examples/<change-id>/
 | `review` | 实现完成，等待或正在审查，要求 spec 与代码一致 | `/review`, `/fix` |
 | `done` | 审查通过且已归档 | 无 |
 
+#### 阻塞与恢复语义
+
+命令执行失败时，不新增独立状态值；继续沿用当前 `status`，并通过文档记录“阻塞态”。
+
+**阻塞态定义：**
+- `blocked`：当前变更因缺少信息、环境失败、验证失败或外部依赖问题而无法继续推进
+- `partial`：当前命令只完成了一部分，已有产物可保留，但不能视为该阶段完成
+- `aborted`：当前尝试被主动放弃，后续需要重新规划或重新执行
+
+**记录位置：**
+- `spec.md` §12 执行日志：记录当前 task 的 `进行中 / blocked / partial / aborted / 已完成`
+- `log.md` 时间线：记录失败时间、触发动作、阻塞原因、下一步动作
+- `review.md`：如果 `/review` 未完整执行，必须记录已完成到哪个阶段，以及未完成原因
+
+**最小恢复原则：**
+- 命令失败后，禁止静默退出并留下未记录的半完成状态
+- 只要工作区或文档已被修改，就必须同步更新 `spec.md` 或 `log.md`
+- 恢复执行前，必须先读上一次失败记录，确认阻塞原因是否已消除
+
 #### 文档职责
 
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论
@@ -107,6 +126,10 @@ changes/examples/<change-id>/
 适用两种场景：
 - 已有项目：识别真实分层、依赖、约束和团队约定
 - 新项目：生成初始化建议，未落地的部分必须明确标记为“待确认”
+
+**失败处理：**
+- 若项目结构无法识别、依赖缺失或信息不足，必须在 `project-context.md` 中明确标记“待确认”
+- 若关键事实无法确认，不得伪造结论；应停止进入 `/propose`
 
 #### /propose <需求描述> — 创建变更提案
 
@@ -127,6 +150,10 @@ changes/examples/<change-id>/
 
 **🚫 禁令：待澄清（§9）全部解决前，禁止进入 /apply 。**
 
+**失败处理：**
+- 若提问后仍有未解决澄清项，保持 `status: propose`
+- 若已产出部分 spec/tasks，但信息不足以继续，记录为 `partial` 或 `blocked`
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -141,6 +168,11 @@ changes/examples/<change-id>/
 - 自动 git commit（一个 task 一个 commit）
 - 所有 task 完成后，将 `spec.md` 状态改为 `review`
 
+**失败与恢复：**
+- 如果某个 task 未完成，不得将 `spec.md` 状态改为 `review`
+- 若 `go build ./...`、`go test` 或关键实现失败，当前 task 标记为 `blocked` 或 `partial`
+- 恢复时必须先说明：上次失败点、已保留的修改、这次准备继续的 task
+
 #### /fix <变更名> [描述] — Review 后修正迭代
 
 **🚫 前置检查：**
@@ -150,6 +182,10 @@ changes/examples/<change-id>/
 **执行要求：**
 - 增量修正 + 文档同步铁律（`spec.md`/`tasks.md`/`log.md`/`review.md` 全部更新）
 - 每项修复后重新验证
+
+**失败与恢复：**
+- 若部分问题已修复、部分未修复，`review.md` 中 Findings 状态必须区分 `fixed` 与 `open`
+- 修复失败时，不得清空原有 review 结论；应保留问题并补充本次尝试结果
 
 #### /review <变更名> — 两阶段审查
 
@@ -170,6 +206,11 @@ changes/examples/<change-id>/
 **产出要求：**
 - 在 `changes/<变更名>/review.md` 中记录阶段一、阶段二结果
 - 将 `spec.md` 的 §13 审查结论更新为 review 摘要和当前结论
+
+**失败与恢复：**
+- 若 Stage 1 未完成，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`
+- 若 Stage 1 通过但 Stage 2 未完成，必须记录未完成原因，禁止写“可归档”
+- `/review` 中断后，恢复执行时必须从未完成阶段继续，而不是重置已有结论
 
 #### /test <变更名> — 生成测试 Spec 并执行
 
@@ -202,6 +243,10 @@ changes/examples/<change-id>/
 - P1 数据访问层：≥60%
 - P2 入口/编排层：建议覆盖
 
+**失败与恢复：**
+- 若测试写到一半中断，保留 `test-spec.md`，并在执行计划中标记停留步骤
+- 若测试失败但根因未明，不得声称 Green；应在 `log.md` 记录失败输出和下一步假设
+
 #### /archive <变更名> — 归档 + 知识沉淀
 
 前置条件：
@@ -212,6 +257,10 @@ changes/examples/<change-id>/
 执行要求：
 - 逐条展示 `log.md` 知识发现，确认后沉淀到 `knowledge/`
 - 归档完成后将 `spec.md` 状态改为 `done`
+
+**失败处理：**
+- 若知识沉淀尚未确认，保持 `status: review`
+- 若存在 `blocked/open` 问题，禁止进入归档
 
 #### Git 规范
 

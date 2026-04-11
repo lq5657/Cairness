@@ -15,6 +15,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/apply` | [ ] §9 待澄清已全部解决 | CLAUDE.md §命令 |
 | `/apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
 | `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
+| `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
 | `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
@@ -114,6 +115,15 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] changes/ 文档已更新 | |
 | [ ] spec.status 已更新为 `review`（全部 task 完成时） | |
 
+#### ✅ 命令失败后必须检查
+
+| 检查项 | 结果 |
+|--------|------|
+| [ ] 已在 `spec.md` §12 或 `log.md` 记录失败原因 | |
+| [ ] 当前 task 已标记为 `blocked` / `partial` / `aborted`（如适用） | |
+| [ ] 若有已写入变更，未以“未发生”方式掩盖当前状态 | |
+| [ ] 恢复执行所需前置条件已写明 | |
+
 #### ✅ /test 完成后检查
 
 | 检查项 | 结果 |
@@ -130,6 +140,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 所有 review 问题已修复 | |
 | [ ] spec/tasks/log/review 已同步更新 | |
 | [ ] `go build ./...` 通过 | |
+| [ ] 未修复问题仍保留在 Findings 中，而非被删除 | |
 
 #### ✅ /archive 完成后检查
 
@@ -139,6 +150,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] log.md 完整可读 | |
 | [ ] 变更目录已归档（status: done） | |
 | [ ] spec.status 已更新为 `done` | |
+| [ ] 不存在 `blocked/open` 状态的问题 | |
 
 #### ✅ 每次会话结束时
 

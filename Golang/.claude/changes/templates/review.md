@@ -7,14 +7,15 @@
 - `Stage 1` 固定 5 行，`Stage 2` 固定 3 行
 - `Findings` 仅记录问题；无问题时写一行 `无`
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
+- `/review` 中断时，允许使用 `partial`，但必须说明中断原因和停留阶段
 
 ```
 change_id: kebab-case-id
 reviewed_at: YYYY-MM-DD HH:MM
 reviewer: Claude Code
-stage1_status: pass | fail
-stage2_status: pass | fail | skipped
-final_status: pass | fail
+stage1_status: pass | fail | partial
+stage2_status: pass | fail | skipped | partial
+final_status: pass | fail | partial
 ```
 
 #### 1. 输入材料
