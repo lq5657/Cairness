@@ -206,6 +206,11 @@ changes/examples/<change-id>/
 - `/propose` 时必须在 `spec.md` 的“接口变更”章节记录兼容性分类、客户端影响、迁移路径和回滚影响
 - 对 `breaking_change`，默认需要人工审查或明确例外说明
 
+**配置治理要求：**
+- 涉及配置项、环境变量、feature flag、密钥来源或环境差异时，必须应用 `rules/configuration.md`
+- `/propose` 时必须在 `spec.md` 的“配置变更”章节记录配置名、默认值、必填性、环境差异和回滚影响
+- `/apply` 时应优先在启动期或依赖注入层接入配置，避免在业务深处散读环境变量
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -220,6 +225,7 @@ changes/examples/<change-id>/
 - 逐 task 执行，每个 task 完成后展示验证证据（`go build ./...` 或 `go test`）
 - 默认遵循 spec/tasks；如果实现中发现 Plan 不足、错误或受实际代码约束无法落地，必须先更新 `spec.md`、`tasks.md`、`log.md`，再继续编码
 - 若涉及数据库变更，必须先确认 migration 与代码切换顺序；禁止先写依赖新 schema 的业务代码再补说明
+- 若涉及配置变更，必须先确认配置注入点、默认值和环境差异说明；禁止只改读取代码不回写配置契约
 - 自动 git commit（一个 task 一个 commit）
 - 所有 task 完成后，将 `spec.md` 状态改为 `review`
 
@@ -268,7 +274,7 @@ changes/examples/<change-id>/
 
 **阶段二 Code Quality**（前置条件：阶段一 PASS）：
 1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全、数据丢失风险
-2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验、接口兼容风险
+2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验、接口兼容风险、配置契约风险
 3. [ ] Minor 检查 — Go doc 缺失、import 未清理
 
 **权限边界：**
