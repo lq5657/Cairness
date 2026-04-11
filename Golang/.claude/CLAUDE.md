@@ -201,6 +201,11 @@ changes/examples/<change-id>/
 - `/propose` 时必须在 `spec.md` 的“数据变更”章节记录 migration 路径、兼容窗口、回滚路径
 - `/apply` 时应按 expand → migrate → contract 的顺序设计 tasks；若不能拆开，必须说明原因
 
+**接口兼容性要求：**
+- 涉及 HTTP、gRPC、MQ、Webhook、导入导出格式等对外契约时，必须应用 `rules/api-compatibility.md`
+- `/propose` 时必须在 `spec.md` 的“接口变更”章节记录兼容性分类、客户端影响、迁移路径和回滚影响
+- 对 `breaking_change`，默认需要人工审查或明确例外说明
+
 #### /apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
@@ -259,11 +264,11 @@ changes/examples/<change-id>/
 2. [ ] 多余实现检查 — spec 没要求但代码多做了（YAGNI 违规）
 3. [ ] 理解偏差检查 — 做了但做错了方向
 4. [ ] 业务规则落地检查 — `spec.md` 的“业务规则”章节是否全部体现
-5. [ ] 数据变更准确性检查 — `spec.md` 的“数据变更”章节、migration、兼容策略是否一致
+5. [ ] 对外契约准确性检查 — `spec.md` 中的数据变更/接口变更声明与代码实现、兼容策略是否一致
 
 **阶段二 Code Quality**（前置条件：阶段一 PASS）：
 1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全、数据丢失风险
-2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验
+2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验、接口兼容风险
 3. [ ] Minor 检查 — Go doc 缺失、import 未清理
 
 **权限边界：**

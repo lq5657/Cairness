@@ -20,6 +20,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
 | `/apply` | [ ] 当前分支与 `change-id` 匹配，且不在 `main`/`master` | rules/git-workflow.md |
 | `/apply` | [ ] 若涉及数据库变更，已声明 migration 路径、兼容窗口与回滚路径 | rules/database-changes.md |
+| `/apply` | [ ] 若涉及对外接口变更，已声明兼容性分类、客户端影响与迁移路径 | rules/api-compatibility.md |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
 | `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
@@ -87,7 +88,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 多余实现 — spec 没要求但代码多做了 | PASS/FAIL | YAGNI 违规 |
 | [ ] 理解偏差 — 做了但方向错误 | PASS/FAIL | |
 | [ ] 业务规则落地 — `spec.md` 的“业务规则”章节是否体现 | PASS/FAIL | |
-| [ ] 数据变更准确性 — `spec.md` 的“数据变更”章节是否准确 | PASS/FAIL | |
+| [ ] 对外契约准确性 — `spec.md` 的“数据变更/接口变更”章节与实现、兼容策略是否一致 | PASS/FAIL | |
 
 ---
 
@@ -103,6 +104,7 @@ description: "所有命令执行的强制检查点汇总"
 - [ ] 错误被 `_` 忽略吞掉
 - [ ] 缺少 context 透传
 - [ ] 缺少参数校验
+- [ ] 接口兼容风险（字段/错误码/分页语义变化未说明）
 - [ ] 魔法值未定义常量
 - [ ] 函数过长（建议 >80 行）
 - [ ] 控制流是否存在可明显压平的多层嵌套
@@ -131,6 +133,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] `go build ./...` 通过 | |
 | [ ] `go test ./...` 通过（如有测试） | |
 | [ ] 若涉及数据库变更，migration / 代码切换顺序与 spec 一致 | |
+| [ ] 若涉及接口变更，兼容性分类与实现行为一致 | |
 | [ ] 每个 task 已单独 commit | |
 | [ ] changes/ 文档已更新 | |
 | [ ] spec.status 已更新为 `review`（全部 task 完成时） | |
