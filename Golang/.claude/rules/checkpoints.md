@@ -10,12 +10,14 @@ description: "所有命令执行的强制检查点汇总"
 |------|--------|------|
 | `/propose` | [ ] 用户需求已明确（不是模糊描述） | CLAUDE.md §命令 |
 | `/propose` | [ ] 涉及的功能点已初步识别 | CLAUDE.md §命令 |
+| `/propose` | [ ] 已检查是否与现有进行中变更冲突 | CLAUDE.md §并发治理 |
 | `/apply` | [ ] spec.md 存在于 changes/\<变更名\>/ | CLAUDE.md §命令 |
 | `/apply` | [ ] tasks.md 存在且至少有一个 task | CLAUDE.md §命令 |
 | `/apply` | [ ] §9 待澄清已全部解决 | CLAUDE.md §命令 |
 | `/apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
 | `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
 | `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
+| `/apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
 | `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
 | `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
 | `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
@@ -123,6 +125,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 当前 task 已标记为 `blocked` / `partial` / `aborted`（如适用） | |
 | [ ] 若有已写入变更，未以“未发生”方式掩盖当前状态 | |
 | [ ] 恢复执行所需前置条件已写明 | |
+| [ ] 若失败原因是跨变更依赖或冲突，已记录冲突对象 | |
 
 #### ✅ /test 完成后检查
 

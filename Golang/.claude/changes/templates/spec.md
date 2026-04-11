@@ -3,6 +3,8 @@
 ```
 change_id: kebab-case-id
 status: propose | apply | review | done
+depends_on: []            # 可选；依赖的 change-id 列表
+parallel_safe: true | false
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 complexity: 🟢简单 | 🟡中等 | 🔴复杂
@@ -16,6 +18,8 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
   - `apply`：编码进行中，允许 task 边界内的受控偏差
   - `review`：编码完成，要求 spec 与代码一致
   - `done`：归档完成
+- `depends_on` 用于声明跨变更依赖；无依赖时写 `[]`
+- `parallel_safe` 表示该变更是否允许与其他变更并行推进
 - 实现中如果发现 spec 不足或错误，必须先更新本文件，再继续编码
 - 若命令执行失败或中断，必须在 §12 记录 `blocked` / `partial` / `aborted`
 
