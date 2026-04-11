@@ -40,11 +40,14 @@
     └── templates/         # 变更文档模板
 ```
 
-## 快速开始
+## 我是维护者
 
-## 参考样例
+先看这些内容：
 
-如果你是维护者，建议先阅读 `changes/examples/` 下的完整示例，再看模板。示例展示的是一套从 `/propose` 到 `/review` 的完整产物，而模板只定义单文件结构。
+1. `CLAUDE.md`：主流程、生命周期、恢复语义、并发治理
+2. `changes/examples/user-create-api/`：标准新增需求示例
+3. `changes/examples/user-create-api-fix/`：`/fix` 闭环示例
+4. `knowledge/pilot-checklist.md`：试点前验收清单
 
 推荐阅读顺序：
 
@@ -56,13 +59,26 @@
 6. `changes/examples/user-create-api-fix/spec.md`
 7. `changes/examples/user-create-api-fix/review.md`
 
-## 试点建议
-
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
-### 1. 初始化项目上下文
+## 我是项目接入者
 
-已在已有代码的项目中工作时：
+已有 Golang 项目接入时，建议按这个顺序：
+
+1. 执行 `/init`
+2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层和团队约定
+3. 选一个低风险需求跑一次 `/propose -> /apply -> /review`
+4. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+
+新项目接入时，建议按这个顺序：
+
+1. 执行 `/init`
+2. 在 `project-context.md` 中确认哪些内容是“初始化建议”，哪些已真实落地
+3. 再进入 `/propose`
+
+## 我是日常使用者
+
+### 1. 初始化项目上下文
 
 ```
 /init
@@ -71,8 +87,6 @@
 分析工程结构、依赖（go.mod）、分层模式，填充 `rules/project-context.md`。
 
 ### 2. 创建变更提案
-
-有新需求时：
 
 ```
 /propose <需求描述>
@@ -87,7 +101,6 @@
 ```
 
 逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit；全部完成后进入 `review` 状态。
-若中途失败，必须记录 `blocked` / `partial` / `aborted`，而不是静默中断。
 
 ### 4. 代码审查
 
@@ -97,15 +110,26 @@
 
 两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
 
-## 失败恢复
+### 5. 修复与补测
+
+```
+/fix <变更名>
+/test <变更名>
+```
+
+`/fix` 用于回收 review 问题并回写文档，`/test` 用于在 `apply/review` 阶段补测试和展示验证证据。
+
+## 运行约束
+
+### 失败恢复
 
 这套 harness 允许命令失败，但不允许失败后没有记录。任何 `/apply`、`/test`、`/review`、`/fix` 中断，都必须在 `spec.md` 或 `log.md` 中留下可恢复的上下文，再继续下一次执行。
 
-## 并发治理
+### 并发治理
 
 这套 harness 允许同一仓库存在多个进行中的 change，但不默认允许它们并行改同一代码区域。存在依赖时，应在 `spec.md` 中显式记录 `depends_on`；存在冲突时，应优先串行推进，而不是让 AI 自行并行修改同一链路。
 
-## 命令菜单
+### 命令菜单
 
 | 命令 | 说明 |
 |------|------|
