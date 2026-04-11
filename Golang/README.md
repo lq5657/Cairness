@@ -66,7 +66,7 @@
 已有 Golang 项目接入时，建议按这个顺序：
 
 1. 执行 `/init`
-2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层和团队约定
+2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
 3. 选一个低风险需求跑一次 `/propose -> /apply -> /review`
 4. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
