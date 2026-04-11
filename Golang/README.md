@@ -53,6 +53,8 @@
 3. `changes/examples/user-create-api/test-spec.md`
 4. `changes/examples/user-create-api/review.md`
 5. `changes/examples/user-create-api/log.md`
+6. `changes/examples/user-create-api-fix/spec.md`
+7. `changes/examples/user-create-api-fix/review.md`
 
 ## 试点建议
 
