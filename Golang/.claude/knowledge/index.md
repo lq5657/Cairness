@@ -62,6 +62,7 @@
       // 错误处理
   }
   ```
+* **Harness试点验收** : 发布前先用验收清单确认生命周期、规则边界、reviewer 契约和样例是否可跑通 → `knowledge/pilot-checklist.md`
 
 #### 踩坑记录
 

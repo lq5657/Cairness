@@ -54,6 +54,10 @@
 4. `changes/examples/user-create-api/review.md`
 5. `changes/examples/user-create-api/log.md`
 
+## 试点建议
+
+如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
+
 ### 1. 初始化项目上下文
 
 已在已有代码的项目中工作时：
