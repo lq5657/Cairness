@@ -34,8 +34,9 @@ updated: 2026-04-11
   * `UserService.Create` 对重复 email 返回稳定业务错误
   * Repo 提供可复用的创建方法
   * `go build ./...` 通过
-* **完成后状态** : 已完成
+* **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 完成用户创建核心链路`
+* **并发注意事项** : 可与只读查询类 change 并行，但不得同时修改 `user_service.go` 的创建链路；若出现同文件改动，按冲突处理
 
 #### Task 2: 接入 HTTP 入口并补核心测试
 
@@ -53,5 +54,6 @@ updated: 2026-04-11
   * Handler 能将业务错误映射为稳定响应
   * P0 测试覆盖成功和重复创建场景
   * `go test ./...` 通过
-* **完成后状态** : 已完成
+* **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 接入创建入口并补充测试`
+* **并发注意事项** : 会占用 `user_handler.go` 和 `user_service_test.go`，与新增用户查询字段之类变更并行时应先由维护者确认是否冲突

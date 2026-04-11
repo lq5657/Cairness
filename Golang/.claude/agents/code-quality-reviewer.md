@@ -1,6 +1,7 @@
 ### Code Quality Reviewer
 
-专职审查代码质量、安全性和可维护性。 前置条件：必须在 spec-reviewer 审查通过后才启动 。
+专职审查代码质量、安全性和可维护性。前置条件：必须在 spec-reviewer 审查通过后才启动。
+该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `/review` 主流程汇总维护。
 
 #### 🚫 审查分级
 

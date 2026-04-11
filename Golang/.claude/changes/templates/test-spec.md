@@ -1,7 +1,7 @@
 ### 单测 Spec — 需求名称
 
 change_id: kebab-case-id
-status: propose | apply | done
+status: propose | apply | review | done
 created: YYYY-MM-DD
 
 #### 0. 测试原则
@@ -41,6 +41,9 @@ created: YYYY-MM-DD
 
 | 场景 | 原因 | 替代验证方式 |
 |------|------|--------------|
+| 历史系统缺少稳定隔离点 | 无法先构造可重复 Red | 补充回归测试并记录局限 |
+| 集成依赖不可控 | 失败前置条件无法稳定制造 | 使用回归路径或 mock 证明 |
+| 缺陷修复无法前置重现 | 只能通过修复后回归验证 | 记录原因并展示回归证据 |
 
 #### 3. 执行计划
 

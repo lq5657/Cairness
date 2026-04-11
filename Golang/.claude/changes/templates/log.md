@@ -11,6 +11,7 @@
 - 已保留了哪些修改
 - 当前阻塞原因
 - 下一步恢复条件
+- 对应 task 当前状态（`todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`）
 
 #### 技术决策
 

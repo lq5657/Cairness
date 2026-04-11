@@ -3,6 +3,8 @@
 ```
 change_id: user-create-api
 status: review
+depends_on: []
+parallel_safe: true
 created: 2026-04-11
 updated: 2026-04-11
 complexity: 🟡中等
@@ -13,6 +15,7 @@ complexity: 🟡中等
 - 文件位置：`changes/examples/user-create-api/spec.md`
 - 这是维护者参考样例，用于展示完整文档流转
 - 示例假设项目是一个典型的已有 Golang HTTP 服务，目录采用 `handler -> service -> repo`
+- 本样例额外展示：`parallel_safe = true` 时，仍需在文档中说明并发安全理由和冲突规避方式
 
 #### 1. 背景与目标
 
@@ -86,6 +89,7 @@ complexity: 🟡中等
 | 幂等 | email 重复创建 | Service 先查重，再调用 Repo.Create |
 | 校验 | 参数不合法 | Handler 入口做基础校验 |
 | 回归 | 后续误删查重逻辑 | P0 测试覆盖重复 email 场景 |
+| 并发 | 可能与用户详情展示类需求同时推进 | 限定本变更只改创建链路，不修改查询链路和共享协议 |
 
 #### 9. 测试策略
 
@@ -105,13 +109,14 @@ complexity: 🟡中等
 | 幂等检查位置 | `UserService.Create` | 仅在 Handler 校验 | 避免绕过 Handler 直接调用 |
 | 错误建模 | 自定义业务错误 `ErrUserEmailExists` | 直接返回字符串 | 便于 Handler 稳定映射 |
 | 测试重点 | 先覆盖 Service | 只测 Handler | Service 是业务规则核心 |
+| 并发策略 | 标记 `parallel_safe: true`，但仅限与查询链路类变更并行 | 默认串行 | 当前改动文件与查询链路可切分，冲突面较小 |
 
 #### 12. 执行日志
 
 | Task | 状态 | 实际改动文件 | 备注 |
 |------|------|-------------|------|
-| Task 1 | 已完成 | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 完成创建链路 |
-| Task 2 | 已完成 | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 补入口和核心测试 |
+| Task 1 | done | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 完成创建链路 |
+| Task 2 | done | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 补入口和核心测试 |
 
 #### 13. 审查结论
 

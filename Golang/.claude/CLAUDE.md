@@ -101,7 +101,7 @@ changes/examples/<change-id>/
 - `aborted`：当前尝试被主动放弃，后续需要重新规划或重新执行
 
 **记录位置：**
-- `spec.md` §12 执行日志：记录当前 task 的 `进行中 / blocked / partial / aborted / 已完成`
+- `spec.md` 的“执行日志”章节：记录当前 task 的 `todo / in_progress / blocked / partial / aborted / done`
 - `log.md` 时间线：记录失败时间、触发动作、阻塞原因、下一步动作
 - `review.md`：如果 `/review` 未完整执行，必须记录已完成到哪个阶段，以及未完成原因
 
@@ -119,10 +119,19 @@ changes/examples/<change-id>/
 - `parallel_safe`：当前变更是否允许与其他变更并行推进同一仓库
 
 **治理原则：**
-- 若 A 变更依赖 B 变更，A 的 `spec.md` 必须显式记录 `depends_on: B`
+- 若 A 变更依赖 B 变更，A 的 `spec.md` 必须在 `depends_on` 列表中显式记录 `B`
 - 若依赖变更尚未满足前置阶段，当前变更应标记为 `blocked`
 - 若两个变更修改同一核心文件或同一调用链，默认视为并发不安全
 - 并发不安全的变更必须由维护者决定先后顺序，不允许 AI 自行并行推进
+
+**冲突判定：**
+- 文件级冲突：两个变更修改同一文件，默认视为冲突
+- 调用链冲突：两个变更虽然不改同一文件，但同时修改同一入口到同一 service/repo 主链路，默认视为冲突
+- 对 `parallel_safe = true` 的变更，必须在 `tasks.md` 的“并发注意事项”中说明为什么可并行，以及如何规避冲突
+
+**记录要求：**
+- 发现冲突时，必须在 `spec.md` 中记录冲突对象或依赖对象
+- 需要暂停、重排或等待人工确认时，必须在 `log.md` 中记录当前决策和恢复条件
 
 **最小规则：**
 - 依赖未满足时，禁止进入实际编码
@@ -165,13 +174,13 @@ changes/examples/<change-id>/
 | 阶段 | 动作 | 产出 |
 |------|------|------|
 | 1. Research | 读代码、查链路、识别现有实现 | §2 代码现状（含文件路径） |
-| 2. 提问澄清 | 逐个提问，给选项+推荐，等待回答 | §9 待澄清（全部✅后进入下一步） |
+| 2. 提问澄清 | 逐个提问，给选项+推荐，等待回答 | `spec.md` 的“待澄清”章节（全部✅后进入下一步） |
 | 3. YAGNI 裁剪 | 剔除"未来可能需要"的功能 | §3 功能点（精简后） |
 | 4. 生成 Spec | 按 spec.md 模板填充（重点：§1/§3/§4） | spec.md |
 | 5. 生成 Tasks | 按 `tasks.md` 模板拆分（每个 task 3-5 文件） | `tasks.md` |
 | 6. HARD-GATE | 用户确认 spec + tasks | §13 确认记录 |
 
-**🚫 禁令：待澄清（§9）全部解决前，禁止进入 /apply 。**
+**🚫 禁令：`spec.md` 的“待澄清”章节全部解决前，禁止进入 `/apply`。**
 
 **失败处理：**
 - 若提问后仍有未解决澄清项，保持 `status: propose`
@@ -180,6 +189,7 @@ changes/examples/<change-id>/
 **并发治理：**
 - 创建提案时，必须检查是否与现有进行中变更存在文件级或链路级冲突
 - 若存在明显依赖，必须在 `spec.md` 中记录 `depends_on`
+- 若判断可并行推进，必须在 `tasks.md` 写明并发安全理由和冲突规避方式
 
 #### /apply <变更名> — 执行编码
 
@@ -204,14 +214,18 @@ changes/examples/<change-id>/
 **并发治理：**
 - 若执行过程中发现另一个变更已修改同一文件或同一调用链，必须先记录冲突，再决定暂停或重排
 - 对 `parallel_safe = false` 的变更，默认串行推进
+- 若冲突尚未得到维护者确认，禁止继续编码
 
 #### /fix <变更名> [描述] — Review 后修正迭代
 
 **🚫 前置检查：**
 - [ ] review 结果已读
 - [ ] 问题清单已记录
+- [ ] `review.md` 中需要处理的问题范围已确认
 
 **执行要求：**
+- 默认只处理 `review.md` 中 `status = open` 的 Findings
+- 若用户临时追加新问题，必须先追加到 `review.md` 或 `log.md`，再纳入本轮 `/fix`
 - 增量修正 + 文档同步铁律（`spec.md`/`tasks.md`/`log.md`/`review.md` 全部更新）
 - 每项修复后重新验证
 
@@ -221,23 +235,32 @@ changes/examples/<change-id>/
 
 #### /review <变更名> — 两阶段审查
 
+**执行模型：**
+- `/review` 是用户触发的主流程命令
+- `spec_reviewer` 和 `code-quality-reviewer` 是 `/review` 内部使用的只读 reviewer
+- reviewer 只负责读取材料并输出结构化审查结果，不直接修改仓库文件
+- `/review` 主流程负责汇总 reviewer 输出，并写入 `changes/<变更名>/review.md`
+- `/review` 完成后，由主流程同步更新 `spec.md` 的“审查结论”章节
+
 **阶段一 Spec Compliance**（必检，PASS 后才进入阶段二）：
 1. [ ] 缺失实现检查 — spec 要求了但代码没做的
 2. [ ] 多余实现检查 — spec 没要求但代码多做了（YAGNI 违规）
 3. [ ] 理解偏差检查 — 做了但做错了方向
-4. [ ] 业务规则落地检查 — spec §4 规则是否全部体现
-5. [ ] 数据变更准确性检查 — spec §5 表/字段变更是否准确
+4. [ ] 业务规则落地检查 — `spec.md` 的“业务规则”章节是否全部体现
+5. [ ] 数据变更准确性检查 — `spec.md` 的“数据变更”章节是否准确
 
 **阶段二 Code Quality**（前置条件：阶段一 PASS）：
 1. [ ] Critical 检查 — 安全漏洞、资金逻辑错误、并发安全
 2. [ ] Important 检查 — 错误吞掉、缺少上下文透传、缺少参数校验
 3. [ ] Minor 检查 — Go doc 缺失、import 未清理
 
-**工具权限：** 仅需 Read/Grep/Glob/Bash（只读），不需要写入权限 。
+**权限边界：**
+- reviewer 子角色：仅需 Read/Grep/Glob/Bash（只读），不需要写入权限
+- `/review` 主流程：需要对 `review.md` 和 `spec.md` 的写权限
 
 **产出要求：**
 - 在 `changes/<变更名>/review.md` 中记录阶段一、阶段二结果
-- 将 `spec.md` 的 §13 审查结论更新为 review 摘要和当前结论
+- 将 `spec.md` 的“审查结论”章节更新为 review 摘要和当前结论
 
 **失败与恢复：**
 - 若 Stage 1 未完成，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`
@@ -259,6 +282,11 @@ changes/examples/<change-id>/
 **说明：**
 - `/test` 是 `/apply` 阶段内可并行使用的测试工作流，不要求先完成 `/review`
 - 对历史系统、集成链路、难以稳定制造 Red 的场景，允许退化为“补充回归测试”，但必须在 `test-spec.md` 中说明原因，禁止伪造 Red/Green 证据
+
+**允许退化为回归测试的典型场景：**
+- 历史系统缺少稳定隔离点，无法先构造可重复的 Red
+- 集成依赖不可控，无法可靠制造失败前置条件
+- 缺陷修复只能通过回归路径验证，无法在改动前稳定隔离重现
 
 **执行流程：**
 

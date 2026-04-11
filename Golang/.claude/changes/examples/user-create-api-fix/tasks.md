@@ -33,13 +33,13 @@ updated: 2026-04-11
   * Repo 写入存在明确超时边界
   * Service 返回错误保留底层原因
   * `go build ./...` 通过
-* **完成后状态** : 已完成
+* **完成后状态** : `done`
 * **对应 commit** : `[user-create-api-fix] 修复创建链路超时与错误包装`
 * **并发注意事项** : 依赖 `user-create-api`，默认串行推进
 
 #### Task 2: 回写 review 并补回归测试
 
-* **目标** : 让 review 问题状态从 `open` 变为 `fixed`
+* **目标** : 只处理 `review.md` 中 `open` 的问题，并将其状态改为 `fixed`
 * **涉及文件** :
   * `internal/service/user_service_test.go` — 补错误包装和超时边界相关断言
   * `changes/examples/user-create-api-fix/review.md` — 标记 Findings 已修复
@@ -48,8 +48,9 @@ updated: 2026-04-11
   func TestUserServiceCreateWrapRepoError(t *testing.T)
   ```
 * **验收标准** :
-  * `review.md` 中问题状态更新为 `fixed`
+  * `review.md` 中本轮处理的问题从 `open` 更新为 `fixed`
+  * 已经是 `fixed` 或 `accepted` 的问题不得删除或重复回收
   * `go test ./...` 通过
-* **完成后状态** : 已完成
+* **完成后状态** : `done`
 * **对应 commit** : `[user-create-api-fix] 更新 review 并补回归测试`
 * **并发注意事项** : 与原变更共用 `user_service_test.go`，不与其他 change 并行修改

@@ -13,7 +13,7 @@ description: "所有命令执行的强制检查点汇总"
 | `/propose` | [ ] 已检查是否与现有进行中变更冲突 | CLAUDE.md §并发治理 |
 | `/apply` | [ ] spec.md 存在于 changes/\<变更名\>/ | CLAUDE.md §命令 |
 | `/apply` | [ ] tasks.md 存在且至少有一个 task | CLAUDE.md §命令 |
-| `/apply` | [ ] §9 待澄清已全部解决 | CLAUDE.md §命令 |
+| `/apply` | [ ] `spec.md` 的“待澄清”章节已全部解决 | CLAUDE.md §命令 |
 | `/apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
 | `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
 | `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
@@ -81,8 +81,8 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 缺失实现 — spec 要求了但代码没做 | PASS/FAIL | |
 | [ ] 多余实现 — spec 没要求但代码多做了 | PASS/FAIL | YAGNI 违规 |
 | [ ] 理解偏差 — 做了但方向错误 | PASS/FAIL | |
-| [ ] 业务规则落地 — spec §4 规则是否体现 | PASS/FAIL | |
-| [ ] 数据变更准确性 — spec §5 表/字段是否准确 | PASS/FAIL | |
+| [ ] 业务规则落地 — `spec.md` 的“业务规则”章节是否体现 | PASS/FAIL | |
+| [ ] 数据变更准确性 — `spec.md` 的“数据变更”章节是否准确 | PASS/FAIL | |
 
 ---
 
@@ -131,7 +131,7 @@ description: "所有命令执行的强制检查点汇总"
 
 | 检查项 | 结果 |
 |--------|------|
-| [ ] 已在 `spec.md` §12 或 `log.md` 记录失败原因 | |
+| [ ] 已在 `spec.md` 的“执行日志”章节或 `log.md` 记录失败原因 | |
 | [ ] 当前 task 已标记为 `blocked` / `partial` / `aborted`（如适用） | |
 | [ ] 若有已写入变更，未以“未发生”方式掩盖当前状态 | |
 | [ ] 恢复执行所需前置条件已写明 | |

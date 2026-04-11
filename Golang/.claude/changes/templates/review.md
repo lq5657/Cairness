@@ -8,6 +8,7 @@
 - `Findings` 仅记录问题；无问题时写一行 `无`
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
 - `/review` 中断时，允许使用 `partial`，但必须说明中断原因和停留阶段
+- 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
 change_id: kebab-case-id
@@ -53,4 +54,4 @@ final_status: pass | fail | partial
 
 * **Stage 1 结论**：
 * **Stage 2 结论**：
-* **总体结论**：可进入 `/fix` / 可归档
+* **总体结论**：可进入 Stage 2 / 可进入 `/fix` / 可归档

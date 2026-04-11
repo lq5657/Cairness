@@ -7,6 +7,7 @@
 - `Stage 1` 固定 5 行，`Stage 2` 固定 3 行
 - `Findings` 仅记录问题；无问题时写一行 `无`
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
+- 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
 change_id: user-create-api-fix
@@ -46,6 +47,7 @@ final_status: pass
 
 | 级别 | 描述 | 位置 | 建议动作 | 状态 |
 |------|------|------|----------|------|
+| Minor | 示例约束：`/fix` 默认只处理 `open` Findings，并在修复后改状态而非删除记录 | `changes/examples/user-create-api-fix/spec.md:L1` | 后续 fix 继续沿用该约定 | accepted |
 | Important | repo 创建路径缺少显式 timeout | `internal/repo/user_repo.go:L1` | 增加 `context.WithTimeout` | fixed |
 | Important | service 返回错误缺少上下文包装 | `internal/service/user_service.go:L1` | 用 `%w` 包装底层错误 | fixed |
 

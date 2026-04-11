@@ -7,6 +7,7 @@
 - `Stage 1` 固定 5 行，`Stage 2` 固定 3 行
 - `Findings` 仅记录问题；无问题时写一行 `无`
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
+- 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
 change_id: user-create-api

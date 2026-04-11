@@ -34,6 +34,6 @@ updated: YYYY-MM-DD
   func (s *UserService) Create(...) // 新增参数或返回值时注明
   ```
 * **验收标准** : （task 完成时必须满足的条件）
-* **完成后状态** : 待做 / 进行中 / 已完成
+* **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
 * **对应 commit** : `[<变更名>] <中文简述>`
-* **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式
+* **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式；若 `parallel_safe = true`，必须说明可并行理由

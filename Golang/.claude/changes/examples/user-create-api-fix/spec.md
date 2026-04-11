@@ -15,6 +15,7 @@ complexity: 🟢简单
 - 文件位置：`changes/examples/user-create-api-fix/spec.md`
 - 这是 `/fix` 工作流样例，用于展示 review 后修复、文档回写和再验证
 - 当前变更依赖 `user-create-api` 已完成首次实现和首次 review
+- 本样例额外展示：`/fix` 默认只处理 `review.md` 中 `status = open` 的 Findings，已修复问题保留为 `fixed` 不删除
 
 #### 1. 背景与目标
 
@@ -47,12 +48,14 @@ complexity: 🟢简单
 
 - 风险 1：持久化调用长时间阻塞时，缺少明确超时会拖长请求生命周期
 - 风险 2：错误未包装时，后续日志和排障难以区分 service/repo 失败位置
+- 风险 3：若 `/fix` 直接删除旧 Findings，会丢失审计链路
 
 #### 3. 功能点
 
 * [x] 功能 1：为用户创建链路补充超时控制
 * [x] 功能 2：补充错误包装，保留底层 error
 * [x] 功能 3：更新 review Findings 状态和执行日志
+* [x] 功能 4：仅处理 `review.md` 中 `open` 的问题，保留 `fixed` 记录
 
 #### 4. 业务规则
 
@@ -102,13 +105,14 @@ complexity: 🟢简单
 |------|------|------------|------|
 | 超时策略 | 在 repo/service 边界显式加 3s timeout | 完全依赖上游请求超时 | 保证底层调用有最小保护 |
 | 错误包装 | `fmt.Errorf("create user: %w", err)` | 直接原样返回 | 便于排障与 review |
+| Findings 处理方式 | 只回收 `open` 问题，修复后改为 `fixed` | 删除已修复 Findings | 保留修复链路，便于审计和恢复 |
 
 #### 12. 执行日志
 
 | Task | 状态 | 实际改动文件 | 备注 |
 |------|------|-------------|------|
-| Task 1 | 已完成 | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 补超时与错误包装 |
-| Task 2 | 已完成 | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 补测试和回写 review |
+| Task 1 | done | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 补超时与错误包装 |
+| Task 2 | done | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 补测试和回写 review |
 
 #### 13. 审查结论
 
