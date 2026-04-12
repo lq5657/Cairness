@@ -108,9 +108,10 @@
 1. 执行 `cc-init`
 2. 检查 `context/project-context.md` 是否已建立最小可用上下文
 3. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
-4. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
-5. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
-6. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+4. 若需要让新维护者深入理解系统，执行 `cc-explain-system`
+5. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
+6. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
+7. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 新项目接入时，建议按这个顺序：
 
@@ -167,7 +168,30 @@ cc-enrich-context
 - `cc-enrich-context` 不是 `cc-review`，不审已有 change
 - 证据不足时保留“待确认”，不要把推测写成事实
 
-### 1.2 存量项目体检
+### 1.2 输出系统讲解材料
+
+```
+cc-explain-system [scope]
+```
+
+当目标是帮助用户深入掌握大型复杂项目时使用。
+
+用途：
+- 输出系统定位与业务边界
+- 输出架构图、关键模块职责和核心链路
+- 输出核心数据流 / 状态流
+- 解释关键技术模块实现原理
+- 总结项目难点、高风险点和推荐阅读路径
+
+产物：
+- `context/system-overview.md`
+
+边界说明：
+- `cc-explain-system` 不是 `cc-inspect-codebase`，不以 Findings 为主
+- `cc-explain-system` 不是 `cc-propose`，不生成 change
+- 图示优先使用 Mermaid 或 ASCII 文本图
+
+### 1.3 存量项目体检
 
 ```
 cc-inspect-codebase <mode> [scope]
@@ -202,7 +226,7 @@ cc-inspect-codebase observability mq-consumer
 cc-inspect-codebase test-debt internal/service
 ```
 
-### 1.3 把审查结果转成正式 change
+### 1.4 把审查结果转成正式 change
 
 当 `cc-inspect-codebase` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
 
@@ -267,6 +291,7 @@ cc-test <变更名>
 |------|------|
 | `cc-init` | 初始化项目上下文 |
 | `cc-enrich-context` | 补充更完整的项目上下文 |
+| `cc-explain-system [scope]` | 输出系统讲解材料，帮助深入理解项目 |
 | `cc-inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
 | `cc-promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
 | `cc-propose <需求>` | 创建变更提案 |

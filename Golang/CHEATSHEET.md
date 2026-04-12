@@ -88,6 +88,22 @@ Golang/.claude/changes/<change-id>/
 - 不要输出 Findings、审查结论或 change 草稿
 - 不要把推测写成事实
 
+### `cc-explain-system`
+
+用途：
+- 输出面向维护者的系统讲解材料
+- 帮助用户理解项目定位、架构、链路、数据流和技术机制
+
+结果要求：
+- 产出 `context/system-overview.md`
+- 包含系统定位、架构图、核心数据流、技术机制、难点和阅读路径
+- 图示优先使用 Mermaid 或 ASCII 文本图
+
+禁止：
+- 不要把 `cc-explain-system` 扩展成 Findings 导向的体检报告
+- 不要输出 change 草稿或实现计划
+- 不要只给抽象结论而不给关键入口或链路证据
+
 ### `cc-inspect-codebase <mode> [scope]`
 
 用途：
