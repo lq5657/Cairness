@@ -49,6 +49,7 @@ Golang/.claude/changes/<change-id>/
 - 先报当前分支和进行中的 change
 - 直接给可复制命令，如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
+- 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoints.md` 只作兼容汇总索引
 
 ### `cc-init`
 

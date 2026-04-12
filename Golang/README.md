@@ -32,7 +32,7 @@
 │   ├── cc-inspect-codebase.md
 │   └── ...
 ├── rules/
-│   ├── checkpoints.md     # 兼容保留的汇总检查点
+│   ├── checkpoints.md     # 兼容保留的索引页，不是运行时默认入口
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
 │   ├── project-context.md # 工程上下文（由 cc-init 填充）
@@ -121,6 +121,7 @@
 - 不要臆测“测试连接”“未完成请求”等无证据意图
 - 直接展示可复制的命令，例如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求描述>`
 - 启动阶段不要全量读取 `rules/`；具体命令触发后再按需读取 `commands/`、`checkpoints/` 与专题规则
+- 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoints.md` 仅作兼容索引页
 
 ### 1. 初始化项目上下文
 
