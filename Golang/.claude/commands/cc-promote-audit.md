@@ -8,6 +8,11 @@
 
 - `cc-promote-audit <audit-id> <change-id>`
 
+展示 checkpoint 表时：
+- 必须把状态写入 `结果` 列
+- `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
+- 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
+
 ## 输出
 
 - `audits/<audit-id>/to-change.md`

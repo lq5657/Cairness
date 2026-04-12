@@ -47,6 +47,17 @@
 | Claude Code 不会误判 | 输入一条 `cc-` 命令时，不会报 unknown skill / unknown command | [ ] |
 | 文档示例一致 | README / 速查表中的主入口命令统一 | [ ] |
 
+#### 3.1 checkpoint 展示契约检查
+
+目标：确认 Claude Code 在展示开始前检查、执行中检查、完成后检查时，不会把勾选状态写错列。
+
+| 检查项 | 通过标准 | 状态 |
+|--------|----------|------|
+| 结果列有值 | checkpoint 表中的 `结果` 列实际填入 `✅`、`❌`、`⚠️` 或 `N/A` | [ ] |
+| 检查项列不混入勾选 | `检查项` 列不出现 `[x]` / `[ ]` 作为状态表达 | [ ] |
+| command 与 checkpoint 口径一致 | `commands/*.md` 与 `checkpoints/*.md` 都明确要求状态写入 `结果` 列 | [ ] |
+| 最小试跑可复核 | 跑一次 `cc-inspect-codebase architecture` 后，检查 checkpoint 表不存在“结果列为空” | [ ] |
+
 #### 4. `cc-init` 边界检查
 
 目标：确认 `cc-init` 只做“项目事实识别”，不做“框架安装”。
@@ -77,6 +88,7 @@
 | `cc-inspect-codebase` 可执行 | 能正确进入审查模式，不被宿主截获 | [ ] |
 | audit 产物位置正确 | 产出到 `.claude/audits/<audit-id>/report.md` | [ ] |
 | Findings 有证据 | 结论带文件位置，不是泛泛而谈 | [ ] |
+| checkpoint 表可读 | 开始前/执行中/完成后检查表的 `结果` 列非空且语义一致 | [ ] |
 
 #### 6. 不建议继续接入的信号
 
@@ -84,6 +96,7 @@
 
 - `cc-init` 仍尝试创建仓库根目录 `rules/`、`knowledge/`、`changes/`
 - Claude Code 把 `cc-inspect-codebase` 误判成宿主 skill 或其他命令
+- checkpoint 表仍出现“`检查项` 列打勾、`结果` 列为空”的输出
 - `project-context.md` 仍然大面积套模板，缺乏项目事实
 - 相对路径仍被理解错，产物落到仓库根目录而不是 `.claude/`
 - 维护者无法解释当前项目里“框架脚手架”和“业务代码目录”的边界
@@ -96,6 +109,7 @@
 |------|------|------|
 | 脚手架完整 | `.claude/` 必需目录和模板齐全 | [ ] |
 | 命令入口稳定 | `cc-` 命令不会与宿主解析冲突 | [ ] |
+| checkpoint 展示稳定 | 检查表状态落在 `结果` 列，且不同命令口径一致 | [ ] |
 | `cc-init` 不跑偏 | 只识别事实，不安装脚手架 | [ ] |
 | `inspect-codebase` 可落产物 | 能输出带证据的 audit 报告 | [ ] |
 | 维护者理解边界 | 知道什么时候该 `cc-init`，什么时候该先装脚手架 | [ ] |

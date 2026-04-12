@@ -9,6 +9,11 @@
 - `cc-fix <change-id>`
 - `cc-fix <change-id> [描述]`
 
+展示 checkpoint 表时：
+- 必须把状态写入 `结果` 列
+- `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
+- 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
+
 ## 执行要求
 
 - 默认只处理 `review.md` 中 `status = open` 的 Findings
