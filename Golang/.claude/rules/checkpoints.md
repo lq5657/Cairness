@@ -8,43 +8,43 @@ description: "所有命令执行的强制检查点汇总"
 
 | 命令 | 检查项 | 依据 |
 |------|--------|------|
-| `/propose` | [ ] 用户需求已明确（不是模糊描述） | CLAUDE.md §命令 |
-| `/propose` | [ ] 涉及的功能点已初步识别 | CLAUDE.md §命令 |
-| `/propose` | [ ] 已检查是否与现有进行中变更冲突 | CLAUDE.md §并发治理 |
-| `/apply` | [ ] spec.md 存在于 changes/\<变更名\>/ | CLAUDE.md §命令 |
-| `/apply` | [ ] tasks.md 存在且至少有一个 task | CLAUDE.md §命令 |
-| `/apply` | [ ] `spec.md` 的“待澄清”章节已全部解决 | CLAUDE.md §命令 |
-| `/apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
-| `/apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
-| `/apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
-| `/apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
-| `/apply` | [ ] 当前分支与 `change-id` 匹配，且不在 `main`/`master` | rules/git-workflow.md |
-| `/apply` | [ ] 若涉及数据库变更，已声明 migration 路径、兼容窗口与回滚路径 | rules/database-changes.md |
-| `/apply` | [ ] 若涉及对外接口变更，已声明兼容性分类、客户端影响与迁移路径 | rules/api-compatibility.md |
-| `/apply` | [ ] 若涉及配置变更，已声明配置名、默认值、必填性与环境差异 | rules/configuration.md |
-| `/apply` | [ ] 若涉及关键链路或异步任务，已声明日志点、关键字段与观察项 | rules/observability.md |
-| `/apply` | [ ] 若涉及高风险上线项，已声明发布方式、回滚路径与观察窗口 | rules/release.md |
-| `/fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
-| `/fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
-| `/fix` | [ ] review.md 已存在 | CLAUDE.md §/review |
-| `/review` | [ ] spec.md 已读 | CLAUDE.md §命令 |
-| `/review` | [ ] 代码已存在 | CLAUDE.md §命令 |
-| `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
-| `/inspect-codebase` | [ ] 已选择预设模式（architecture / logic / observability / test-debt） | CLAUDE.md §/inspect-codebase |
-| `/inspect-codebase` | [ ] 已明确审查范围（全仓/模块/链路/主题）；若缺省则按全仓 | CLAUDE.md §/inspect-codebase |
-| `/inspect-codebase` | [ ] 已说明本次不是基于现有 change 的 `/review` | CLAUDE.md §/inspect-codebase |
-| `/inspect-codebase` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §/inspect-codebase |
-| `/promote-audit` | [ ] 已读取 `audits/<audit-id>/report.md` | CLAUDE.md §/promote-audit |
-| `/promote-audit` | [ ] 已收敛本次 change 的边界与不处理项 | CLAUDE.md §/promote-audit |
-| `/promote-audit` | [ ] 已确认输出位置为 `audits/<audit-id>/to-change.md` | CLAUDE.md §/promote-audit |
-| `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
-| `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
-| `/test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
-| `/test` | [ ] 已声明本次测试层级选择与原因 | rules/testing-strategy.md |
-| `/archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §/archive |
-| `/archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
-| `/init` | [ ] 未把脚手架缺失误判为需要创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | CLAUDE.md §/init |
-| `/init` | [ ] 未扩展为补齐 `.claude` 脚手架目录与模板文件 | CLAUDE.md §脚手架归属 |
+| `cc-propose` | [ ] 用户需求已明确（不是模糊描述） | CLAUDE.md §命令 |
+| `cc-propose` | [ ] 涉及的功能点已初步识别 | CLAUDE.md §命令 |
+| `cc-propose` | [ ] 已检查是否与现有进行中变更冲突 | CLAUDE.md §并发治理 |
+| `cc-apply` | [ ] spec.md 存在于 changes/\<变更名\>/ | CLAUDE.md §命令 |
+| `cc-apply` | [ ] tasks.md 存在且至少有一个 task | CLAUDE.md §命令 |
+| `cc-apply` | [ ] `spec.md` 的“待澄清”章节已全部解决 | CLAUDE.md §命令 |
+| `cc-apply` | [ ] 用户已确认执行 | CLAUDE.md §命令 |
+| `cc-apply` | [ ] spec.status 为 `propose` 或 `apply` | CLAUDE.md §生命周期状态 |
+| `cc-apply` | [ ] 若为恢复执行，已读取上次失败/阻塞记录 | CLAUDE.md §阻塞与恢复语义 |
+| `cc-apply` | [ ] depends_on 已满足或已显式标记 blocked | CLAUDE.md §并发治理 |
+| `cc-apply` | [ ] 当前分支与 `change-id` 匹配，且不在 `main`/`master` | rules/git-workflow.md |
+| `cc-apply` | [ ] 若涉及数据库变更，已声明 migration 路径、兼容窗口与回滚路径 | rules/database-changes.md |
+| `cc-apply` | [ ] 若涉及对外接口变更，已声明兼容性分类、客户端影响与迁移路径 | rules/api-compatibility.md |
+| `cc-apply` | [ ] 若涉及配置变更，已声明配置名、默认值、必填性与环境差异 | rules/configuration.md |
+| `cc-apply` | [ ] 若涉及关键链路或异步任务，已声明日志点、关键字段与观察项 | rules/observability.md |
+| `cc-apply` | [ ] 若涉及高风险上线项，已声明发布方式、回滚路径与观察窗口 | rules/release.md |
+| `cc-fix` | [ ] review 结果已读 | CLAUDE.md §命令 |
+| `cc-fix` | [ ] 问题清单已记录 | CLAUDE.md §命令 |
+| `cc-fix` | [ ] review.md 已存在 | CLAUDE.md §cc-review |
+| `cc-review` | [ ] spec.md 已读 | CLAUDE.md §命令 |
+| `cc-review` | [ ] 代码已存在 | CLAUDE.md §命令 |
+| `cc-review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
+| `cc-inspect-codebase` | [ ] 已选择预设模式（architecture / logic / observability / test-debt） | CLAUDE.md §cc-inspect-codebase |
+| `cc-inspect-codebase` | [ ] 已明确审查范围（全仓/模块/链路/主题）；若缺省则按全仓 | CLAUDE.md §cc-inspect-codebase |
+| `cc-inspect-codebase` | [ ] 已说明本次不是基于现有 change 的 `cc-review` | CLAUDE.md §cc-inspect-codebase |
+| `cc-inspect-codebase` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §cc-inspect-codebase |
+| `cc-promote-audit` | [ ] 已读取 `audits/<audit-id>/report.md` | CLAUDE.md §cc-promote-audit |
+| `cc-promote-audit` | [ ] 已收敛本次 change 的边界与不处理项 | CLAUDE.md §cc-promote-audit |
+| `cc-promote-audit` | [ ] 已确认输出位置为 `audits/<audit-id>/to-change.md` | CLAUDE.md §cc-promote-audit |
+| `cc-test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
+| `cc-test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
+| `cc-test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
+| `cc-test` | [ ] 已声明本次测试层级选择与原因 | rules/testing-strategy.md |
+| `cc-archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §cc-archive |
+| `cc-archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
+| `cc-init` | [ ] 未把脚手架缺失误判为需要创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | CLAUDE.md §cc-init |
+| `cc-init` | [ ] 未扩展为补齐 `.claude` 脚手架目录与模板文件 | CLAUDE.md §脚手架归属 |
 
 ---
 
@@ -93,7 +93,7 @@ description: "所有命令执行的强制检查点汇总"
 
 ---
 
-#### ✅ /review 阶段一必检项（全部通过才 PASS）
+#### ✅ cc-review 阶段一必检项（全部通过才 PASS）
 
 | 检查项 | 结果 | 备注 |
 |--------|------|------|
@@ -105,7 +105,7 @@ description: "所有命令执行的强制检查点汇总"
 
 ---
 
-#### ✅ /review 阶段二必检项
+#### ✅ cc-review 阶段二必检项
 
 **Critical（阻塞级）：**
 - [ ] 安全漏洞
@@ -139,7 +139,7 @@ description: "所有命令执行的强制检查点汇总"
 - [ ] import 未清理（未用 `goimports`）
 - [ ] 新增第三方依赖是否可被标准库替代
 
-#### ✅ /inspect-codebase 完成后检查
+#### ✅ cc-inspect-codebase 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
@@ -150,7 +150,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 已明确哪些问题建议转成 change | |
 | [ ] 若发现 project-context 失真，已建议或更新 `project-context.md` | |
 
-#### ✅ /init 完成后检查
+#### ✅ cc-init 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
@@ -159,7 +159,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 未创建 `.claude/changes/examples/`、`.claude/changes/templates/`、`.claude/audits/templates/` 等脚手架资产 | |
 | [ ] 若发现脚手架缺失，已明确提示“需要维护者安装 harness”，而非自行补目录 | |
 
-#### ✅ /promote-audit 完成后检查
+#### ✅ cc-promote-audit 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
@@ -171,7 +171,7 @@ description: "所有命令执行的强制检查点汇总"
 
 ---
 
-#### ✅ /apply 完成后检查
+#### ✅ cc-apply 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
@@ -197,7 +197,7 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 恢复执行所需前置条件已写明 | |
 | [ ] 若失败原因是跨变更依赖或冲突，已记录冲突对象 | |
 
-#### ✅ /test 完成后检查
+#### ✅ cc-test 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
@@ -208,16 +208,16 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 已说明为什么当前测试层级足以覆盖本次风险 | |
 | [ ] 若未执行严格 Red→Green，test-spec.md 已说明原因 | |
 
-#### ✅ /fix 完成后检查
+#### ✅ cc-fix 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
 | [ ] 所有 review 问题已修复 | |
-| [ ] spec/tasks/log/review 已同步更新 | |
+| [ ] `spec.md` / `tasks.md` / `log.md` / `review.md` 已同步更新 | |
 | [ ] `go build ./...` 通过 | |
 | [ ] 未修复问题仍保留在 Findings 中，而非被删除 | |
 
-#### ✅ /archive 完成后检查
+#### ✅ cc-archive 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|

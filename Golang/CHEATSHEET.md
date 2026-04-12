@@ -6,7 +6,7 @@
 
 ## 1. 先记住的三条
 
-1. `No Spec, No Code`：没有 `changes/<change-id>/spec.md`，禁止 `/apply`
+1. `No Spec, No Code`：没有 `changes/<change-id>/spec.md`，禁止 `cc-apply`
 2. `Spec is Truth`：`review/done` 阶段发现 spec 和代码不一致，必须先修偏差
 3. `变更即记录`：改代码时必须同步更新 `changes/` 文档
 
@@ -20,7 +20,7 @@ Golang/.claude/changes/<change-id>/
 ├── tasks.md
 ├── log.md
 ├── test-spec.md   # 可选
-└── review.md      # /review 后生成
+└── review.md      # cc-review 后生成
 ```
 
 补充：
@@ -32,9 +32,9 @@ Golang/.claude/changes/<change-id>/
 
 | 状态 | 含义 | 允许命令 |
 |------|------|----------|
-| `propose` | 提案已生成，尚未开始实现 | `/propose` |
-| `apply` | 正在实现，可在 task 边界内暂时不一致 | `/apply`, `/test` |
-| `review` | 实现完成，等待审查，要求 spec 与代码一致 | `/review`, `/fix` |
+| `propose` | 提案已生成，尚未开始实现 | `cc-propose` |
+| `apply` | 正在实现，可在 task 边界内暂时不一致 | `cc-apply`, `cc-test` |
+| `review` | 实现完成，等待审查，要求 spec 与代码一致 | `cc-review`, `cc-fix` |
 | `done` | 审查通过并归档 | 无 |
 
 失败不中断生命周期，只在文档里记录：
@@ -44,7 +44,7 @@ Golang/.claude/changes/<change-id>/
 
 ## 4. 日常命令流
 
-### `/init`
+### `cc-init`
 
 用途：
 - 分析真实工程结构
@@ -55,17 +55,17 @@ Golang/.claude/changes/<change-id>/
 - 不确定的内容标记“待确认”，不能编造
 
 禁止：
-- 不要把 `/init` 扩展成“初始化示例变更”
+- 不要把 `cc-init` 扩展成“初始化示例变更”
 - 不要因为缺少样例去创建 `changes/examples/`
-- 不要在 `/init` 阶段创建真实 `changes/<change-id>/`
+- 不要在 `cc-init` 阶段创建真实 `changes/<change-id>/`
 - 不要因为缺少脚手架去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
-- 不要在 `/init` 阶段补齐 `.claude` 下的模板、示例和规则文件
+- 不要在 `cc-init` 阶段补齐 `.claude` 下的模板、示例和规则文件
 
 前提：
 - 先确保目标项目已经安装好 `.claude/` 脚手架
-- `/init` 只负责识别项目事实，不负责安装框架
+- `cc-init` 只负责识别项目事实，不负责安装框架
 
-### `/inspect-codebase <mode> [scope]`
+### `cc-inspect-codebase <mode> [scope]`
 
 用途：
 - 在没有新需求时，对存量项目做代码、设计、逻辑、安全或配置体检
@@ -88,14 +88,14 @@ Golang/.claude/changes/<change-id>/
 - `test-debt`：看测试缺口、回归证据、测试分层、可测性
 
 示例：
-- `/inspect-codebase architecture`
-- `/inspect-codebase architecture user-domain`
-- `/inspect-codebase logic`
-- `/inspect-codebase logic payment-refund`
-- `/inspect-codebase observability order-consumer`
-- `/inspect-codebase test-debt internal/service`
+- `cc-inspect-codebase architecture`
+- `cc-inspect-codebase architecture user-domain`
+- `cc-inspect-codebase logic`
+- `cc-inspect-codebase logic payment-refund`
+- `cc-inspect-codebase observability order-consumer`
+- `cc-inspect-codebase test-debt internal/service`
 
-### `/promote-audit <audit-id> <change-id>`
+### `cc-promote-audit <audit-id> <change-id>`
 
 用途：
 - 把 audit 报告里的 Findings 收敛成一个正式 change 草稿
@@ -108,7 +108,7 @@ Golang/.claude/changes/<change-id>/
 - 先明确“本次修什么，不修什么”
 - 若问题类型太杂，拆成多个 change
 
-### `/propose <需求>`
+### `cc-propose <需求>`
 
 流程：
 1. 读代码做 Research
@@ -118,13 +118,13 @@ Golang/.claude/changes/<change-id>/
 5. 生成 `tasks.md`
 6. 等待 HARD-GATE 确认
 
-进入 `/apply` 前必须满足：
+进入 `cc-apply` 前必须满足：
 - 需求明确
 - 功能点已识别
 - 与现有 change 的冲突已检查
 - `待澄清` 全部解决
 
-### `/apply <change-id>`
+### `cc-apply <change-id>`
 
 执行要求：
 - 先把 `spec.status` 改为 `apply`
@@ -140,7 +140,7 @@ Golang/.claude/changes/<change-id>/
 - 当前分支匹配 `change-id`
 - 不在 `main/master`
 
-### `/review <change-id>`
+### `cc-review <change-id>`
 
 两阶段：
 1. Spec Compliance
@@ -153,17 +153,17 @@ Golang/.claude/changes/<change-id>/
 - `spec.status = review`
 - 代码已存在
 
-### `/fix <change-id>`
+### `cc-fix <change-id>`
 
 用途：
 - 回收 `review.md` 中的问题
-- 修复代码并同步更新 spec/tasks/log/review
+- 修复代码并同步更新 `spec.md` / `tasks.md` / `log.md` / `review.md`
 
 注意：
 - 默认只处理 `status = open` 的 Findings
 - 已修复问题改为 `fixed`，不要删除审计记录
 
-### `/test <change-id>`
+### `cc-test <change-id>`
 
 用途：
 - 补测试设计
@@ -173,7 +173,7 @@ Golang/.claude/changes/<change-id>/
 - 在 `test-spec.md` 说明测试层级选择和原因
 - bugfix 默认至少有一条回归证据
 
-### `/archive <change-id>`
+### `cc-archive <change-id>`
 
 前置：
 - `review.md` 已允许归档
@@ -295,9 +295,9 @@ Golang/.claude/changes/<change-id>/
 
 ### 接入已有项目
 
-1. 先 `/init`
+1. 先 `cc-init`
 2. 校验 `rules/project-context.md` 是否真实
-3. 选一个低风险需求跑 `/propose -> /apply -> /review`
+3. 选一个低风险需求跑 `cc-propose -> cc-apply -> cc-review`
 4. 试点阶段保留人工 review
 
 ### 维护这套 harness
@@ -320,7 +320,7 @@ Golang/.claude/changes/<change-id>/
 ## 14. 最短记忆版
 
 ```text
-先 /init，再 /propose。
+先 cc-init，再 cc-propose。
 没有 spec 不写代码。
 按 task 小步提交。
 改代码就改文档。

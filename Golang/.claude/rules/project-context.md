@@ -3,14 +3,14 @@ alwaysApply: true
 ---
 ### 工程上下文
 
-首次使用时执行 /init 让 AI 分析工程并填充本文件。
+首次使用时执行 cc-init 让 AI 分析工程并填充本文件。
 
 补充边界：
-- `/init` 只负责识别项目事实并回写本文件
-- `/init` 不负责创建 `changes/examples/`、`changes/templates/` 或示例 change
-- `/init` 不负责创建仓库根目录下的 `rules/`、`knowledge/`、`changes/`、`audits/`
-- `/init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/` 等脚手架资产
-- 若要做存量项目体检，使用 `/inspect-codebase`，不要伪装成 `/init` 或 `/review`
+- `cc-init` 只负责识别项目事实并回写本文件
+- `cc-init` 不负责创建 `changes/examples/`、`changes/templates/` 或示例 change
+- `cc-init` 不负责创建仓库根目录下的 `rules/`、`knowledge/`、`changes/`、`audits/`
+- `cc-init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/` 等脚手架资产
+- 若要做存量项目体检，使用 `cc-inspect-codebase`，不要伪装成 `cc-init` 或 `cc-review`
 
 #### 使用说明
 

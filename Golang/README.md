@@ -27,7 +27,7 @@
 │   ├── checkpoints.md     # 所有命令执行的强制检查点汇总
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
-│   ├── project-context.md # 工程上下文（由 /init 填充）
+│   ├── project-context.md # 工程上下文（由 cc-init 填充）
 │   └── security.md        # 安全红线
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
@@ -61,7 +61,7 @@
 
 1. `CLAUDE.md`：主流程、生命周期、恢复语义、并发治理
 2. `changes/examples/user-create-api/`：标准新增需求示例
-3. `changes/examples/user-create-api-fix/`：`/fix` 闭环示例
+3. `changes/examples/user-create-api-fix/`：`cc-fix` 闭环示例
 4. `knowledge/pilot-checklist.md`：试点前验收清单
 
 推荐阅读顺序：
@@ -76,9 +76,9 @@
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
-如果你准备把这套 harness 接入某个真实存量项目，先看 `knowledge/integration-preflight-checklist.md`。这份清单用于接入前环境级预检，避免命令冲突、路径理解错误和 `/init` 跑偏。
+如果你准备把这套 harness 接入某个真实存量项目，先看 `knowledge/integration-preflight-checklist.md`。这份清单用于接入前环境级预检，避免命令冲突、路径理解错误和 `cc-init` 跑偏。
 
-`/inspect-codebase` 的四类示例报告可参考：
+`cc-inspect-codebase` 的四类示例报告可参考：
 
 1. `audits/examples/architecture-user-domain/report.md`
 2. `audits/examples/logic-user-create/report.md`
@@ -94,44 +94,44 @@
 
 已有 Golang 项目接入时，建议按这个顺序：
 
-1. 执行 `/init`
+1. 执行 `cc-init`
 2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
-3. 如果暂时没有新需求，先执行 `/inspect-codebase` 对存量项目做体检
-4. 如果有明确需求，再跑一次 `/propose -> /apply -> /review`
+3. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
+4. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
 5. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 新项目接入时，建议按这个顺序：
 
-1. 执行 `/init`
+1. 执行 `cc-init`
 2. 在 `project-context.md` 中确认哪些内容是“初始化建议”，哪些已真实落地
-3. 再进入 `/propose`
+3. 再进入 `cc-propose`
 
 ## 我是日常使用者
 
 ### 1. 初始化项目上下文
 
 ```
-/init
+cc-init
 ```
 
 分析工程结构、依赖（go.mod）、分层模式，填充 `rules/project-context.md`。
 
 边界说明：
-- `/init` 只更新 `rules/project-context.md`
-- `/init` 不应该因为“缺少样例”去创建 `changes/examples/`
-- `/init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
-- `/init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`
+- `cc-init` 只更新 `rules/project-context.md`
+- `cc-init` 不应该因为“缺少样例”去创建 `changes/examples/`
+- `cc-init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
+- `cc-init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`
 - `changes/examples/` 属于 harness 自身样例，不是每个存量项目接入时都要新建
 
 接入前提：
 - 目标项目应已安装本框架的 `.claude/` 脚手架
-- 若 `.claude/` 脚手架不存在或不完整，应先由维护者显式安装，再执行 `/init`
-- `/init` 负责识别事实，不负责安装框架
+- 若 `.claude/` 脚手架不存在或不完整，应先由维护者显式安装，再执行 `cc-init`
+- `cc-init` 负责识别事实，不负责安装框架
 
 ### 1.1 存量项目体检
 
 ```
-/inspect-codebase <mode> [scope]
+cc-inspect-codebase <mode> [scope]
 ```
 
 当暂时没有新需求，但希望审查现有项目的代码、设计、逻辑、安全、配置或测试问题时使用。
@@ -155,20 +155,20 @@
 
 示例：
 ```text
-/inspect-codebase architecture
-/inspect-codebase architecture user-domain
-/inspect-codebase logic
-/inspect-codebase logic order-create
-/inspect-codebase observability mq-consumer
-/inspect-codebase test-debt internal/service
+cc-inspect-codebase architecture
+cc-inspect-codebase architecture user-domain
+cc-inspect-codebase logic
+cc-inspect-codebase logic order-create
+cc-inspect-codebase observability mq-consumer
+cc-inspect-codebase test-debt internal/service
 ```
 
 ### 1.2 把审查结果转成正式 change
 
-当 `/inspect-codebase` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
+当 `cc-inspect-codebase` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
 
 ```text
-/promote-audit <audit-id> <change-id>
+cc-promote-audit <audit-id> <change-id>
 ```
 
 产出：
@@ -182,7 +182,7 @@
 ### 2. 创建变更提案
 
 ```
-/propose <需求描述>
+cc-propose <需求描述>
 ```
 
 流程：Research → 澄清提问 → YAGNI 裁剪 → 生成 Spec → 生成 Tasks → HARD-GATE 确认
@@ -190,7 +190,7 @@
 ### 3. 执行编码
 
 ```
-/apply <变更名>
+cc-apply <变更名>
 ```
 
 逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit；全部完成后进入 `review` 状态。
@@ -198,7 +198,7 @@
 ### 4. 代码审查
 
 ```
-/review <变更名>
+cc-review <变更名>
 ```
 
 两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
@@ -206,17 +206,17 @@
 ### 5. 修复与补测
 
 ```
-/fix <变更名>
-/test <变更名>
+cc-fix <变更名>
+cc-test <变更名>
 ```
 
-`/fix` 用于回收 review 问题并回写文档，`/test` 用于在 `apply/review` 阶段补测试和展示验证证据。
+`cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试和展示验证证据。
 
 ## 运行约束
 
 ### 失败恢复
 
-这套 harness 允许命令失败，但不允许失败后没有记录。任何 `/apply`、`/test`、`/review`、`/fix` 中断，都必须在 `spec.md` 或 `log.md` 中留下可恢复的上下文，再继续下一次执行。
+这套 harness 允许命令失败，但不允许失败后没有记录。任何 `cc-apply`、`cc-test`、`cc-review`、`cc-fix` 中断，都必须在 `spec.md` 或 `log.md` 中留下可恢复的上下文，再继续下一次执行。
 
 ### 并发治理
 
@@ -226,15 +226,15 @@
 
 | 命令 | 说明 |
 |------|------|
-| `/init` | 初始化项目上下文 |
-| `/inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
-| `/promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
-| `/propose <需求>` | 创建变更提案 |
-| `/apply <变更名>` | 执行编码 |
-| `/fix <变更名>` | Review 后修正迭代 |
-| `/review <变更名>` | 两阶段审查 |
-| `/test <变更名>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
-| `/archive <变更名>` | 归档 + 知识沉淀 |
+| `cc-init` | 初始化项目上下文 |
+| `cc-inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
+| `cc-promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
+| `cc-propose <需求>` | 创建变更提案 |
+| `cc-apply <变更名>` | 执行编码 |
+| `cc-fix <变更名>` | Review 后修正迭代 |
+| `cc-review <变更名>` | 两阶段审查 |
+| `cc-test <变更名>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
+| `cc-archive <变更名>` | 归档 + 知识沉淀 |
 
 ## 约束等级
 
@@ -262,6 +262,6 @@
 
 本框架适用于：
 
-* 已有 Golang 后端项目（推荐先执行 `/init` 识别真实上下文）
-* 新建 Golang 项目（执行 `/init` 生成初始化建议，再进入 `/propose`）
+* 已有 Golang 后端项目（推荐先执行 `cc-init` 识别真实上下文）
+* 新建 Golang 项目（执行 `cc-init` 生成初始化建议，再进入 `cc-propose`）
 * 需要 Spec 驱动开发规范的团队

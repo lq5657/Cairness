@@ -2,8 +2,8 @@
 
 #### 脚手架归属
 
-- `rules/`、`knowledge/`、`changes/`、`audits/` 属于 harness 脚手架目录，不是 `/init` 运行时自动生成的业务目录
-- 目标项目在接入本框架前，应已具备 `.claude/` 下的基础脚手架；若脚手架缺失，应由维护者显式安装或拷贝，不应由 `/init` 临时 `mkdir -p`
+- `rules/`、`knowledge/`、`changes/`、`audits/` 属于 harness 脚手架目录，不是 `cc-init` 运行时自动生成的业务目录
+- 目标项目在接入本框架前，应已具备 `.claude/` 下的基础脚手架；若脚手架缺失，应由维护者显式安装或拷贝，不应由 `cc-init` 临时 `mkdir -p`
 - 禁止把“读不到脚手架目录”误判成“需要在项目根目录创建 `rules` / `knowledge` / `changes`”
 - 本框架所有相对路径，默认都相对于 `.claude/` 解释；不是相对于仓库根目录裸建同名目录
 
@@ -14,7 +14,7 @@
 代码是廉价的消耗品，文档（Spec）才是昂贵的核心资产 。
 
 **禁令规则（违反则停止，不得继续执行）：**
-- 🚫 **无 `changes/<变更名>/spec.md` 文件存在时，禁止执行 `/apply`**
+- 🚫 **无 `changes/<变更名>/spec.md` 文件存在时，禁止执行 `cc-apply`**
 - 🚫 **当变更状态为 `review` 或 `done` 时，发现 spec 与代码不一致，禁止继续推进（必须先修复 spec 或代码）**
 - 🚫 **涉及资金变更且无人工确认标记（`⚠️ REQ-HUMAN-REVIEW`）时，禁止 commit**
 - 🚫 **针对缺陷修复类任务，未执行根因调查（四阶段）前，禁止直接修改代码**
@@ -42,8 +42,8 @@
 #### 命令字面量优先
 
 - 当用户输入以 `/` 开头的命令时，必须先按字面量匹配已定义命令，禁止先做语义改写
-- 收到 `/inspect-codebase` 时，禁止改判为 `/review`、`/propose`、`/apply` 或普通技术讨论
-- 若 `/inspect-codebase` 未提供 `mode`，应先要求补充；若未提供 `scope`，默认按全仓执行
+- 收到 `cc-inspect-codebase` 时，禁止改判为 `cc-review`、`cc-propose`、`cc-apply` 或普通技术讨论
+- 若 `cc-inspect-codebase` 未提供 `mode`，应先要求补充；若未提供 `scope`，默认按全仓执行
 - 只有在命令字面量无法匹配任何已定义命令时，才允许回退到自然语言意图识别
 
 收到用户的自然语言指令时，先识别意图并映射到对应命令，确认后再执行 。
@@ -51,13 +51,13 @@
 
 | 用户说的                               | 映射命令    |
 | -------------------------------------- | ----------- |
-| "修复 xxx" / "改一下 xxx"              | → /fix     |
-| "我要做 xxx 需求"                      | → /propose |
-| "开始写代码" / "继续执行"              | → /apply   |
-| "帮我看看代码" / "review 一下"         | → /review  |
-| "/inspect-codebase" / "帮我看看项目" / "审查存量代码" / "做体检" | → /inspect-codebase |
-| "写测试" / "补单测"                    | → /test    |
-| "归档 xxx"                             | → /archive |
+| "修复 xxx" / "改一下 xxx"              | → cc-fix     |
+| "我要做 xxx 需求"                      | → cc-propose |
+| "开始写代码" / "继续执行"              | → cc-apply   |
+| "帮我看看代码" / "review 一下"         | → cc-review  |
+| "cc-inspect-codebase" / "帮我看看项目" / "审查存量代码" / "做体检" | → cc-inspect-codebase |
+| "写测试" / "补单测"                    | → cc-test    |
+| "归档 xxx"                             | → cc-archive |
 | 纯技术讨论不需要走命令流程，直接回答。 |             |
 
 ### 启动
@@ -79,7 +79,7 @@ changes/<change-id>/
 ├── tasks.md
 ├── log.md
 ├── test-spec.md      # 可选；需要测试设计时创建
-└── review.md         # /review 后生成
+└── review.md         # cc-review 后生成
 ```
 
 示例变更统一放在：
@@ -101,9 +101,9 @@ changes/examples/<change-id>/
 
 | 状态 | 含义 | 允许的命令 |
 |------|------|------------|
-| `propose` | 提案阶段，spec/tasks 已生成但尚未开始实现 | `/propose` |
-| `apply` | 实施阶段，允许代码与 spec 在 task 边界内暂时不一致 | `/apply`, `/test` |
-| `review` | 实现完成，等待或正在审查，要求 spec 与代码一致 | `/review`, `/fix` |
+| `propose` | 提案阶段，spec/tasks 已生成但尚未开始实现 | `cc-propose` |
+| `apply` | 实施阶段，允许代码与 spec 在 task 边界内暂时不一致 | `cc-apply`, `cc-test` |
+| `review` | 实现完成，等待或正在审查，要求 spec 与代码一致 | `cc-review`, `cc-fix` |
 | `done` | 审查通过且已归档 | 无 |
 
 #### 阻塞与恢复语义
@@ -118,7 +118,7 @@ changes/examples/<change-id>/
 **记录位置：**
 - `spec.md` 的“执行日志”章节：记录当前 task 的 `todo / in_progress / blocked / partial / aborted / done`
 - `log.md` 时间线：记录失败时间、触发动作、阻塞原因、下一步动作
-- `review.md`：如果 `/review` 未完整执行，必须记录已完成到哪个阶段，以及未完成原因
+- `review.md`：如果 `cc-review` 未完整执行，必须记录已完成到哪个阶段，以及未完成原因
 
 **最小恢复原则：**
 - 命令失败后，禁止静默退出并留下未记录的半完成状态
@@ -166,7 +166,7 @@ changes/examples/<change-id>/
 
 ### 命令
 
-#### /init — 初始化项目上下文
+#### cc-init — 初始化项目上下文
 
 分析工程结构、依赖（`go.mod`）、分层模式，填充 `rules/project-context.md`。
 
@@ -176,19 +176,19 @@ changes/examples/<change-id>/
 
 **失败处理：**
 - 若项目结构无法识别、依赖缺失或信息不足，必须在 `project-context.md` 中明确标记“待确认”
-- 若关键事实无法确认，不得伪造结论；应停止进入 `/propose`
+- 若关键事实无法确认，不得伪造结论；应停止进入 `cc-propose`
 
 **🚫 边界约束：**
-- `/init` 只负责识别和回写 `rules/project-context.md`
-- 禁止把 `/init` 扩展为“初始化示例变更”或“自动创建 `changes/examples/`”
+- `cc-init` 只负责识别和回写 `rules/project-context.md`
+- 禁止把 `cc-init` 扩展为“初始化示例变更”或“自动创建 `changes/examples/`”
 - 禁止在已有项目接入阶段，因为没看到样例就创建 `changes/examples/`、`changes/templates/` 或任意 `changes/<change-id>/`
 - 禁止因为脚手架缺失而创建仓库根目录下的 `rules/`、`knowledge/`、`changes/`、`audits/`
-- 禁止把 `/init` 扩展为“补齐整个 harness 脚手架”；脚手架安装和项目事实识别必须分开
+- 禁止把 `cc-init` 扩展为“补齐整个 harness 脚手架”；脚手架安装和项目事实识别必须分开
 - `changes/examples/` 是 harness 维护者用于演示流程的资产，不是接入任意存量项目时必须生成的产物
 
-#### /inspect-codebase <mode> [scope] — 存量项目审查 / 项目体检
+#### cc-inspect-codebase <mode> [scope] — 存量项目审查 / 项目体检
 
-用于“暂时没有新需求，但希望系统性检查存量项目”的场景。它不是 `/review` 的替代品；`/review` 仍然只用于已存在 change 的实现审查。
+用于“暂时没有新需求，但希望系统性检查存量项目”的场景。它不是 `cc-review` 的替代品；`cc-review` 仍然只用于已存在 change 的实现审查。
 
 **参数定义：**
 - `<mode>`：必填，取值只能是 `architecture` / `logic` / `observability` / `test-debt`
@@ -209,12 +209,12 @@ changes/examples/<change-id>/
 | `test-debt` | 自动化验证薄弱、回归成本高 | 测试层级覆盖、关键链路缺口、bugfix 回归证据、不可测代码结构 |
 
 **固定用法示例：**
-- `/inspect-codebase architecture`
-- `/inspect-codebase architecture user-domain`
-- `/inspect-codebase logic`
-- `/inspect-codebase logic payment-create`
-- `/inspect-codebase observability order-consumer`
-- `/inspect-codebase test-debt internal/service`
+- `cc-inspect-codebase architecture`
+- `cc-inspect-codebase architecture user-domain`
+- `cc-inspect-codebase logic`
+- `cc-inspect-codebase logic payment-create`
+- `cc-inspect-codebase observability order-consumer`
+- `cc-inspect-codebase test-debt internal/service`
 
 **执行流程：**
 
@@ -250,8 +250,8 @@ audits/templates/to-change.md
 ```
 
 **最小规则：**
-- `/inspect-codebase` 可以在没有进行中 change、没有新需求的情况下独立执行
-- `/inspect-codebase` 默认不修改业务代码，只产出审查报告
+- `cc-inspect-codebase` 可以在没有进行中 change、没有新需求的情况下独立执行
+- `cc-inspect-codebase` 默认不修改业务代码，只产出审查报告
 - 若发现需要治理的问题，应在报告中明确建议“是否转为 `changes/<change-id>/`”
 - 若只是事实失真（例如日志方案、配置来源未记录），允许直接回写 `project-context.md`
 
@@ -285,9 +285,9 @@ audits/templates/to-change.md
 - 检查 repo / transport / integration 层是否存在明显空白
 - 检查代码结构是否让测试替身、依赖注入或边界隔离异常困难
 
-#### /promote-audit <audit-id> <change-id> — 从审查报告生成 change 草稿
+#### cc-promote-audit <audit-id> <change-id> — 从审查报告生成 change 草稿
 
-用于把 `audits/<audit-id>/report.md` 中选中的 Findings，整理成一个适合进入 `/propose` 的桥接材料。
+用于把 `audits/<audit-id>/report.md` 中选中的 Findings，整理成一个适合进入 `cc-propose` 的桥接材料。
 
 **产出位置：**
 
@@ -301,7 +301,7 @@ audits/<audit-id>/to-change.md
 - 必须把 Findings 映射到 spec 的背景、代码现状、风险、功能点和 tasks
 - 若 audit 同时发现多类问题，优先拆成多个 change，而不是合并成大变更
 
-#### /propose <需求描述> — 创建变更提案
+#### cc-propose <需求描述> — 创建变更提案
 
 **🚫 前置检查（任一不满足则停止）：**
 - [ ] 用户需求已明确（不是模糊描述如"优化一下"）
@@ -318,7 +318,7 @@ audits/<audit-id>/to-change.md
 | 5. 生成 Tasks | 按 `tasks.md` 模板拆分（每个 task 3-5 文件） | `tasks.md` |
 | 6. HARD-GATE | 用户确认 spec + tasks | §13 确认记录 |
 
-**🚫 禁令：`spec.md` 的“待澄清”章节全部解决前，禁止进入 `/apply`。**
+**🚫 禁令：`spec.md` 的“待澄清”章节全部解决前，禁止进入 `cc-apply`。**
 
 **失败处理：**
 - 若提问后仍有未解决澄清项，保持 `status: propose`
@@ -336,35 +336,35 @@ audits/<audit-id>/to-change.md
 
 **数据库变更要求：**
 - 涉及 schema、migration、回填、兼容窗口时，必须应用 `rules/database-changes.md`
-- `/propose` 时必须在 `spec.md` 的“数据变更”章节记录 migration 路径、兼容窗口、回滚路径
-- `/apply` 时应按 expand → migrate → contract 的顺序设计 tasks；若不能拆开，必须说明原因
+- `cc-propose` 时必须在 `spec.md` 的“数据变更”章节记录 migration 路径、兼容窗口、回滚路径
+- `cc-apply` 时应按 expand → migrate → contract 的顺序设计 tasks；若不能拆开，必须说明原因
 
 **接口兼容性要求：**
 - 涉及 HTTP、gRPC、MQ、Webhook、导入导出格式等对外契约时，必须应用 `rules/api-compatibility.md`
-- `/propose` 时必须在 `spec.md` 的“接口变更”章节记录兼容性分类、客户端影响、迁移路径和回滚影响
+- `cc-propose` 时必须在 `spec.md` 的“接口变更”章节记录兼容性分类、客户端影响、迁移路径和回滚影响
 - 对 `breaking_change`，默认需要人工审查或明确例外说明
 
 **配置治理要求：**
 - 涉及配置项、环境变量、feature flag、密钥来源或环境差异时，必须应用 `rules/configuration.md`
-- `/propose` 时必须在 `spec.md` 的“配置变更”章节记录配置名、默认值、必填性、环境差异和回滚影响
-- `/apply` 时应优先在启动期或依赖注入层接入配置，避免在业务深处散读环境变量
+- `cc-propose` 时必须在 `spec.md` 的“配置变更”章节记录配置名、默认值、必填性、环境差异和回滚影响
+- `cc-apply` 时应优先在启动期或依赖注入层接入配置，避免在业务深处散读环境变量
 
 **可观测性要求：**
 - 涉及关键链路、异步任务、错误处理、重试降级或发布后需观察的能力时，必须应用 `rules/observability.md`
-- `/propose` 时必须在 `spec.md` 的“日志与可观测性”章节记录日志点、关键字段、metrics/告警观察项
-- `/apply` 时禁止只改业务逻辑不补关键链路观测信息
+- `cc-propose` 时必须在 `spec.md` 的“日志与可观测性”章节记录日志点、关键字段、metrics/告警观察项
+- `cc-apply` 时禁止只改业务逻辑不补关键链路观测信息
 
 **测试分层要求：**
 - 涉及业务逻辑、缺陷修复、接口链路、数据库访问、异步任务时，必须应用 `rules/testing-strategy.md`
-- `/test` 时必须在 `test-spec.md` 记录本次选择的测试层级、原因和更高层测试是否被跳过
+- `cc-test` 时必须在 `test-spec.md` 记录本次选择的测试层级、原因和更高层测试是否被跳过
 - 对 bugfix，默认至少要有一个回归证据；若无法写 Red→Green，必须说明退化原因与覆盖边界
 
 **发布与回滚要求：**
 - 涉及高风险变更、灰度、开关、配置回拨、数据回填、breaking contract 时，必须应用 `rules/release.md`
-- `/propose` 时必须在 `spec.md` 记录发布方式、开关策略、回滚路径和发布后观察窗口
+- `cc-propose` 时必须在 `spec.md` 记录发布方式、开关策略、回滚路径和发布后观察窗口
 - 若无法直接回滚，必须在 `spec.md` 和 `log.md` 中说明前滚或补偿方案
 
-#### /apply <变更名> — 执行编码
+#### cc-apply <变更名> — 执行编码
 
 **🚫 前置检查（任一不满足则停止）：**
 - [ ] `spec.md` 存在于 `changes/<变更名>/` 目录
@@ -393,7 +393,7 @@ audits/<audit-id>/to-change.md
 - 对 `parallel_safe = false` 的变更，默认串行推进
 - 若冲突尚未得到维护者确认，禁止继续编码
 
-#### /fix <变更名> [描述] — Review 后修正迭代
+#### cc-fix <变更名> [描述] — Review 后修正迭代
 
 **🚫 前置检查：**
 - [ ] review 结果已读
@@ -402,7 +402,7 @@ audits/<audit-id>/to-change.md
 
 **执行要求：**
 - 默认只处理 `review.md` 中 `status = open` 的 Findings
-- 若用户临时追加新问题，必须先追加到 `review.md` 或 `log.md`，再纳入本轮 `/fix`
+- 若用户临时追加新问题，必须先追加到 `review.md` 或 `log.md`，再纳入本轮 `cc-fix`
 - 增量修正 + 文档同步铁律（`spec.md`/`tasks.md`/`log.md`/`review.md` 全部更新）
 - 每项修复后重新验证，且验证等级不得低于本次 change 已声明的最低等级
 
@@ -410,14 +410,14 @@ audits/<audit-id>/to-change.md
 - 若部分问题已修复、部分未修复，`review.md` 中 Findings 状态必须区分 `fixed` 与 `open`
 - 修复失败时，不得清空原有 review 结论；应保留问题并补充本次尝试结果
 
-#### /review <变更名> — 两阶段审查
+#### cc-review <变更名> — 两阶段审查
 
 **执行模型：**
-- `/review` 是用户触发的主流程命令
-- `spec_reviewer` 和 `code-quality-reviewer` 是 `/review` 内部使用的只读 reviewer
+- `cc-review` 是用户触发的主流程命令
+- `spec_reviewer` 和 `code-quality-reviewer` 是 `cc-review` 内部使用的只读 reviewer
 - reviewer 只负责读取材料并输出结构化审查结果，不直接修改仓库文件
-- `/review` 主流程负责汇总 reviewer 输出，并写入 `changes/<变更名>/review.md`
-- `/review` 完成后，由主流程同步更新 `spec.md` 的“审查结论”章节
+- `cc-review` 主流程负责汇总 reviewer 输出，并写入 `changes/<变更名>/review.md`
+- `cc-review` 完成后，由主流程同步更新 `spec.md` 的“审查结论”章节
 
 **阶段一 Spec Compliance**（必检，PASS 后才进入阶段二）：
 1. [ ] 缺失实现检查 — spec 要求了但代码没做的
@@ -433,7 +433,7 @@ audits/<audit-id>/to-change.md
 
 **权限边界：**
 - reviewer 子角色：仅需 Read/Grep/Glob/Bash（只读），不需要写入权限
-- `/review` 主流程：需要对 `review.md` 和 `spec.md` 的写权限
+- `cc-review` 主流程：需要对 `review.md` 和 `spec.md` 的写权限
 
 **产出要求：**
 - 在 `changes/<变更名>/review.md` 中记录阶段一、阶段二结果
@@ -443,9 +443,9 @@ audits/<audit-id>/to-change.md
 **失败与恢复：**
 - 若 Stage 1 未完成，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`
 - 若 Stage 1 通过但 Stage 2 未完成，必须记录未完成原因，禁止写“可归档”
-- `/review` 中断后，恢复执行时必须从未完成阶段继续，而不是重置已有结论
+- `cc-review` 中断后，恢复执行时必须从未完成阶段继续，而不是重置已有结论
 
-#### /test <变更名> — 生成测试 Spec 并执行
+#### cc-test <变更名> — 生成测试 Spec 并执行
 
 **前置条件：**
 - `spec.md` 已存在
@@ -459,10 +459,10 @@ audits/<audit-id>/to-change.md
 - 跳过 Red 直接 Green = 无效测试
 
 **说明：**
-- `/test` 是 `/apply` 阶段内可并行使用的测试工作流，不要求先完成 `/review`
+- `cc-test` 是 `cc-apply` 阶段内可并行使用的测试工作流，不要求先完成 `cc-review`
 - 对历史系统、集成链路、难以稳定制造 Red 的场景，允许退化为“补充回归测试”，但必须在 `test-spec.md` 中说明原因，禁止伪造 Red/Green 证据
-- `/test` 的目标是补足声明的验证等级与证据，而不是只补单元测试数量
-- `/test` 必须明确本次优先使用的测试层级（如 unit / repo / transport / chain / integration / manual），并说明为何足以覆盖当前风险
+- `cc-test` 的目标是补足声明的验证等级与证据，而不是只补单元测试数量
+- `cc-test` 必须明确本次优先使用的测试层级（如 unit / repo / transport / chain / integration / manual），并说明为何足以覆盖当前风险
 
 **允许退化为回归测试的典型场景：**
 - 历史系统缺少稳定隔离点，无法先构造可重复的 Red
@@ -488,7 +488,7 @@ audits/<audit-id>/to-change.md
 - 若测试写到一半中断，保留 `test-spec.md`，并在执行计划中标记停留步骤
 - 若测试失败但根因未明，不得声称 Green；应在 `log.md` 记录失败输出和下一步假设
 
-#### /archive <变更名> — 归档 + 知识沉淀
+#### cc-archive <变更名> — 归档 + 知识沉淀
 
 前置条件：
 - `review.md` 已存在
@@ -507,7 +507,7 @@ audits/<audit-id>/to-change.md
 
 1. 禁止在默认主分支（`main`/`master`）直接变更；应在与 `change-id` 对应的工作分支执行
 2. 推荐分支命名：`feat/<change-id>`、`fix/<change-id>`
-3. 每个 task/fix 自动 commit；若偏离“一 task 一 commit”，必须在 `log.md` 说明原因
+3. 每个 task 自动 commit；若偏离“一 task 一 commit”，必须在 `log.md` 说明原因
 4. Commit 前必须达到当前 change 声明的最低验证等级；`go build ./...` 仅是最小门槛
 5. 允许将工作分支手动 push 到远程，但禁止 AI 自动 push
 6. 禁止 AI 自动 merge 到 `main`/`master`；主分支合并应由人工审查后执行
