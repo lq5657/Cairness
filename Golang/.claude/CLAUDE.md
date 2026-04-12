@@ -149,13 +149,13 @@ changes/<change-id>/
 收到命令后按需装载：
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
 - `cc-inspect-codebase` -> `commands/cc-inspect-codebase.md` + `checkpoints/cc-inspect-codebase.md`
-- `cc-promote-audit` -> `commands/cc-promote-audit.md`
-- `cc-propose` -> `commands/cc-propose.md`
-- `cc-apply` -> `commands/cc-apply.md`
-- `cc-review` -> `commands/cc-review.md`
-- `cc-fix` -> `commands/cc-fix.md`
-- `cc-test` -> `commands/cc-test.md`
-- `cc-archive` -> `commands/cc-archive.md`
+- `cc-promote-audit` -> `commands/cc-promote-audit.md` + `checkpoints/cc-promote-audit.md`
+- `cc-propose` -> `commands/cc-propose.md` + `checkpoints/cc-propose.md`
+- `cc-apply` -> `commands/cc-apply.md` + `checkpoints/cc-apply.md`
+- `cc-review` -> `commands/cc-review.md` + `checkpoints/cc-review.md`
+- `cc-fix` -> `commands/cc-fix.md` + `checkpoints/cc-fix.md`
+- `cc-test` -> `commands/cc-test.md` + `checkpoints/cc-test.md`
+- `cc-archive` -> `commands/cc-archive.md` + `checkpoints/cc-archive.md`
 
 专题规则按需增量加载：
 - 数据库变更 -> `rules/database-changes.md`

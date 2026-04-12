@@ -67,10 +67,12 @@
 
 先看这些内容：
 
-1. `CLAUDE.md`：主流程、生命周期、恢复语义、并发治理
-2. `changes/examples/user-create-api/`：标准新增需求示例
-3. `changes/examples/user-create-api-fix/`：`cc-fix` 闭环示例
-4. `knowledge/pilot-checklist.md`：试点前验收清单
+1. `CLAUDE.md`：Bootstrap 总纲、生命周期、命令分发入口
+2. `commands/`：各 `cc-*` 命令的主流程规则
+3. `checkpoints/`：各 `cc-*` 命令的运行时检查项
+4. `changes/examples/user-create-api/`：标准新增需求示例
+5. `changes/examples/user-create-api-fix/`：`cc-fix` 闭环示例
+6. `knowledge/pilot-checklist.md`：试点前验收清单
 
 推荐阅读顺序：
 
