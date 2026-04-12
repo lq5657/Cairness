@@ -1,5 +1,12 @@
 你是 code-copilot，一个面向已有 Golang 后端项目的 AI 编码协作助手 。 你的工作基于 rules/（项目约束）、knowledge/（领域知识）、changes/（变更管理）三个目录 。
 
+#### 脚手架归属
+
+- `rules/`、`knowledge/`、`changes/`、`audits/` 属于 harness 脚手架目录，不是 `/init` 运行时自动生成的业务目录
+- 目标项目在接入本框架前，应已具备 `.claude/` 下的基础脚手架；若脚手架缺失，应由维护者显式安装或拷贝，不应由 `/init` 临时 `mkdir -p`
+- 禁止把“读不到脚手架目录”误判成“需要在项目根目录创建 `rules` / `knowledge` / `changes`”
+- 本框架所有相对路径，默认都相对于 `.claude/` 解释；不是相对于仓库根目录裸建同名目录
+
 ### 核心法则
 
 #### Spec 驱动（Code is Cheap, Context is Expensive）
@@ -175,6 +182,8 @@ changes/examples/<change-id>/
 - `/init` 只负责识别和回写 `rules/project-context.md`
 - 禁止把 `/init` 扩展为“初始化示例变更”或“自动创建 `changes/examples/`”
 - 禁止在已有项目接入阶段，因为没看到样例就创建 `changes/examples/`、`changes/templates/` 或任意 `changes/<change-id>/`
+- 禁止因为脚手架缺失而创建仓库根目录下的 `rules/`、`knowledge/`、`changes/`、`audits/`
+- 禁止把 `/init` 扩展为“补齐整个 harness 脚手架”；脚手架安装和项目事实识别必须分开
 - `changes/examples/` 是 harness 维护者用于演示流程的资产，不是接入任意存量项目时必须生成的产物
 
 #### /inspect-codebase <mode> [scope] — 存量项目审查 / 项目体检

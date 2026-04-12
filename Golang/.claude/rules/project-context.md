@@ -8,6 +8,8 @@ alwaysApply: true
 补充边界：
 - `/init` 只负责识别项目事实并回写本文件
 - `/init` 不负责创建 `changes/examples/`、`changes/templates/` 或示例 change
+- `/init` 不负责创建仓库根目录下的 `rules/`、`knowledge/`、`changes/`、`audits/`
+- `/init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/` 等脚手架资产
 - 若要做存量项目体检，使用 `/inspect-codebase`，不要伪装成 `/init` 或 `/review`
 
 #### 使用说明

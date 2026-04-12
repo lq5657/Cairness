@@ -116,7 +116,14 @@
 边界说明：
 - `/init` 只更新 `rules/project-context.md`
 - `/init` 不应该因为“缺少样例”去创建 `changes/examples/`
+- `/init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
+- `/init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`
 - `changes/examples/` 属于 harness 自身样例，不是每个存量项目接入时都要新建
+
+接入前提：
+- 目标项目应已安装本框架的 `.claude/` 脚手架
+- 若 `.claude/` 脚手架不存在或不完整，应先由维护者显式安装，再执行 `/init`
+- `/init` 负责识别事实，不负责安装框架
 
 ### 1.1 存量项目体检
 

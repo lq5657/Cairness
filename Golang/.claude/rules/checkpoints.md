@@ -43,6 +43,8 @@ description: "所有命令执行的强制检查点汇总"
 | `/test` | [ ] 已声明本次测试层级选择与原因 | rules/testing-strategy.md |
 | `/archive` | [ ] review.md 已存在且结论允许归档 | CLAUDE.md §/archive |
 | `/archive` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
+| `/init` | [ ] 未把脚手架缺失误判为需要创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | CLAUDE.md §/init |
+| `/init` | [ ] 未扩展为补齐 `.claude` 脚手架目录与模板文件 | CLAUDE.md §脚手架归属 |
 
 ---
 
@@ -147,6 +149,15 @@ description: "所有命令执行的强制检查点汇总"
 | [ ] 每个关键结论都有代码或配置证据 | |
 | [ ] 已明确哪些问题建议转成 change | |
 | [ ] 若发现 project-context 失真，已建议或更新 `project-context.md` | |
+
+#### ✅ /init 完成后检查
+
+| 检查项 | 结果 |
+|--------|------|
+| [ ] 仅更新了 `rules/project-context.md` 或其中事实性内容 | |
+| [ ] 未创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | |
+| [ ] 未创建 `.claude/changes/examples/`、`.claude/changes/templates/`、`.claude/audits/templates/` 等脚手架资产 | |
+| [ ] 若发现脚手架缺失，已明确提示“需要维护者安装 harness”，而非自行补目录 | |
 
 #### ✅ /promote-audit 完成后检查
 

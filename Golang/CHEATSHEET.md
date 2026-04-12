@@ -58,6 +58,12 @@ Golang/.claude/changes/<change-id>/
 - 不要把 `/init` 扩展成“初始化示例变更”
 - 不要因为缺少样例去创建 `changes/examples/`
 - 不要在 `/init` 阶段创建真实 `changes/<change-id>/`
+- 不要因为缺少脚手架去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
+- 不要在 `/init` 阶段补齐 `.claude` 下的模板、示例和规则文件
+
+前提：
+- 先确保目标项目已经安装好 `.claude/` 脚手架
+- `/init` 只负责识别项目事实，不负责安装框架
 
 ### `/inspect-codebase <mode> [scope]`
 
