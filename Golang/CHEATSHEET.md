@@ -59,7 +59,7 @@ Golang/.claude/changes/<change-id>/
 - 不要因为缺少样例去创建 `changes/examples/`
 - 不要在 `/init` 阶段创建真实 `changes/<change-id>/`
 
-### `/inspect [范围或主题]`
+### `/inspect-codebase <mode> [scope]`
 
 用途：
 - 在没有新需求时，对存量项目做代码、设计、逻辑、安全或配置体检
@@ -71,6 +71,10 @@ Golang/.claude/changes/<change-id>/
 - 暂时没有新需求
 - 想先发现问题，再决定是否转成正式 change
 
+参数：
+- `<mode>`：必填，取值为 `architecture`、`logic`、`observability`、`test-debt`
+- `[scope]`：可选，表示全仓、目录、模块或链路；不填时默认全仓
+
 预设模式：
 - `architecture`：看分层、依赖方向、模块边界、抽象是否失控
 - `logic`：看业务规则、状态流转、幂等、错误语义、权限前置
@@ -78,10 +82,12 @@ Golang/.claude/changes/<change-id>/
 - `test-debt`：看测试缺口、回归证据、测试分层、可测性
 
 示例：
-- `/inspect architecture user-domain`
-- `/inspect logic payment-refund`
-- `/inspect observability order-consumer`
-- `/inspect test-debt internal/service`
+- `/inspect-codebase architecture`
+- `/inspect-codebase architecture user-domain`
+- `/inspect-codebase logic`
+- `/inspect-codebase logic payment-refund`
+- `/inspect-codebase observability order-consumer`
+- `/inspect-codebase test-debt internal/service`
 
 ### `/promote-audit <audit-id> <change-id>`
 

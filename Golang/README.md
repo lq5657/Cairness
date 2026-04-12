@@ -76,7 +76,7 @@
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
-`/inspect` 的四类示例报告可参考：
+`/inspect-codebase` 的四类示例报告可参考：
 
 1. `audits/examples/architecture-user-domain/report.md`
 2. `audits/examples/logic-user-create/report.md`
@@ -93,7 +93,7 @@
 
 1. 执行 `/init`
 2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
-3. 如果暂时没有新需求，先执行 `/inspect` 对存量项目做体检
+3. 如果暂时没有新需求，先执行 `/inspect-codebase` 对存量项目做体检
 4. 如果有明确需求，再跑一次 `/propose -> /apply -> /review`
 5. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
@@ -121,10 +121,14 @@
 ### 1.1 存量项目体检
 
 ```
-/inspect [范围或主题]
+/inspect-codebase <mode> [scope]
 ```
 
 当暂时没有新需求，但希望审查现有项目的代码、设计、逻辑、安全、配置或测试问题时使用。
+
+参数说明：
+- `<mode>`：必填，只能是 `architecture`、`logic`、`observability`、`test-debt`
+- `[scope]`：可选，表示审查范围；可写全仓、目录、模块、链路或业务主题；不写时默认全仓
 
 产出：
 - `audits/<audit-id>/report.md`
@@ -141,15 +145,17 @@
 
 示例：
 ```text
-/inspect architecture user-domain
-/inspect logic order-create
-/inspect observability mq-consumer
-/inspect test-debt internal/service
+/inspect-codebase architecture
+/inspect-codebase architecture user-domain
+/inspect-codebase logic
+/inspect-codebase logic order-create
+/inspect-codebase observability mq-consumer
+/inspect-codebase test-debt internal/service
 ```
 
 ### 1.2 把审查结果转成正式 change
 
-当 `/inspect` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
+当 `/inspect-codebase` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
 
 ```text
 /promote-audit <audit-id> <change-id>
@@ -211,7 +217,7 @@
 | 命令 | 说明 |
 |------|------|
 | `/init` | 初始化项目上下文 |
-| `/inspect [范围]` | 对存量项目做体检并输出审查报告 |
+| `/inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
 | `/promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
 | `/propose <需求>` | 创建变更提案 |
 | `/apply <变更名>` | 执行编码 |

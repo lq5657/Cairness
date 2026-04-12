@@ -3,7 +3,7 @@
 文件位置：`audits/<audit-id>/to-change.md`
 
 用途：
-- 把 `/inspect` 产出的审查报告，转成一个可以进入 `/propose` 的正式 change 草稿
+- 把 `/inspect-codebase` 产出的审查报告，转成一个可以进入 `/propose` 的正式 change 草稿
 - 避免人工从 Findings 手工重写一遍 spec，降低信息丢失和语义漂移
 - 这不是 `changes/<change-id>/spec.md` 的替代品，而是它的上游桥接材料
 

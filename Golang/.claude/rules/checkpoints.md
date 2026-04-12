@@ -30,10 +30,10 @@ description: "所有命令执行的强制检查点汇总"
 | `/review` | [ ] spec.md 已读 | CLAUDE.md §命令 |
 | `/review` | [ ] 代码已存在 | CLAUDE.md §命令 |
 | `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
-| `/inspect` | [ ] 已明确审查范围（全仓/模块/链路/主题） | CLAUDE.md §/inspect |
-| `/inspect` | [ ] 已选择预设模式（architecture / logic / observability / test-debt） | CLAUDE.md §/inspect |
-| `/inspect` | [ ] 已说明本次不是基于现有 change 的 `/review` | CLAUDE.md §/inspect |
-| `/inspect` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §/inspect |
+| `/inspect-codebase` | [ ] 已选择预设模式（architecture / logic / observability / test-debt） | CLAUDE.md §/inspect-codebase |
+| `/inspect-codebase` | [ ] 已明确审查范围（全仓/模块/链路/主题）；若缺省则按全仓 | CLAUDE.md §/inspect-codebase |
+| `/inspect-codebase` | [ ] 已说明本次不是基于现有 change 的 `/review` | CLAUDE.md §/inspect-codebase |
+| `/inspect-codebase` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §/inspect-codebase |
 | `/promote-audit` | [ ] 已读取 `audits/<audit-id>/report.md` | CLAUDE.md §/promote-audit |
 | `/promote-audit` | [ ] 已收敛本次 change 的边界与不处理项 | CLAUDE.md §/promote-audit |
 | `/promote-audit` | [ ] 已确认输出位置为 `audits/<audit-id>/to-change.md` | CLAUDE.md §/promote-audit |
@@ -137,12 +137,12 @@ description: "所有命令执行的强制检查点汇总"
 - [ ] import 未清理（未用 `goimports`）
 - [ ] 新增第三方依赖是否可被标准库替代
 
-#### ✅ /inspect 完成后检查
+#### ✅ /inspect-codebase 完成后检查
 
 | 检查项 | 结果 |
 |--------|------|
 | [ ] 已输出 `audits/<audit-id>/report.md` | |
-| [ ] 已记录本次使用的 inspect 模式 | |
+| [ ] 已记录本次使用的 inspect-codebase 模式 | |
 | [ ] Findings 已按级别分组 | |
 | [ ] 每个关键结论都有代码或配置证据 | |
 | [ ] 已明确哪些问题建议转成 change | |

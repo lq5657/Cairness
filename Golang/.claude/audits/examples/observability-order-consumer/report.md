@@ -66,7 +66,7 @@ status: open
 |------|------|------|------|----------|------|
 | Important | 可观测性 | 若消费者只在失败时打一条错误日志，没有记录 `enqueue / start / retry / success / fail` 阶段，就无法判断消息停在哪一段 | `internal/consumer/order_consumer.go:L1` | 为关键阶段建立稳定日志点 | open |
 | Important | 可观测性 | 如果日志里缺少 `message_id`、`order_id`、`retry_count`，跨消息重试与死信排查会失去最小定位依据 | `internal/consumer/order_consumer.go:L1` | 补齐关键任务标识和业务标识字段 | open |
-| Minor | 可观测性 | `project-context.md` 目前没有显式说明异步任务的 metrics / alerting / tracing 现状，接入人员难以判断该补哪里 | `rules/project-context.md:L71` | 在 `/init` 或 `/inspect` 后补足真实观测方案 | open |
+| Minor | 可观测性 | `project-context.md` 目前没有显式说明异步任务的 metrics / alerting / tracing 现状，接入人员难以判断该补哪里 | `rules/project-context.md:L71` | 在 `/init` 或 `/inspect-codebase` 后补足真实观测方案 | open |
 
 #### 5. 重点证据
 

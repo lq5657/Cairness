@@ -8,7 +8,7 @@ alwaysApply: true
 补充边界：
 - `/init` 只负责识别项目事实并回写本文件
 - `/init` 不负责创建 `changes/examples/`、`changes/templates/` 或示例 change
-- 若要做存量项目体检，使用 `/inspect`，不要伪装成 `/init` 或 `/review`
+- 若要做存量项目体检，使用 `/inspect-codebase`，不要伪装成 `/init` 或 `/review`
 
 #### 使用说明
 

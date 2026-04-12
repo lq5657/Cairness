@@ -67,7 +67,7 @@ status: open
 |------|------|------|------|----------|------|
 | Important | 架构边界 | 用户写路径的业务规则容易被放回 Handler；如果后续需求继续沿入口层扩写，分层会再次失真 | `internal/handler/user_handler.go:L1` | 在 `project-context.md` 和后续 review 中明确“Handler 不承载业务规则” | open |
 | Important | 架构边界 | `UserService` 同时承担业务编排和部分错误语义定义，后续若继续叠加协议映射职责，容易变成混合层 | `internal/service/user_service.go:L1` | 保持 Service 只做业务编排和领域错误表达，不做 HTTP 语义映射 | open |
-| Minor | 架构边界 | 当前样例强调 `handler -> service -> repo`，但 `project-context.md` 里尚未把这个真实分层写成明确事实 | `rules/project-context.md:L1` | 在 `/init` 或 `/inspect` 后补充实际调用关系说明 | open |
+| Minor | 架构边界 | 当前样例强调 `handler -> service -> repo`，但 `project-context.md` 里尚未把这个真实分层写成明确事实 | `rules/project-context.md:L1` | 在 `/init` 或 `/inspect-codebase` 后补充实际调用关系说明 | open |
 
 #### 5. 重点证据
 

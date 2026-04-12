@@ -32,6 +32,13 @@
 
 #### 意图确认（先问再做）
 
+#### 命令字面量优先
+
+- 当用户输入以 `/` 开头的命令时，必须先按字面量匹配已定义命令，禁止先做语义改写
+- 收到 `/inspect-codebase` 时，禁止改判为 `/review`、`/propose`、`/apply` 或普通技术讨论
+- 若 `/inspect-codebase` 未提供 `mode`，应先要求补充；若未提供 `scope`，默认按全仓执行
+- 只有在命令字面量无法匹配任何已定义命令时，才允许回退到自然语言意图识别
+
 收到用户的自然语言指令时，先识别意图并映射到对应命令，确认后再执行 。
 
 
@@ -41,7 +48,7 @@
 | "我要做 xxx 需求"                      | → /propose |
 | "开始写代码" / "继续执行"              | → /apply   |
 | "帮我看看代码" / "review 一下"         | → /review  |
-| "帮我看看项目" / "审查存量代码" / "做体检" | → /inspect |
+| "/inspect-codebase" / "帮我看看项目" / "审查存量代码" / "做体检" | → /inspect-codebase |
 | "写测试" / "补单测"                    | → /test    |
 | "归档 xxx"                             | → /archive |
 | 纯技术讨论不需要走命令流程，直接回答。 |             |
@@ -170,9 +177,13 @@ changes/examples/<change-id>/
 - 禁止在已有项目接入阶段，因为没看到样例就创建 `changes/examples/`、`changes/templates/` 或任意 `changes/<change-id>/`
 - `changes/examples/` 是 harness 维护者用于演示流程的资产，不是接入任意存量项目时必须生成的产物
 
-#### /inspect [范围或主题] — 存量项目审查 / 项目体检
+#### /inspect-codebase <mode> [scope] — 存量项目审查 / 项目体检
 
 用于“暂时没有新需求，但希望系统性检查存量项目”的场景。它不是 `/review` 的替代品；`/review` 仍然只用于已存在 change 的实现审查。
+
+**参数定义：**
+- `<mode>`：必填，取值只能是 `architecture` / `logic` / `observability` / `test-debt`
+- `[scope]`：可选，表示审查范围；可填全仓、模块、目录、调用链或业务主题；省略时默认全仓
 
 **适用场景：**
 - 只有已有代码，没有新需求
@@ -189,10 +200,12 @@ changes/examples/<change-id>/
 | `test-debt` | 自动化验证薄弱、回归成本高 | 测试层级覆盖、关键链路缺口、bugfix 回归证据、不可测代码结构 |
 
 **固定用法示例：**
-- `/inspect architecture user-domain`
-- `/inspect logic payment-create`
-- `/inspect observability order-consumer`
-- `/inspect test-debt internal/service`
+- `/inspect-codebase architecture`
+- `/inspect-codebase architecture user-domain`
+- `/inspect-codebase logic`
+- `/inspect-codebase logic payment-create`
+- `/inspect-codebase observability order-consumer`
+- `/inspect-codebase test-debt internal/service`
 
 **执行流程：**
 
@@ -228,8 +241,8 @@ audits/templates/to-change.md
 ```
 
 **最小规则：**
-- `/inspect` 可以在没有进行中 change、没有新需求的情况下独立执行
-- `/inspect` 默认不修改业务代码，只产出审查报告
+- `/inspect-codebase` 可以在没有进行中 change、没有新需求的情况下独立执行
+- `/inspect-codebase` 默认不修改业务代码，只产出审查报告
 - 若发现需要治理的问题，应在报告中明确建议“是否转为 `changes/<change-id>/`”
 - 若只是事实失真（例如日志方案、配置来源未记录），允许直接回写 `project-context.md`
 
