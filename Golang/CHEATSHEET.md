@@ -44,6 +44,11 @@ Golang/.claude/changes/<change-id>/
 
 ## 4. 日常命令流
 
+启动提示：
+- 只报告已知事实，不猜“测试连接”或“未完成请求”
+- 先报当前分支和进行中的 change
+- 直接给可复制命令，如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
+
 ### `cc-init`
 
 用途：

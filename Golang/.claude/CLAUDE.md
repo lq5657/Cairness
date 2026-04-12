@@ -69,6 +69,49 @@
 3. 报告当前状态，包括进行中的 `change-id`、`status`、分支信息、是否存在依赖或冲突
 4. 展示命令菜单
 
+**启动输出要求：**
+- 启动提示必须基于已知事实，不得臆测“你可能在测试连接”“你有未完成请求”等无证据结论
+- 启动提示必须优先展示可执行命令，不要只给自然语言引导
+- 若无进行中的 change，明确说明“当前没有进行中的 change”
+- 若存在进行中的 change，明确列出 `change-id`、`status`、当前建议下一步命令
+- 命令展示应尽量可复制，优先给出完整命令示例，而不是只写命令名称
+
+**推荐启动文案模板：**
+
+当无进行中的 change 时：
+
+```text
+当前项目：<项目名/语言类型>
+当前分支：<branch>
+进行中的 change：无
+
+可直接执行：
+- cc-init
+- cc-inspect-codebase architecture
+- cc-inspect-codebase logic
+- cc-propose <需求描述>
+
+如需针对已有审查结果继续推进：
+- cc-promote-audit <audit-id> <change-id>
+```
+
+当存在进行中的 change 时：
+
+```text
+当前项目：<项目名/语言类型>
+当前分支：<branch>
+进行中的 change：
+- <change-id-1> [status=<status>] [depends_on=<...>]
+- <change-id-2> [status=<status>] [depends_on=<...>]
+
+建议下一步：
+- cc-apply <change-id>
+- cc-review <change-id>
+- cc-fix <change-id>
+- cc-test <change-id>
+- cc-archive <change-id>
+```
+
 ### 变更目录契约
 
 每个变更必须使用固定目录结构：
