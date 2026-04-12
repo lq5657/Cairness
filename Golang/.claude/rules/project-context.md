@@ -5,6 +5,11 @@ alwaysApply: true
 
 首次使用时执行 /init 让 AI 分析工程并填充本文件。
 
+补充边界：
+- `/init` 只负责识别项目事实并回写本文件
+- `/init` 不负责创建 `changes/examples/`、`changes/templates/` 或示例 change
+- 若要做存量项目体检，使用 `/inspect`，不要伪装成 `/init` 或 `/review`
+
 #### 使用说明
 
 - 本文件用于记录项目事实，不用于强行套用预设架构

@@ -30,6 +30,9 @@ description: "所有命令执行的强制检查点汇总"
 | `/review` | [ ] spec.md 已读 | CLAUDE.md §命令 |
 | `/review` | [ ] 代码已存在 | CLAUDE.md §命令 |
 | `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
+| `/inspect` | [ ] 已明确审查范围（全仓/模块/链路/主题） | CLAUDE.md §/inspect |
+| `/inspect` | [ ] 已说明本次不是基于现有 change 的 `/review` | CLAUDE.md §/inspect |
+| `/inspect` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §/inspect |
 | `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
 | `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
 | `/test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
@@ -129,6 +132,16 @@ description: "所有命令执行的强制检查点汇总"
 - [ ] 注释过时
 - [ ] import 未清理（未用 `goimports`）
 - [ ] 新增第三方依赖是否可被标准库替代
+
+#### ✅ /inspect 完成后检查
+
+| 检查项 | 结果 |
+|--------|------|
+| [ ] 已输出 `audits/<audit-id>/report.md` | |
+| [ ] Findings 已按级别分组 | |
+| [ ] 每个关键结论都有代码或配置证据 | |
+| [ ] 已明确哪些问题建议转成 change | |
+| [ ] 若发现 project-context 失真，已建议或更新 `project-context.md` | |
 
 ---
 

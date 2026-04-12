@@ -34,6 +34,11 @@
 │   └── code-quality-reviewer.md # 代码质量审查
 ├── knowledge/
 │   └── index.md           # 知识索引（技术约定、踩坑记录）
+├── audits/
+│   ├── <audit-id>/
+│   │   └── report.md      # 存量项目审查报告
+│   └── templates/
+│       └── report.md      # 审查报告模板
 └── changes/
     ├── <change-id>/       # 单个变更目录
     │   ├── spec.md        # 需求规格
@@ -73,8 +78,9 @@
 
 1. 执行 `/init`
 2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
-3. 选一个低风险需求跑一次 `/propose -> /apply -> /review`
-4. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+3. 如果暂时没有新需求，先执行 `/inspect` 对存量项目做体检
+4. 如果有明确需求，再跑一次 `/propose -> /apply -> /review`
+5. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 新项目接入时，建议按这个顺序：
 
@@ -91,6 +97,26 @@
 ```
 
 分析工程结构、依赖（go.mod）、分层模式，填充 `rules/project-context.md`。
+
+边界说明：
+- `/init` 只更新 `rules/project-context.md`
+- `/init` 不应该因为“缺少样例”去创建 `changes/examples/`
+- `changes/examples/` 属于 harness 自身样例，不是每个存量项目接入时都要新建
+
+### 1.1 存量项目体检
+
+```
+/inspect [范围或主题]
+```
+
+当暂时没有新需求，但希望审查现有项目的代码、设计、逻辑、安全、配置或测试问题时使用。
+
+产出：
+- `audits/<audit-id>/report.md`
+
+用途：
+- 给存量项目做体检
+- 先发现问题，再决定哪些问题要转成正式 change
 
 ### 2. 创建变更提案
 
@@ -140,6 +166,7 @@
 | 命令 | 说明 |
 |------|------|
 | `/init` | 初始化项目上下文 |
+| `/inspect [范围]` | 对存量项目做体检并输出审查报告 |
 | `/propose <需求>` | 创建变更提案 |
 | `/apply <变更名>` | 执行编码 |
 | `/fix <变更名>` | Review 后修正迭代 |

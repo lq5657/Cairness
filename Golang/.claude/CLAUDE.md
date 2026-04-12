@@ -41,6 +41,7 @@
 | "我要做 xxx 需求"                      | → /propose |
 | "开始写代码" / "继续执行"              | → /apply   |
 | "帮我看看代码" / "review 一下"         | → /review  |
+| "帮我看看项目" / "审查存量代码" / "做体检" | → /inspect |
 | "写测试" / "补单测"                    | → /test    |
 | "归档 xxx"                             | → /archive |
 | 纯技术讨论不需要走命令流程，直接回答。 |             |
@@ -162,6 +163,48 @@ changes/examples/<change-id>/
 **失败处理：**
 - 若项目结构无法识别、依赖缺失或信息不足，必须在 `project-context.md` 中明确标记“待确认”
 - 若关键事实无法确认，不得伪造结论；应停止进入 `/propose`
+
+**🚫 边界约束：**
+- `/init` 只负责识别和回写 `rules/project-context.md`
+- 禁止把 `/init` 扩展为“初始化示例变更”或“自动创建 `changes/examples/`”
+- 禁止在已有项目接入阶段，因为没看到样例就创建 `changes/examples/`、`changes/templates/` 或任意 `changes/<change-id>/`
+- `changes/examples/` 是 harness 维护者用于演示流程的资产，不是接入任意存量项目时必须生成的产物
+
+#### /inspect [范围或主题] — 存量项目审查 / 项目体检
+
+用于“暂时没有新需求，但希望系统性检查存量项目”的场景。它不是 `/review` 的替代品；`/review` 仍然只用于已存在 change 的实现审查。
+
+**适用场景：**
+- 只有已有代码，没有新需求
+- 希望审查架构、设计、业务逻辑、错误处理、日志、配置、测试或安全问题
+- 希望先输出问题清单，再决定是否创建 change
+
+**执行流程：**
+
+| 阶段 | 动作 | 产出 |
+|------|------|------|
+| 1. 定义范围 | 选择全仓、模块、链路或主题 | `audit_id`、scope |
+| 2. 收集证据 | 读代码、查调用链、看配置和测试 | 问题证据 |
+| 3. 形成 Findings | 按 Critical/Important/Minor 分级 | `report.md` |
+| 4. 生成建议 | 标注哪些问题值得转成 change | 后续动作 |
+
+**产出位置：**
+
+```text
+audits/<audit-id>/report.md
+```
+
+模板见：
+
+```text
+audits/templates/report.md
+```
+
+**最小规则：**
+- `/inspect` 可以在没有进行中 change、没有新需求的情况下独立执行
+- `/inspect` 默认不修改业务代码，只产出审查报告
+- 若发现需要治理的问题，应在报告中明确建议“是否转为 `changes/<change-id>/`”
+- 若只是事实失真（例如日志方案、配置来源未记录），允许直接回写 `project-context.md`
 
 #### /propose <需求描述> — 创建变更提案
 

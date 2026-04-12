@@ -54,6 +54,23 @@ Golang/.claude/changes/<change-id>/
 - 写明真实目录、依赖、分层、日志、配置、测试约定
 - 不确定的内容标记“待确认”，不能编造
 
+禁止：
+- 不要把 `/init` 扩展成“初始化示例变更”
+- 不要因为缺少样例去创建 `changes/examples/`
+- 不要在 `/init` 阶段创建真实 `changes/<change-id>/`
+
+### `/inspect [范围或主题]`
+
+用途：
+- 在没有新需求时，对存量项目做代码、设计、逻辑、安全或配置体检
+
+产物：
+- `audits/<audit-id>/report.md`
+
+适用场景：
+- 暂时没有新需求
+- 想先发现问题，再决定是否转成正式 change
+
 ### `/propose <需求>`
 
 流程：
