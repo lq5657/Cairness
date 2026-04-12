@@ -11,11 +11,25 @@
 ```text
 audit_id: <audit-id>
 scope: <模块/全仓>
-mode: architecture / code-quality / logic / security / mixed
+mode: architecture / logic / observability / test-debt
 created_at: YYYY-MM-DD HH:MM
 reviewer: Claude Code
 status: open
 ```
+
+#### 0. 审查模式
+
+| 模式 | 说明 |
+|------|------|
+| `architecture` | 审查分层、模块边界、依赖方向、抽象是否失控 |
+| `logic` | 审查业务规则、状态流转、幂等、错误语义、权限前置校验 |
+| `observability` | 审查日志、trace、metrics、告警、异步任务观测能力 |
+| `test-debt` | 审查测试覆盖策略、回归证据、测试分层缺口、可测性债务 |
+
+本次选择：
+- mode:
+- 选择原因：
+- 不覆盖的模式：
 
 #### 1. 审查目标
 
@@ -40,7 +54,7 @@ status: open
 
 | 级别 | 分类 | 描述 | 位置 | 建议动作 | 状态 |
 |------|------|------|------|----------|------|
-| Critical/Important/Minor | 架构/逻辑/安全/可观测性/测试/配置/兼容性 | 具体问题 | `path/to/file.go:L10` | 下一步建议 | open |
+| Critical/Important/Minor | 架构边界/业务逻辑/可观测性/测试债/配置/兼容性/安全 | 具体问题 | `path/to/file.go:L10` | 下一步建议 | open |
 
 无问题时保留表头并写一行：
 
@@ -51,6 +65,38 @@ status: open
 | 主题 | 证据 | 位置 |
 |------|------|------|
 | 例如：错误处理不一致 | `handler` 吞错后返回 200 | `internal/handler/user.go:L20` |
+
+#### 5.1 模式检查清单
+
+按本次模式填写，未覆盖项写“不适用”。
+
+**`architecture`**
+- [ ] 分层职责清晰
+- [ ] 调用方向一致
+- [ ] 公共包未失控
+- [ ] 抽象层数合理
+- [ ] 模块边界无明显泄漏
+
+**`logic`**
+- [ ] 业务规则有唯一可信落点
+- [ ] 状态流转有集中校验
+- [ ] 写路径考虑幂等或去重
+- [ ] 错误语义稳定
+- [ ] 权限校验前置
+
+**`observability`**
+- [ ] 关键入口有日志或等价信号
+- [ ] 外部调用失败可定位
+- [ ] 关键字段齐全
+- [ ] 异步阶段可观察
+- [ ] metrics/告警/观察窗口有说明
+
+**`test-debt`**
+- [ ] 关键链路有自动化回归
+- [ ] bugfix 有回归证据
+- [ ] 测试层级匹配风险
+- [ ] 高风险层无明显空白
+- [ ] 代码具备基本可测性
 
 #### 6. 修复建议
 
@@ -63,4 +109,3 @@ status: open
 - 是否建议立即创建 `changes/<change-id>/`
 - 是否建议补 `project-context.md`
 - 是否建议沉淀到 `knowledge/`
-

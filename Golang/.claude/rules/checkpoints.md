@@ -31,8 +31,12 @@ description: "所有命令执行的强制检查点汇总"
 | `/review` | [ ] 代码已存在 | CLAUDE.md §命令 |
 | `/review` | [ ] spec.status 为 `review` | CLAUDE.md §生命周期状态 |
 | `/inspect` | [ ] 已明确审查范围（全仓/模块/链路/主题） | CLAUDE.md §/inspect |
+| `/inspect` | [ ] 已选择预设模式（architecture / logic / observability / test-debt） | CLAUDE.md §/inspect |
 | `/inspect` | [ ] 已说明本次不是基于现有 change 的 `/review` | CLAUDE.md §/inspect |
 | `/inspect` | [ ] 已确认输出位置为 `audits/<audit-id>/report.md` | CLAUDE.md §/inspect |
+| `/promote-audit` | [ ] 已读取 `audits/<audit-id>/report.md` | CLAUDE.md §/promote-audit |
+| `/promote-audit` | [ ] 已收敛本次 change 的边界与不处理项 | CLAUDE.md §/promote-audit |
+| `/promote-audit` | [ ] 已确认输出位置为 `audits/<audit-id>/to-change.md` | CLAUDE.md §/promote-audit |
 | `/test` | [ ] spec.md 已存在 | CLAUDE.md §命令 |
 | `/test` | [ ] spec.status 为 `apply` 或 `review` | CLAUDE.md §命令 |
 | `/test` | [ ] 已读取本次 change 声明的最低验证等级 | rules/verification.md |
@@ -138,10 +142,21 @@ description: "所有命令执行的强制检查点汇总"
 | 检查项 | 结果 |
 |--------|------|
 | [ ] 已输出 `audits/<audit-id>/report.md` | |
+| [ ] 已记录本次使用的 inspect 模式 | |
 | [ ] Findings 已按级别分组 | |
 | [ ] 每个关键结论都有代码或配置证据 | |
 | [ ] 已明确哪些问题建议转成 change | |
 | [ ] 若发现 project-context 失真，已建议或更新 `project-context.md` | |
+
+#### ✅ /promote-audit 完成后检查
+
+| 检查项 | 结果 |
+|--------|------|
+| [ ] 已输出 `audits/<audit-id>/to-change.md` | |
+| [ ] Findings 已映射到 spec 章节和 tasks | |
+| [ ] 已明确本次 change 不处理什么 | |
+| [ ] 已建议最低验证等级与测试层级 | |
+| [ ] 已判断是否需要拆成多个 change | |
 
 ---
 

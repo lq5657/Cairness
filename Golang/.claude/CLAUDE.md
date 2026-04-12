@@ -179,6 +179,21 @@ changes/examples/<change-id>/
 - 希望审查架构、设计、业务逻辑、错误处理、日志、配置、测试或安全问题
 - 希望先输出问题清单，再决定是否创建 change
 
+**预设模式：**
+
+| 模式 | 适用问题 | 核心关注点 |
+|------|----------|------------|
+| `architecture` | 分层混乱、边界失真、耦合过重 | 模块职责、调用方向、抽象是否合理、共享代码是否失控 |
+| `logic` | 业务规则可能有漏洞或实现偏差 | 状态流转、幂等、边界条件、错误语义、权限前置校验 |
+| `observability` | 线上不好排障、发布后难观察 | 日志点、关键字段、trace/metrics/告警、异步任务观察 |
+| `test-debt` | 自动化验证薄弱、回归成本高 | 测试层级覆盖、关键链路缺口、bugfix 回归证据、不可测代码结构 |
+
+**固定用法示例：**
+- `/inspect architecture user-domain`
+- `/inspect logic payment-create`
+- `/inspect observability order-consumer`
+- `/inspect test-debt internal/service`
+
 **执行流程：**
 
 | 阶段 | 动作 | 产出 |
@@ -200,11 +215,69 @@ audits/<audit-id>/report.md
 audits/templates/report.md
 ```
 
+若准备把审查问题转成正式 change，可先填写桥接材料：
+
+```text
+audits/<audit-id>/to-change.md
+```
+
+模板见：
+
+```text
+audits/templates/to-change.md
+```
+
 **最小规则：**
 - `/inspect` 可以在没有进行中 change、没有新需求的情况下独立执行
 - `/inspect` 默认不修改业务代码，只产出审查报告
 - 若发现需要治理的问题，应在报告中明确建议“是否转为 `changes/<change-id>/`”
 - 若只是事实失真（例如日志方案、配置来源未记录），允许直接回写 `project-context.md`
+
+**模式检查重点：**
+
+**1. `architecture`**
+- 检查入口层是否下沉业务逻辑
+- 检查 service/domain/repo 是否存在反向依赖
+- 检查公共包是否变成“万能工具箱”
+- 检查接口抽象是否过早、是否只是为了抽象而抽象
+- 检查是否存在跨模块直接访问底层存储或传输细节泄漏
+
+**2. `logic`**
+- 检查业务规则是否在唯一可信层落地，而非多处散落
+- 检查状态流转是否合法，是否有集中校验入口
+- 检查写接口是否考虑幂等、去重、重复提交
+- 检查错误语义是否稳定，调用方能否区分业务错误与系统错误
+- 检查权限校验是否发生在写操作前
+
+**3. `observability`**
+- 检查关键入口、关键分支、外部调用失败、最终结果是否有定位信息
+- 检查日志字段是否包含 request_id / trace_id / task_id / 关键业务标识
+- 检查是否存在只返回错误不记录上下文，或只打日志不返回错误
+- 检查异步任务是否记录 enqueue / start / retry / fail / success
+- 检查是否声明 metrics、告警和发布后观察窗口
+
+**4. `test-debt`**
+- 检查关键链路是否只有手工验证、没有自动化回归
+- 检查 bugfix 是否缺少回归证据
+- 检查测试层级是否失衡，例如只堆低层单测却没有链路回归
+- 检查 repo / transport / integration 层是否存在明显空白
+- 检查代码结构是否让测试替身、依赖注入或边界隔离异常困难
+
+#### /promote-audit <audit-id> <change-id> — 从审查报告生成 change 草稿
+
+用于把 `audits/<audit-id>/report.md` 中选中的 Findings，整理成一个适合进入 `/propose` 的桥接材料。
+
+**产出位置：**
+
+```text
+audits/<audit-id>/to-change.md
+```
+
+**最小规则：**
+- 不是把整份 audit 机械复制为一个 change
+- 必须先收敛边界，决定“本次 change 解决什么，不解决什么”
+- 必须把 Findings 映射到 spec 的背景、代码现状、风险、功能点和 tasks
+- 若 audit 同时发现多类问题，优先拆成多个 change，而不是合并成大变更
 
 #### /propose <需求描述> — 创建变更提案
 

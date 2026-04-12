@@ -37,8 +37,12 @@
 ├── audits/
 │   ├── <audit-id>/
 │   │   └── report.md      # 存量项目审查报告
+│   ├── examples/
+│   │   └── <audit-id>/
+│   │       └── report.md  # 四类审查示例
 │   └── templates/
-│       └── report.md      # 审查报告模板
+│       ├── report.md      # 审查报告模板
+│       └── to-change.md   # 审查报告转 change 的桥接模板
 └── changes/
     ├── <change-id>/       # 单个变更目录
     │   ├── spec.md        # 需求规格
@@ -71,6 +75,17 @@
 7. `changes/examples/user-create-api-fix/review.md`
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
+
+`/inspect` 的四类示例报告可参考：
+
+1. `audits/examples/architecture-user-domain/report.md`
+2. `audits/examples/logic-user-create/report.md`
+3. `audits/examples/observability-order-consumer/report.md`
+4. `audits/examples/test-debt-user-module/report.md`
+
+如果要把 audit 报告转成正式 change，可参考：
+
+1. `audits/templates/to-change.md`
 
 ## 我是项目接入者
 
@@ -117,6 +132,36 @@
 用途：
 - 给存量项目做体检
 - 先发现问题，再决定哪些问题要转成正式 change
+
+预设视角：
+- `architecture`：看分层、边界、耦合、抽象
+- `logic`：看业务规则、状态流转、幂等、错误语义、权限前置
+- `observability`：看日志、trace、metrics、告警、异步链路观测
+- `test-debt`：看测试覆盖缺口、回归证据、测试分层与可测性
+
+示例：
+```text
+/inspect architecture user-domain
+/inspect logic order-create
+/inspect observability mq-consumer
+/inspect test-debt internal/service
+```
+
+### 1.2 把审查结果转成正式 change
+
+当 `/inspect` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
+
+```text
+/promote-audit <audit-id> <change-id>
+```
+
+产出：
+- `audits/<audit-id>/to-change.md`
+
+用途：
+- 从 Findings 中挑出本次真正要治理的问题
+- 把 audit 证据映射到 spec 和 tasks
+- 决定这是一条 change 还是应该拆成多条 change
 
 ### 2. 创建变更提案
 
@@ -167,6 +212,7 @@
 |------|------|
 | `/init` | 初始化项目上下文 |
 | `/inspect [范围]` | 对存量项目做体检并输出审查报告 |
+| `/promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
 | `/propose <需求>` | 创建变更提案 |
 | `/apply <变更名>` | 执行编码 |
 | `/fix <变更名>` | Review 后修正迭代 |

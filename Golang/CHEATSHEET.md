@@ -71,6 +71,31 @@ Golang/.claude/changes/<change-id>/
 - 暂时没有新需求
 - 想先发现问题，再决定是否转成正式 change
 
+预设模式：
+- `architecture`：看分层、依赖方向、模块边界、抽象是否失控
+- `logic`：看业务规则、状态流转、幂等、错误语义、权限前置
+- `observability`：看日志、trace、metrics、告警、异步链路观测
+- `test-debt`：看测试缺口、回归证据、测试分层、可测性
+
+示例：
+- `/inspect architecture user-domain`
+- `/inspect logic payment-refund`
+- `/inspect observability order-consumer`
+- `/inspect test-debt internal/service`
+
+### `/promote-audit <audit-id> <change-id>`
+
+用途：
+- 把 audit 报告里的 Findings 收敛成一个正式 change 草稿
+
+产物：
+- `audits/<audit-id>/to-change.md`
+
+注意：
+- 不要把整份审查报告原样复制成一个 change
+- 先明确“本次修什么，不修什么”
+- 若问题类型太杂，拆成多个 change
+
 ### `/propose <需求>`
 
 流程：
