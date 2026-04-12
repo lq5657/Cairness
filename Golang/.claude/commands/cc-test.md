@@ -29,6 +29,6 @@
 
 ## 建议读取
 
+- `checkpoints/cc-test.md`
 - `rules/testing-strategy.md`
 - `rules/verification.md`
-- `rules/checkpoints.md`

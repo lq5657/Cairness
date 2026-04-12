@@ -33,7 +33,7 @@
 
 ## 建议读取
 
-- `rules/checkpoints.md`
+- `checkpoints/cc-apply.md`
 - `rules/verification.md`
 - `rules/coding-style.md`
 - 涉及专题时按需读取相关规则

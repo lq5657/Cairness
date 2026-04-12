@@ -32,5 +32,5 @@
 ## 建议读取
 
 - `rules/project-context.md`
-- `rules/checkpoints.md`
+- `checkpoints/cc-propose.md`
 - 相关专题规则

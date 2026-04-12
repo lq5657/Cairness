@@ -26,6 +26,6 @@
 
 ## 建议读取
 
-- `rules/checkpoints.md`
+- `checkpoints/cc-archive.md`
 - 当前 change 的 `review.md` / `log.md`
 - `knowledge/index.md`

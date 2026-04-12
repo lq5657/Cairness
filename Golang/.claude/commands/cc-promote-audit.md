@@ -23,4 +23,5 @@
 
 - `audits/<audit-id>/report.md`
 - 相关 `commands/cc-propose.md`
+- `checkpoints/cc-promote-audit.md`
 - 必要时读取专题规则，补充验证等级与边界说明

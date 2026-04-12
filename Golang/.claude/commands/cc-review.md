@@ -28,7 +28,7 @@
 
 ## 建议读取
 
-- `rules/checkpoints.md`
+- `checkpoints/cc-review.md`
 - 当前 change 的 `spec.md`
 - 当前 change 的 `review.md`
 - 相关专题规则
