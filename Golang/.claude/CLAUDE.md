@@ -37,6 +37,7 @@
 | 用户说的 | 映射命令 |
 |----------|----------|
 | "初始化项目上下文" | `cc-init` |
+| "补充项目上下文" / "补全项目画像" | `cc-enrich-context` |
 | "帮我看看项目" / "审查存量代码" / "做体检" | `cc-inspect-codebase` |
 | "把审查结果转成 change" | `cc-promote-audit` |
 | "我要做 xxx 需求" | `cc-propose` |
@@ -81,6 +82,7 @@
 
 可直接执行：
 - cc-init
+- cc-enrich-context
 - cc-inspect-codebase architecture
 - cc-inspect-codebase logic
 - cc-propose <需求描述>
@@ -135,6 +137,7 @@ changes/<change-id>/
 ### 命令总表
 
 - `cc-init`
+- `cc-enrich-context`
 - `cc-inspect-codebase <mode> [scope]`
 - `cc-promote-audit <audit-id> <change-id>`
 - `cc-propose <需求描述>`
@@ -148,6 +151,7 @@ changes/<change-id>/
 
 收到命令后按需装载：
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
+- `cc-enrich-context` -> `commands/cc-enrich-context.md` + `checkpoints/cc-enrich-context.md`
 - `cc-inspect-codebase` -> `commands/cc-inspect-codebase.md` + `checkpoints/cc-inspect-codebase.md`
 - `cc-promote-audit` -> `commands/cc-promote-audit.md` + `checkpoints/cc-promote-audit.md`
 - `cc-propose` -> `commands/cc-propose.md` + `checkpoints/cc-propose.md`

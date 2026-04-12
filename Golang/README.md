@@ -106,10 +106,11 @@
 已有 Golang 项目接入时，建议按这个顺序：
 
 1. 执行 `cc-init`
-2. 检查 `context/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
-3. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
-4. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
-5. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+2. 检查 `context/project-context.md` 是否已建立最小可用上下文
+3. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
+4. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
+5. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
+6. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 新项目接入时，建议按这个顺序：
 
@@ -132,10 +133,11 @@
 cc-init
 ```
 
-分析工程结构、依赖（go.mod）、分层模式，填充 `context/project-context.md`。
+快速识别工程的最小可用事实，填充 `context/project-context.md`。
 
 边界说明：
 - `cc-init` 只更新 `context/project-context.md`
+- `cc-init` 默认只要求建立最小可用上下文，不追求一次性补齐完整项目画像
 - `cc-init` 不应该因为“缺少样例”去创建 `changes/examples/`
 - `cc-init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
 - `cc-init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`
@@ -146,7 +148,26 @@ cc-init
 - 若 `.claude/` 脚手架不存在或不完整，应先由维护者显式安装，再执行 `cc-init`
 - `cc-init` 负责识别事实，不负责安装框架
 
-### 1.1 存量项目体检
+### 1.1 补充项目上下文
+
+```
+cc-enrich-context
+```
+
+当 `cc-init` 已完成，但你需要更完整的项目画像时使用。
+
+用途：
+- 补充分层与调用关系
+- 补充日志、配置、测试、可观测性现状
+- 补充领域高风险点
+
+边界说明：
+- `cc-enrich-context` 只补充 `context/project-context.md`
+- `cc-enrich-context` 不是 `cc-inspect-codebase`，不输出审查问题结论
+- `cc-enrich-context` 不是 `cc-review`，不审已有 change
+- 证据不足时保留“待确认”，不要把推测写成事实
+
+### 1.2 存量项目体检
 
 ```
 cc-inspect-codebase <mode> [scope]
@@ -181,7 +202,7 @@ cc-inspect-codebase observability mq-consumer
 cc-inspect-codebase test-debt internal/service
 ```
 
-### 1.2 把审查结果转成正式 change
+### 1.3 把审查结果转成正式 change
 
 当 `cc-inspect-codebase` 已经发现问题，且你准备开始治理时，不要直接把整份 audit 报告复制成 spec。先用桥接模板收敛边界：
 
@@ -245,6 +266,7 @@ cc-test <变更名>
 | 命令 | 说明 |
 |------|------|
 | `cc-init` | 初始化项目上下文 |
+| `cc-enrich-context` | 补充更完整的项目上下文 |
 | `cc-inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
 | `cc-promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
 | `cc-propose <需求>` | 创建变更提案 |

@@ -54,11 +54,11 @@ Golang/.claude/changes/<change-id>/
 ### `cc-init`
 
 用途：
-- 分析真实工程结构
+- 快速识别最小可用项目事实
 - 填写 `context/project-context.md`
 
 结果要求：
-- 写明真实目录、依赖、分层、日志、配置、测试约定
+- 优先写明真实目录、依赖入口、配置入口、日志入口、测试入口
 - 不确定的内容标记“待确认”，不能编造
 
 禁止：
@@ -71,6 +71,22 @@ Golang/.claude/changes/<change-id>/
 前提：
 - 先确保目标项目已经安装好 `.claude/` 脚手架
 - `cc-init` 只负责识别项目事实，不负责安装框架
+
+### `cc-enrich-context`
+
+用途：
+- 在 `cc-init` 基础上补充更完整的项目画像
+- 补充分层、调用关系、日志、配置、测试、可观测性和高风险点
+
+结果要求：
+- 只增量更新 `context/project-context.md`
+- 对高解释成本字段提供更多事实证据
+- 仍无法确认的内容继续标记“待确认”
+
+禁止：
+- 不要把 `cc-enrich-context` 扩展成 `cc-inspect-codebase`
+- 不要输出 Findings、审查结论或 change 草稿
+- 不要把推测写成事实
 
 ### `cc-inspect-codebase <mode> [scope]`
 
