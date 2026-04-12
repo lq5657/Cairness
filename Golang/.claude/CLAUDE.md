@@ -83,11 +83,13 @@
 
 可直接执行：
 - cc-init
-- cc-enrich-context
-- cc-explain-system
 - cc-inspect-codebase architecture
 - cc-inspect-codebase logic
 - cc-propose <需求描述>
+
+若 `project-context.md` 已建立：
+- cc-enrich-context
+- cc-explain-system
 ```
 
 当存在进行中的 change 时：
@@ -180,6 +182,7 @@ changes/<change-id>/
 ### 文档职责
 
 - `context/project-context.md`：项目事实，不是启动阶段默认读取的大型规则集
+- `context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
 - `tasks.md`：原子化任务拆分、依赖关系、验收标准
 - `log.md`：执行日志、技术决策、踩坑与冲突处理

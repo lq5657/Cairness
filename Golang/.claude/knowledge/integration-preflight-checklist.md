@@ -20,6 +20,9 @@
 | 主规则存在 | `.claude/CLAUDE.md` 存在 | [ ] |
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
 | knowledge 存在 | `.claude/knowledge/index.md` 存在 | [ ] |
+| context 模板存在 | `.claude/context/project-context.md` 与 `.claude/context/templates/system-overview.md` 存在 | [ ] |
+| commands 完整 | `cc-init`、`cc-enrich-context`、`cc-explain-system`、`cc-inspect-codebase` 等主命令文件齐全 | [ ] |
+| checkpoints 完整 | 与主命令对应的 `checkpoints/*.md` 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/changes/templates/` 存在 | [ ] |
 | audits 模板存在 | `.claude/audits/templates/` 存在 | [ ] |
 | 示例可选但清晰 | 是否包含 examples 已明确，不会被误当成 `cc-init` 产物 | [ ] |
@@ -78,13 +81,17 @@
 
 1. `cc-init`
 2. 检查 `.claude/context/project-context.md`
-3. `cc-inspect-codebase architecture`
-4. 检查 `.claude/audits/<audit-id>/report.md`
+3. `cc-enrich-context`
+4. `cc-explain-system`
+5. `cc-inspect-codebase architecture`
+6. 检查 `.claude/audits/<audit-id>/report.md`
 
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
 | `cc-init` 可执行 | 不报命令冲突，不误建目录 | [ ] |
 | `project-context.md` 真实 | 目录、依赖、分层、日志、配置、测试策略不是套模板 | [ ] |
+| `cc-enrich-context` 可执行 | 能补充分层、日志、配置、测试等高解释成本上下文，不越界输出 Findings | [ ] |
+| `cc-explain-system` 可执行 | 能输出 `context/system-overview.md`，且不依赖 Findings 视角 | [ ] |
 | `cc-inspect-codebase` 可执行 | 能正确进入审查模式，不被宿主截获 | [ ] |
 | audit 产物位置正确 | 产出到 `.claude/audits/<audit-id>/report.md` | [ ] |
 | Findings 有证据 | 结论带文件位置，不是泛泛而谈 | [ ] |
@@ -111,6 +118,8 @@
 | 命令入口稳定 | `cc-` 命令不会与宿主解析冲突 | [ ] |
 | checkpoint 展示稳定 | 检查表状态落在 `结果` 列，且不同命令口径一致 | [ ] |
 | `cc-init` 不跑偏 | 只识别事实，不安装脚手架 | [ ] |
+| `cc-enrich-context` 可补全画像 | 能补充完整上下文，但不产出审查结论 | [ ] |
+| `cc-explain-system` 可讲解系统 | 能输出结构、链路、数据流、机制、难点与阅读路径 | [ ] |
 | `inspect-codebase` 可落产物 | 能输出带证据的 audit 报告 | [ ] |
 | 维护者理解边界 | 知道什么时候该 `cc-init`，什么时候该先装脚手架 | [ ] |
 
@@ -118,6 +127,7 @@
 
 1. 先检查 `.claude/` 脚手架是否完整。
 2. 再验证命令入口是否使用统一的 `cc-` 前缀。
-3. 只跑一次 `cc-init`，确认不乱建目录。
-4. 再跑一次 `cc-inspect-codebase architecture` 做最小体检。
-5. 通过后，再决定是否进入 `cc-promote-audit` 或 `cc-propose`。
+3. 先跑一次 `cc-init`，确认最小上下文可用且不乱建目录。
+4. 再跑 `cc-enrich-context` 和 `cc-explain-system`，确认上下文补全与系统讲解能力可用。
+5. 再跑一次 `cc-inspect-codebase architecture` 做最小体检。
+6. 通过后，再决定是否进入 `cc-promote-audit` 或 `cc-propose`。

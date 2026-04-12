@@ -25,12 +25,18 @@
 ├── CLAUDE.md              # Bootstrap 总纲：启动、路由、生命周期
 ├── context/
 │   └── project-context.md # 工程上下文（由 cc-init 填充）
+│   └── templates/
+│       └── system-overview.md # 系统讲解模板（由 cc-explain-system 使用）
 ├── commands/              # 按命令延迟加载的主流程规则
 │   ├── cc-init.md
+│   ├── cc-enrich-context.md
+│   ├── cc-explain-system.md
 │   ├── cc-inspect-codebase.md
 │   └── ...
 ├── checkpoints/           # 按命令延迟加载的检查项
 │   ├── cc-init.md
+│   ├── cc-enrich-context.md
+│   ├── cc-explain-system.md
 │   ├── cc-inspect-codebase.md
 │   └── ...
 ├── rules/
