@@ -48,6 +48,7 @@ Golang/.claude/changes/<change-id>/
 - 只报告已知事实，不猜“测试连接”或“未完成请求”
 - 先报当前分支和进行中的 change
 - 直接给可复制命令，如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
+- 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 
 ### `cc-init`
 

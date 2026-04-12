@@ -22,9 +22,17 @@
 
 ```
 .claude/
-├── CLAUDE.md              # 主规则文件，定义核心法则和命令
+├── CLAUDE.md              # Bootstrap 总纲：启动、路由、生命周期
+├── commands/              # 按命令延迟加载的主流程规则
+│   ├── cc-init.md
+│   ├── cc-inspect-codebase.md
+│   └── ...
+├── checkpoints/           # 按命令延迟加载的检查项
+│   ├── cc-init.md
+│   ├── cc-inspect-codebase.md
+│   └── ...
 ├── rules/
-│   ├── checkpoints.md     # 所有命令执行的强制检查点汇总
+│   ├── checkpoints.md     # 兼容保留的汇总检查点
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
 │   ├── project-context.md # 工程上下文（由 cc-init 填充）
@@ -112,6 +120,7 @@
 - 先报告当前分支、进行中的 change、依赖/冲突状态
 - 不要臆测“测试连接”“未完成请求”等无证据意图
 - 直接展示可复制的命令，例如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求描述>`
+- 启动阶段不要全量读取 `rules/`；具体命令触发后再按需读取 `commands/`、`checkpoints/` 与专题规则
 
 ### 1. 初始化项目上下文
 
