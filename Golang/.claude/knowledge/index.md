@@ -63,6 +63,7 @@
   }
   ```
 * **Harness试点验收** : 发布前先用验收清单确认生命周期、规则边界、reviewer 契约和样例是否可跑通 → `knowledge/pilot-checklist.md`
+* **Harness接入预检** : 把框架接入真实存量项目之前，先检查脚手架完整性、路径解释、命令冲突和 `/init` 边界 → `knowledge/integration-preflight-checklist.md`
 * **具体优于抽象** : 默认先写具体实现，只有在多实现、测试替身或明确解耦诉求出现时再抽象接口
 * **接口后置设计** : 接口从调用方需要出发定义，优先小接口，避免为了“未来可能需要”预留
 * **无数据不优化** : 性能优化先看 benchmark、pprof、逃逸分析，没有数据就不要引入 `sync.Pool` 或复杂优化

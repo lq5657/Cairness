@@ -76,6 +76,8 @@
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
+如果你准备把这套 harness 接入某个真实存量项目，先看 `knowledge/integration-preflight-checklist.md`。这份清单用于接入前环境级预检，避免命令冲突、路径理解错误和 `/init` 跑偏。
+
 `/inspect-codebase` 的四类示例报告可参考：
 
 1. `audits/examples/architecture-user-domain/report.md`
@@ -86,6 +88,7 @@
 如果要把 audit 报告转成正式 change，可参考：
 
 1. `audits/templates/to-change.md`
+2. `knowledge/integration-preflight-checklist.md`
 
 ## 我是项目接入者
 
