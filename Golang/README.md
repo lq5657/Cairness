@@ -2,6 +2,12 @@
 
 基于 Claude Code 的 Spec 驱动开发框架，专为 Golang 后端项目设计。
 
+快速入口：
+
+* 一页速查表：[`CHEATSHEET.md`](CHEATSHEET.md)
+* 主规则：[`.claude/CLAUDE.md`](.claude/CLAUDE.md)
+* 端到端示例： [`.claude/changes/examples/user-create-api/spec.md`](.claude/changes/examples/user-create-api/spec.md)
+
 ## 核心理念
 
 **Code is Cheap, Context is Expensive**
