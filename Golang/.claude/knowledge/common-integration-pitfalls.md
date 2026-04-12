@@ -165,14 +165,14 @@
 
 正确做法：
 - 能复用的问题要进入 `knowledge/index.md`
-- 接入相关问题优先沉淀到 `integration-preflight-checklist.md`
+- 接入相关问题优先沉淀到 `integration-preflight-checklist.md`，并通过 `cc-preflight` 作为正式入口执行
 - 如果问题属于长期设计约束，除了修模板，还要补主命令文档
 
 #### 建议使用方式
 
 接入真实项目时，建议按这个顺序使用本清单：
 
-1. 先过 `integration-preflight-checklist.md`
+1. 先执行 `cc-preflight`
 2. 再读本清单，确认是否已命中常见跑偏模式
-3. 再跑最小试跑链路：`cc-init` -> `cc-inspect-codebase architecture`
+3. 再跑最小试跑链路：`cc-init` -> `cc-enrich-context` -> `cc-explain-system` -> `cc-inspect-codebase architecture`
 4. 任何一次跑偏都优先修规则和模板，而不是靠人工记忆兜底

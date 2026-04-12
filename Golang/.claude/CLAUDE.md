@@ -83,11 +83,13 @@
 进行中的 change：无
 
 可直接执行：
-- cc-preflight
 - cc-init
 - cc-inspect-codebase architecture
 - cc-inspect-codebase logic
 - cc-propose <需求描述>
+
+若首次接入项目或升级 Harness 后需要验收：
+- cc-preflight
 
 若 `project-context.md` 已建立：
 - cc-enrich-context

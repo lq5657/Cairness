@@ -122,9 +122,10 @@
 
 新项目接入时，建议按这个顺序：
 
-1. 执行 `cc-init`
-2. 在 `project-context.md` 中确认哪些内容是“初始化建议”，哪些已真实落地
-3. 再进入 `cc-propose`
+1. 先执行 `cc-preflight`
+2. 再执行 `cc-init`
+3. 在 `project-context.md` 中确认哪些内容是“初始化建议”，哪些已真实落地
+4. 再进入 `cc-propose`
 
 ## 我是日常使用者
 
