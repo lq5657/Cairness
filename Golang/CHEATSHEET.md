@@ -55,7 +55,7 @@ Golang/.claude/changes/<change-id>/
 
 用途：
 - 分析真实工程结构
-- 填写 `rules/project-context.md`
+- 填写 `context/project-context.md`
 
 结果要求：
 - 写明真实目录、依赖、分层、日志、配置、测试约定
@@ -303,7 +303,7 @@ Golang/.claude/changes/<change-id>/
 ### 接入已有项目
 
 1. 先 `cc-init`
-2. 校验 `rules/project-context.md` 是否真实
+2. 校验 `context/project-context.md` 是否真实
 3. 选一个低风险需求跑 `cc-propose -> cc-apply -> cc-review`
 4. 试点阶段保留人工 review
 

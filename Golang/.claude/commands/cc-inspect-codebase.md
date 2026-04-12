@@ -73,7 +73,7 @@
 
 允许读取：
 - 与当前 `mode` / `scope` 直接相关的目录、代码、配置
-- `rules/project-context.md`
+- `context/project-context.md`
 - 必要的架构、配置、测试相关规则
 
 不建议读取：
@@ -148,5 +148,5 @@
 ## 需要加载的附加文件
 
 - `checkpoints/cc-inspect-codebase.md`
-- `rules/project-context.md`
+- `context/project-context.md`
 - 按 `mode` 增量加载相关专题规则

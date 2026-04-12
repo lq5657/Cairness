@@ -45,7 +45,7 @@ status: open
   - `internal/queue/message.go`
 - 配置/文档范围：
   - `rules/observability.md`
-  - `rules/project-context.md`
+  - `context/project-context.md`
 - 构建/测试命令：
   - `go build ./...`
 - 额外上下文：
@@ -66,7 +66,7 @@ status: open
 |------|------|------|------|----------|------|
 | Important | 可观测性 | 若消费者只在失败时打一条错误日志，没有记录 `enqueue / start / retry / success / fail` 阶段，就无法判断消息停在哪一段 | `internal/consumer/order_consumer.go:L1` | 为关键阶段建立稳定日志点 | open |
 | Important | 可观测性 | 如果日志里缺少 `message_id`、`order_id`、`retry_count`，跨消息重试与死信排查会失去最小定位依据 | `internal/consumer/order_consumer.go:L1` | 补齐关键任务标识和业务标识字段 | open |
-| Minor | 可观测性 | `project-context.md` 目前没有显式说明异步任务的 metrics / alerting / tracing 现状，接入人员难以判断该补哪里 | `rules/project-context.md:L71` | 在 `/init` 或 `/inspect-codebase` 后补足真实观测方案 | open |
+| Minor | 可观测性 | `project-context.md` 目前没有显式说明异步任务的 metrics / alerting / tracing 现状，接入人员难以判断该补哪里 | `context/project-context.md:L71` | 在 `/init` 或 `/inspect-codebase` 后补足真实观测方案 | open |
 
 #### 5. 重点证据
 
@@ -74,7 +74,7 @@ status: open
 |------|------|------|
 | 异步阶段最小要求 | `rules/observability.md` 已明确建议记录 `enqueue / start / retry / success / fail` 等关键阶段 | `rules/observability.md:L36` |
 | 异步任务关键字段 | 规则要求异步任务不能丢失任务标识、请求标识或关键业务标识 | `rules/observability.md:L20` |
-| 项目上下文仍待补全 | `project-context.md` 的“异步任务观测”一栏目前没有真实内容 | `rules/project-context.md:L71` |
+| 项目上下文仍待补全 | `project-context.md` 的“异步任务观测”一栏目前没有真实内容 | `context/project-context.md:L71` |
 
 #### 5.1 模式检查清单
 

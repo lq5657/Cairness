@@ -2,7 +2,7 @@
 
 ## 用途
 
-`cc-init` 只用于识别项目事实，并回写 `rules/project-context.md`。
+`cc-init` 只用于识别项目事实，并回写 `context/project-context.md`。
 它不是脚手架安装命令，不是项目体检命令，不是变更提案命令。
 
 ## 触发场景
@@ -25,7 +25,7 @@
 ## 输出
 
 产出：
-- 更新 `rules/project-context.md`
+- 更新 `context/project-context.md`
 
 不产出：
 - `changes/<change-id>/`
@@ -48,7 +48,7 @@
 - 仓库根目录最小结构
 - `go.mod` 或等价依赖入口
 - 与项目事实直接相关的配置入口
-- 现有 `rules/project-context.md`
+- 现有 `context/project-context.md`
 
 禁止读取：
 - 大量业务代码正文
@@ -67,7 +67,7 @@
    - 日志方案
    - 测试方式
    - 环境差异
-4. 更新 `rules/project-context.md`
+4. 更新 `context/project-context.md`
 5. 明确哪些结论是已确认事实，哪些仍待确认
 6. 结束，不自动进入 `cc-propose` 或 `cc-inspect-codebase`
 
@@ -88,4 +88,4 @@
 ## 需要加载的附加文件
 
 - `checkpoints/cc-init.md`
-- `rules/project-context.md`
+- `context/project-context.md`

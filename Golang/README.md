@@ -23,6 +23,8 @@
 ```
 .claude/
 ├── CLAUDE.md              # Bootstrap 总纲：启动、路由、生命周期
+├── context/
+│   └── project-context.md # 工程上下文（由 cc-init 填充）
 ├── commands/              # 按命令延迟加载的主流程规则
 │   ├── cc-init.md
 │   ├── cc-inspect-codebase.md
@@ -35,7 +37,6 @@
 │   ├── checkpoint-index.md # 兼容保留的索引页，不是运行时默认入口
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
-│   ├── project-context.md # 工程上下文（由 cc-init 填充）
 │   └── security.md        # 安全红线
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
@@ -105,7 +106,7 @@
 已有 Golang 项目接入时，建议按这个顺序：
 
 1. 执行 `cc-init`
-2. 检查 `rules/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
+2. 检查 `context/project-context.md` 是否真实反映目录、依赖、分层、团队约定、日志方案和日志格式
 3. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
 4. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
 5. 试点时保留人工 review，不要直接把 harness 当成自动审批器
@@ -131,10 +132,10 @@
 cc-init
 ```
 
-分析工程结构、依赖（go.mod）、分层模式，填充 `rules/project-context.md`。
+分析工程结构、依赖（go.mod）、分层模式，填充 `context/project-context.md`。
 
 边界说明：
-- `cc-init` 只更新 `rules/project-context.md`
+- `cc-init` 只更新 `context/project-context.md`
 - `cc-init` 不应该因为“缺少样例”去创建 `changes/examples/`
 - `cc-init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
 - `cc-init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`

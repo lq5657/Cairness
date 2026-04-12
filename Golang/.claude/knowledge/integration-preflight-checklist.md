@@ -53,7 +53,7 @@
 
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
-| 只更新 project-context | 产物集中在 `.claude/rules/project-context.md` | [ ] |
+| 只更新 project-context | 产物集中在 `.claude/context/project-context.md` | [ ] |
 | 不创建根目录脚手架 | 不会创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | [ ] |
 | 不补齐 `.claude` 脚手架 | 不会补建 `.claude/rules/*.md`、templates、examples | [ ] |
 | 缺脚手架时会停下 | 若 `.claude/` 不完整，会提示“先安装 harness”，而不是继续执行 | [ ] |
@@ -66,7 +66,7 @@
 推荐最小试跑顺序：
 
 1. `cc-init`
-2. 检查 `.claude/rules/project-context.md`
+2. 检查 `.claude/context/project-context.md`
 3. `cc-inspect-codebase architecture`
 4. 检查 `.claude/audits/<audit-id>/report.md`
 
