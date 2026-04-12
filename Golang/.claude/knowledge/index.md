@@ -63,7 +63,7 @@
   }
   ```
 * **Harness试点验收** : 发布前先用验收清单确认生命周期、规则边界、reviewer 契约和样例是否可跑通 → `knowledge/pilot-checklist.md`
-* **Harness接入预检** : 把框架接入真实存量项目之前，先检查脚手架完整性、路径解释、命令冲突和 `/init` 边界 → `knowledge/integration-preflight-checklist.md`
+* **Harness接入预检** : 把框架接入真实存量项目之前，先执行 `cc-preflight`；`knowledge/integration-preflight-checklist.md` 是该命令的执行依据，而不是隐性入口 → `commands/cc-preflight.md`
 * **Harness接入高频问题** : 接入真实项目时，优先排查 `cc-init` 边界、路径解释、命令冲突、checkpoint 展示契约和验证等级等常见跑偏点 → `knowledge/common-integration-pitfalls.md`
 * **系统讲解命令** : 当目标是帮助用户深入掌握大型复杂项目时，使用 `cc-explain-system` 输出系统定位、架构、数据流、技术机制、难点与阅读路径 → `commands/cc-explain-system.md`
 * **Checkpoint结果列** : 所有 checkpoint 表的状态必须写入 `结果` 列，禁止把 `[x]` / `[ ]` 塞进 `检查项` 列冒充结果，结果值只允许 `✅`、`❌`、`⚠️`、`N/A`

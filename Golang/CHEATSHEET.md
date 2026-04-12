@@ -51,6 +51,24 @@ Golang/.claude/changes/<change-id>/
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 只作兼容汇总索引
 
+### `cc-preflight`
+
+用途：
+- 在真实项目接入本 Harness 前做显式预检
+- 检查脚手架、路径、命令入口、模板和最小命令链路是否可用
+
+结果要求：
+- 给出“通过 / 不建议继续 / 待确认”的总体结论
+- 明确哪些问题要先修接入
+- 明确通过后建议进入的下一步命令
+
+执行依据：
+- `knowledge/integration-preflight-checklist.md`
+
+禁止：
+- 不要把 `cc-preflight` 扩展成业务代码体检
+- 不要自动进入 `cc-init`、`cc-enrich-context`、`cc-explain-system`
+
 ### `cc-init`
 
 用途：

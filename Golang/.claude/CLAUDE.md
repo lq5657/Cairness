@@ -36,6 +36,7 @@
 
 | 用户说的 | 映射命令 |
 |----------|----------|
+| "做接入前自检" / "跑接入预检" / "检查 harness 是否接好" | `cc-preflight` |
 | "初始化项目上下文" | `cc-init` |
 | "补充项目上下文" / "补全项目画像" | `cc-enrich-context` |
 | "讲解项目" / "输出系统设计方案" / "帮我深入理解项目" | `cc-explain-system` |
@@ -82,6 +83,7 @@
 进行中的 change：无
 
 可直接执行：
+- cc-preflight
 - cc-init
 - cc-inspect-codebase architecture
 - cc-inspect-codebase logic
@@ -140,6 +142,7 @@ changes/<change-id>/
 
 ### 命令总表
 
+- `cc-preflight`
 - `cc-init`
 - `cc-enrich-context`
 - `cc-explain-system`
@@ -155,6 +158,7 @@ changes/<change-id>/
 ### 命令分发
 
 收到命令后按需装载：
+- `cc-preflight` -> `commands/cc-preflight.md` + `checkpoints/cc-preflight.md`
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
 - `cc-enrich-context` -> `commands/cc-enrich-context.md` + `checkpoints/cc-enrich-context.md`
 - `cc-explain-system` -> `commands/cc-explain-system.md` + `checkpoints/cc-explain-system.md`

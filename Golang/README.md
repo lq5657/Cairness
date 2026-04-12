@@ -93,7 +93,7 @@
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
-如果你准备把这套 harness 接入某个真实存量项目，先看 `knowledge/integration-preflight-checklist.md`。这份清单用于接入前环境级预检，避免命令冲突、路径理解错误和 `cc-init` 跑偏。
+如果你准备把这套 harness 接入某个真实存量项目，先执行 `cc-preflight`。该命令会以 `knowledge/integration-preflight-checklist.md` 作为执行依据，检查接入前环境、资产完整性和命令入口稳定性。
 
 `cc-inspect-codebase` 的四类示例报告可参考：
 
@@ -111,13 +111,14 @@
 
 已有 Golang 项目接入时，建议按这个顺序：
 
-1. 执行 `cc-init`
-2. 检查 `context/project-context.md` 是否已建立最小可用上下文
-3. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
-4. 若需要让新维护者深入理解系统，执行 `cc-explain-system`
-5. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
-6. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
-7. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+1. 先执行 `cc-preflight`
+2. 再执行 `cc-init`
+3. 检查 `context/project-context.md` 是否已建立最小可用上下文
+4. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
+5. 若需要让新维护者深入理解系统，执行 `cc-explain-system`
+6. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
+7. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
+8. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 新项目接入时，建议按这个顺序：
 
@@ -133,6 +134,28 @@
 - 直接展示可复制的命令，例如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求描述>`
 - 启动阶段不要全量读取 `rules/`；具体命令触发后再按需读取 `commands/`、`checkpoints/` 与专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 仅作兼容索引页
+
+### 0. 接入前自检
+
+```
+cc-preflight
+```
+
+在真实项目第一次接入本 Harness 前，先执行该命令。
+
+用途：
+- 检查 `.claude/` 脚手架是否完整
+- 检查路径解释是否一致
+- 检查主命令、checkpoint、模板等关键功能资产是否齐全
+- 检查最小命令链路是否具备执行前提
+
+执行依据：
+- `knowledge/integration-preflight-checklist.md`
+
+边界说明：
+- `cc-preflight` 不审查业务代码质量
+- `cc-preflight` 不替代 `cc-init`
+- `cc-preflight` 不生成 change 或 audit
 
 ### 1. 初始化项目上下文
 
@@ -295,6 +318,7 @@ cc-test <变更名>
 
 | 命令 | 说明 |
 |------|------|
+| `cc-preflight` | 执行接入前自检，检查 Harness 是否已正确接入 |
 | `cc-init` | 初始化项目上下文 |
 | `cc-enrich-context` | 补充更完整的项目上下文 |
 | `cc-explain-system [scope]` | 输出系统讲解材料，帮助深入理解项目 |
