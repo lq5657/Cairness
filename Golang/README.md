@@ -164,11 +164,12 @@ cc-preflight
 cc-init
 ```
 
-快速识别工程的最小可用事实，填充 `context/project-context.md`。
+建立可长期复用的“基础事实层”上下文，填充 `context/project-context.md`。
 
 边界说明：
 - `cc-init` 只更新 `context/project-context.md`
-- `cc-init` 默认只要求建立最小可用上下文，不追求一次性补齐完整项目画像
+- `cc-init` 默认只沉淀高频复用、低成本确认的基础事实，不追求一次性补齐完整项目画像
+- `cc-init` 的目标是让后续命令知道“从哪里开始读”，不是让后续命令误以为已经理解整个系统
 - `cc-init` 不应该因为“缺少样例”去创建 `changes/examples/`
 - `cc-init` 不应该因为“缺少脚手架”去创建仓库根目录 `rules/`、`knowledge/`、`changes/`、`audits/`
 - `cc-init` 不负责补齐 `.claude/rules/*.md`、`.claude/knowledge/index.md`、`.claude/changes/templates/`、`.claude/audits/templates/`
@@ -185,17 +186,19 @@ cc-init
 cc-enrich-context
 ```
 
-当 `cc-init` 已完成，但你需要更完整的项目画像时使用。
+当 `cc-init` 已完成，但你需要更完整的项目事实画像时使用。
 
 用途：
 - 补充分层与调用关系
 - 补充日志、配置、测试、可观测性现状
+- 补充外部依赖与集成边界
 - 补充领域高风险点
 
 边界说明：
 - `cc-enrich-context` 只补充 `context/project-context.md`
 - `cc-enrich-context` 不是 `cc-inspect-codebase`，不输出审查问题结论
 - `cc-enrich-context` 不是 `cc-review`，不审已有 change
+- `cc-enrich-context` 仍然只补事实，不输出系统讲解材料
 - 证据不足时保留“待确认”，不要把推测写成事实
 
 ### 1.2 输出系统讲解材料

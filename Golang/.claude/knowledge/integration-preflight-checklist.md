@@ -92,7 +92,8 @@
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
 | `cc-init` 可执行 | 不报命令冲突，不误建目录 | [ ] |
-| `project-context.md` 真实 | 目录、依赖、分层、日志、配置、测试策略不是套模板 | [ ] |
+| `project-context.md` 基础事实真实 | `cc-init` 产出的项目身份、目录、依赖、启动入口、配置入口、测试入口与待确认事项不是套模板 | [ ] |
+| `project-context.md` 分层补图可延后 | 若分层、日志、配置策略、可观测性、测试策略尚未确认，可留待 `cc-enrich-context`，不视为 `cc-init` 失败 | [ ] |
 | `cc-enrich-context` 可执行 | 能补充分层、日志、配置、测试等高解释成本上下文，不越界输出 Findings | [ ] |
 | `cc-explain-system` 可执行 | 能输出 `context/system-overview.md`，且不依赖 Findings 视角 | [ ] |
 | `cc-inspect-codebase` 可执行 | 能正确进入审查模式，不被宿主截获 | [ ] |

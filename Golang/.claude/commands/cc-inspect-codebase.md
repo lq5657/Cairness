@@ -64,7 +64,7 @@
 ## 与其他命令的边界
 
 与 `cc-init` 的区别：
-- `cc-init` 识别项目事实
+- `cc-init` 识别可长期复用的基础项目事实
 - `cc-inspect-codebase` 识别项目问题
 
 与 `cc-review` 的区别：

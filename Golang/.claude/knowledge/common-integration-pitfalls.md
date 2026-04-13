@@ -87,19 +87,22 @@
 - `结果` 值只允许 `✅`、`❌`、`⚠️`、`N/A`
 - 接入前最少跑一次 `cc-inspect-codebase architecture` 检查展示契约是否稳定
 
-#### 6. 把 `cc-inspect-codebase`、`cc-review`、`cc-init` 边界混在一起
+#### 6. 把 `cc-init`、`cc-enrich-context`、`cc-inspect-codebase`、`cc-review` 边界混在一起
 
 典型症状：
 - 用 `cc-init` 输出问题清单
+- 用 `cc-init` 强行补全分层、日志、配置策略、可观测性和测试策略
+- 用 `cc-enrich-context` 输出 Findings 或审查结论
 - 用 `cc-inspect-codebase` 审已有 change 的实现
 - 用 `cc-review` 去审全仓历史问题，而不是审当前 change
 
 根因：
-- 没把三个命令的输入、产物和边界区分清楚
+- 没把四个命令的输入、产物和边界区分清楚
 - 规则只写了“做什么”，没反复强调“它不是什么”
 
 正确做法：
-- `cc-init` 只识别项目事实
+- `cc-init` 只识别可长期复用的基础项目事实
+- `cc-enrich-context` 只补充高解释成本但仍属于事实的项目画像
 - `cc-inspect-codebase` 只做存量问题审查，产出 `audits/`
 - `cc-review` 只审已有 change 的实现，产出 `review.md`
 

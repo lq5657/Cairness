@@ -54,11 +54,11 @@
 ## 与其他命令的边界
 
 与 `cc-init` 的区别：
-- `cc-init` 识别最小项目事实
+- `cc-init` 识别最小且可长期复用的基础项目事实
 - `cc-explain-system` 输出面向人理解的系统讲解材料
 
 与 `cc-enrich-context` 的区别：
-- `cc-enrich-context` 补充 `project-context.md` 中的事实
+- `cc-enrich-context` 补充 `project-context.md` 中的高解释成本事实
 - `cc-explain-system` 组织成“如何理解系统”的讲解视角
 
 与 `cc-inspect-codebase` 的区别：

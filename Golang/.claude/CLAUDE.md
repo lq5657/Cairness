@@ -187,7 +187,7 @@ changes/<change-id>/
 
 ### 文档职责
 
-- `context/project-context.md`：项目事实，不是启动阶段默认读取的大型规则集
+- `context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
 - `context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
 - `tasks.md`：原子化任务拆分、依赖关系、验收标准
