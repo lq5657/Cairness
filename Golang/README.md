@@ -120,11 +120,11 @@
 7. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
 8. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
-新项目接入时，建议按这个顺序：
+首次将本 Harness 接入某个已有项目时，建议按这个顺序：
 
 1. 先执行 `cc-preflight`
 2. 再执行 `cc-init`
-3. 在 `project-context.md` 中确认哪些内容是“初始化建议”，哪些已真实落地
+3. 在 `project-context.md` 中确认当前已知事实与待确认事项
 4. 再进入 `cc-propose`
 
 ## 我是日常使用者
@@ -362,5 +362,5 @@ cc-test <变更名>
 本框架适用于：
 
 * 已有 Golang 后端项目（推荐先执行 `cc-init` 识别真实上下文）
-* 新建 Golang 项目（执行 `cc-init` 生成初始化建议，再进入 `cc-propose`）
+* 新建 Golang 项目（执行 `cc-init` 建立已知事实与待确认事项，再进入 `cc-propose`）
 * 需要 Spec 驱动开发规范的团队
