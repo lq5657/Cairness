@@ -18,16 +18,19 @@
 - `review.md` 已存在
 - `review.md` 中结论为可归档
 - `spec.md` 状态为 `review`
+- 已存在本轮 change 的最新验证证据，且仍能支撑归档结论
 
 ## 执行要求
 
 - 逐条展示 `log.md` 知识发现，确认后沉淀到 `knowledge/`
+- 归档前必须再次确认：当前 `review.md` 结论、Findings 状态和最新验证证据一致
 - 归档完成后将 `spec.md` 状态改为 `done`
 
 ## 失败处理
 
 - 若知识沉淀尚未确认，保持 `status: review`
 - 若存在 `blocked` / `open` 问题，禁止进入归档
+- 若验证证据陈旧、缺失或与当前代码不一致，禁止进入归档
 
 ## 建议读取
 

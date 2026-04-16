@@ -302,6 +302,7 @@ cc-apply <变更名>
 
 执行要求：
 - 以 task 为最小执行单元推进，任一时刻只允许一个 task 处于 `in_progress`
+- 开始某个 task 前，先做 Task Plan Review，确认当前 task 仍然必要、依赖满足、验证方式足够
 - 开始某个 task 前，先对齐目标、不包含范围、验收标准、验证步骤、测试要求、回退方式
 - 每个 task 开始前先做 task 启动简报
 - 每个 task 完成后必须通过 task 级 gate：实现完成、验证完成、测试要求满足、文档同步
@@ -331,6 +332,11 @@ cc-test <变更名>
 
 `cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试设计和补强验证证据。
 
+`cc-fix` 补充说明：
+- 默认只处理 `review.md` 中 `status = open` 的 Findings
+- 先确认问题仍成立，再区分症状、失败点和根因，再形成最小修复假设
+- 对不清晰或已不再适用的 Finding，先澄清或转 `accepted`，不要机械照做
+
 `cc-test` 补充说明：
 - 先读取 `spec.md` 的最低验证等级和 `tasks.md` 的测试要求
 - 必须区分哪些验证已在 `cc-apply` 内完成，哪些要在 `cc-test` 中补齐
@@ -341,6 +347,10 @@ cc-test <变更名>
 ### 失败恢复
 
 这套 harness 允许命令失败，但不允许失败后没有记录。任何 `cc-apply`、`cc-test`、`cc-review`、`cc-fix` 中断，都必须在 `spec.md` 或 `log.md` 中留下可恢复的上下文，再继续下一次执行。
+
+### Fresh Verification
+
+这套 harness 不允许在没有 fresh verification evidence 的情况下声称“完成”“通过”“已修复”“可归档”。旧验证结果只能作为背景信息，不能直接复用为当前结论。
 
 ### 并发治理
 

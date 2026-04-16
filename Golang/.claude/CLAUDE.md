@@ -14,6 +14,7 @@
 - `No Spec, No Code`：没有 `changes/<change-id>/spec.md`，禁止进入实现
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
 - `变更即记录`：改代码时必须同步更新 change 文档
+- 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 
 #### 脚手架边界

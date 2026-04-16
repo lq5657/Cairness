@@ -11,6 +11,14 @@ description: "Golang Harness 的验证等级与证据规范"
 - `go build ./...` 只是最小编译校验，不自动等于“可交付”。
 - `/propose` 或 `/test` 必须为每个 change 声明最低验证等级和证据要求。
 - `/review` 必须检查：实际验证是否达到声明等级，且与风险相匹配。
+- 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”。
+
+#### 1.1 Fresh Evidence 约束
+
+- `fresh verification evidence` 指当前实现、当前修复或当前结论之后重新获得的验证证据。
+- 旧验证结果可作为背景信息，但不能直接复用为当前 `done` / `fixed` / `pass` / `archive` 结论。
+- 证据必须直接覆盖当前 task、当前 Finding 或当前归档结论对应的风险点。
+- 若验证无法覆盖全部风险，必须说明替代证据、剩余风险和为何仍允许继续。
 
 #### 2. 验证等级
 
@@ -41,5 +49,7 @@ description: "Golang Harness 的验证等级与证据规范"
 #### 5. 与命令的关系
 
 - `/apply`：按 task 展示当前已完成的验证证据；不得跳过本次 change 声明的最低等级。
+- `/fix`：没有针对当前 Finding 的新鲜验证证据，不得将其改为 `fixed`。
 - `/test`：负责补足验证计划与证据，不得伪造 Red/Green 或手工验证结果。
 - `/review`：若验证等级不足或证据不足，应在 Findings 中记录“验证不足”。
+- `/archive`：没有本轮最新验证证据，不得仅因旧 review 结论存在就直接归档。

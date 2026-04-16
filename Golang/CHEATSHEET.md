@@ -189,6 +189,7 @@ Golang/.claude/changes/<change-id>/
 
 执行要求：
 - 先把 `spec.status` 改为 `apply`
+- 开始 task 前先做 Task Plan Review，确认当前 task 仍然合理、依赖满足、验证方式足够
 - 一次只推进一个 task，并先对齐 task 的边界、验证步骤、测试要求、回退方式
 - 每个 task 开始前先做 task 启动简报：这次做什么、不做什么、怎么验证
 - 每个 task 完成后必须通过 task 级 gate，再推进下一个 task
@@ -229,6 +230,8 @@ Gate：
 
 注意：
 - 默认只处理 `status = open` 的 Findings
+- 先确认 Finding 仍然成立，再区分症状、失败点和根因，再做最小修复
+- 不清晰或不再适用的 Finding 先澄清或转 `accepted`，不要机械照做
 - 已修复问题改为 `fixed`，不要删除审计记录
 
 ### `cc-test <change-id>`
@@ -249,6 +252,7 @@ Gate：
 前置：
 - `review.md` 已允许归档
 - `spec.status = review`
+- 已存在 fresh verification evidence，能支撑当前归档结论
 
 结果：
 - 完成知识沉淀

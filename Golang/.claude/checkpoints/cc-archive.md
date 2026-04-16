@@ -11,6 +11,7 @@
 | `review.md` 已存在且结论允许归档 | ✅ / ❌ / ⚠️ / N/A |
 | `spec.status` 为 `review` | ✅ / ❌ / ⚠️ / N/A |
 | 不存在 `blocked` / `open` 状态的问题 | ✅ / ❌ / ⚠️ / N/A |
+| 已确认本轮存在 fresh verification evidence | ✅ / ❌ / ⚠️ / N/A |
 
 ## 执行中检查
 
@@ -19,6 +20,7 @@
 | 已逐条展示 `log.md` 知识发现 | ✅ / ❌ / ⚠️ / N/A |
 | 已确认哪些内容沉淀到 `knowledge/` | ✅ / ❌ / ⚠️ / N/A |
 | 未跳过必要的知识确认过程 | ✅ / ❌ / ⚠️ / N/A |
+| 已确认当前 `review.md` 结论、Findings 状态和最新验证证据一致 | ✅ / ❌ / ⚠️ / N/A |
 
 ## 完成后检查
 
@@ -27,3 +29,4 @@
 | 变更目录已归档（`status: done`） | ✅ / ❌ / ⚠️ / N/A |
 | `spec.status` 已更新为 `done` | ✅ / ❌ / ⚠️ / N/A |
 | `log.md` 完整可读 | ✅ / ❌ / ⚠️ / N/A |
+| 未依赖陈旧验证结果完成归档 | ✅ / ❌ / ⚠️ / N/A |
