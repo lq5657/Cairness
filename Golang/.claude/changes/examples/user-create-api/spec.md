@@ -28,6 +28,13 @@ complexity: 🟡中等
 - 当 email 已存在时返回业务错误，不重复创建
 - 落地统一参数校验、业务编排、仓储写入和日志
 
+#### 1.1 本次不做
+
+- 不补真实数据库 migration 或表结构调整
+- 不顺手重构现有用户查询链路
+- 不在本次样例中引入真实 HTTP 集成测试环境
+- 不扩展用户创建以外的字段、权限或异步通知逻辑
+
 #### 2. 代码现状（Research Findings）
 
 每个结论必须有代码出处（文件路径 + 结构体名/函数名）
@@ -150,10 +157,20 @@ complexity: 🟡中等
 
 #### 10. 待澄清
 
+记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `/apply`。
+
 * [x] email 是否作为幂等键使用：是
 * [x] 重复 email 返回 409 还是业务错误码：返回业务错误码，由 Handler 映射 HTTP 状态
 
-#### 11. 技术决策
+#### 11. 方案比较
+
+| 方案 | 是否采用 | 适用前提 | 采用 / 放弃原因 |
+|------|----------|----------|-----------------|
+| 在 `UserService.Create` 中统一做幂等检查和创建编排 | 是 | 已有 `handler -> service -> repo` 分层，写路径应进入 Service | 能避免调用方绕过 Handler 直接写库，业务规则集中，便于测试 |
+| 仅在 Handler 中做重复 email 判断，再直接落库 | 否 | 仅适用于极薄写路径、且所有写操作都经由 HTTP 入口 | 规则容易被绕过，Service/Repo 缺少一致保护，后续复用成本高 |
+| 直接依赖数据库唯一索引报错，再在上层解析错误 | 否 | 需要项目已明确定义 DB 错误到业务错误的稳定映射 | 当前样例重点是展示 Service 规则编排，直接透传 DB 错误会削弱业务语义 |
+
+#### 12. 技术决策
 
 | 决策 | 选择 | 放弃的方案 | 原因 |
 |------|------|------------|------|
@@ -162,20 +179,20 @@ complexity: 🟡中等
 | 测试重点 | 先覆盖 Service | 只测 Handler | Service 是业务规则核心 |
 | 并发策略 | 标记 `parallel_safe: true`，但仅限与查询链路类变更并行 | 默认串行 | 当前改动文件与查询链路可切分，冲突面较小 |
 
-#### 12. 执行日志
+#### 13. 执行日志
 
 | Task | 状态 | 实际改动文件 | 备注 |
 |------|------|-------------|------|
-| Task 1 | done | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 完成创建链路 |
-| Task 2 | done | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 补入口和核心测试 |
+| Task 1 | done | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 完成创建链路；按 task 计划验证 `go build ./...`，未超出“不包含范围” |
+| Task 2 | done | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 补入口和核心测试；完成回归测试并同步 review 所需证据 |
 
-#### 13. 审查结论
+#### 14. 审查结论
 
 * **Stage 1 / Spec Compliance**：pass
 * **Stage 2 / Code Quality**：pass
 * **总体结论**：可归档
 
-#### 14. 确认记录（HARD-GATE）
+#### 15. 确认记录（HARD-GATE）
 
 * **确认时间**：2026-04-11 14:30
 * **确认人**：Maintainer Demo

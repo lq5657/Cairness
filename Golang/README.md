@@ -281,7 +281,18 @@ cc-promote-audit <audit-id> <change-id>
 cc-propose <需求描述>
 ```
 
-流程：Research → 澄清提问 → YAGNI 裁剪 → 生成 Spec → 生成 Tasks → HARD-GATE 确认
+流程：
+- 先做本地 Research，识别现有实现、链路和项目约定
+- 判断当前上下文是否足以支撑方案收敛
+- 若是绿地项目或本地缺少参照，做受控外部 Research，提炼成熟方案与权衡
+- 先重述目标、边界和关键约束，再提高清晰问题
+- 做方案比较，并明确“本次要做 / 本次不做”
+- 再生成 `spec.md` 和 `tasks.md`
+- 最后等待 HARD-GATE 确认
+
+补充约束：
+- 若仍存在影响 task 拆分的关键未决问题，只能保持 `status: propose`
+- 外部 Research 只能作为方案比较输入，正式结论必须回写到 `spec.md`
 
 ### 3. 执行编码
 
@@ -289,7 +300,13 @@ cc-propose <需求描述>
 cc-apply <变更名>
 ```
 
-逐 task 执行，每 task 完成后验证（`go build ./...`），自动 commit；全部完成后进入 `review` 状态。
+执行要求：
+- 以 task 为最小执行单元推进，任一时刻只允许一个 task 处于 `in_progress`
+- 开始某个 task 前，先对齐目标、不包含范围、验收标准、验证步骤、测试要求、回退方式
+- 每个 task 开始前先做 task 启动简报
+- 每个 task 完成后必须通过 task 级 gate：实现完成、验证完成、测试要求满足、文档同步
+- 默认一个 task 一个 commit
+- 全部 task 完成后再进入 `review` 状态
 
 ### 4. 代码审查
 
@@ -299,6 +316,12 @@ cc-review <变更名>
 
 两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
 
+审查 Gate：
+- Stage 1 未通过时，不得给出“可归档”
+- 若存在 `Critical open` Findings，必须进入 `cc-fix`
+- 若存在未被合理接受的 `Important open` Findings，默认不得归档
+- 审查时必须检查 `tasks.md` 中每个 task 是否真正达到声明的验收标准
+
 ### 5. 修复与补测
 
 ```
@@ -306,7 +329,12 @@ cc-fix <变更名>
 cc-test <变更名>
 ```
 
-`cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试和展示验证证据。
+`cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试设计和补强验证证据。
+
+`cc-test` 补充说明：
+- 先读取 `spec.md` 的最低验证等级和 `tasks.md` 的测试要求
+- 必须区分哪些验证已在 `cc-apply` 内完成，哪些要在 `cc-test` 中补齐
+- 不得把本应在 `cc-apply` 中完成的最低验证全部推迟到 `cc-test`
 
 ## 运行约束
 

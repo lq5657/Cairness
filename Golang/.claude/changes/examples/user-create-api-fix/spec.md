@@ -5,7 +5,7 @@ change_id: user-create-api-fix
 status: review
 depends_on: [user-create-api]
 parallel_safe: false
-branch: fix/user-create-api
+branch: fix/user-create-api-fix
 created: 2026-04-11
 updated: 2026-04-11
 complexity: 🟢简单
@@ -28,6 +28,13 @@ complexity: 🟢简单
 - 为用户创建流程补充外部调用/持久化调用的 context 超时约束
 - 补齐 `%w` 错误包装
 - 更新 review 结论，形成一次完整的 `/fix` 闭环示例
+
+#### 1.1 本次不做
+
+- 不改变原有用户创建的业务规则、幂等语义和错误码映射
+- 不新增接口字段、权限逻辑或异步通知
+- 不引入真实数据库慢调用压测或集成环境
+- 不回收 `review.md` 中已是 `fixed` 或 `accepted` 的历史 Findings
 
 #### 2. 代码现状（Research Findings）
 
@@ -134,10 +141,20 @@ complexity: 🟢简单
 
 #### 10. 待澄清
 
+记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `/apply`。
+
 * [x] 超时边界是否沿用项目默认 3 秒：是
 * [x] 修复是否需要新增对外错误码：否，仅增强内部错误上下文
 
-#### 11. 技术决策
+#### 11. 方案比较
+
+| 方案 | 是否采用 | 适用前提 | 采用 / 放弃原因 |
+|------|----------|----------|-----------------|
+| 在 repo/service 边界显式补 timeout 与 `%w` 错误包装 | 是 | 问题集中在内部实现质量，不需要修改对外契约 | 变更面小，能直接回收 review Findings，且不改变业务行为 |
+| 完全依赖上游请求超时，不在 repo 边界设置保护 | 否 | 仅适用于调用链已有严格统一超时治理 | 底层慢调用缺少最小保护，难以在 fix 中独立证明改进 |
+| 保持原样返回底层错误，只在日志里补上下文 | 否 | 仅适用于调用方已有统一错误分类与日志关联 | 调用方和 review 都难以定位失败来源，修复收益不足 |
+
+#### 12. 技术决策
 
 | 决策 | 选择 | 放弃的方案 | 原因 |
 |------|------|------------|------|
@@ -145,20 +162,20 @@ complexity: 🟢简单
 | 错误包装 | `fmt.Errorf("create user: %w", err)` | 直接原样返回 | 便于排障与 review |
 | Findings 处理方式 | 只回收 `open` 问题，修复后改为 `fixed` | 删除已修复 Findings | 保留修复链路，便于审计和恢复 |
 
-#### 12. 执行日志
+#### 13. 执行日志
 
 | Task | 状态 | 实际改动文件 | 备注 |
 |------|------|-------------|------|
-| Task 1 | done | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 补超时与错误包装 |
-| Task 2 | done | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 补测试和回写 review |
+| Task 1 | done | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 补超时与错误包装；验证 `go build ./...` 通过，未改变业务语义 |
+| Task 2 | done | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 补测试和回写 review；仅处理 `open` Findings，保留 `fixed` 审计记录 |
 
-#### 13. 审查结论
+#### 14. 审查结论
 
 * **Stage 1 / Spec Compliance**：pass
 * **Stage 2 / Code Quality**：pass
 * **总体结论**：可归档
 
-#### 14. 确认记录（HARD-GATE）
+#### 15. 确认记录（HARD-GATE）
 
 * **确认时间**：2026-04-11 16:10
 * **确认人**：Maintainer Demo

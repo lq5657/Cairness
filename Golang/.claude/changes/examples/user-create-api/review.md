@@ -5,8 +5,12 @@
 填写约束：
 - `Stage 1`、`Stage 2`、`Findings`、`结论` 四部分都必须保留
 - `Stage 1` 固定 5 行，`Stage 2` 固定 3 行
+- 必须增加 `Task Coverage` 小节，用于检查 task 级验收是否真正完成
 - `Findings` 仅记录问题；无问题时写一行 `无`
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
+- `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
+- `fixed`：问题已修复，保留记录，不得删除
+- `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
 - 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
@@ -25,7 +29,14 @@ final_status: pass
 * `log.md`：`changes/examples/user-create-api/log.md`
 * 审查代码范围：`internal/handler/user_handler.go`, `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/service/user_service_test.go`
 
-#### 2. Stage 1 — Spec Compliance
+#### 2. Task Coverage
+
+| Task | 声明的验收标准 | 验证证据是否充分 | 结果 | 备注 |
+|------|----------------|------------------|------|------|
+| Task 1 | `UserService.Create` 返回稳定业务错误；Repo 提供创建方法；`go build ./...` 通过 | 是 | ✅ | 核心链路已完成，验证证据与 task 目标一致 |
+| Task 2 | Handler 错误映射稳定；成功和重复 email 场景回归通过；`go test ./...` 通过 | 是 | ✅ | 入口层和回归测试均已落地，文档已同步 |
+
+#### 3. Stage 1 — Spec Compliance
 
 | # | 检查项 | 文件位置 | 结果 | 备注 |
 |---|--------|----------|------|------|
@@ -33,9 +44,9 @@ final_status: pass
 | 2 | 多余实现 | — | ✅ | 未发现 spec 外能力扩张 |
 | 3 | 理解偏差 | `internal/service/user_service.go:L1` | ✅ | 幂等检查落在 Service，符合 spec |
 | 4 | 业务规则落地 | `internal/service/user_service.go:L1` | ✅ | email 重复返回稳定业务错误 |
-| 5 | 数据变更准确性 | — | ✅ | 无 schema 变更，和 spec 一致 |
+| 5 | 对外契约准确性 | — | ✅ | 无 schema 变更，新增接口的兼容性声明和实现一致 |
 
-#### 3. Stage 2 — Code Quality
+#### 4. Stage 2 — Code Quality
 
 | 级别 | 问题类型 | 文件位置 | 结果 | 建议 |
 |------|----------|----------|------|------|
@@ -43,14 +54,18 @@ final_status: pass
 | Important | 错误/context/校验/魔法值 | `internal/handler/user_handler.go:L1` | ✅ | 参数校验和错误映射完整 |
 | Minor | 文档/注释/import | `internal/service/user_service.go:L1` | ✅ | 未发现影响合并的问题 |
 
-#### 4. Findings
+#### 5. Findings
 
 | 级别 | 描述 | 位置 | 建议动作 | 状态 |
 |------|------|------|----------|------|
-| 无 | 无问题 | — | 无 | accepted |
+| 无 | 无问题 | — | 无 | — |
 
-#### 5. 结论
+#### 6. 结论
 
 * **Stage 1 结论**：pass
 * **Stage 2 结论**：pass
 * **总体结论**：可归档
+
+结论约束：
+- 若存在 `Critical open`，总体结论不得为“可归档”
+- 若存在未被合理接受的 `Important open`，总体结论不得为“可归档”

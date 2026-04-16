@@ -169,25 +169,29 @@ Golang/.claude/changes/<change-id>/
 ### `cc-propose <需求>`
 
 流程：
-1. 读代码做 Research
-2. 提澄清问题
-3. 做 YAGNI 裁剪
-4. 生成 `spec.md`
-5. 生成 `tasks.md`
-6. 等待 HARD-GATE 确认
+1. 先做本地 Research，识别现有实现、链路和项目约定
+2. 判断当前上下文是否足以支撑方案收敛
+3. 若是绿地项目或本地缺少参照，做受控外部 Research，提炼成熟方案与权衡
+4. 先重述目标、边界和关键约束，再提高价值澄清问题
+5. 做方案比较，并明确“本次要做 / 本次不做”
+6. 生成 `spec.md`
+7. 生成 `tasks.md`
+8. 等待 HARD-GATE 确认
 
 进入 `cc-apply` 前必须满足：
 - 需求明确
 - 功能点已识别
 - 与现有 change 的冲突已检查
 - `待澄清` 全部解决
+- 若使用外部 Research，正式结论已回写 `spec.md`，而不是停留在参考资料层
 
 ### `cc-apply <change-id>`
 
 执行要求：
 - 先把 `spec.status` 改为 `apply`
-- 按 task 逐个实现
-- 每个 task 完成后给出验证证据
+- 一次只推进一个 task，并先对齐 task 的边界、验证步骤、测试要求、回退方式
+- 每个 task 开始前先做 task 启动简报：这次做什么、不做什么、怎么验证
+- 每个 task 完成后必须通过 task 级 gate，再推进下一个 task
 - 默认一个 task 一个 commit
 - 所有 task 完成后再改为 `review`
 
@@ -203,6 +207,12 @@ Golang/.claude/changes/<change-id>/
 两阶段：
 1. Spec Compliance
 2. Code Quality
+
+Gate：
+- Stage 1 未通过，不得给出“可归档”
+- 存在 `Critical open` Findings，必须进入 `cc-fix`
+- 存在未被合理接受的 `Important open` Findings，默认不得归档
+- 必须检查 `tasks.md` 中每个 task 是否真正达到声明的验收标准
 
 产物：
 - `changes/<change-id>/review.md`
@@ -225,11 +235,14 @@ Golang/.claude/changes/<change-id>/
 
 用途：
 - 补测试设计
-- 补验证证据
+- 补 `cc-apply` 未覆盖的更高验证等级证据
 
 要求：
+- 先读取 `spec.md` 的最低验证等级和 `tasks.md` 的测试要求
+- 明确区分哪些验证已在 `cc-apply` 完成，哪些需要在 `cc-test` 补齐
 - 在 `test-spec.md` 说明测试层级选择和原因
 - bugfix 默认至少有一条回归证据
+- 不得把本应在 `cc-apply` 中完成的最低验证全部推迟到 `cc-test`
 
 ### `cc-archive <change-id>`
 

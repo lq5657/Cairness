@@ -11,6 +11,12 @@ updated: YYYY-MM-DD
 **拆分顺序：** 数据模型 → 接口协议 → 底层实现 → 上层编排 → 入口层
 **每个任务** = 可独立提交的原子变更（3-5 个文件）
 **每个任务必须精确到**：文件路径 + 函数签名
+**执行约束：**
+- 任一时刻只允许一个 task 处于 `in_progress`
+- 只有通过验证 gate 的 task 才能标记为 `done`
+- 未完成的 task 必须显式标记为 `blocked` / `partial` / `aborted`，不能留空
+- `验证步骤` 是 `cc-apply` 判断 task 是否完成的直接依据
+- `测试要求` 是 `cc-apply` 与 `cc-test` 的最低协同约束
 
 若涉及数据库变更，建议拆分顺序：
 1. migration / schema 准备
@@ -30,6 +36,7 @@ updated: YYYY-MM-DD
 #### Task 1: 任务名
 
 * **目标** : 一句话描述
+* **不包含范围** : 明确本 task 不处理的功能、历史问题或下游联动，防止边界漂移
 * **涉及文件** :
   * `internal/service/user_service.go` — 新增/修改，做什么
 * **关键签名** :
@@ -43,6 +50,9 @@ updated: YYYY-MM-DD
   func (s *UserService) Create(...) // 新增参数或返回值时注明
   ```
 * **验收标准** : （task 完成时必须满足的条件）
+* **验证步骤** : （明确命令、测试名、接口行为或日志证据，确保 task 完成后可立刻验证）
+* **测试要求** : （如：先 Red 再 Green / 至少补 1 条回归用例 / 仅需 build + 手工验证；若不做 TDD，需写退化原因）
+* **回退方式** : （说明此 task 失败时如何安全撤回、停留或局部回滚）
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
 * **对应 commit** : `[<变更名>] <中文简述>`
 * **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式；若 `parallel_safe = true`，必须说明可并行理由

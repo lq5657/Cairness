@@ -25,6 +25,24 @@
 1. Spec Compliance：先检查缺失实现、多余实现、理解偏差、业务规则落地、对外契约准确性
 2. Code Quality：仅在阶段一 PASS 后进入，关注 Critical / Important / Minor 风险
 
+### Gate 规则
+
+- Stage 1 若为 `fail`，总体结论只能是进入 `cc-fix`；`stage2_status` 只能写 `skipped` 或 `partial`，不得写“可归档”
+- Stage 2 若存在 `Critical` 且状态为 `open` 的 Findings，总体结论只能是进入 `cc-fix`
+- Stage 2 若存在 `Important` 且状态为 `open` 的 Findings，默认不得归档；如确需放行，必须转为 `accepted`，并写明接受理由、影响面与承担依据
+- `Minor` Findings 默认不阻断归档，但仍应记录，除非确认无审计价值
+
+### Task Coverage
+
+- `cc-review` 不仅审 change 整体，还必须对照 `tasks.md` 检查每个 task 是否真正达到其声明的验收标准
+- 若 task 的验证证据不足、执行结果与验收标准不一致，或 change 文档未同步，应形成 Findings，而不是只写总体备注
+
+### Findings 状态语义
+
+- `open`：问题存在，必须进入 `cc-fix` 处理，除非后续转为 `accepted`
+- `fixed`：问题已在后续修复中解决，必须保留审计记录，不得删除
+- `accepted`：经明确评估后暂不处理，必须写明接受理由，不得作为默认兜底状态
+
 ## 失败与恢复
 
 - Stage 1 未完成时，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`
