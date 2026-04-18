@@ -93,7 +93,7 @@
 
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
-如果你准备把这套 harness 接入某个真实存量项目，先执行 `cc-preflight`。该命令会以 `knowledge/integration-preflight-checklist.md` 作为执行依据，检查接入前环境、资产完整性和命令入口稳定性。
+如果你需要验收某个真实存量项目对这套 harness 的接入是否完整，可执行 `cc-preflight`。该命令会以 `knowledge/integration-preflight-checklist.md` 作为执行依据，检查接入环境、资产完整性和命令入口稳定性。
 
 `cc-inspect-codebase` 的四类示例报告可参考：
 
@@ -111,21 +111,23 @@
 
 已有 Golang 项目接入时，建议按这个顺序：
 
-1. 先执行 `cc-preflight`
-2. 再执行 `cc-init`
-3. 检查 `context/project-context.md` 是否已建立最小可用上下文
-4. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
-5. 若需要让新维护者深入理解系统，执行 `cc-explain-system`
-6. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
-7. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
-8. 试点时保留人工 review，不要直接把 harness 当成自动审批器
+1. 先确认 `.claude/` 脚手架已安装
+2. 若需要验收当前项目对 Harness 的接入完整性，执行 `cc-preflight`
+3. 执行 `cc-init`
+4. 检查 `context/project-context.md` 是否已建立最小可用上下文
+5. 若需要补充分层、日志、配置、测试、可观测性等完整画像，执行 `cc-enrich-context`
+6. 若需要让新维护者深入理解系统，执行 `cc-explain-system`
+7. 如果暂时没有新需求，先执行 `cc-inspect-codebase` 对存量项目做体检
+8. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
+9. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
 首次将本 Harness 接入某个已有项目时，建议按这个顺序：
 
-1. 先执行 `cc-preflight`
-2. 再执行 `cc-init`
-3. 在 `project-context.md` 中确认当前已知事实与待确认事项
-4. 再进入 `cc-propose`
+1. 先确认 `.claude/` 脚手架已安装
+2. 若需要做首次接入验收或升级后的回归检查，执行 `cc-preflight`
+3. 再执行 `cc-init`
+4. 在 `project-context.md` 中确认当前已知事实与待确认事项
+5. 再进入 `cc-propose`
 
 ## 我是日常使用者
 
@@ -136,13 +138,18 @@
 - 启动阶段不要全量读取 `rules/`；具体命令触发后再按需读取 `commands/`、`checkpoints/` 与专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 仅作兼容索引页
 
-### 0. 接入前自检
+### 0. 接入完整性自检
 
 ```
 cc-preflight
 ```
 
-在真实项目第一次接入本 Harness 前，先执行该命令。
+当你需要检测当前项目对本 Harness 的接入是否完整时，执行该命令。
+
+典型场景：
+- 首次接入后的显式验收
+- 升级 Harness 后的回归检查
+- 怀疑路径解释、命令入口或模板资产存在异常
 
 用途：
 - 检查 `.claude/` 脚手架是否完整
@@ -157,6 +164,7 @@ cc-preflight
 - `cc-preflight` 不审查业务代码质量
 - `cc-preflight` 不替代 `cc-init`
 - `cc-preflight` 不生成 change 或 audit
+- `cc-preflight` 不是生命周期强制第一步；已确认脚手架完整时，可直接进入 `cc-init`
 
 ### 1. 初始化项目上下文
 
@@ -297,7 +305,7 @@ cc-propose <需求描述>
 ### 3. 执行编码
 
 ```
-cc-apply <变更名>
+cc-apply <change-id>
 ```
 
 执行要求：
@@ -312,7 +320,7 @@ cc-apply <变更名>
 ### 4. 代码审查
 
 ```
-cc-review <变更名>
+cc-review <change-id>
 ```
 
 两阶段：Spec Compliance → Code Quality，结果沉淀到 `changes/<change-id>/review.md`。
@@ -326,8 +334,8 @@ cc-review <变更名>
 ### 5. 修复与补测
 
 ```
-cc-fix <变更名>
-cc-test <变更名>
+cc-fix <change-id>
+cc-test <change-id>
 ```
 
 `cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试设计和补强验证证据。
@@ -360,18 +368,18 @@ cc-test <变更名>
 
 | 命令 | 说明 |
 |------|------|
-| `cc-preflight` | 执行接入前自检，检查 Harness 是否已正确接入 |
+| `cc-preflight` | 检测当前项目的 Harness 接入完整性 |
 | `cc-init` | 初始化项目上下文 |
 | `cc-enrich-context` | 补充更完整的项目上下文 |
 | `cc-explain-system [scope]` | 输出系统讲解材料，帮助深入理解项目 |
 | `cc-inspect-codebase <mode> [scope]` | 对存量项目做体检并输出审查报告 |
 | `cc-promote-audit <audit-id> <change-id>` | 把 audit 结果桥接成 change 草稿 |
 | `cc-propose <需求>` | 创建变更提案 |
-| `cc-apply <变更名>` | 执行编码 |
-| `cc-fix <变更名>` | Review 后修正迭代 |
-| `cc-review <变更名>` | 两阶段审查 |
-| `cc-test <变更名>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
-| `cc-archive <变更名>` | 归档 + 知识沉淀 |
+| `cc-apply <change-id>` | 执行编码 |
+| `cc-fix <change-id>` | Review 后修正迭代 |
+| `cc-review <change-id>` | 两阶段审查 |
+| `cc-test <change-id>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
+| `cc-archive <change-id>` | 归档 + 知识沉淀 |
 
 ## 约束等级
 

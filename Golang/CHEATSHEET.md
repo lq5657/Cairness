@@ -54,7 +54,7 @@ Golang/.claude/changes/<change-id>/
 ### `cc-preflight`
 
 用途：
-- 在真实项目接入本 Harness 前做显式预检
+- 在需要验收或排查当前项目对本 Harness 的接入完整性时做显式预检
 - 检查脚手架、路径、命令入口、模板和最小命令链路是否可用
 
 结果要求：
@@ -68,6 +68,10 @@ Golang/.claude/changes/<change-id>/
 禁止：
 - 不要把 `cc-preflight` 扩展成业务代码体检
 - 不要自动进入 `cc-init`、`cc-enrich-context`、`cc-explain-system`
+
+补充：
+- `cc-preflight` 是诊断/验收命令，不是生命周期强制第一步
+- 已确认脚手架完整时，可直接从 `cc-init` 开始
 
 ### `cc-init`
 
@@ -370,10 +374,12 @@ Gate：
 
 ### 接入已有项目
 
-1. 先 `cc-init`
-2. 校验 `context/project-context.md` 是否真实
-3. 选一个低风险需求跑 `cc-propose -> cc-apply -> cc-review`
-4. 试点阶段保留人工 review
+1. 先确认 `.claude/` 脚手架已安装
+2. 如需验收接入完整性，执行 `cc-preflight`
+3. 执行 `cc-init`
+4. 校验 `context/project-context.md` 是否真实
+5. 选一个低风险需求跑 `cc-propose -> cc-apply -> cc-review`
+6. 试点阶段保留人工 review
 
 ### 维护这套 harness
 
@@ -386,7 +392,8 @@ Gate：
 ## 13. 会话开始时应自检
 
 每次正式执行前，先确认：
-- 已读取 `rules/`
+- 已读取 `.claude/CLAUDE.md`
+- 本次命令若涉及专题风险，再按需读取相关 `rules/`
 - 是否存在真实进行中的 change
 - 当前分支是否安全
 - 当前 change 是否有依赖或冲突
@@ -396,6 +403,7 @@ Gate：
 
 ```text
 先 cc-init，再 cc-propose。
+需要验收接入完整性时，再跑 cc-preflight。
 没有 spec 不写代码。
 按 task 小步提交。
 改代码就改文档。
