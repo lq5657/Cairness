@@ -17,6 +17,8 @@ updated: YYYY-MM-DD
 - 未完成的 task 必须显式标记为 `blocked` / `partial` / `aborted`，不能留空
 - `验证步骤` 是 `cc-apply` 判断 task 是否完成的直接依据
 - `测试要求` 是 `cc-apply` 与 `cc-test` 的最低协同约束
+- `验证步骤` 必须能回溯到 `spec.md` 中至少一条“需求-验证映射”
+- `测试要求` 必须说明本 task 负责最低验证还是为 `cc-test` 预留补强验证
 
 若涉及数据库变更，建议拆分顺序：
 1. migration / schema 准备
@@ -50,10 +52,11 @@ updated: YYYY-MM-DD
   func (s *UserService) Create(...) // 新增参数或返回值时注明
   ```
 * **验收标准** : （task 完成时必须满足的条件）
+* **验证映射** : （对应 `spec.md` 中的需求项 / 风险点；说明本 task 承担最低验证还是补强验证）
 * **验证步骤** : （明确命令、测试名、接口行为或日志证据，确保 task 完成后可立刻验证；必须与验收标准一一对应）
 * **测试要求** : （如：先 Red 再 Green / 至少补 1 条回归用例 / 仅需 build + 手工验证；若不做 TDD，需写退化原因）
 * **回退方式** : （说明此 task 失败时如何安全撤回、停留或局部回滚）
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
-* **对应 commit** : `[<变更名>] <中文简述>`
+* **对应 commit** : `[<change-id>] <中文简述>`
 * **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式；若 `parallel_safe = true`，必须说明可并行理由
 * **数据库注意事项** : 若涉及 migration / 回填 / 兼容窗口，说明本 task 处于 expand / migrate / contract 的哪个阶段，以及前后依赖
