@@ -75,26 +75,12 @@
 | 修复后容易把 reviewer 表述直接当根因 | finding 只描述现象，不一定解释失效原因 | 先在 log 里区分症状、根因和修复假设，再动代码 | 否 |
 | 修复后容易删除旧 Findings | 把 review 误当成“当前快照” | 保留问题行，只更新 `status` 为 `fixed` | 否 |
 
-#### 知识发现
+#### 知识候选 / 发现（按归档确认）
 
-**判断标准（满足任一则记录）：**
-- Go 最佳实践与团队规范的差异
-- 排查问题时发现的有价值的根因
-- 技术决策及其理由
-- 第三方库的特定坑点
-
-**格式：** `/** 关键词 */` — 描述 → 出处
-
-| 关键词 | 描述 | 出处 | 已沉淀？ |
-|--------|------|------|----------|
-| `/** fix-must-update-review */` | `/fix` 不只是改代码，还必须回写 `review.md` 中的 Findings 状态 | `changes/examples/user-create-api-fix/review.md` | 否 |
-
-#### 知识候选（按归档确认）
-
-| 关键词 | 一句话结论 | 建议落点 | 复利判断 | 处理结果 |
-|--------|------------|----------|----------|----------|
-| `fix-must-update-review` | `/fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `knowledge/index.md` | 更新既有知识 | 已沉淀 |
-| `finding-root-cause-split` | 修 fix 前应先区分症状、失败点和根因，再形成最小修复假设 | `knowledge/index.md` | 新增知识 | 已沉淀 |
+| 关键词 | 一句话结论 | 出处 | 建议落点 | 复利判断 | 处理结果 |
+|--------|------------|------|----------|----------|----------|
+| `fix-must-update-review` | `/fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `changes/examples/user-create-api-fix/review.md` | `knowledge/index.md` | 更新既有知识 | 已沉淀 |
+| `finding-root-cause-split` | 修 fix 前应先区分症状、失败点和根因，再形成最小修复假设 | `changes/examples/user-create-api-fix/log.md` | `knowledge/index.md` | 新增知识 | 已沉淀 |
 
 #### Spec-Code 偏差记录
 

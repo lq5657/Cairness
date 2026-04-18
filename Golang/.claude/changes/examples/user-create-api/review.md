@@ -45,13 +45,12 @@ final_status: pass
 | V2 | `apply-covered` | 与证据一致 | `TestUserServiceCreateDuplicateEmail` 已覆盖重复 email 风险 | ✅ |
 | V3 | `apply-covered` | 与证据一致 | review 已确认新增接口属于 `compatible_addition` | ✅ |
 
-#### 2.2 风险镜头检查
+#### 2.2 风险镜头检查（按触发填写）
 
 | 镜头 | 触发原因 | 结论 | 是否形成 Finding |
 |------|----------|------|------------------|
 | scope-lens | `parallel_safe = true`，需确认未顺手扩张到查询链路和无关字段 | 未发现范围漂移，改动仍限定在创建链路与最小测试补强 | 否 |
 | feasibility-lens | `V1` 需要从 `apply-covered` 补到 `test-covered`，且样例未引入真实 HTTP/DB 环境 | 当前以 Service 回归测试 + 链路说明作为 `L3` 替代证据可接受，但边界已在 `test-spec.md` 说明 | 否 |
-| security-lens | N/A | 本次不涉及权限、敏感字段或外部安全边界变化 | N/A |
 | release-lens | 新增接口、存在兼容性分类和发布观察窗口 | `compatible_addition`、直接发布和回滚路径与 spec 一致，无额外阻塞 | 否 |
 
 #### 3. Stage 1 — Spec Compliance

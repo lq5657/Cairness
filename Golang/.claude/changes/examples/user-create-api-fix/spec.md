@@ -18,14 +18,9 @@ complexity: 🟢简单
 - 当前变更依赖 `user-create-api` 已完成首次实现和首次 review
 - 本样例额外展示：`/fix` 默认只处理 `review.md` 中 `status = open` 的 Findings，已修复问题保留为 `fixed` 不删除
 
-#### 0.1 需求收敛记录（按需）
+#### 0.1 需求收敛记录（仅 `light-clarify` / `brainstorm-needed` 时填写）
 
-| 项目 | 内容 |
-|------|------|
-| 原始诉求 | 回收 review 中关于创建链路 timeout 和错误包装不足的两个 Findings |
-| 关键澄清 | 本轮是否只处理 `open` Findings；是否改变原业务语义；timeout 是否沿用项目默认值 |
-| 收敛后的目标 | 在不改变对外契约和业务规则的前提下，补齐 repo 超时边界、service 错误包装和 review 回写 |
-| 收敛方式 | direct |
+本次为 `direct`，不额外填写需求收敛记录。
 
 #### 1. 背景与目标
 
