@@ -56,6 +56,6 @@ updated: YYYY-MM-DD
 * **测试要求** : （如：先 Red 再 Green / 至少补 1 条回归用例 / 仅需 build + 手工验证；若不做 TDD，需写退化原因）
 * **回退方式** : （说明此 task 失败时如何安全撤回、停留或局部回滚）
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
-* **对应 commit** : `[<change-id>] <中文简述>`
-* **并发注意事项** : 是否与其他 change 共用文件/链路；如有，说明顺序和冲突规避方式；若 `parallel_safe = true`，必须说明可并行理由
-* **数据库注意事项** : 若涉及 migration / 回填 / 兼容窗口，说明本 task 处于 expand / migrate / contract 的哪个阶段，以及前后依赖
+* **对应 commit（按需）** : 完成后回写；尚未提交可写 `待提交`
+* **并发注意事项（按需）** : 无并发风险可写 `无`；若 `parallel_safe = true`，必须说明可并行理由
+* **数据库注意事项（按需）** : 不涉及 migration / 回填 / 兼容窗口可写 `无`

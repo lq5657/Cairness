@@ -68,15 +68,15 @@ status: open
 |------|------|------|------|----------|------|
 | Important | 测试债 | 当前测试证据集中在 `UserService.Create`，Handler 参数校验与错误映射主要依赖 review 辅助校验，Transport 层自动化覆盖不足 | `changes/examples/user-create-api/test-spec.md:L57` | 补 `transport` 层测试，至少覆盖参数校验与业务错误映射 | open |
 | Important | 测试债 | Repo 层写路径没有真实库或等价测试，唯一约束、写入失败、持久化语义只能靠实现假设 | `changes/examples/user-create-api/test-spec.md:L54` | 补 repo 测试或明确已有集成测试证据 | open |
-| Minor | 测试债 | `verification_level = L3` 的链路回归说明存在，但“为何暂不补更高层测试”的边界容易被后来人忽略 | `changes/examples/user-create-api/test-spec.md:L24` | 在真实项目中把跳过理由和剩余风险写得更具体 | open |
+| Minor | 测试债 | 已声明主测试层级与 `L3` 目标相匹配，但“为何暂不补更高层测试”的边界容易被后来人忽略 | `changes/examples/user-create-api/test-spec.md:L24` | 在真实项目中把跳过理由和剩余风险写得更具体 | open |
 
 #### 5. 重点证据
 
 | 主题 | 证据 | 位置 |
 |------|------|------|
-| 主测试层集中在 chain | test-spec 明确主测试层级是 `chain`，并以 Service 为核心给回归证据 | `changes/examples/user-create-api/test-spec.md:L36` |
-| Transport 层覆盖不足 | 文档明确写了 Handler 参数校验和错误映射“可在后续补 HTTP 层回归测试” | `changes/examples/user-create-api/test-spec.md:L57` |
-| Repo 层为空白 | 文档明确“不单独展开 Repo 测试” | `changes/examples/user-create-api/test-spec.md:L54` |
+| 主测试层集中在 chain | test-spec 明确主测试层级是 `chain`，并以 Service 为核心给回归证据 | `changes/examples/user-create-api/test-spec.md:L28` |
+| Transport 层覆盖不足 | 文档明确写了 Handler 参数校验和错误映射“可在后续补 HTTP 层回归测试” | `changes/examples/user-create-api/test-spec.md:L68` |
+| Repo 层为空白 | 文档明确“不单独展开 Repo 测试” | `changes/examples/user-create-api/test-spec.md:L64` |
 
 #### 5.1 模式检查清单
 
