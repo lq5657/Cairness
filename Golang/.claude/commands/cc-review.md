@@ -35,7 +35,8 @@
 ### Task Coverage
 
 - `cc-review` 不仅审 change 整体，还必须对照 `tasks.md` 检查每个 task 是否真正达到其声明的验收标准
-- 若 task 的验证证据不足、执行结果与验收标准不一致，或 change 文档未同步，应形成 Findings，而不是只写总体备注
+- `cc-review` 必须逐项检查 `spec.md` 的“需求-验证映射”是否已被 task 与实际证据完整覆盖
+- 若 task 的验证证据不足、执行结果与验收标准不一致、需求-验证映射未闭环，或 change 文档未同步，应形成 Findings，而不是只写总体备注
 
 ### Findings 状态语义
 

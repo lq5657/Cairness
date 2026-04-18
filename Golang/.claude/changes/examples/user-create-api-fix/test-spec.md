@@ -2,7 +2,6 @@
 
 change_id: user-create-api-fix
 status: done
-verification_level: L2
 created: 2026-04-11
 
 #### 0. 测试原则
@@ -22,16 +21,7 @@ created: 2026-04-11
 | 已有测试数量 | 14 |
 | 已有测试风格 | Table-driven + mock repo |
 
-#### 1.1 验证等级选择
-
-| 项目 | 值 |
-|------|----|
-| 本次最低验证等级 | `L2` |
-| 选择原因 | 本次 fix 只调整内部实现质量，主要风险在错误包装与调用边界，回归测试足以支撑 |
-| 需要展示的证据 | `go test ./...` 输出 + 错误包装回归测试 + review 回写结果 |
-| 若无法完全达到，替代证据 | timeout 场景不引入真实慢调用，使用 code review 和 helper 证明 |
-
-#### 1.2 测试层级选择
+#### 1.1 测试层级选择
 
 | 项目 | 值 |
 |------|----|
@@ -41,7 +31,7 @@ created: 2026-04-11
 | 跳过原因 | 样例不引入真实 DB 慢调用与 HTTP 环境 |
 | bugfix 回归路径 | `TestUserServiceCreateWrapRepoError` |
 
-#### 1.3 已完成的最小验证
+#### 1.2 已完成的最小验证
 
 记录哪些 task 已在 `cc-apply` 中完成最小回归验证，以及当前仍未覆盖的风险。
 
@@ -49,6 +39,14 @@ created: 2026-04-11
 |------|-------------------------|------|----------------|
 | Task 1 | `go build ./...` 通过；超时边界与错误包装代码已接入 | Task 1 验证记录 + 构建输出 | 未通过真实慢调用环境验证 timeout |
 | Task 2 | `go test ./...` 通过；review Findings 已回写为 `fixed` | `TestUserServiceCreateWrapRepoError` + review 更新记录 | 未覆盖真实 DB 超时链路 |
+
+#### 1.3 验证差距与补强计划
+
+| 需求项 / 风险点 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
+|------|----------------------|----------------|----------|----------|----------|
+| Service 错误包装保留底层 error | `TestUserServiceCreateWrapRepoError` + `go test ./...` | 无，现有回归测试已闭合 | 无 | 无 | 低 |
+| Repo 调用具备最小超时边界 | timeout 接入代码已落地 + `go build ./...` | 补 code review / helper 说明，说明为何当前证据足以支撑 `L2` | 未引入真实 DB 慢调用 | review 说明 + helper 校验 | 真实慢调用行为仍未实测 |
+| Findings 修复链路完整保留 | `review.md` 已回写为 `fixed` | 无 | 无 | 无 | 低 |
 
 #### 2. 覆盖范围
 
@@ -106,5 +104,5 @@ created: 2026-04-11
 * [x] Step 1: 运行已有测试套件 (`go test ./...`)，确认基线
 * [x] Step 2: 生成 P0 测试 → 确认 Red → 确认 Green
 * [ ] Step 3: 生成 P1/P2 测试
-* [x] Step 4: 补足 `verification_level` 对应的链路/集成/手工验证证据
+* [x] Step 4: 补足 `spec.md` 对应最低验证等级所需的链路/集成/手工验证证据
 * [x] Step 5: 运行完整测试套件，确认覆盖率 (`go test -cover`)

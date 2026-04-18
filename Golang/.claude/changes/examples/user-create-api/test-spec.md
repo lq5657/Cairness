@@ -2,7 +2,6 @@
 
 change_id: user-create-api
 status: done
-verification_level: L3
 created: 2026-04-11
 
 #### 0. 测试原则
@@ -22,16 +21,7 @@ created: 2026-04-11
 | 已有测试数量 | 12 |
 | 已有测试风格 | Table-driven + mock repo |
 
-#### 1.1 验证等级选择
-
-| 项目 | 值 |
-|------|----|
-| 本次最低验证等级 | `L3` |
-| 选择原因 | 变更跨 handler-service-repo 主链路，需要至少主链路回归说明 |
-| 需要展示的证据 | Service 核心测试 + Handler 映射回归说明 |
-| 若无法完全达到，替代证据 | 示例中不跑真实 HTTP 集成，用 review 校验入口层行为 |
-
-#### 1.2 测试层级选择
+#### 1.1 测试层级选择
 
 | 项目 | 值 |
 |------|----|
@@ -41,7 +31,7 @@ created: 2026-04-11
 | 跳过原因 | 示例避免引入真实数据库和 HTTP 集成环境 |
 | bugfix 回归路径 | 不适用，本例为新增需求 |
 
-#### 1.3 已完成的最小验证
+#### 1.2 已完成的最小验证
 
 记录哪些 task 已在 `cc-apply` 中完成最小回归验证，以及当前仍未覆盖的风险。
 
@@ -49,6 +39,14 @@ created: 2026-04-11
 |------|-------------------------|------|----------------|
 | Task 1 | `go build ./...` 通过；Service 创建链路已具备重复 email 保护 | Task 1 验证记录 + 构建输出 | 尚未覆盖入口层参数校验与错误映射 |
 | Task 2 | `go test ./...` 通过；成功与重复 email 回归已完成 | `TestUserServiceCreateSuccess`、`TestUserServiceCreateDuplicateEmail` | 未引入真实 HTTP 集成环境 |
+
+#### 1.3 验证差距与补强计划
+
+| 需求项 / 风险点 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
+|------|----------------------|----------------|----------|----------|----------|
+| 创建用户成功主链路 | `TestUserServiceCreateSuccess` + `go test ./...` | 补一段链路级说明，说明当前证据为何足以支撑 `L3` | 未引入真实 HTTP / DB 环境 | Handler review + 契约兼容性说明 | 真实入口层行为仍依赖后续集成验证 |
+| email 重复不得重复创建 | `TestUserServiceCreateDuplicateEmail` | 无，现有证据已闭合 | 无 | 无 | 低 |
+| 新增接口不破坏旧调用方 | 兼容性分类说明 | 补 review 结论，说明属于 `compatible_addition` | 未跑真实客户端回归 | 变更说明 + Handler review | 低 |
 
 #### 2. 覆盖范围
 
@@ -107,5 +105,5 @@ created: 2026-04-11
 * [x] Step 1: 运行已有测试套件 (`go test ./...`)，确认基线
 * [x] Step 2: 生成 P0 测试 → 确认 Red → 确认 Green
 * [ ] Step 3: 生成 P1/P2 测试
-* [x] Step 4: 补足 `verification_level` 对应的链路/集成/手工验证证据
+* [x] Step 4: 补足 `spec.md` 对应最低验证等级所需的链路/集成/手工验证证据
 * [x] Step 5: 运行完整测试套件，确认覆盖率 (`go test -cover`)
