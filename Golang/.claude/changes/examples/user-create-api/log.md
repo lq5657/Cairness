@@ -59,6 +59,12 @@
 |--------|------|------|----------|
 | `/** service-idempotency */` | 写接口的幂等规则应落在 Service，而不是只放在 Handler | `changes/examples/user-create-api/spec.md` §11 | 否 |
 
+#### 知识候选（按归档确认）
+
+| 关键词 | 一句话结论 | 建议落点 | 复利判断 | 处理结果 |
+|--------|------------|----------|----------|----------|
+| `service-idempotency` | 写接口的幂等和业务规则应集中在 Service，而不是只放在 Handler | `knowledge/index.md` | 新增知识 | 已沉淀 |
+
 #### Spec-Code 偏差记录
 
 | 偏差点 | Spec 预期 | 实际情况 | 处理方式 |

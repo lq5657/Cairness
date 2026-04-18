@@ -89,6 +89,13 @@
 |--------|------|------|----------|
 | `/** fix-must-update-review */` | `/fix` 不只是改代码，还必须回写 `review.md` 中的 Findings 状态 | `changes/examples/user-create-api-fix/review.md` | 否 |
 
+#### 知识候选（按归档确认）
+
+| 关键词 | 一句话结论 | 建议落点 | 复利判断 | 处理结果 |
+|--------|------------|----------|----------|----------|
+| `fix-must-update-review` | `/fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `knowledge/index.md` | 更新既有知识 | 已沉淀 |
+| `finding-root-cause-split` | 修 fix 前应先区分症状、失败点和根因，再形成最小修复假设 | `knowledge/index.md` | 新增知识 | 已沉淀 |
+
 #### Spec-Code 偏差记录
 
 | 偏差点 | Spec 预期 | 实际情况 | 处理方式 |
