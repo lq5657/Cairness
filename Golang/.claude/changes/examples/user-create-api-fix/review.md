@@ -45,6 +45,15 @@ final_status: pass
 | V2 | `test-covered` | 与证据一致 | `test-spec.md` 已补 timeout 说明，review 可接受当前 `L2` 证据 | ✅ |
 | V3 | `apply-covered` | 与证据一致 | `review.md` 已保留 Findings 修复链路，不存在记录缺口 | ✅ |
 
+#### 2.2 风险镜头检查
+
+| 镜头 | 触发原因 | 结论 | 是否形成 Finding |
+|------|----------|------|------------------|
+| scope-lens | `/fix` 只应处理 `open` Findings，需确认未顺手扩张范围 | 修复范围仍限定在本轮两个 open Finding 所对应的问题，未重写业务逻辑或历史 review 记录 | 否 |
+| feasibility-lens | `V2` 以 timeout 接入说明 + review 接受当前 `L2` 证据，需确认不是纸面闭环 | 当前 fix 目标只是补最小边界保护与回归证据，证据和等级匹配，可接受 | 否 |
+| security-lens | N/A | 本次不涉及权限、安全边界或敏感数据处理变化 | N/A |
+| release-lens | fix 涉及 timeout 边界和发布观察窗口，需确认回滚和风险说明一致 | 直接发布、代码回滚和观察窗口说明完整，无新增阻塞 | 否 |
+
 #### 3. Stage 1 — Spec Compliance
 
 | # | 检查项 | 文件位置 | 结果 | 备注 |

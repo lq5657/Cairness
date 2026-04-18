@@ -42,6 +42,17 @@ final_status: pass | fail | partial
 |----------|--------------------|----------|-------------|------|
 | V1 | todo / apply-covered / test-covered / gap | 与证据一致 / 状态过高 / 仍缺证据 | | ✅/❌/⚠️ |
 
+#### 2.2 风险镜头检查
+
+仅记录本轮实际触发的镜头。未触发的镜头可写 `N/A`，不要为了完整性强行补满。
+
+| 镜头 | 触发原因 | 结论 | 是否形成 Finding |
+|------|----------|------|------------------|
+| scope-lens | | | 是/否/N/A |
+| feasibility-lens | | | 是/否/N/A |
+| security-lens | | | 是/否/N/A |
+| release-lens | | | 是/否/N/A |
+
 #### 3. Stage 1 — Spec Compliance
 
 | # | 检查项 | 文件位置 | 结果 | 备注 |
