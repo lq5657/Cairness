@@ -41,10 +41,10 @@ updated: 2026-04-11
   * Service 返回错误保留底层原因
   * `go build ./...` 通过
 * **验证步骤** :
-  * 运行 `go build ./...`
-  * 检查 `UserRepo.Create` 是否具备显式超时边界
-  * 检查 `UserService.Create` 是否使用 `%w` 包装底层错误
-* **测试要求** : 至少补 1 条错误包装相关最小回归证据；完整测试和 review 回写在 Task 2 收口
+  * `V1 / V2`：运行 `go build ./...`
+  * `V2`：检查 `UserRepo.Create` 是否具备显式超时边界
+  * `V1`：检查 `UserService.Create` 是否使用 `%w` 包装底层错误
+* **测试要求** : 至少补 1 条错误包装相关最小回归证据；本 task 先关闭 `V1` 的 apply 级证据并完成 `V2` 的代码接入，完整测试和 review 回写在 Task 2 收口
 * **回退方式** : 若 task 失败，可仅回退 `repo/service` 改动，保留原始 review 结论不变
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api-fix] 修复创建链路超时与错误包装`
@@ -67,10 +67,10 @@ updated: 2026-04-11
   * 已经是 `fixed` 或 `accepted` 的问题不得删除或重复回收
   * `go test ./...` 通过
 * **验证步骤** :
-  * 运行 `go test ./...`
-  * 检查 `TestUserServiceCreateWrapRepoError` 通过
-  * 检查 `review.md` 中对应 Findings 已更新为 `fixed`，且未删除历史记录
-* **测试要求** : 先 Red 再 Green；若 timeout 无法在样例中稳定制造 Red，至少用错误包装回归测试和 review 证据补强
+  * `V1 / V2`：运行 `go test ./...`
+  * `V1`：检查 `TestUserServiceCreateWrapRepoError` 通过
+  * `V3`：检查 `review.md` 中对应 Findings 已更新为 `fixed`，且未删除历史记录
+* **测试要求** : 先 Red 再 Green；若 timeout 无法在样例中稳定制造 Red，至少用错误包装回归测试和 review 证据补强。本 task 关闭 `V3` 为 `apply-covered`，并通过补强说明把 `V2` 更新为 `test-covered`
 * **回退方式** : 若 task 失败，可保留 Task 1 代码修复，但不得把 review Findings 提前标记为 `fixed`
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api-fix] 更新 review 并补回归测试`

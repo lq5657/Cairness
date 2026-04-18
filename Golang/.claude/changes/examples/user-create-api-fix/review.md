@@ -26,15 +26,24 @@ final_status: pass
 
 * `spec.md`：`changes/examples/user-create-api-fix/spec.md`
 * `tasks.md`：`changes/examples/user-create-api-fix/tasks.md`
+* `test-spec.md`：`changes/examples/user-create-api-fix/test-spec.md`
 * `log.md`：`changes/examples/user-create-api-fix/log.md`
 * 审查代码范围：`internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/service/user_service_test.go`
 
 #### 2. Task Coverage
 
-| Task | 声明的验收标准 | 验证证据是否充分 | 结果 | 备注 |
-|------|----------------|------------------|------|------|
-| Task 1 | Repo 写入具备超时边界；Service 保留底层错误；`go build ./...` 通过 | 是 | ✅ | fix 聚焦实现质量，未超出任务边界 |
-| Task 2 | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | ✅ | review 回写与回归测试都已完成，符合 `/fix` 约束 |
+| Task | 关联映射项 | 声明的验收标准 | 验证证据是否充分 | 闭环状态检查 | 结果 | 备注 |
+|------|------------|----------------|------------------|--------------|------|------|
+| Task 1 | `V1 / V2` | Repo 写入具备超时边界；Service 保留底层错误；`go build ./...` 通过 | 是 | `V1` 已有 apply 级证据；`V2` 代码接入完成，待 `cc-test`/review 校验是否可升为 `test-covered` | ✅ | fix 聚焦实现质量，未超出任务边界 |
+| Task 2 | `V1 / V2 / V3` | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | `V2` 已在 `test-spec.md` 中补齐为 `test-covered`；`V1 / V3` 与当前证据一致 | ✅ | review 回写与回归测试都已完成，符合 `/fix` 约束 |
+
+#### 2.1 验证映射检查
+
+| 映射编号 | `spec.md` 声明状态 | 审查结论 | 证据 / 缺口 | 结果 |
+|----------|--------------------|----------|-------------|------|
+| V1 | `apply-covered` | 与证据一致 | 错误包装回归测试已存在，当前无需更高层补强 | ✅ |
+| V2 | `test-covered` | 与证据一致 | `test-spec.md` 已补 timeout 说明，review 可接受当前 `L2` 证据 | ✅ |
+| V3 | `apply-covered` | 与证据一致 | `review.md` 已保留 Findings 修复链路，不存在记录缺口 | ✅ |
 
 #### 3. Stage 1 — Spec Compliance
 

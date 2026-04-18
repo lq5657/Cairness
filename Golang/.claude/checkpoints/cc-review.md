@@ -10,7 +10,8 @@
 |--------|------|
 | `spec.md` 已读 | ✅ / ❌ / ⚠️ / N/A |
 | `tasks.md` 已读，且已确认当前 task 完成状态 | ✅ / ❌ / ⚠️ / N/A |
-| `spec.md` 的“需求-验证映射”已读 | ✅ / ❌ / ⚠️ / N/A |
+| `spec.md` 的“需求-验证映射”编号与闭环状态已读 | ✅ / ❌ / ⚠️ / N/A |
+| `test-spec.md` 若存在，已读取其对映射项的补强结论 | ✅ / ❌ / ⚠️ / N/A |
 | 代码已存在 | ✅ / ❌ / ⚠️ / N/A |
 | `spec.status` 为 `review` | ✅ / ❌ / ⚠️ / N/A |
 | 已确认本次是基于已有 change 的实现审查，不是 `cc-inspect-codebase` | ✅ / ❌ / ⚠️ / N/A |
@@ -33,6 +34,7 @@
 | 已检查 Critical 风险：安全、资金逻辑、并发安全、数据丢失 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 Important 风险：错误处理、参数校验、兼容性、配置、可观测性、发布回滚 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `spec.md` 的需求-验证映射是否被 task 与证据完整覆盖 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查映射项的闭环状态是否与 `test-spec.md` 和实际证据一致 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 Minor 风险：Go doc、注释、import、依赖使用 | ✅ / ❌ / ⚠️ / N/A |
 | 已按 Findings 严重级别判断是否阻断 | ✅ / ❌ / ⚠️ / N/A |
 | `Important` 问题若未修复，已判断是否允许 `accepted` | ✅ / ❌ / ⚠️ / N/A |
@@ -45,6 +47,7 @@
 | 已输出 `changes/<change-id>/review.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 task 级验收结果是否与 `tasks.md` 一致 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查未闭环的需求-验证映射是否形成 Findings | ✅ / ❌ / ⚠️ / N/A |
+| 已检查“状态已闭环但证据不足”这类映射项是否形成 Findings | ✅ / ❌ / ⚠️ / N/A |
 | `open` / `fixed` / `accepted` 状态使用符合语义 | ✅ / ❌ / ⚠️ / N/A |
 | `accepted` 的问题已写明接受理由 | ✅ / ❌ / ⚠️ / N/A |
 | 最终结论与 Stage 1 / Stage 2 / Findings 严重级别一致 | ✅ / ❌ / ⚠️ / N/A |

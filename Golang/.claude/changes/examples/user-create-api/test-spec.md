@@ -35,18 +35,18 @@ created: 2026-04-11
 
 记录哪些 task 已在 `cc-apply` 中完成最小回归验证，以及当前仍未覆盖的风险。
 
-| Task | `cc-apply` 内已完成验证 | 证据 | 尚未覆盖的风险 |
-|------|-------------------------|------|----------------|
-| Task 1 | `go build ./...` 通过；Service 创建链路已具备重复 email 保护 | Task 1 验证记录 + 构建输出 | 尚未覆盖入口层参数校验与错误映射 |
-| Task 2 | `go test ./...` 通过；成功与重复 email 回归已完成 | `TestUserServiceCreateSuccess`、`TestUserServiceCreateDuplicateEmail` | 未引入真实 HTTP 集成环境 |
+| Task | 涉及映射项 | `cc-apply` 内已完成验证 | 证据 | 尚未覆盖的风险 |
+|------|------------|-------------------------|------|----------------|
+| Task 1 | `V1 / V2` | `go build ./...` 通过；Service 创建链路已具备重复 email 保护 | Task 1 验证记录 + 构建输出 | 尚未覆盖入口层参数校验与错误映射 |
+| Task 2 | `V1 / V2 / V3` | `go test ./...` 通过；成功与重复 email 回归已完成，兼容性 review 已记录 | `TestUserServiceCreateSuccess`、`TestUserServiceCreateDuplicateEmail`、兼容性说明 | 未引入真实 HTTP 集成环境 |
 
 #### 1.3 验证差距与补强计划
 
-| 需求项 / 风险点 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
-|------|----------------------|----------------|----------|----------|----------|
-| 创建用户成功主链路 | `TestUserServiceCreateSuccess` + `go test ./...` | 补一段链路级说明，说明当前证据为何足以支撑 `L3` | 未引入真实 HTTP / DB 环境 | Handler review + 契约兼容性说明 | 真实入口层行为仍依赖后续集成验证 |
-| email 重复不得重复创建 | `TestUserServiceCreateDuplicateEmail` | 无，现有证据已闭合 | 无 | 无 | 低 |
-| 新增接口不破坏旧调用方 | 兼容性分类说明 | 补 review 结论，说明属于 `compatible_addition` | 未跑真实客户端回归 | 变更说明 + Handler review | 低 |
+| 映射编号 | 需求项 / 风险点 | 当前闭环状态 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
+|----------|------------------|--------------|----------------------|----------------|----------|----------|----------|
+| V1 | 创建用户成功主链路 | test-covered | `TestUserServiceCreateSuccess` + `go test ./...` | 已补一段链路级说明，说明当前证据为何足以支撑 `L3` | 未引入真实 HTTP / DB 环境 | Handler review + 契约兼容性说明 | 真实入口层行为仍依赖后续集成验证 |
+| V2 | email 重复不得重复创建 | apply-covered | `TestUserServiceCreateDuplicateEmail` | 无，现有证据已闭合 | 无 | 无 | 低 |
+| V3 | 新增接口不破坏旧调用方 | apply-covered | 兼容性分类说明 | 无，现有证据已闭合 | 未跑真实客户端回归 | 变更说明 + Handler review | 低 |
 
 #### 2. 覆盖范围
 

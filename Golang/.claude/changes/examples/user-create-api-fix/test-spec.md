@@ -35,18 +35,18 @@ created: 2026-04-11
 
 记录哪些 task 已在 `cc-apply` 中完成最小回归验证，以及当前仍未覆盖的风险。
 
-| Task | `cc-apply` 内已完成验证 | 证据 | 尚未覆盖的风险 |
-|------|-------------------------|------|----------------|
-| Task 1 | `go build ./...` 通过；超时边界与错误包装代码已接入 | Task 1 验证记录 + 构建输出 | 未通过真实慢调用环境验证 timeout |
-| Task 2 | `go test ./...` 通过；review Findings 已回写为 `fixed` | `TestUserServiceCreateWrapRepoError` + review 更新记录 | 未覆盖真实 DB 超时链路 |
+| Task | 涉及映射项 | `cc-apply` 内已完成验证 | 证据 | 尚未覆盖的风险 |
+|------|------------|-------------------------|------|----------------|
+| Task 1 | `V1 / V2` | `go build ./...` 通过；超时边界与错误包装代码已接入 | Task 1 验证记录 + 构建输出 | 未通过真实慢调用环境验证 timeout |
+| Task 2 | `V1 / V2 / V3` | `go test ./...` 通过；review Findings 已回写为 `fixed` | `TestUserServiceCreateWrapRepoError` + review 更新记录 | 未覆盖真实 DB 超时链路 |
 
 #### 1.3 验证差距与补强计划
 
-| 需求项 / 风险点 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
-|------|----------------------|----------------|----------|----------|----------|
-| Service 错误包装保留底层 error | `TestUserServiceCreateWrapRepoError` + `go test ./...` | 无，现有回归测试已闭合 | 无 | 无 | 低 |
-| Repo 调用具备最小超时边界 | timeout 接入代码已落地 + `go build ./...` | 补 code review / helper 说明，说明为何当前证据足以支撑 `L2` | 未引入真实 DB 慢调用 | review 说明 + helper 校验 | 真实慢调用行为仍未实测 |
-| Findings 修复链路完整保留 | `review.md` 已回写为 `fixed` | 无 | 无 | 无 | 低 |
+| 映射编号 | 需求项 / 风险点 | 当前闭环状态 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
+|----------|------------------|--------------|----------------------|----------------|----------|----------|----------|
+| V1 | Service 错误包装保留底层 error | apply-covered | `TestUserServiceCreateWrapRepoError` + `go test ./...` | 无，现有回归测试已闭合 | 无 | 无 | 低 |
+| V2 | Repo 调用具备最小超时边界 | test-covered | timeout 接入代码已落地 + `go build ./...` | 已补 code review / helper 说明，说明为何当前证据足以支撑 `L2` | 未引入真实 DB 慢调用 | review 说明 + helper 校验 | 真实慢调用行为仍未实测 |
+| V3 | Findings 修复链路完整保留 | apply-covered | `review.md` 已回写为 `fixed` | 无 | 无 | 无 | 低 |
 
 #### 2. 覆盖范围
 

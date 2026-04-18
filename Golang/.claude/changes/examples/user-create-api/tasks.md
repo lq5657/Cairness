@@ -42,9 +42,9 @@ updated: 2026-04-11
   * Repo 提供可复用的创建方法
   * `go build ./...` 通过
 * **验证步骤** :
-  * 运行 `go build ./...`
-  * 检查 `UserService.Create` 是否先查重再调用 `Repo.Create`
-* **测试要求** : 至少补 1 条覆盖重复 email 的最小回归证据；本 task 允许先完成 build 和 Service 规则验证，完整回归在 Task 2 收口
+  * `V2`：运行 `go build ./...`
+  * `V1 / V2`：检查 `UserService.Create` 是否先查重再调用 `Repo.Create`
+* **测试要求** : 至少补 1 条覆盖重复 email 的最小回归证据；本 task 负责先将 `V2` 推进到可由 `cc-apply` 关闭的状态，`V1` 的完整 `L3` 证据留到 Task 2 与 `cc-test` 收口
 * **回退方式** : 若 task 失败，可仅回退 `service/repo/model` 相关改动，不影响接口层与 schema
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 完成用户创建核心链路`
@@ -69,10 +69,10 @@ updated: 2026-04-11
   * P0 测试覆盖成功和重复创建场景
   * `go test ./...` 通过
 * **验证步骤** :
-  * 运行 `go test ./...`
-  * 检查 `UserHandler.Create` 是否对业务错误做稳定映射
-  * 检查 `TestUserServiceCreateSuccess` 与 `TestUserServiceCreateDuplicateEmail` 通过
-* **测试要求** : 先 Red 再 Green；若 Handler 层无法稳定制造 Red，至少提供 Service 回归测试和 review 佐证
+  * `V1 / V2`：运行 `go test ./...`
+  * `V3`：检查 `UserHandler.Create` 是否对业务错误做稳定映射
+  * `V1 / V2`：检查 `TestUserServiceCreateSuccess` 与 `TestUserServiceCreateDuplicateEmail` 通过
+* **测试要求** : 先 Red 再 Green；若 Handler 层无法稳定制造 Red，至少提供 Service 回归测试和 review 佐证。本 task 关闭 `V2 / V3` 为 `apply-covered`，`V1` 的链路级补强说明交由 `cc-test` 更新为 `test-covered`
 * **回退方式** : 若 task 失败，可停留在仅有 Service/Repo 能力的状态，不改变 Task 1 已完成内容
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 接入创建入口并补充测试`

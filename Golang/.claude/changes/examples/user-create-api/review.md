@@ -26,15 +26,24 @@ final_status: pass
 
 * `spec.md`：`changes/examples/user-create-api/spec.md`
 * `tasks.md`：`changes/examples/user-create-api/tasks.md`
+* `test-spec.md`：`changes/examples/user-create-api/test-spec.md`
 * `log.md`：`changes/examples/user-create-api/log.md`
 * 审查代码范围：`internal/handler/user_handler.go`, `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/service/user_service_test.go`
 
 #### 2. Task Coverage
 
-| Task | 声明的验收标准 | 验证证据是否充分 | 结果 | 备注 |
-|------|----------------|------------------|------|------|
-| Task 1 | `UserService.Create` 返回稳定业务错误；Repo 提供创建方法；`go build ./...` 通过 | 是 | ✅ | 核心链路已完成，验证证据与 task 目标一致 |
-| Task 2 | Handler 错误映射稳定；成功和重复 email 场景回归通过；`go test ./...` 通过 | 是 | ✅ | 入口层和回归测试均已落地，文档已同步 |
+| Task | 关联映射项 | 声明的验收标准 | 验证证据是否充分 | 闭环状态检查 | 结果 | 备注 |
+|------|------------|----------------|------------------|--------------|------|------|
+| Task 1 | `V1 / V2` | `UserService.Create` 返回稳定业务错误；Repo 提供创建方法；`go build ./...` 通过 | 是 | `V2` 已由 apply 证据支撑；`V1` 仍需 `cc-test` 补成 `test-covered` | ✅ | 核心链路已完成，验证证据与 task 目标一致 |
+| Task 2 | `V1 / V2 / V3` | Handler 错误映射稳定；成功和重复 email 场景回归通过；`go test ./...` 通过 | 是 | `V1` 已在 `test-spec.md` 中补齐为 `test-covered`；`V2 / V3` 与当前证据一致 | ✅ | 入口层和回归测试均已落地，文档已同步 |
+
+#### 2.1 验证映射检查
+
+| 映射编号 | `spec.md` 声明状态 | 审查结论 | 证据 / 缺口 | 结果 |
+|----------|--------------------|----------|-------------|------|
+| V1 | `test-covered` | 与证据一致 | `test-spec.md` 已补链路级说明，`go test ./...` 结果存在 | ✅ |
+| V2 | `apply-covered` | 与证据一致 | `TestUserServiceCreateDuplicateEmail` 已覆盖重复 email 风险 | ✅ |
+| V3 | `apply-covered` | 与证据一致 | review 已确认新增接口属于 `compatible_addition` | ✅ |
 
 #### 3. Stage 1 — Spec Compliance
 
