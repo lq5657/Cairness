@@ -66,6 +66,7 @@
 * **Harness接入预检** : 当需要验收或排查当前项目对框架的接入完整性时，执行 `cc-preflight`；`knowledge/integration-preflight-checklist.md` 是该命令的执行依据，而不是隐性入口 → `commands/cc-preflight.md`
 * **Harness接入高频问题** : 接入真实项目时，优先排查 `cc-init` 边界、路径解释、命令冲突、checkpoint 展示契约和验证等级等常见跑偏点 → `knowledge/common-integration-pitfalls.md`
 * **cc-propose回归评测** : 修改 `cc-propose` 提问策略、绿地/存量分支或 checkpoint 后，先用回归样例验证是否仍能正确处理 Discovery、Research 和 `brainstorm-needed` 边界 → `knowledge/cc-propose-eval-cases.md`
+* **cc-apply回归评测** : 修改 `cc-apply`、验证等级规则、测试策略或相关样例后，先用回归样例验证不会退化成“只保 `go build`” → `knowledge/cc-apply-eval-cases.md`
 * **系统讲解命令** : 当目标是帮助用户深入掌握大型复杂项目时，使用 `cc-explain-system` 输出系统定位、架构、数据流、技术机制、难点与阅读路径 → `commands/cc-explain-system.md`
 * **Checkpoint结果列** : 所有 checkpoint 表的状态必须写入 `结果` 列，禁止把 `[x]` / `[ ]` 塞进 `检查项` 列冒充结果，结果值只允许 `✅`、`❌`、`⚠️`、`N/A`
 * **具体优于抽象** : 默认先写具体实现，只有在多实现、测试替身或明确解耦诉求出现时再抽象接口

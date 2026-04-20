@@ -136,14 +136,14 @@ complexity: 🟢简单
 * **测试范围**：Service 错误包装、Repo 超时边界相关路径
 * **最低验证等级**：L2
 * **验证证据要求**：回归测试覆盖错误包装与超时边界
-* **若无法达到目标等级的替代方案**：示例不引入真实 DB 阻塞场景，用回归测试 + review 证明超时边界接入
+* **若无法达到目标等级的替代方案**：若 `go test` 无法执行，必须在 `cc-apply` 标记 `blocked` / `partial`；不能只凭代码接入说明或 `go build` 闭环
 
 #### 9.1 需求-验证映射
 
 | 编号 | 需求项 / 风险点 | 最低验证等级 | 证据类型 | 建议验证动作 | 对应 Task | 闭环状态 |
 |------|------------------|--------------|----------|--------------|-----------|----------|
-| V1 | Service 错误包装保留底层 error | L2 | build | 展示错误包装回归测试，确认 `%w` 保留原始错误 | Task 1 / Task 2 | apply-covered |
-| V2 | Repo 调用具备最小超时边界 | L2 | package | 展示 timeout 接入代码证据与补充测试/审查说明 | Task 1 / Task 2 | test-covered |
+| V1 | Service 错误包装保留底层 error | L2 | package | 展示错误包装回归测试，确认 `%w` 保留原始错误 | Task 1 / Task 2 | apply-covered |
+| V2 | Repo 调用具备最小超时边界 | L2 | package | 展示 timeout 接入测试或可重复回归证据，而不是仅展示代码接入说明 | Task 1 / Task 2 | apply-covered |
 | V3 | Findings 修复链路完整保留 | L1 | manual | review 文档回写 `fixed`，不删除原 Findings | Task 2 | apply-covered |
 
 #### 9.2 发布与回滚

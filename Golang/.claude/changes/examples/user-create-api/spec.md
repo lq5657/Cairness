@@ -153,15 +153,15 @@ complexity: 🟡中等
 简单变更可用 2-4 行写清测试范围、最低验证等级和替代证据，不必展开成长计划。
 
 * **测试范围**：Service 核心编排、重复 email 分支、创建成功分支
-* **最低验证等级**：L3
-* **验证证据要求**：Service 核心测试 Green + 创建链路回归说明
-* **若无法达到目标等级的替代方案**：示例不展开真实 HTTP 集成环境，以 Service 回归 + review 校验 Handler 行为代替
+* **最低验证等级**：L2
+* **验证证据要求**：Service 核心测试 Green + 入口接线与兼容性检查
+* **若无法达到目标等级的替代方案**：若 `go test` 无法执行，必须在 `cc-apply` 标记 `blocked` / `partial`，不能只保 `go build`
 
 #### 9.1 需求-验证映射
 
 | 编号 | 需求项 / 风险点 | 最低验证等级 | 证据类型 | 建议验证动作 | 对应 Task | 闭环状态 |
 |------|------------------|--------------|----------|--------------|-----------|----------|
-| V1 | 创建用户成功主链路 | L3 | chain | 展示 `Create` 成功路径回归测试，并说明 Handler 到 Service 的接线关系 | Task 1 / Task 2 | test-covered |
+| V1 | 创建用户成功主链路 | L2 | package | 展示 `Create` 成功路径回归测试，并说明 Handler 到 Service 的接线关系 | Task 1 / Task 2 | apply-covered |
 | V2 | email 重复不得重复创建 | L2 | chain | 展示重复 email 回归测试，确认返回稳定业务错误 | Task 1 / Task 2 | apply-covered |
 | V3 | 新增接口不破坏旧调用方 | L2 | manual | review 对照新增接口语义与兼容性分类，确认属于 `compatible_addition` | Task 2 | apply-covered |
 

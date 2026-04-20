@@ -34,15 +34,15 @@ final_status: pass
 
 | Task | 关联映射项 | 声明的验收标准 | 验证证据是否充分 | 闭环状态检查 | 结果 | 备注 |
 |------|------------|----------------|------------------|--------------|------|------|
-| Task 1 | `V1 / V2` | Repo 写入具备超时边界；Service 保留底层错误；`go build ./...` 通过 | 是 | `V1` 已有 apply 级证据；`V2` 代码接入完成，待 `cc-test`/review 校验是否可升为 `test-covered` | ✅ | fix 聚焦实现质量，未超出任务边界 |
-| Task 2 | `V1 / V2 / V3` | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | `V2` 已在 `test-spec.md` 中补齐为 `test-covered`；`V1 / V3` 与当前证据一致 | ✅ | review 回写与回归测试都已完成，符合 `/fix` 约束 |
+| Task 1 | `V1 / V2` | Repo 写入具备超时边界；Service 保留底层错误；`go build ./...` 通过 | 是 | Task 1 只完成代码接入和前置证据，未把 `L2` 最低验证错误地提前闭环 | ✅ | fix 聚焦实现质量，未超出任务边界 |
+| Task 2 | `V1 / V2 / V3` | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | `V1 / V2 / V3` 的最低验证均已在 `cc-apply` 内闭环，不依赖 `cc-test` 兜底 | ✅ | review 回写与回归测试都已完成，符合 `/fix` 约束 |
 
 #### 2.1 验证映射检查
 
 | 映射编号 | `spec.md` 声明状态 | 审查结论 | 证据 / 缺口 | 结果 |
 |----------|--------------------|----------|-------------|------|
 | V1 | `apply-covered` | 与证据一致 | 错误包装回归测试已存在，当前无需更高层补强 | ✅ |
-| V2 | `test-covered` | 与证据一致 | `test-spec.md` 已补 timeout 说明，review 可接受当前 `L2` 证据 | ✅ |
+| V2 | `apply-covered` | 与证据一致 | timeout 回归证据与 `go test ./...` 已满足最低 `L2` 要求 | ✅ |
 | V3 | `apply-covered` | 与证据一致 | `review.md` 已保留 Findings 修复链路，不存在记录缺口 | ✅ |
 
 #### 2.2 风险镜头检查（按触发填写）
@@ -50,7 +50,7 @@ final_status: pass
 | 镜头 | 触发原因 | 结论 | 是否形成 Finding |
 |------|----------|------|------------------|
 | scope-lens | `/fix` 只应处理 `open` Findings，需确认未顺手扩张范围 | 修复范围仍限定在本轮两个 open Finding 所对应的问题，未重写业务逻辑或历史 review 记录 | 否 |
-| feasibility-lens | `V2` 以 timeout 接入说明 + review 接受当前 `L2` 证据，需确认不是纸面闭环 | 当前 fix 目标只是补最小边界保护与回归证据，证据和等级匹配，可接受 | 否 |
+| feasibility-lens | timeout 场景 Red 难以稳定制造，需确认没有把代码说明冒充验证 | 当前已要求用可重复回归证据 + `go test ./...` 证明最低 `L2`，不存在纸面闭环 | 否 |
 | release-lens | fix 涉及 timeout 边界和发布观察窗口，需确认回滚和风险说明一致 | 直接发布、代码回滚和观察窗口说明完整，无新增阻塞 | 否 |
 
 #### 3. Stage 1 — Spec Compliance

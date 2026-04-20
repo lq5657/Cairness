@@ -45,7 +45,7 @@ created: 2026-04-11
 | 映射编号 | 需求项 / 风险点 | 当前闭环状态 | `cc-apply` 已有证据 | 本次需补齐证据 | 跳过原因 | 替代证据 | 剩余风险 |
 |----------|------------------|--------------|----------------------|----------------|----------|----------|----------|
 | V1 | Service 错误包装保留底层 error | apply-covered | `TestUserServiceCreateWrapRepoError` + `go test ./...` | 无，现有回归测试已闭合 | 无 | 无 | 低 |
-| V2 | Repo 调用具备最小超时边界 | test-covered | timeout 接入代码已落地 + `go build ./...` | 已补 code review / helper 说明，说明为何当前证据足以支撑 `L2` | 未引入真实 DB 慢调用 | review 说明 + helper 校验 | 真实慢调用行为仍未实测 |
+| V2 | Repo 调用具备最小超时边界 | apply-covered | timeout 回归证据 + `go test ./...` | 无，最低 `L2` 证据已在 `cc-apply` 闭环 | 未引入真实 DB 慢调用 | helper test + review 说明 | 真实慢调用行为仍未实测 |
 | V3 | Findings 修复链路完整保留 | apply-covered | `review.md` 已回写为 `fixed` | 无 | 无 | 无 | 低 |
 
 #### 2. 覆盖范围
@@ -67,7 +67,7 @@ created: 2026-04-11
 | 层级 | 是否覆盖 | 覆盖对象 | 说明 |
 |------|----------|----------|------|
 | `unit` | 是 | `UserService.Create` 错误包装路径 | 覆盖 `%w` 包装和错误保留 |
-| `repo` | 部分 | `UserRepo.Create` timeout 接入 | 通过 helper / code review 间接验证 |
+| `repo` | 部分 | `UserRepo.Create` timeout 接入 | 通过 helper test 与回归证据验证，未引入真实 DB 慢调用 |
 | `transport` | 否 | - | 本次 fix 不涉及入口层 |
 | `chain` | 否 | - | 无需新增完整链路回归 |
 | `integration` | 否 | - | 样例不引入真实外部依赖 |
@@ -85,19 +85,11 @@ created: 2026-04-11
 
 | 场景 | 原因 | 替代验证方式 |
 |------|------|--------------|
-| repo 超时实际等待 | 样例不依赖真实 DB 环境 | 通过 code review + helper test 验证 |
+| repo 超时实际等待 | 样例不依赖真实 DB 环境 | 通过 helper test + review 说明验证 |
 
 #### 2.2 补强验证目标
 
-说明本次 `cc-test` 需要额外补齐的验证、其必要性，以及若跳过更高层验证所采用的替代证据。
-
-| 项目 | 值 |
-|------|----|
-| `cc-test` 需补齐的验证 | 固化错误包装回归测试和 timeout 接入说明，补齐 `L2` 证据归档 |
-| 补强原因 | `cc-apply` 已完成最小构建与回写，但仍需解释 fix 为什么足够安全 |
-| 跳过的更高层测试 | 真实 DB 慢调用与 HTTP 集成测试 |
-| 跳过原因 | 样例不引入完整运行环境，避免 fix 示例过重 |
-| 替代证据 | Service 回归测试 + review Findings 更新 + code review 证明 timeout 已接入 |
+无额外补强。当前样例的最低验证等级已在 `cc-apply` 中闭环；若后续需要更高等级证据，应作为额外增强而不是最低要求补做。
 
 #### 3. 执行计划
 

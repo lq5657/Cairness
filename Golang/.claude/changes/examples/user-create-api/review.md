@@ -34,14 +34,14 @@ final_status: pass
 
 | Task | 关联映射项 | 声明的验收标准 | 验证证据是否充分 | 闭环状态检查 | 结果 | 备注 |
 |------|------------|----------------|------------------|--------------|------|------|
-| Task 1 | `V1 / V2` | `UserService.Create` 返回稳定业务错误；Repo 提供创建方法；`go build ./...` 通过 | 是 | `V2` 已由 apply 证据支撑；`V1` 仍需 `cc-test` 补成 `test-covered` | ✅ | 核心链路已完成，验证证据与 task 目标一致 |
-| Task 2 | `V1 / V2 / V3` | Handler 错误映射稳定；成功和重复 email 场景回归通过；`go test ./...` 通过 | 是 | `V1` 已在 `test-spec.md` 中补齐为 `test-covered`；`V2 / V3` 与当前证据一致 | ✅ | 入口层和回归测试均已落地，文档已同步 |
+| Task 1 | `V1 / V2` | `UserService.Create` 返回稳定业务错误；Repo 提供创建方法；`go build ./...` 通过 | 是 | Task 1 只为 `V2` 提供前置实现和最小证据，未提前声称 `V1` 已闭环 | ✅ | 核心实现已完成，未越过验证边界 |
+| Task 2 | `V1 / V2 / V3` | Handler 错误映射稳定；成功和重复 email 场景回归通过；`go test ./...` 通过 | 是 | `V1 / V2 / V3` 的最低验证均已在 `cc-apply` 中闭环，无需依赖 `cc-test` 兜底 | ✅ | 入口层和回归测试均已落地，文档已同步 |
 
 #### 2.1 验证映射检查
 
 | 映射编号 | `spec.md` 声明状态 | 审查结论 | 证据 / 缺口 | 结果 |
 |----------|--------------------|----------|-------------|------|
-| V1 | `test-covered` | 与证据一致 | `test-spec.md` 已补链路级说明，`go test ./...` 结果存在 | ✅ |
+| V1 | `apply-covered` | 与证据一致 | `TestUserServiceCreateSuccess`、入口接线检查与 `go test ./...` 已支撑最低 `L2` 等级 | ✅ |
 | V2 | `apply-covered` | 与证据一致 | `TestUserServiceCreateDuplicateEmail` 已覆盖重复 email 风险 | ✅ |
 | V3 | `apply-covered` | 与证据一致 | review 已确认新增接口属于 `compatible_addition` | ✅ |
 
@@ -50,7 +50,7 @@ final_status: pass
 | 镜头 | 触发原因 | 结论 | 是否形成 Finding |
 |------|----------|------|------------------|
 | scope-lens | `parallel_safe = true`，需确认未顺手扩张到查询链路和无关字段 | 未发现范围漂移，改动仍限定在创建链路与最小测试补强 | 否 |
-| feasibility-lens | `V1` 需要从 `apply-covered` 补到 `test-covered`，且样例未引入真实 HTTP/DB 环境 | 当前以 Service 回归测试 + 链路说明作为 `L3` 替代证据可接受，但边界已在 `test-spec.md` 说明 | 否 |
+| feasibility-lens | 样例未引入真实 HTTP/DB 环境，需确认最低等级是否与现有证据匹配 | 已将最低等级收敛为 `L2`，当前 `go test ./...` 与入口接线检查足以支撑，不存在纸面补强兜底 | 否 |
 | release-lens | 新增接口、存在兼容性分类和发布观察窗口 | `compatible_addition`、直接发布和回滚路径与 spec 一致，无额外阻塞 | 否 |
 
 #### 3. Stage 1 — Spec Compliance
