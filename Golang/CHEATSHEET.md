@@ -427,7 +427,8 @@ Gate：
 ## 14. 最短记忆版
 
 ```text
-先 cc-init，再 cc-propose。
+已有项目先 cc-init，再 cc-propose。
+新项目先 cc-new-project，再从首批 change 进入 cc-propose。
 需要验收接入完整性时，再跑 cc-preflight。
 没有 spec 不写代码。
 按 task 小步提交。

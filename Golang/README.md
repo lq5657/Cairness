@@ -436,6 +436,7 @@ cc-test <change-id>
 
 | 命令 | 说明 |
 |------|------|
+| `cc-new-project <项目想法>` | 为新项目生成项目级定义、MVP 路线图与首批 change backlog |
 | `cc-preflight` | 检测当前项目的 Harness 接入完整性 |
 | `cc-init` | 初始化项目上下文 |
 | `cc-enrich-context` | 补充更完整的项目上下文 |
@@ -476,5 +477,5 @@ cc-test <change-id>
 本框架适用于：
 
 * 已有 Golang 后端项目（推荐先执行 `cc-init` 识别真实上下文）
-* 新建 Golang 项目（执行 `cc-init` 建立已知事实与待确认事项，再进入 `cc-propose`）
+* 新建 Golang 项目（先执行 `cc-new-project` 明确项目级定义，再从首批推荐 change 进入 `cc-propose`）
 * 需要 Spec 驱动开发规范的团队
