@@ -56,6 +56,19 @@
   - 涉及接口变更、配置变更、发布与回滚、兼容窗口时，触发 `release-lens`
 - 若镜头已触发，必须写明结论；若镜头发现问题，必须落实为 Findings，而不是只写“已检查”
 
+### 专题规则装载
+
+- `cc-review` 至少必须读取 `rules/verification.md`，因为 review 要判断验证等级、证据充分性与闭环状态是否真实成立
+- 若 review 关注测试分层、最低验证承接边界、替代证据是否合理，必须读取 `rules/testing-strategy.md`
+- 若涉及 migration、回填、兼容窗口、contract 清理或双写链路，必须读取 `rules/database-changes.md`
+- 若涉及接口契约、字段兼容、消费者迁移或 breaking change 风险，必须读取 `rules/api-compatibility.md`
+- 若涉及配置项、环境变量、默认值、环境差异，必须读取 `rules/configuration.md`
+- 若涉及日志、metrics、trace、告警、异步观测能力，必须读取 `rules/observability.md`
+- 若命中 `release-lens` 或涉及灰度、回滚、上线观察窗口，必须读取 `rules/release.md`
+- 若命中 `security-lens` 或涉及权限、鉴权、敏感数据、安全边界，必须读取 `rules/security.md`
+- 若 review 涉及并行变更、分支冲突、依赖顺序或 `依赖 / Wave` 执行争议，必须读取 `rules/git-workflow.md`
+- 开始审查后必须显式给出“规则装载摘要”：说明本轮实际读取了哪些规则、为何读取；若未命中额外专题规则，也要写明“本轮仅读取 `rules/verification.md`”
+
 ### Findings 状态语义
 
 - `open`：问题存在，必须进入 `cc-fix` 处理，除非后续转为 `accepted`
@@ -76,4 +89,6 @@
 - `context/mvp-roadmap.md`（如存在）
 - 当前 change 的 `test-spec.md`（如存在）
 - 当前 change 的 `review.md`
+- `rules/verification.md`
+- 命中专题时读取对应规则：`testing-strategy` / `database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`
 - 相关专题规则

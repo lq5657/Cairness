@@ -74,6 +74,19 @@
 - 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把新项目定义强行塞进 `cc-propose`
 - 若仍存在影响 task 拆分的关键未决问题，只能产出草案，保持 `status: propose`，不得宣称提案已就绪
 
+## 专题规则装载
+
+- `cc-propose` 至少必须读取 `rules/verification.md`，因为提案阶段要冻结最低验证等级、证据类型与映射闭环方式
+- 若验证层级选择、`cc-apply` / `cc-test` 的验证边界或回归策略存在争议，必须读取 `rules/testing-strategy.md`
+- 若涉及 migration、回填、兼容窗口、双写或 contract 清理，必须读取 `rules/database-changes.md`
+- 若涉及对外接口、事件契约、字段兼容性、消费者迁移，必须读取 `rules/api-compatibility.md`
+- 若涉及配置项、环境变量、默认值、环境差异或 Secret 注入，必须读取 `rules/configuration.md`
+- 若涉及日志、metrics、trace、异步链路观测或告警要求，必须读取 `rules/observability.md`
+- 若涉及发布方式、灰度、回滚路径、观察窗口，必须读取 `rules/release.md`
+- 若涉及权限、鉴权、敏感数据、安全边界，必须读取 `rules/security.md`
+- 若涉及 `depends_on`、并行变更、分支冲突或顺序执行约束，必须读取 `rules/git-workflow.md`
+- 本轮提案完成前，必须显式给出“规则装载摘要”：说明实际读取了哪些规则、为何读取；若未触发额外专题规则，也要明确写出“本轮仅读取 `rules/verification.md`”
+
 ## 失败处理
 
 - 若需求仍停留在 `brainstorm-needed` 且尚未收敛到可提案状态，保持 `status: propose`
@@ -87,4 +100,6 @@
 - `context/mvp-roadmap.md`（如存在）
 - `checkpoints/cc-propose.md`
 - `rules/verification.md`
+- `rules/testing-strategy.md`（涉及验证分层或 `cc-apply` / `cc-test` 边界时）
+- 命中专题时读取对应规则：`database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`
 - 相关专题规则

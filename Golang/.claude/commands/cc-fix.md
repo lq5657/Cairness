@@ -16,6 +16,7 @@
 
 ## 执行要求
 
+- 开始前必须至少读取 `rules/verification.md`，因为 `cc-fix` 需要确保修复后的验证等级不低于既有要求
 - 默认只处理 `review.md` 中 `status = open` 的 Findings
 - 若用户临时追加新问题，必须先追加到 `review.md` 或 `log.md`，再纳入本轮 `cc-fix`
 - 对每个 Finding，必须先重述技术含义，确认自己理解的是“问题要求”而不是表面措辞
@@ -27,6 +28,15 @@
 - 每项修复后重新验证，且验证等级不得低于本次 change 已声明的最低等级
 - 默认一次只处理一个 Finding，或一组明确耦合、已说明联动关系的 Findings
 - 若某个 Finding 不清晰、有争议或已因代码变化失效，必须先记录澄清结论或转为 `accepted`，不得机械实现
+- 若 Finding 涉及测试分层、最低验证承接、回归策略或替代证据，必须读取 `rules/testing-strategy.md`
+- 若 Finding 属于 migration、回填、兼容窗口、contract 清理或双写风险，必须读取 `rules/database-changes.md`
+- 若 Finding 属于接口契约、字段兼容、消费者迁移或 breaking change，必须读取 `rules/api-compatibility.md`
+- 若 Finding 属于配置项、环境变量、默认值或环境差异问题，必须读取 `rules/configuration.md`
+- 若 Finding 属于日志、metrics、trace、告警或异步观测问题，必须读取 `rules/observability.md`
+- 若 Finding 属于发布、灰度、回滚、观察窗口问题，必须读取 `rules/release.md`
+- 若 Finding 属于权限、鉴权、敏感数据或安全边界问题，必须读取 `rules/security.md`
+- 若 Finding 涉及并行变更、分支冲突、依赖顺序或执行波次争议，必须读取 `rules/git-workflow.md`
+- 开始修复后必须显式给出“规则装载摘要”：说明本轮实际读取了哪些规则、为何读取；若未命中额外专题规则，也要写明“本轮仅读取 `rules/verification.md`”
 
 ### Fix 流程
 
@@ -48,3 +58,5 @@
 - `checkpoints/cc-fix.md`
 - 当前 change 的 `review.md`
 - 当前 change 的 `spec.md` / `tasks.md` / `test-spec.md` / `log.md`
+- `rules/verification.md`
+- 命中专题时读取对应规则：`testing-strategy` / `database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`
