@@ -13,7 +13,7 @@
 
 #### 通用评分维度
 
-每个样例至少检查以下 8 项：
+每个样例至少检查以下 9 项：
 
 | 维度 | 通过标准 |
 |------|----------|
@@ -24,6 +24,7 @@
 | 证据执行 | 实际执行了对应测试、链路回归或手工验证，而不是只写文档状态 |
 | 阻塞处理 | 达不到最低验证等级时会停在 `blocked/partial`，而不是硬标 `done` |
 | `cc-test` 边界 | 不会把当前 task 的最低验证默认推给 `cc-test` |
+| 依赖/波次意识 | 会识别 task 之间的依赖与顺序，不把需串行的任务误当并行 |
 | 结果同步 | 会把映射状态、task 状态和文档备注与真实证据对齐 |
 
 建议打分：
@@ -191,9 +192,36 @@ cc-apply user-create-api-fix
 
 ---
 
+## Case 7：依赖 / Wave 顺序回归
+
+**目标**：验证 `cc-apply` 会遵守 `tasks.md` 里的执行顺序，不会跳过前置 task 强行推进。
+
+**用户输入**：
+
+```text
+cc-apply payment-refactor
+```
+
+**场景前提**：
+- `tasks.md` 中 `Task 2` 明确依赖 `Task 1`
+- `Task 1` 负责 schema / contract / shared primitive，尚未完成
+- 实现者试图直接执行 `Task 2` 并用局部 build 或单测证明“可以先做”
+
+**必过信号**：
+- 明确指出当前违反 `依赖 / Wave` 约束
+- 不允许在 `Task 1` 未闭环时把 `Task 2` 标成 `done`
+- 要么退回先完成前置 task，要么把当前状态标记为 `blocked/partial` 并记录原因
+
+**失败信号**：
+- 把“局部可写代码”误判成“可以跳过前置任务”
+- 没检查 `tasks.md` 的依赖字段，直接按用户当前想做的 task 往下执行
+
+---
+
 ## 维护建议
 
 - 每次修改 `commands/cc-apply.md` 或 `checkpoints/cc-apply.md` 后，至少回归 Case 2、Case 4、Case 5
+- 每次修改 task 模板、执行顺序或并行规则后，至少回归 Case 7
 - 每次修改 `rules/verification.md` 或 `rules/testing-strategy.md` 后，至少回归 Case 1、Case 2、Case 3
 - 每次修改 `changes/templates/*` 或 `changes/examples/*` 后，至少回归 Case 6
 - 若回归失败，优先修规则、checkpoint、模板和样例，不优先补 README 解释

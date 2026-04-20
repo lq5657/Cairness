@@ -35,8 +35,10 @@
 ### Task Coverage
 
 - `cc-review` 不仅审 change 整体，还必须对照 `tasks.md` 检查每个 task 是否真正达到其声明的验收标准
+- `cc-review` 还必须检查：task 是否真正交付了其 promised outcome，而不是只完成了代码动作；若 task 目标、阶段目标或 roadmap 对齐关系未被实现结果支撑，应形成 Findings
 - `cc-review` 必须逐项检查 `spec.md` 的“需求-验证映射”编号与闭环状态，确认其是否已被 task、`test-spec.md`（如存在）与实际证据完整支撑
 - 若映射项标记为 `apply-covered` / `test-covered`，但证据不足、`test-spec.md` 结论不一致，或状态未同步，应形成 Findings
+- 若 `tasks.md` 已声明依赖 / wave，`cc-review` 应检查实际执行结果是否违反依赖顺序、是否把需要顺序闭环的 task 错误当成并行独立任务
 - 若 task 的验证证据不足、执行结果与验收标准不一致、需求-验证映射未闭环，或 change 文档未同步，应形成 Findings，而不是只写总体备注
 
 ### 风险镜头
@@ -71,6 +73,7 @@
 - `checkpoints/cc-review.md`
 - 当前 change 的 `spec.md`
 - 当前 change 的 `tasks.md`
+- `context/mvp-roadmap.md`（如存在）
 - 当前 change 的 `test-spec.md`（如存在）
 - 当前 change 的 `review.md`
 - 相关专题规则

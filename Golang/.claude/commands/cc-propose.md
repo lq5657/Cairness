@@ -2,7 +2,9 @@
 
 ## 用途
 
-创建变更提案，产出 `changes/<change-id>/spec.md` 与 `tasks.md`。
+为已有项目中的单次正式 change 创建提案，产出 `changes/<change-id>/spec.md` 与 `tasks.md`。
+
+若当前目标仍是“先把一个新项目定义清楚”，应改用 `cc-new-project`。
 
 ## 命令格式
 
@@ -15,11 +17,10 @@
 
 ## 执行流程
 
-1. 项目形态判断：先判断当前请求属于存量项目增强，还是绿地/空项目启动
-2. Discovery / Research 分支：
-   - 存量项目：先做本地 Research，读代码、查链路、识别现有实现与项目约定
-   - 绿地/空项目：先做 Discovery，理解用户想做什么、为什么做、给谁用、什么算成功
-3. 上下文充分性判断：判断本地代码、需求信息、项目上下文和既有约定是否足以支撑方案收敛
+1. 命令边界判断：先判断当前请求是否属于已有项目中的正式 change；若仍是新项目定义，路由到 `cc-new-project`
+2. 若存在 `context/project-definition.md` / `context/mvp-roadmap.md`，先读取项目定义、当前阶段和推荐 change backlog，确认本次 change 与项目路线图一致
+3. Research：先做本地 Research，读代码、查链路、识别现有实现与项目约定
+4. 上下文充分性判断：判断本地代码、需求信息、项目上下文和既有约定是否足以支撑方案收敛
 4. 需求清晰度判断：先判断当前请求应走 `direct`、`light-clarify` 还是 `brainstorm-needed`
    - `direct`：目标、边界、约束已足够清晰，直接进入提案
    - `light-clarify`：只需补 1-3 个关键问题即可继续，不展开额外长讨论
@@ -35,13 +36,11 @@
 13. 生成 Tasks：按最小可执行单元拆 task，而不是仅按文件罗列，并确保 task 验证步骤可回溯到验证映射编号
 14. HARD-GATE：等待用户确认再进入 `cc-apply`
 
-## Discovery 执行要求
+## 澄清执行要求
 
-- 绿地/空项目时，`cc-propose` 的首要任务是需求发现，不是工程接入引导
-- 空项目只代表缺少代码参照，不代表无法继续提案
-- Discovery 阶段的角色是“共同思考者”，不是表单式访谈者；目标是帮助用户把想法抽取成可收敛的问题定义
-- 开场优先允许用户自由展开，先接住需求，再逐步收敛，不要一上来切成预制问题清单
-- 在 `Discovery` 未完成前，不要优先追问技术栈、运行形态、存储方式、模型接入、框架选型等实现细节
+- `cc-propose` 默认服务于已有项目中的正式 change，不负责新项目定义
+- 若项目级定义与路线图已存在，应优先把本次 change 放回当前 phase / backlog 语义中收敛，而不是脱离项目路线图单独提案
+- 澄清阶段的角色是“change 共创者”，目标是把本次 change 收敛到可提案状态
 - 第一轮问题必须直接围绕用户原始需求中的核心名词、动作、场景和目标展开
 - 提问时优先“顺着用户线索往下问”，即继续追问用户最具体、最有业务含义、最能暴露真实目标的点，而不是平均摊开所有维度
 - 若用户给出抽象词，如“更好”“更灵活”“更懂用户”“更智能”，必须继续具体化，直到能落到场景、行为、结果或成功标准
@@ -60,7 +59,8 @@
 - 若存在明显依赖，必须在 `spec.md` 中记录 `depends_on`
 - 若涉及 DB、API、配置、可观测性、测试、发布等专题，必须增量读取对应规则
 - 存量项目未做最小必要 Research 前，不得直接提出泛化澄清问题
-- 绿地/空项目未完成最小必要 Discovery 前，不得直接提出实现层泛化澄清问题
+- 若当前请求更像新项目定义，不得继续在 `cc-propose` 中硬做 change 提案；应明确改用 `cc-new-project`
+- 若 `context/mvp-roadmap.md` 已存在，且本次 change 明显偏离当前 phase、依赖关系或推荐 backlog，必须先指出偏差并要求确认
 - 需求清晰度判断只能收敛为 `direct`、`light-clarify`、`brainstorm-needed` 三者之一，不得跳过该判断
 - `brainstorm-needed` 只允许做短收敛，不得产出独立长期文档；收敛结果必须回写 `spec.md`
 - 若需求已足够清晰，不得为了“流程完整”强行进入 `brainstorm-needed`
@@ -71,7 +71,7 @@
 - 未完成主要需求项/风险点到映射编号、验证等级与证据类型的映射前，不得生成最终版 `tasks.md`
 - `spec.md` 中的最低验证等级、验证证据要求与 `tasks.md` 的验证步骤必须可追溯，不得互相脱节；`tasks.md` 中必须显式承接映射编号
 - 未完成范围冻结前，不得生成最终版 `tasks.md`
-- 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把主响应退化为“建议先执行 `cc-init`”
+- 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把新项目定义强行塞进 `cc-propose`
 - 若仍存在影响 task 拆分的关键未决问题，只能产出草案，保持 `status: propose`，不得宣称提案已就绪
 
 ## 失败处理
@@ -83,6 +83,8 @@
 ## 建议读取
 
 - `context/project-context.md`
+- `context/project-definition.md`（如存在）
+- `context/mvp-roadmap.md`（如存在）
 - `checkpoints/cc-propose.md`
 - `rules/verification.md`
 - 相关专题规则

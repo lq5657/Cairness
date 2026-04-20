@@ -47,9 +47,28 @@ Golang/.claude/changes/<change-id>/
 启动提示：
 - 只报告已知事实，不猜“测试连接”或“未完成请求”
 - 先报当前分支和进行中的 change
-- 直接给可复制命令，如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
+- 直接给可复制命令，如 `cc-new-project <项目想法>`、`cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 只作兼容汇总索引
+
+### `cc-new-project <项目想法>`
+
+用途：
+- 在绿地项目或新系统启动时，先把项目定义清楚
+- 收敛目标、用户、MVP、技术方向与首批 change backlog
+
+产物：
+- `context/project-definition.md`
+- `context/mvp-roadmap.md`
+- `context/architecture-outline.md`
+
+禁止：
+- 不要把 `cc-new-project` 直接做成编码命令
+- 不要把项目级定义错误写进 `changes/<change-id>/`
+- 不要自动进入 `cc-propose` 或 `cc-apply`
+
+下一步：
+- 项目定义稳定后，再针对首批推荐 change 执行 `cc-propose <需求描述>`
 
 ### `cc-preflight`
 
@@ -173,19 +192,21 @@ Golang/.claude/changes/<change-id>/
 ### `cc-propose <需求>`
 
 流程：
-1. 先做本地 Research，识别现有实现、链路和项目约定
-2. 判断当前上下文是否足以支撑方案收敛
-3. 若是绿地项目或本地缺少参照，做受控外部 Research，提炼成熟方案与权衡
-4. 先重述目标、边界和关键约束，再提高价值澄清问题
-5. 做方案比较，并明确“本次要做 / 本次不做”
-6. 生成 `spec.md`
-7. 生成 `tasks.md`
-8. 等待 HARD-GATE 确认
+1. 先判断当前请求是否应改走 `cc-new-project`
+2. 若已有 `project-definition.md` / `mvp-roadmap.md`，先确认当前 change 在 roadmap 中的位置
+3. 对已有项目做本地 Research，识别现有实现、链路和项目约定
+4. 判断当前上下文是否足以支撑方案收敛
+5. 先重述目标、边界和关键约束，再提出高价值澄清问题
+6. 做方案比较，并明确“本次要做 / 本次不做”
+7. 生成 `spec.md`
+8. 生成 `tasks.md`
+9. 等待 HARD-GATE 确认
 
 进入 `cc-apply` 前必须满足：
 - 需求明确
 - 功能点已识别
 - 与现有 change 的冲突已检查
+- 若存在 roadmap，已说明本次 change 的 phase、依赖和优先级
 - `待澄清` 全部解决
 - 若使用外部 Research，正式结论已回写 `spec.md`，而不是停留在参考资料层
 
@@ -193,8 +214,9 @@ Golang/.claude/changes/<change-id>/
 
 执行要求：
 - 先把 `spec.status` 改为 `apply`
-- 开始 task 前先做 Task Plan Review，确认当前 task 仍然合理、依赖满足、验证方式足够
+- 开始 task 前先做 Task Plan Review，确认当前 task 仍然合理、依赖满足、`依赖 / Wave` 未被违反、验证方式足够
 - 一次只推进一个 task，并先对齐 task 的边界、验证步骤、测试要求、回退方式
+- 若存在 `mvp-roadmap.md`，确认当前 task 没有偏离本次 change 的 roadmap 定位
 - 每个 task 开始前先做 task 启动简报：这次做什么、不做什么、怎么验证
 - 每个 task 完成后必须通过 task 级 gate，再推进下一个 task
 - 默认一个 task 一个 commit
@@ -218,6 +240,9 @@ Gate：
 - 存在 `Critical open` Findings，必须进入 `cc-fix`
 - 存在未被合理接受的 `Important open` Findings，默认不得归档
 - 必须检查 `tasks.md` 中每个 task 是否真正达到声明的验收标准
+- 必须检查 task 是否真正交付 promised outcome，而不是只完成代码动作
+- 若 `tasks.md` 已声明 `依赖 / Wave`，必须检查执行顺序是否被遵守
+- 若项目存在 roadmap，必须检查实现结果是否仍与 phase / backlog 对齐
 
 产物：
 - `changes/<change-id>/review.md`

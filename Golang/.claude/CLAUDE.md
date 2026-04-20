@@ -16,7 +16,7 @@
 - `变更即记录`：改代码时必须同步更新 change 文档
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
-- 绿地/空项目执行 `cc-propose` 时，优先做需求发现，不得默认把“仓库为空”改判为需要先做工程接入
+- 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
 
 #### 脚手架边界
 
@@ -41,6 +41,7 @@
 
 | 用户说的 | 映射命令 |
 |----------|----------|
+| "我要做一个新项目" / "帮我定义一个新系统" / "先把项目想清楚" | `cc-new-project` |
 | "做接入前自检" / "跑接入预检" / "检查 harness 是否接好" | `cc-preflight` |
 | "初始化项目上下文" | `cc-init` |
 | "补充项目上下文" / "补全项目画像" | `cc-enrich-context` |
@@ -91,6 +92,7 @@
 进行中的 change：无
 
 可直接执行：
+- cc-new-project <项目想法>
 - cc-init
 - cc-inspect-codebase architecture
 - cc-inspect-codebase logic
@@ -153,6 +155,7 @@ changes/<change-id>/
 ### 命令总表
 
 - `cc-preflight`
+- `cc-new-project <项目想法>`
 - `cc-init`
 - `cc-enrich-context`
 - `cc-explain-system`
@@ -169,6 +172,7 @@ changes/<change-id>/
 
 收到命令后按需装载：
 - `cc-preflight` -> `commands/cc-preflight.md` + `checkpoints/cc-preflight.md`
+- `cc-new-project` -> `commands/cc-new-project.md` + `checkpoints/cc-new-project.md`
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
 - `cc-enrich-context` -> `commands/cc-enrich-context.md` + `checkpoints/cc-enrich-context.md`
 - `cc-explain-system` -> `commands/cc-explain-system.md` + `checkpoints/cc-explain-system.md`
@@ -196,6 +200,9 @@ changes/<change-id>/
 ### 文档职责
 
 - `context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
+- `context/project-definition.md`：新项目的目标、用户、核心能力、MVP 范围与首批 change backlog
+- `context/mvp-roadmap.md`：新项目的阶段划分、MVP 路线图与推荐 change 顺序
+- `context/architecture-outline.md`：新项目的运行形态、模块边界、关键对象与技术方向草图
 - `context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
 - `tasks.md`：原子化任务拆分、依赖关系、验收标准

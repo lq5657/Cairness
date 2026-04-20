@@ -24,9 +24,15 @@
 .claude/
 ├── CLAUDE.md              # Bootstrap 总纲：启动、路由、生命周期
 ├── context/
-│   └── project-context.md # 工程上下文（由 cc-init 填充）
+│   ├── project-context.md      # 工程上下文（由 cc-init 填充）
+│   ├── project-definition.md   # 新项目定义（由 cc-new-project 产出）
+│   ├── mvp-roadmap.md          # 新项目 MVP 路线图（由 cc-new-project 产出）
+│   ├── architecture-outline.md # 新项目架构草图（由 cc-new-project 产出）
 │   └── templates/
-│       └── system-overview.md # 系统讲解模板（由 cc-explain-system 使用）
+│       ├── system-overview.md
+│       ├── project-definition.md
+│       ├── mvp-roadmap.md
+│       └── architecture-outline.md
 ├── commands/              # 按命令延迟加载的主流程规则
 │   ├── cc-init.md
 │   ├── cc-enrich-context.md
@@ -91,6 +97,12 @@
 6. `changes/examples/user-create-api-fix/spec.md`
 7. `changes/examples/user-create-api-fix/review.md`
 
+若你要维护新项目入口能力，可额外参考：
+
+1. `context/examples/roleplay-agent/project-definition.md`
+2. `context/examples/roleplay-agent/mvp-roadmap.md`
+3. `context/examples/roleplay-agent/architecture-outline.md`
+
 如果你准备把这套 harness 给团队试点，先看 `knowledge/pilot-checklist.md`。这份清单不是规则文件，而是维护者用来判断“现在是否适合推广”的验收标准。
 
 如果你需要验收某个真实存量项目对这套 harness 的接入是否完整，可执行 `cc-preflight`。该命令会以 `knowledge/integration-preflight-checklist.md` 作为执行依据，检查接入环境、资产完整性和命令入口稳定性。
@@ -121,6 +133,12 @@
 8. 如果有明确需求，再跑一次 `cc-propose -> cc-apply -> cc-review`
 9. 试点时保留人工 review，不要直接把 harness 当成自动审批器
 
+如果你面对的是一个新项目或绿地系统，而不是已有项目里的单次 change，建议先执行：
+
+1. `cc-new-project <项目想法>`
+2. 确认 `context/project-definition.md`、`context/mvp-roadmap.md`、`context/architecture-outline.md`
+3. 再从首批推荐 change 中选择一个执行 `cc-propose`
+
 首次将本 Harness 接入某个已有项目时，建议按这个顺序：
 
 1. 先确认 `.claude/` 脚手架已安装
@@ -134,9 +152,38 @@
 启动提示建议：
 - 先报告当前分支、进行中的 change、依赖/冲突状态
 - 不要臆测“测试连接”“未完成请求”等无证据意图
-- 直接展示可复制的命令，例如 `cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求描述>`
+- 直接展示可复制的命令，例如 `cc-new-project <项目想法>`、`cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求描述>`
 - 启动阶段不要全量读取 `rules/`；具体命令触发后再按需读取 `commands/`、`checkpoints/` 与专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 仅作兼容索引页
+
+推荐把整条命令链理解成两层：
+- 项目级：`cc-new-project` 负责定义项目目标、MVP、phase 和首批 backlog
+- change 级：`cc-propose -> cc-apply -> cc-review` 负责把 backlog 中的单条 change 做成可执行、可验证、可审计闭环
+
+如果项目已经存在 `context/project-definition.md` / `context/mvp-roadmap.md`，后续 `cc-propose`、`cc-apply`、`cc-review` 都应默认带着 phase / backlog 语义工作，而不是把每次 change 当成孤立请求。
+
+### 0. 定义新项目
+
+```
+cc-new-project <项目想法>
+```
+
+当你面对的是绿地项目或新系统，目标是先把项目定义、MVP 路线图与首批推荐 change 想清楚时，执行该命令。
+
+产物：
+- `context/project-definition.md`
+- `context/mvp-roadmap.md`
+- `context/architecture-outline.md`
+
+边界说明：
+- `cc-new-project` 不直接生成 `changes/<change-id>/spec.md`
+- `cc-new-project` 不直接进入编码
+- `cc-new-project` 结束后，通常应从首批推荐 change 进入 `cc-propose`
+
+桥接要求：
+- `project-definition.md` 应记录项目目标、核心能力、MVP 范围、当前已明确 / 仍待确认
+- `mvp-roadmap.md` 应记录 phase、阶段完成标准和推荐 change backlog
+- 后续进入 `cc-propose` 时，应优先从 roadmap 推荐的 change 开始，而不是重新从零定义方向
 
 ### 0. 接入完整性自检
 
@@ -283,6 +330,21 @@ cc-promote-audit <audit-id> <change-id>
 - 把 audit 证据映射到 spec 和 tasks
 - 决定这是一条 change 还是应该拆成多条 change
 
+### 1.5 正式 change 链路
+
+当你已经准备好做某条具体 change 时，标准链路是：
+
+1. `cc-propose <需求描述>`
+2. `cc-apply <change-id>`
+3. `cc-review <change-id>`
+4. 必要时 `cc-fix <change-id>`
+5. 完成后再考虑 `cc-test <change-id>` 补强与 `cc-archive <change-id>`
+
+分工：
+- `cc-propose`：收敛边界、方案、验证映射、task 拆分，并说明与 roadmap 的关系
+- `cc-apply`：按 task 执行，满足最低验证 gate，不跳过 `依赖 / Wave`
+- `cc-review`：检查 spec 合规、代码质量、promised outcome、roadmap 对齐和验证证据
+
 ### 2. 创建变更提案
 
 ```
@@ -290,15 +352,17 @@ cc-propose <需求描述>
 ```
 
 流程：
+- 先判断当前请求是否其实应改走 `cc-new-project`
+- 若已有 `context/project-definition.md` / `context/mvp-roadmap.md`，先确认本次 change 在 roadmap 中的位置、依赖和优先级
 - 先做本地 Research，识别现有实现、链路和项目约定
 - 判断当前上下文是否足以支撑方案收敛
-- 若是绿地项目或本地缺少参照，做受控外部 Research，提炼成熟方案与权衡
 - 先重述目标、边界和关键约束，再提高清晰问题
 - 做方案比较，并明确“本次要做 / 本次不做”
 - 再生成 `spec.md` 和 `tasks.md`
 - 最后等待 HARD-GATE 确认
 
 补充约束：
+- 若存在项目路线图，`spec.md` 应写明当前 change 的 roadmap 对齐关系
 - 若仍存在影响 task 拆分的关键未决问题，只能保持 `status: propose`
 - 外部 Research 只能作为方案比较输入，正式结论必须回写到 `spec.md`
 
@@ -310,8 +374,9 @@ cc-apply <change-id>
 
 执行要求：
 - 以 task 为最小执行单元推进，任一时刻只允许一个 task 处于 `in_progress`
-- 开始某个 task 前，先做 Task Plan Review，确认当前 task 仍然必要、依赖满足、验证方式足够
+- 开始某个 task 前，先做 Task Plan Review，确认当前 task 仍然必要、依赖满足、`依赖 / Wave` 未被违反、验证方式足够
 - 开始某个 task 前，先对齐目标、不包含范围、验收标准、验证步骤、测试要求、回退方式
+- 若存在 `mvp-roadmap.md`，开始当前 task 前还要确认该 task 没有偏离本次 change 的 roadmap 定位
 - 每个 task 开始前先做 task 启动简报
 - 每个 task 完成后必须通过 task 级 gate：实现完成、验证完成、测试要求满足、文档同步
 - 默认一个 task 一个 commit
@@ -330,6 +395,9 @@ cc-review <change-id>
 - 若存在 `Critical open` Findings，必须进入 `cc-fix`
 - 若存在未被合理接受的 `Important open` Findings，默认不得归档
 - 审查时必须检查 `tasks.md` 中每个 task 是否真正达到声明的验收标准
+- 审查时必须检查 task 是否真正交付 promised outcome，而不是只完成代码动作
+- 若 `tasks.md` 已声明 `依赖 / Wave`，必须检查执行顺序是否被遵守
+- 若项目存在 roadmap，必须检查实现结果是否仍与 phase / backlog 对齐
 
 ### 5. 修复与补测
 
