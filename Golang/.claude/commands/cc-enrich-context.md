@@ -54,6 +54,16 @@
 - `context/system-overview.md`
 - 业务代码修改
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-enrich-context` 行为准：
+- 状态机定位：项目事实补充命令，不创建也不改变 change 状态
+- 输入：无
+- 输出：`context/project-context.md` 的补充事实层
+- 可写文件：仅 `context/project-context.md`
+- 必须校验：基础事实层已存在、关键假设已确认或降级为待确认、证据位置和信心等级清楚
+- 禁止行为：输出 Findings、创建 change 或 audit、把假设写成事实、自动转入 `cc-inspect-codebase` / `cc-propose` / `cc-apply`
+
 ## 必守边界
 
 - 只补充项目事实，不创建脚手架资产

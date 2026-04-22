@@ -13,6 +13,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-archive` 行为准：
+- 状态机定位：唯一允许执行 `review -> done` 的命令
+- 输入：`change-id`
+- 输出：`spec.status = done`、归档记录、必要的知识沉淀
+- 可写文件：当前 change 的 `spec.md`、`log.md`，以及确认需要沉淀的 `knowledge/*`
+- 必须校验：`review.md` 结论为 pass / 可归档、无 `open` Finding、无 `blocked` task、无未解释 `gap`、fresh verification evidence 仍有效
+- 禁止行为：写业务代码、跳过知识沉淀判断、有阻塞仍归档、让其他命令设置 `done`
+
 ## 前提
 
 - `review.md` 已存在

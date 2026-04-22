@@ -54,6 +54,16 @@
 - `changes/<change-id>/tasks.md`
 - 业务代码改动
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-new-project` 行为准：
+- 状态机定位：项目级定义命令，不创建正式 change 状态
+- 输入：项目想法
+- 输出：`context/project-definition.md`、`context/mvp-roadmap.md`、`context/architecture-outline.md`
+- 可写文件：上述三个项目级 context 文档
+- 必须校验：项目目标、目标用户、MVP 范围、本次不做、首批 change backlog 能自然桥接到 `cc-propose`
+- 禁止行为：写业务代码、创建 `changes/<change-id>/`、自动进入 `cc-propose` 或 `cc-apply`、把项目级灰区伪装成已冻结 change
+
 ## 必守边界
 
 - `cc-new-project` 只做项目级定义和分期规划，不直接进入编码

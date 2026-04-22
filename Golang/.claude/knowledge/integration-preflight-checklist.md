@@ -24,6 +24,7 @@
 | 运行策略存在 | `.claude/harness.config.yaml` 存在，或明确使用默认策略 | [ ] |
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
 | 生命周期状态机存在 | `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
+| 命令契约矩阵存在 | `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | knowledge 存在 | `.claude/knowledge/index.md` 存在 | [ ] |
 | context 模板存在 | `.claude/context/project-context.md` 与 `.claude/context/templates/system-overview.md` 存在 | [ ] |
 | commands 完整 | `cc-init`、`cc-enrich-context`、`cc-explain-system`、`cc-inspect-codebase` 等主命令文件齐全 | [ ] |

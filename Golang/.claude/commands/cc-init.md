@@ -46,6 +46,16 @@
 - 示例 change
 - 模板目录
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-init` 行为准：
+- 状态机定位：项目基础事实初始化命令，不创建也不改变 change 状态
+- 输入：无
+- 输出：`context/project-context.md` 的基础事实层
+- 可写文件：仅 `context/project-context.md`
+- 必须校验：`.claude/` 脚手架存在、基础入口可低成本确认、未确认事项已显式记录
+- 禁止行为：创建脚手架资产、创建 `changes/` 或 `audits/` 产物、深度审查业务代码、把猜测写成事实
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

@@ -55,6 +55,16 @@
 - 业务代码修改
 - 自动修复结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-inspect-codebase` 行为准：
+- 状态机定位：存量项目审查命令，不创建也不改变 change 状态
+- 输入：`mode`，可选 `scope`
+- 输出：`audits/<audit-id>/report.md`
+- 可写文件：仅 `audits/<audit-id>/report.md`
+- 必须校验：`mode` 合法、scope 明确、每个 Finding 都有代码 / 配置 / 调用链证据
+- 禁止行为：自动修复、创建 change、把 audit 直接当 spec、无证据下缺陷结论
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

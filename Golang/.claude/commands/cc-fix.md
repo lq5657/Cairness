@@ -14,6 +14,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-fix` 行为准：
+- 状态机定位：`review` 阶段的 Findings 回收命令，成功后仍保持 `review`
+- 输入：`change-id`，可选修复描述
+- 输出：修复代码、Finding 状态更新、change 文档同步
+- 可写文件：与本轮 `open` Finding 直接相关的代码，当前 change 的 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`
+- 必须校验：Finding 仍存在、根因明确、最小修复假设成立、验证等级不低于既有要求、映射状态同步
+- 禁止行为：处理未记录或未确认的新范围、绕过 `cc-review`、删除 `open` Finding 审计记录、修复失败仍标 `fixed`
+
 ## 执行要求
 
 - 开始前必须至少读取 `rules/verification.md`，因为 `cc-fix` 需要确保修复后的验证等级不低于既有要求

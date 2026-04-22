@@ -13,6 +13,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-apply` 行为准：
+- 状态机定位：执行实现，允许 `propose / apply -> review`
+- 输入：`change-id`
+- 输出：代码改动、change 文档更新、按配置生成 commit
+- 可写文件：task 声明范围内代码，当前 change 的 `spec.md`、`tasks.md`、`log.md`，必要的 `test-spec.md`
+- 必须校验：HARD-GATE、task gate、最低验证证据、Git 策略、dirty worktree
+- 禁止行为：越界改动、把最低验证推给 `cc-test`、无证据标记 done、自动 push / merge
+
 ## 前提
 
 - `spec.md` 存在

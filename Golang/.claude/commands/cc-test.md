@@ -20,6 +20,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-test` 行为准：
+- 状态机定位：验证补强或恢复命令，允许在 `apply / review` 中执行且不改变主状态
+- 输入：`change-id`，可选 `--mode supplement` / `--mode recovery`
+- 输出：`test-spec.md`、测试代码或验证证据、映射状态更新
+- 可写文件：测试文件、当前 change 的 `test-spec.md`、`log.md`，必要时同步 `spec.md` 映射状态
+- 必须校验：模式合法、`recovery` 具备 `blocked` / `partial` 记录、fresh evidence、映射闭环
+- 禁止行为：默认补做 `cc-apply` 最低验证、伪造 Red / Green、无证据标记 covered
+
 ## 前提
 
 - `spec.md` 已存在

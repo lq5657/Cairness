@@ -48,6 +48,13 @@ description: "Golang Harness 的生命周期状态机与状态迁移规范"
 
 | 命令 | 允许前置状态 | 成功后状态 | 失败 / 中断处理 |
 |------|--------------|------------|-----------------|
+| `cc-preflight` | 无 change 要求 | 不改变状态 | 输出接入阻塞项，不创建 change |
+| `cc-new-project` | 无正式 change / 项目定义草案 | 不改变 change 状态 | 保留项目级草稿与待确认事项 |
+| `cc-init` | 无 change 要求 | 不改变状态 | 不可靠事实写入待确认或停止 |
+| `cc-enrich-context` | `project-context.md` 基础事实层已存在 | 不改变状态 | 未确认假设保留为待确认 |
+| `cc-explain-system` | `project-context.md` 已存在或可建立最小上下文 | 不改变状态 | 输出待确认或收敛 scope |
+| `cc-inspect-codebase` | 无正式 change 要求 | 生成 audit，不改变 change 状态 | 降低结论强度或停止审查 |
+| `cc-promote-audit` | audit report 已存在 | 生成 `to-change.md`，尚不进入正式 change 状态 | 保留桥接草稿，不创建 spec/tasks |
 | `cc-propose` | 无正式 change / `propose` 草案 | `propose` | 保持 `propose`，记录待澄清或 `partial` |
 | `cc-apply` | `propose` / `apply` | 全部 task 完成后 `review` | 保持 `apply`，task 标记 `blocked` / `partial` / `aborted` |
 | `cc-review` | `review` | `review` | `review.md` 可为 `partial`，不得归档 |
@@ -60,4 +67,6 @@ description: "Golang Harness 的生命周期状态机与状态迁移规范"
 - 失败状态不得写入 `spec.status` 主状态；必须写入 task、log、test-spec 或 review 的对应状态。
 - `done` 只能由 `cc-archive` 设置；`cc-review` 只能给出“可归档”结论，不能直接归档。
 - 存在 `open` Finding、`blocked` task、未解释的 `gap` 映射项时，禁止进入 `done`。
+- context / audit / explain / preflight 类命令不得修改任何正式 change 的生命周期状态。
+- 每个命令的输入输出、可写文件、校验项和禁止行为必须同时遵守 `rules/command-contracts.md`。
 - `cc-lint` / `cc-sync-check` 应优先按本状态机检查非法迁移和状态错配。

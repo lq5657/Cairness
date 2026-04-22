@@ -207,6 +207,24 @@ def lint_test_spec(change_dir: Path, errors: list[str]) -> None:
             break
 
 
+def lint_command_contracts(root: Path, errors: list[str]) -> None:
+    commands_dir = root / "commands"
+    contracts_path = root / "rules" / "command-contracts.md"
+    if not commands_dir.exists():
+        return
+    command_names = sorted(path.stem for path in commands_dir.glob("cc-*.md"))
+    if not contracts_path.exists():
+        errors.append(f"{contracts_path}: missing command contracts")
+        return
+    contracts = read(contracts_path)
+    for path in sorted(commands_dir.glob("cc-*.md")):
+        command = path.stem
+        if f"`{command}`" not in contracts:
+            errors.append(f"{contracts_path}: missing contract row for {command}")
+        if "## 命令契约" not in read(path):
+            errors.append(f"{path}: missing 命令契约 section")
+
+
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:
     dirs: set[Path] = set()
     for item in inputs:
@@ -238,6 +256,8 @@ def main(argv: list[str]) -> int:
         else:
             for md in item.rglob("*.md"):
                 lint_slash_commands(md, errors)
+            if (item / "commands").exists() and (item / "rules").exists():
+                lint_command_contracts(item, errors)
 
     for change_dir in discover_change_dirs(inputs):
         mapping_ids = lint_spec(change_dir, errors)

@@ -49,6 +49,7 @@
 ├── rules/
 │   ├── checkpoint-index.md # 兼容保留的索引页，不是运行时默认入口
 │   ├── lifecycle-state-machine.md # 生命周期状态机
+│   ├── command-contracts.md # 全量 cc-* 命令契约矩阵
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
 │   └── security.md        # 安全红线
@@ -440,11 +441,15 @@ cc-test <change-id>
 
 ### 机器校验
 
-`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射与 HARD-GATE，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。
+`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE 与命令契约覆盖，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。
 
 ### 生命周期状态机
 
 `rules/lifecycle-state-machine.md` 是 `propose -> apply -> review -> done` 的唯一状态机来源。`blocked`、`partial`、`aborted` 只记录在 task、log、test-spec 或 review 中，不写入 `spec.status`。
+
+### 命令契约矩阵
+
+`rules/command-contracts.md` 定义每个 `cc-*` 命令的状态机角色、输入、输出、可写文件、必须校验项和禁止行为。新增命令或调整命令边界时，必须同步更新该矩阵和对应 command / checkpoint。
 
 ### 并发治理
 

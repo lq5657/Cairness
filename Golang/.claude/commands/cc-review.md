@@ -20,6 +20,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-review` 行为准：
+- 状态机定位：审查 `review` 阶段 change，成功后仍保持 `review`
+- 输入：`change-id`
+- 输出：`changes/<change-id>/review.md`
+- 可写文件：`review.md`，必要时仅补充 `log.md` 中的审查中断上下文
+- 必须校验：task coverage、验证证据、Finding 状态、证据类型矩阵、可归档条件
+- 禁止行为：直接改代码、直接归档、有 open Critical / Important 仍 pass、删除审计记录
+
 ## 两阶段
 
 1. Spec Compliance：先检查缺失实现、多余实现、理解偏差、业务规则落地、对外契约准确性

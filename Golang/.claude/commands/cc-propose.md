@@ -15,6 +15,16 @@
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
 - 不要在 `检查项` 列使用 `[ ]` / `[x]` 代替结果
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-propose` 行为准：
+- 状态机定位：创建或更新正式 change 草案，成功后 `spec.status = propose`
+- 输入：需求描述
+- 输出：`changes/<change-id>/spec.md`、`tasks.md`、`log.md`
+- 可写文件：当前 change 文档；不得写业务代码
+- 必须校验：HARD-GATE、验证矩阵、依赖关系、范围冻结、task 到验证映射的可追溯性
+- 禁止行为：写业务代码、跳过澄清和范围冻结、生成不可验证 tasks、未确认即进入 `cc-apply`
+
 ## 执行流程
 
 1. 命令边界判断：先判断当前请求是否属于已有项目中的正式 change；若仍是新项目定义，路由到 `cc-new-project`

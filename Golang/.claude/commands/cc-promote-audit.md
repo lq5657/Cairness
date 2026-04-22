@@ -17,6 +17,16 @@
 
 - `audits/<audit-id>/to-change.md`
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-promote-audit` 行为准：
+- 状态机定位：audit 到 change 的桥接命令，尚未进入正式 change 生命周期
+- 输入：`audit-id`、`change-id`
+- 输出：`audits/<audit-id>/to-change.md`
+- 可写文件：仅 `audits/<audit-id>/to-change.md`
+- 必须校验：选中的 Findings、边界收敛、拆分粒度、验证等级提示、后续 `cc-propose` 可用性
+- 禁止行为：机械复制整份 audit、直接写 `changes/<change-id>/spec.md`、合并不相干问题、自动进入 `cc-propose`
+
 ## 最小规则
 
 - 不是把整份 audit 机械复制为一个 change

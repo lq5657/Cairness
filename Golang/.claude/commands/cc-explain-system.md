@@ -51,6 +51,16 @@
 - `changes/<change-id>/spec.md`
 - 业务代码修改
 
+## 命令契约
+
+以 `rules/command-contracts.md` 中 `cc-explain-system` 行为准：
+- 状态机定位：系统讲解命令，不创建也不改变 change 状态
+- 输入：可选 `scope`
+- 输出：`context/system-overview.md`
+- 可写文件：仅 `context/system-overview.md`
+- 必须校验：scope 可控，关键结论具备目录、代码、配置或调用链证据
+- 禁止行为：输出审查 Findings、创建 change 或 audit、写业务代码、把个人偏好写成系统事实
+
 ## 与其他命令的边界
 
 与 `cc-init` 的区别：

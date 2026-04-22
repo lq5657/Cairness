@@ -50,6 +50,7 @@ Golang/.claude/changes/<change-id>/
 - 直接给可复制命令，如 `cc-new-project <项目想法>`、`cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 只作兼容汇总索引
+- 所有 `cc-*` 命令都必须对照 `rules/command-contracts.md` 的状态机角色、输入输出、可写文件、校验项和禁止行为
 
 ### `cc-new-project <项目想法>`
 
