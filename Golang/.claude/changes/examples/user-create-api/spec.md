@@ -206,10 +206,10 @@ complexity: 🟡中等
 
 #### 13. 执行日志
 
-| Task | 状态 | 实际改动文件 | 备注 |
-|------|------|-------------|------|
-| Task 1 | done | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 完成创建链路；按 task 计划验证 `go build ./...`，未超出“不包含范围” |
-| Task 2 | done | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 补入口和核心测试；完成回归测试并同步 review 所需证据 |
+| Task | 状态 | 实际改动文件 | Baseline / Delta | 备注 |
+|------|------|-------------|------------------|------|
+| Task 1 | done | `internal/service/user_service.go`, `internal/repo/user_repo.go`, `internal/model/user.go` | 示例省略 baseline 文件；无新增失败 | 完成创建链路；按 task 计划验证 `go build ./...`，未超出“不包含范围” |
+| Task 2 | done | `internal/handler/user_handler.go`, `internal/service/user_service_test.go` | 示例省略 baseline 文件；无新增失败 | 补入口和核心测试；完成回归测试并同步 review 所需证据 |
 
 #### 14. 审查结论
 

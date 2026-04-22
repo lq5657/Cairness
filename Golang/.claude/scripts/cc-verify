@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+"""Unified verification gate for Golang Harness projects."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def bool_from_config(text: str, key: str, default: bool) -> bool:
+    match = re.search(rf"^\s*{re.escape(key)}:\s*(true|false)\s*$", text, re.M)
+    if not match:
+        return default
+    return match.group(1) == "true"
+
+
+def command_text(command: list[str]) -> str:
+    return " ".join(command)
+
+
+def fingerprints(stdout: str, stderr: str) -> list[str]:
+    lines: list[str] = []
+    for line in (stdout + "\n" + stderr).splitlines():
+        value = re.sub(r"\s+", " ", line.strip())
+        if value:
+            lines.append(value[:300])
+    return sorted(set(lines))
+
+
+def warnings(stdout: str, stderr: str) -> list[str]:
+    warning_lines = []
+    for line in (stdout + "\n" + stderr).splitlines():
+        if re.search(r"\bwarn(ing)?\b", line, re.I):
+            warning_lines.append(re.sub(r"\s+", " ", line.strip())[:300])
+    return sorted(set(warning_lines))
+
+
+def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, object]:
+    started = time.time()
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        duration_ms = int((time.time() - started) * 1000)
+        status = "passed" if completed.returncode == 0 else "failed"
+        return {
+            "name": name,
+            "kind": kind,
+            "command": command,
+            "cwd": str(cwd),
+            "status": status,
+            "exit_code": completed.returncode,
+            "duration_ms": duration_ms,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+            "fingerprints": fingerprints(completed.stdout, completed.stderr) if completed.returncode else [],
+            "warnings": warnings(completed.stdout, completed.stderr),
+        }
+    except FileNotFoundError as exc:
+        duration_ms = int((time.time() - started) * 1000)
+        message = str(exc)
+        return {
+            "name": name,
+            "kind": kind,
+            "command": command,
+            "cwd": str(cwd),
+            "status": "failed",
+            "exit_code": 127,
+            "duration_ms": duration_ms,
+            "stdout": "",
+            "stderr": message,
+            "fingerprints": [message],
+            "warnings": [],
+        }
+
+
+def skipped_step(name: str, kind: str, reason: str) -> dict[str, object]:
+    return {
+        "name": name,
+        "kind": kind,
+        "command": [],
+        "cwd": "",
+        "status": "skipped",
+        "exit_code": 0,
+        "duration_ms": 0,
+        "stdout": "",
+        "stderr": reason,
+        "fingerprints": [],
+        "warnings": [],
+    }
+
+
+def build_report(args: argparse.Namespace) -> dict[str, object]:
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    config_path = claude_root / "harness.config.yaml"
+    config_text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    change_dir = claude_root / "changes" / args.change if args.change else None
+
+    results: list[dict[str, object]] = []
+    if args.change and change_dir and not change_dir.exists():
+        results.append(
+            {
+                "name": "change-dir",
+                "kind": "harness",
+                "command": [],
+                "cwd": str(project_root),
+                "status": "failed",
+                "exit_code": 1,
+                "duration_ms": 0,
+                "stdout": "",
+                "stderr": f"{change_dir} not found",
+                "fingerprints": [f"{change_dir} not found"],
+                "warnings": [],
+            }
+        )
+    if not args.go_only:
+        cc_lint = claude_root / "scripts" / "cc-lint"
+        cc_sync_check = claude_root / "scripts" / "cc-sync-check"
+        sync_target = change_dir if change_dir and change_dir.exists() else claude_root / "changes"
+        results.append(run_step("cc-lint", "harness", [str(cc_lint), str(claude_root)], project_root))
+        results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
+
+    if not args.harness_only:
+        go_mod = project_root / "go.mod"
+        if not go_mod.exists():
+            results.append(skipped_step("go checks", "go", f"{go_mod} not found"))
+        else:
+            if bool_from_config(config_text, "test", True):
+                results.append(run_step("go test", "go", ["go", "test", "./..."], project_root))
+            if bool_from_config(config_text, "vet", True):
+                results.append(run_step("go vet", "go", ["go", "vet", "./..."], project_root))
+            if bool_from_config(config_text, "golangci_lint", False):
+                if shutil.which("golangci-lint"):
+                    results.append(run_step("golangci-lint", "go", ["golangci-lint", "run"], project_root))
+                else:
+                    results.append(skipped_step("golangci-lint", "go", "golangci-lint not found"))
+
+    failed = [result for result in results if result["status"] == "failed"]
+    report = {
+        "schema_version": 1,
+        "tool": "cc-verify",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "project_root": str(project_root),
+        "claude_root": str(claude_root),
+        "change_id": args.change or "",
+        "mode": "harness-only" if args.harness_only else "go-only" if args.go_only else "full",
+        "status": "failed" if failed else "passed",
+        "results": results,
+    }
+    return report
+
+
+def print_text(report: dict[str, object], verbose: bool) -> None:
+    print(f"cc-verify: {report['status']} ({report['mode']})")
+    for result in report["results"]:
+        status = str(result["status"]).upper()
+        command = command_text(result["command"]) if result["command"] else str(result["stderr"])
+        print(f"{status:7} {result['name']}: {command}")
+        if verbose or result["status"] == "failed":
+            stdout = str(result["stdout"]).strip()
+            stderr = str(result["stderr"]).strip()
+            if stdout:
+                print(stdout)
+            if stderr:
+                print(stderr, file=sys.stderr)
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Run Golang Harness verification checks.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--harness-only", action="store_true", help="Only run cc-lint and cc-sync-check.")
+    mode.add_argument("--go-only", action="store_true", help="Only run Go project checks.")
+    parser.add_argument("--change", help="Limit sync checks and report metadata to one change-id.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--output", help="Write JSON report to this file.")
+    parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")
+    args = parser.parse_args(argv)
+
+    report = build_report(args)
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.json and not args.output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print_text(report, args.verbose)
+        if args.output:
+            print(f"report: {args.output}")
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

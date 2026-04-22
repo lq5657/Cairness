@@ -55,7 +55,7 @@
 - 完成后运行完整测试套件并检查覆盖率
 - `cc-test` 补强或恢复补齐后的映射项必须更新为 `test-covered`；仍缺证据的项必须明确保持 `gap`
 - 不得把本应在 `cc-apply` 中完成的最低验证全部推迟到 `cc-test`
-- 若 `validation.auto_run = true`，更新 `test-spec.md`、测试证据和映射状态后必须运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`；若失败且 `fail_on_error = true`，不得声称测试补强已完成
+- 若 `validation.auto_run = true`，更新 `test-spec.md`、测试证据和映射状态后必须运行 `.claude/scripts/cc-verify --change <change-id>`；若失败且 `fail_on_error = true`，不得声称测试补强已完成
 - 若本轮测试涉及 migration / 回填 / contract 兼容，必须读取 `rules/database-changes.md`
 - 若本轮测试涉及对外接口、事件契约或兼容窗口，必须读取 `rules/api-compatibility.md`
 - 若本轮测试依赖配置切换、环境变量或环境差异，必须读取 `rules/configuration.md`

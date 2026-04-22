@@ -10,24 +10,25 @@ git:
 validation:
   auto_run: true
   fail_on_error: true
+  verify_command: ".claude/scripts/cc-verify"
+  delta_command: ".claude/scripts/cc-delta-check"
+  baseline_dir: "changes/<change-id>/baseline"
   require_structured_hard_gate: true
   require_traceability_check: true
+  go:
+    test: true
+    vet: true
+    golangci_lint: false
   run_on:
     propose:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify --harness-only
     apply:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify
     fix:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify
     test:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify
     review:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify --harness-only
     archive:
-      - cc-lint
-      - cc-sync-check
+      - cc-verify

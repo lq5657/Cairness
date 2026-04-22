@@ -47,6 +47,7 @@ updated: 2026-04-11
 * **测试要求** : 本 task 只提供创建链路的前置实现和 L1 构建证据，不关闭 `V1 / V2` 的最低 `L2` 验证；`V1 / V2` 由 Task 2 的 package 回归测试关闭为 `apply-covered`
 * **回退方式** : 若 task 失败，可仅回退 `service/repo/model` 相关改动，不影响接口层与 schema
 * **完成后状态** : `done`
+* **Baseline / Delta** : 示例省略 baseline 文件；无新增失败
 * **对应 commit** : `[user-create-api] 完成用户创建核心链路`
 * **并发注意事项** : 可与只读查询类 change 并行，但不得同时修改 `user_service.go` 的创建链路；若出现同文件改动，按冲突处理
 * **数据库注意事项** : 无 migration；仅新增写入逻辑，失败时代码回退即可
@@ -75,6 +76,7 @@ updated: 2026-04-11
 * **测试要求** : 先 Red 再 Green；若 Handler 层无法稳定制造 Red，至少提供 Service package 回归测试和入口接线检查作为 `L2` 证据。本 task 必须在 `cc-apply` 内关闭 `V1 / V2 / V3` 的最低验证；`cc-test` 如执行，只能补更高层验证
 * **回退方式** : 若 task 失败，可停留在仅有 Service/Repo 能力的状态，不改变 Task 1 已完成内容
 * **完成后状态** : `done`
+* **Baseline / Delta** : 示例省略 baseline 文件；无新增失败
 * **对应 commit** : `[user-create-api] 接入创建入口并补充测试`
 * **并发注意事项** : 会占用 `user_handler.go` 和 `user_service_test.go`，与新增用户查询字段之类变更并行时应先由维护者确认是否冲突
 * **数据库注意事项** : 无 migration / 回填 / 兼容窗口要求

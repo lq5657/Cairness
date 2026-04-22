@@ -12,7 +12,7 @@
 | `spec.status` 为 `review` | ✅ / ❌ / ⚠️ / N/A |
 | 不存在 `blocked` / `open` 状态的问题 | ✅ / ❌ / ⚠️ / N/A |
 | 已确认本轮存在 fresh verification evidence | ✅ / ❌ / ⚠️ / N/A |
-| 归档前已按 `validation.run_on.archive` 自动运行 `cc-lint` / `cc-sync-check` | ✅ / ❌ / ⚠️ / N/A |
+| 归档前已按 `validation.run_on.archive` 自动运行 `cc-verify` | ✅ / ❌ / ⚠️ / N/A |
 
 ## 执行中检查
 
@@ -32,4 +32,4 @@
 | `spec.status` 已更新为 `done` | ✅ / ❌ / ⚠️ / N/A |
 | `log.md` 完整可读 | ✅ / ❌ / ⚠️ / N/A |
 | 未依赖陈旧验证结果完成归档 | ✅ / ❌ / ⚠️ / N/A |
-| 切换 `done` 后已再次自动运行 `cc-lint` / `cc-sync-check` | ✅ / ❌ / ⚠️ / N/A |
+| 切换 `done` 后已再次自动运行 `cc-verify` | ✅ / ❌ / ⚠️ / N/A |

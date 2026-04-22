@@ -66,4 +66,4 @@
 | 若 Stage 1 未完成，`stage2_status` 已记为 `skipped` | ✅ / ❌ / ⚠️ / N/A |
 | 若中断，已记录未完成原因，未重置已有结论 | ✅ / ❌ / ⚠️ / N/A |
 | 若不可归档，已明确下一步应进入 `cc-fix` | ✅ / ❌ / ⚠️ / N/A |
-| 已按 `validation.run_on.review` 自动运行 `cc-lint` / `cc-sync-check`，且失败时未写入 `pass` 结论 | ✅ / ❌ / ⚠️ / N/A |
+| 已按 `validation.run_on.review` 自动运行 `cc-verify --harness-only`，且失败时未写入 `pass` 结论 | ✅ / ❌ / ⚠️ / N/A |

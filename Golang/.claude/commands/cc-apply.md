@@ -37,6 +37,7 @@
 - 开始执行前确认当前分支与 `change-id` 匹配，且不在 `main` / `master`
 - 开始执行前读取 `.claude/harness.config.yaml`（如存在），确认 `auto_commit`、`commit_per_task`、`require_clean_worktree_before_commit` 等 Git 策略，以及 `validation.auto_run`、`validation.fail_on_error`、`validation.run_on.apply`
 - 若 `spec.md` 标记 `human_review_required = true`，必须确认 `human_review_status = approved` 后才能进入可执行实现或 commit
+- 首次进入实现前必须保存验证基线：`.claude/scripts/cc-verify --change <change-id> --json --output .claude/changes/<change-id>/baseline/pre-apply.json`
 - 以 task 为最小执行单元推进；任一时刻只允许一个 task 处于 `in_progress`
 - 开始某个 task 前，必须先做 Task Plan Review：确认当前 task 仍然必要、前置依赖已满足、`依赖 / Wave` 顺序未被违反、边界清晰、验收标准和验证步骤一一对应、测试要求可执行，且当前 task 的 `验证步骤` / `测试要求` 已明确承接 `spec.md` 的“需求-验证映射”编号
 - 开始某个 task 前，必须先读取并对齐该 task 的目标、不包含范围、涉及文件、验收标准、验证步骤、测试要求、回退方式
@@ -50,9 +51,10 @@
 - 默认一个 task 一个 commit；是否自动 commit 由 `.claude/harness.config.yaml` 的 `auto_commit` 决定
 - commit 前必须展示 dirty worktree 摘要，且不得把无关修改静默混入当前 task
 - 若 `auto_commit = false` 或当前环境无法 commit，必须在 `log.md` 和当前 task 中记录 `待提交` 与原因
-- 若 `validation.auto_run = true`，当前 task 文档同步后必须运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`；若失败且 `fail_on_error = true`，当前 task 不得标记为 `done`
+- 若 `validation.auto_run = true`，当前 task 文档同步后必须运行 `.claude/scripts/cc-verify --change <change-id> --json --output .claude/changes/<change-id>/baseline/post-task-<n>.json`
+- 当前 task 完成前必须运行 `.claude/scripts/cc-delta-check --before .claude/changes/<change-id>/baseline/pre-apply.json --after .claude/changes/<change-id>/baseline/post-task-<n>.json`；若出现 `new-failure`，当前 task 不得标记为 `done`
 - 所有 task 完成后，将 `spec.md` 状态改为 `review`
-- 切换到 `review` 前必须再次运行自动 Harness 校验；失败时保持 `apply` 并记录阻塞原因
+- 切换到 `review` 前必须再次运行 `.claude/scripts/cc-verify --change <change-id>`；失败时保持 `apply` 并记录阻塞原因
 
 ### Task 级 Gate
 

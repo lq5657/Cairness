@@ -69,4 +69,4 @@ description: "Golang Harness 的生命周期状态机与状态迁移规范"
 - 存在 `open` Finding、`blocked` task、未解释的 `gap` 映射项时，禁止进入 `done`。
 - context / audit / explain / preflight 类命令不得修改任何正式 change 的生命周期状态。
 - 每个命令的输入输出、可写文件、校验项和禁止行为必须同时遵守 `rules/command-contracts.md`。
-- `cc-lint` / `cc-sync-check` 应优先按本状态机检查非法迁移和状态错配。
+- `cc-verify` 应优先按本状态机触发 Harness 校验；底层 `cc-lint` / `cc-sync-check` 负责检查非法迁移和状态错配。

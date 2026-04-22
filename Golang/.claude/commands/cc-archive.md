@@ -36,7 +36,7 @@
 - 若判断为 `无需沉淀`，也必须显式记录本轮为何不沉淀，而不是直接跳过
 - 若判断为 `新增知识` 或 `更新既有知识`，必须明确建议落点，再执行沉淀
 - 归档前必须再次确认：当前 `review.md` 结论、Findings 状态和最新验证证据一致
-- 若 `validation.auto_run = true`，归档前必须运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`；若失败且 `fail_on_error = true`，禁止归档
+- 若 `validation.auto_run = true`，归档前必须运行 `.claude/scripts/cc-verify --change <change-id>`；若失败且 `fail_on_error = true`，禁止归档
 - 归档完成后将 `spec.md` 状态改为 `done`
 - 切换为 `done` 后应再次运行自动 Harness 校验，确保归档状态仍满足状态机与闭环规则
 

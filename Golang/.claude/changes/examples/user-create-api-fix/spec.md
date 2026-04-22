@@ -186,10 +186,10 @@ complexity: 🟢简单
 
 #### 13. 执行日志
 
-| Task | 状态 | 实际改动文件 | 备注 |
-|------|------|-------------|------|
-| Task 1 | done | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 补超时与错误包装；验证 `go build ./...` 通过，未改变业务语义 |
-| Task 2 | done | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 补测试和回写 review；仅处理 `open` Findings，保留 `fixed` 审计记录 |
+| Task | 状态 | 实际改动文件 | Baseline / Delta | 备注 |
+|------|------|-------------|------------------|------|
+| Task 1 | done | `internal/repo/user_repo.go`, `internal/service/user_service.go` | 示例省略 baseline 文件；无新增失败 | 补超时与错误包装；验证 `go build ./...` 通过，未改变业务语义 |
+| Task 2 | done | `internal/service/user_service_test.go`, `changes/examples/user-create-api-fix/review.md` | 示例省略 baseline 文件；无新增失败 | 补测试和回写 review；仅处理 `open` Findings，保留 `fixed` 审计记录 |
 
 #### 14. 审查结论
 

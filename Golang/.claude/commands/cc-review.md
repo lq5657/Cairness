@@ -88,7 +88,7 @@
 
 ### 自动 Harness 校验
 
-- 写入或更新 `review.md` 后，若 `validation.auto_run = true`，必须运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`。
+- 写入或更新 `review.md` 后，若 `validation.auto_run = true`，必须运行 `.claude/scripts/cc-verify --harness-only --change <change-id>`。
 - 若校验失败且 `validation.fail_on_error = true`，`final_status` 不得写成 `pass`，必须修正文档闭环或记录为 `partial` / `fail`。
 
 ## 失败与恢复

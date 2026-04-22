@@ -324,7 +324,7 @@ Gate：
   - `fix/<change-id>`
 - 禁止在 `main/master` 直接开发
 - 默认一个 task 一个 commit，是否自动 commit 由 `.claude/harness.config.yaml` 决定
-- 默认自动运行 Harness 校验；`validation.auto_run = true` 时，`cc-propose` / `cc-apply` / `cc-fix` / `cc-test` / `cc-review` / `cc-archive` 会按阶段触发 `cc-lint` 与 `cc-sync-check`
+- 默认自动运行 Harness 校验；`validation.auto_run = true` 时，`cc-propose` / `cc-apply` / `cc-fix` / `cc-test` / `cc-review` / `cc-archive` 会按阶段触发 `cc-verify`，`cc-apply` 还会记录 baseline 并执行 delta 检查
 - commit 前必须检查 dirty worktree，不能混入无关修改
 - commit message 固定格式：
 

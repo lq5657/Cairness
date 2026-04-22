@@ -60,7 +60,9 @@
 │   └── test-spec.schema.json
 ├── scripts/               # 本地校验工具
 │   ├── cc-lint
-│   └── cc-sync-check
+│   ├── cc-sync-check
+│   ├── cc-verify
+│   └── cc-delta-check
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
 │   └── code-quality-reviewer.md # 代码质量审查
@@ -441,32 +443,32 @@ cc-test <change-id>
 
 ### 机器校验
 
-`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE 与命令契约覆盖，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。
+`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE 与命令契约覆盖，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。`scripts/cc-verify` 是统一验证入口，默认组合 Harness 校验与 Go 校验；`scripts/cc-delta-check` 比较验证基线，识别本次新增失败。
 
 在实际 Golang 后台项目中，Harness 通常安装在项目根目录的 `.claude/` 下，可直接运行：
 
 ```bash
-.claude/scripts/cc-lint .claude
-.claude/scripts/cc-sync-check .claude/changes
+.claude/scripts/cc-verify --change <change-id>
+.claude/scripts/cc-verify --harness-only --change <change-id>
 ```
 
 在本仓库调试框架本身时，对应命令是：
 
 ```bash
-Golang/.claude/scripts/cc-lint Golang/.claude
-Golang/.claude/scripts/cc-sync-check Golang/.claude/changes
+Golang/.claude/scripts/cc-verify --harness-only
 ```
 
-默认情况下，`validation.auto_run = true`，核心命令会在固定节点自动运行这些脚本；用户不需要记住手动触发。
+默认情况下，`validation.auto_run = true`，核心命令会在固定节点自动运行 `cc-verify`；用户不需要记住手动触发。
 
 | 命令阶段 | 默认自动校验 |
 |----------|--------------|
-| `cc-propose` 生成 spec/tasks 后 | `cc-lint` + `cc-sync-check` |
-| `cc-apply` task 文档同步后、进入 review 前 | `cc-lint` + `cc-sync-check` |
-| `cc-fix` 修复并同步文档后 | `cc-lint` + `cc-sync-check` |
-| `cc-test` 更新 test-spec 和映射状态后 | `cc-lint` + `cc-sync-check` |
-| `cc-review` 写入 review.md 后 | `cc-lint` + `cc-sync-check` |
-| `cc-archive` 归档前和切换 done 后 | `cc-lint` + `cc-sync-check` |
+| `cc-propose` 生成 spec/tasks 后 | `cc-verify --harness-only` |
+| `cc-apply` 开始实现前 | `cc-verify --json` 保存 `baseline/pre-apply.json` |
+| `cc-apply` task 文档同步后 | `cc-verify --json` 保存 `baseline/post-task-<n>.json`，再运行 `cc-delta-check` |
+| `cc-fix` 修复并同步文档后 | `cc-verify` |
+| `cc-test` 更新 test-spec 和映射状态后 | `cc-verify` |
+| `cc-review` 写入 review.md 后 | `cc-verify --harness-only` |
+| `cc-archive` 归档前和切换 done 后 | `cc-verify` |
 
 可在 `.claude/harness.config.yaml` 中调整：
 
@@ -474,18 +476,20 @@ Golang/.claude/scripts/cc-sync-check Golang/.claude/changes
 validation:
   auto_run: true
   fail_on_error: true
+  verify_command: ".claude/scripts/cc-verify"
+  delta_command: ".claude/scripts/cc-delta-check"
 ```
 
 手动执行仍适合 CI、排查问题或人工修改文档后的复核：
 
 | 阶段 | 建议检查 |
 |------|----------|
-| `cc-propose` 后 | 跑 `cc-lint`，确认 spec/tasks 结构、HARD-GATE、验证矩阵与命令契约没有写错 |
-| `cc-apply` 后 | 先跑 `go test ./...` / `go vet ./...`，再跑 `cc-lint` 与 `cc-sync-check`，确认代码验证和文档闭环一致 |
-| `cc-test` / `cc-review` 后 | 跑 `cc-lint` 与 `cc-sync-check`，确认验证证据、review Findings 与 spec 状态一致 |
-| `cc-archive` 前或 CI 中 | 两个脚本都跑，作为归档或合并前的 Harness gate |
+| `cc-propose` 后 | 跑 `cc-verify --harness-only`，确认 spec/tasks 结构、HARD-GATE、验证矩阵与命令契约没有写错 |
+| `cc-apply` 后 | 跑 `cc-verify`，确认代码验证和文档闭环一致 |
+| `cc-test` / `cc-review` 后 | 跑 `cc-verify` 或 `cc-verify --harness-only`，确认验证证据、review Findings 与 spec 状态一致 |
+| `cc-archive` 前或 CI 中 | 跑 `cc-verify`，作为归档或合并前的 Harness gate |
 
-`go test`、`go vet`、`golangci-lint` 检查代码本身；`cc-lint` 与 `cc-sync-check` 检查 AI Harness 的 spec、tasks、test-spec、review、log 是否可信且同步。两类检查应组合使用。
+`go test`、`go vet`、`golangci-lint` 检查代码本身；`cc-lint` 与 `cc-sync-check` 检查 AI Harness 的 spec、tasks、test-spec、review、log 是否可信且同步。`cc-verify` 将两类检查组合为一个入口。
 
 ### 生命周期状态机
 

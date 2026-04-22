@@ -63,6 +63,6 @@
 | `spec.md` 的验证映射与 `tasks.md` 的验证步骤可追溯 | ✅ / ❌ / ⚠️ / N/A |
 | `tasks.md` 的 task 已达到最小可执行单元粒度 | ✅ / ❌ / ⚠️ / N/A |
 | 若存在未决问题，已保留在“待澄清”且未越权进入实现 | ✅ / ❌ / ⚠️ / N/A |
-| 已按 `validation.run_on.propose` 自动运行 `cc-lint` / `cc-sync-check`，且失败时未进入就绪结论 | ✅ / ❌ / ⚠️ / N/A |
+| 已按 `validation.run_on.propose` 自动运行 `cc-verify --harness-only`，且失败时未进入就绪结论 | ✅ / ❌ / ⚠️ / N/A |
 | HARD-GATE 已包含 spec/tasks 版本、确认范围、接受风险和人审状态 | ✅ / ❌ / ⚠️ / N/A |
 | 已等待 HARD-GATE，未自动进入 `cc-apply` | ✅ / ❌ / ⚠️ / N/A |

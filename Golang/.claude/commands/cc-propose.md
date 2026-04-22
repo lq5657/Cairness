@@ -44,7 +44,7 @@
 12. 验证映射：为主要功能点/风险点声明映射编号、最低验证等级、证据类型与对应 task 承接方式
 13. 生成 Spec：重点补齐需求收敛记录、背景、功能点、风险、成熟替代方案检查、方案比较、待澄清与验证映射
 14. 生成 Tasks：按最小可执行单元拆 task，而不是仅按文件罗列，并确保 task 验证步骤可回溯到验证映射编号
-15. 自动 Harness 校验：按 `.claude/harness.config.yaml` 的 `validation.run_on.propose` 运行 `cc-lint` 与 `cc-sync-check`
+15. 自动 Harness 校验：按 `.claude/harness.config.yaml` 的 `validation.run_on.propose` 运行 `cc-verify --harness-only --change <change-id>`
 16. HARD-GATE：记录结构化确认信息，等待用户确认再进入 `cc-apply`
 
 ## 澄清执行要求
@@ -86,7 +86,7 @@
 - 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把新项目定义强行塞进 `cc-propose`
 - 若仍存在影响 task 拆分的关键未决问题，只能产出草案，保持 `status: propose`，不得宣称提案已就绪
 - 进入 `cc-apply` 前，必须在 `spec.md` 的 HARD-GATE 记录中写明 `confirmed_spec_revision`、`confirmed_tasks_revision`、`confirmed_scope`、`accepted_risks` 与 `human_review_status`
-- 若 `validation.auto_run = true`，生成或更新 `spec.md` / `tasks.md` 后必须自动运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`；若失败且 `fail_on_error = true`，不得进入 HARD-GATE 就绪结论
+- 若 `validation.auto_run = true`，生成或更新 `spec.md` / `tasks.md` 后必须自动运行 `.claude/scripts/cc-verify --harness-only --change <change-id>`；若失败且 `fail_on_error = true`，不得进入 HARD-GATE 就绪结论
 
 ## 专题规则装载
 

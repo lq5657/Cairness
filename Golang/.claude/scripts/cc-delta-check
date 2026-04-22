@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Compare two cc-verify JSON reports and detect newly introduced failures."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+
+def load_report(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def by_name(report: dict[str, object]) -> dict[str, dict[str, object]]:
+    return {str(result["name"]): result for result in report.get("results", [])}
+
+
+def as_set(value: object) -> set[str]:
+    if isinstance(value, list):
+        return {str(item) for item in value}
+    return set()
+
+
+def compare(before: dict[str, object], after: dict[str, object], fail_on_warning: bool) -> dict[str, object]:
+    before_steps = by_name(before)
+    after_steps = by_name(after)
+    names = sorted(set(before_steps) | set(after_steps))
+    entries: list[dict[str, object]] = []
+
+    for name in names:
+        old = before_steps.get(name)
+        new = after_steps.get(name)
+        old_status = str(old.get("status")) if old else "missing"
+        new_status = str(new.get("status")) if new else "missing"
+        old_fp = as_set(old.get("fingerprints")) if old else set()
+        new_fp = as_set(new.get("fingerprints")) if new else set()
+        old_warn = as_set(old.get("warnings")) if old else set()
+        new_warn = as_set(new.get("warnings")) if new else set()
+        added_failures = sorted(new_fp - old_fp)
+        added_warnings = sorted(new_warn - old_warn)
+
+        if new_status == "missing":
+            category = "new-failure"
+        elif old_status != "failed" and new_status == "failed":
+            category = "new-failure"
+        elif old_status == "failed" and new_status == "passed":
+            category = "fixed-failure"
+        elif old_status == "failed" and new_status == "failed" and added_failures:
+            category = "new-failure"
+        elif old_status == "failed" and new_status == "failed":
+            category = "unchanged-failure"
+        elif added_warnings:
+            category = "new-warning"
+        else:
+            category = "unchanged-pass"
+
+        entries.append(
+            {
+                "name": name,
+                "before": old_status,
+                "after": new_status,
+                "category": category,
+                "new_fingerprints": added_failures,
+                "new_warnings": added_warnings,
+            }
+        )
+
+    has_new_failure = any(entry["category"] == "new-failure" for entry in entries)
+    has_new_warning = any(entry["category"] == "new-warning" for entry in entries)
+    return {
+        "schema_version": 1,
+        "tool": "cc-delta-check",
+        "status": "failed" if has_new_failure or (fail_on_warning and has_new_warning) else "passed",
+        "has_new_failure": has_new_failure,
+        "has_new_warning": has_new_warning,
+        "entries": entries,
+    }
+
+
+def print_text(report: dict[str, object]) -> None:
+    print(f"cc-delta-check: {report['status']}")
+    for entry in report["entries"]:
+        print(f"{entry['category']:17} {entry['name']}: {entry['before']} -> {entry['after']}")
+        for item in entry["new_fingerprints"][:5]:
+            print(f"  + failure: {item}")
+        for item in entry["new_warnings"][:5]:
+            print(f"  + warning: {item}")
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Compare cc-verify baseline and current reports.")
+    parser.add_argument("--before", required=True, help="Baseline cc-verify JSON report.")
+    parser.add_argument("--after", required=True, help="Current cc-verify JSON report.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--output", help="Write JSON report to this file.")
+    parser.add_argument("--fail-on-warning", action="store_true", help="Return non-zero for new warnings.")
+    args = parser.parse_args(argv)
+
+    report = compare(load_report(Path(args.before)), load_report(Path(args.after)), args.fail_on_warning)
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.json and not args.output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print_text(report)
+        if args.output:
+            print(f"report: {args.output}")
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

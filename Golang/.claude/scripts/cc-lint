@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import sys
+import os
 from pathlib import Path
 
 
@@ -47,6 +48,7 @@ TASK_FIELDS = [
     "**测试要求**",
     "**回退方式**",
     "**完成后状态**",
+    "**Baseline / Delta",
 ]
 
 
@@ -232,12 +234,18 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         errors.append(f"{path}: missing harness config")
         return
     text = read(path)
-    for key in ("validation:", "auto_run:", "fail_on_error:", "run_on:"):
+    for key in ("validation:", "auto_run:", "fail_on_error:", "verify_command:", "delta_command:", "baseline_dir:", "go:", "run_on:"):
         if key not in text:
             errors.append(f"{path}: missing {key.rstrip(':')}")
     for command in AUTO_VALIDATION_COMMANDS:
         if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
             errors.append(f"{path}: validation.run_on missing {command}")
+    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check"):
+        script_path = root / "scripts" / script
+        if not script_path.exists():
+            errors.append(f"{script_path}: missing validation script")
+        elif not os.access(script_path, os.X_OK):
+            errors.append(f"{script_path}: validation script is not executable")
 
 
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:

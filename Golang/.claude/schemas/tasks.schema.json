@@ -19,25 +19,29 @@
           "goal",
           "files",
           "acceptance",
-          "verification",
-          "test_requirement",
-          "rollback",
-          "status"
+                    "verification",
+                    "test_requirement",
+                    "rollback",
+                    "baseline_delta",
+                    "status"
         ],
         "properties": {
           "status": {
             "type": "string",
             "enum": ["todo", "in_progress", "blocked", "partial", "aborted", "done"]
           },
-          "mapping_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^V[0-9]+$"
+                    "mapping_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^V[0-9]+$"
+                        }
+                    },
+                    "baseline_delta": {
+                        "type": "string"
+                    }
+                }
             }
-          }
-        }
-      }
     }
   }
 }

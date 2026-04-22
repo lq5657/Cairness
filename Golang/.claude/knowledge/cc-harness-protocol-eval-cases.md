@@ -6,8 +6,7 @@
 
 1. 修改 `commands/`、`rules/`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
 2. 对真实样例目录执行：
-   - `.claude/scripts/cc-lint .claude`
-   - `.claude/scripts/cc-sync-check .claude/changes`
+   - `.claude/scripts/cc-verify --harness-only`
 3. 若某个样例未通过，优先修协议、模板或样例，不要靠人工提示兜底。
 
 #### Case 1：命令口径混用
@@ -99,9 +98,9 @@
 输入：
 
 ```text
-`cc-apply` 将全部 task 标记为 done 并切换 `spec.status = review`，但没有执行 `.claude/scripts/cc-lint .claude` 和 `.claude/scripts/cc-sync-check .claude/changes`。
+`cc-apply` 将全部 task 标记为 done 并切换 `spec.status = review`，但没有执行 `.claude/scripts/cc-verify --change <change-id>`，也没有保存 baseline 或运行 `cc-delta-check`。
 ```
 
 期望：
 - 判为协议违规。
-- 当 `validation.auto_run = true` 且 `fail_on_error = true` 时，命令必须先自动运行配置的校验脚本；失败或未执行时不得声称完成、通过、已修复或可归档。
+- 当 `validation.auto_run = true` 且 `fail_on_error = true` 时，命令必须先自动运行配置的 `cc-verify`；`cc-apply` 还必须保存 baseline 并用 `cc-delta-check` 拦截 `new-failure`。

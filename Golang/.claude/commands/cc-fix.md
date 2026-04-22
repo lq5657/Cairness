@@ -57,7 +57,7 @@
 5. 形成最小修复假设
 6. 实施修复并重新验证
 7. 回写 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`
-8. 若 `validation.auto_run = true`，运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`
+8. 若 `validation.auto_run = true`，运行 `.claude/scripts/cc-verify --change <change-id>`
 
 ## 失败与恢复
 

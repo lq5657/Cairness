@@ -47,6 +47,7 @@ updated: 2026-04-11
 * **测试要求** : 至少补 1 条错误包装相关最小回归证据；本 task 可完成 `V1 / V2` 的代码接入，但不得在缺少 `go test` 证据时声称它们已满足 `L2`
 * **回退方式** : 若 task 失败，可仅回退 `repo/service` 改动，保留原始 review 结论不变
 * **完成后状态** : `done`
+* **Baseline / Delta** : 示例省略 baseline 文件；无新增失败
 * **对应 commit** : `[user-create-api-fix] 修复创建链路超时与错误包装`
 * **并发注意事项** : 依赖 `user-create-api`，默认串行推进
 * **数据库注意事项** : 无 migration / 回填；仅增加调用边界保护和错误上下文
@@ -73,6 +74,7 @@ updated: 2026-04-11
 * **测试要求** : 先 Red 再 Green；若 timeout 无法在样例中稳定制造 Red，必须记录退化原因并提供可重复回归证据。本 task 必须在 `cc-apply` 内关闭 `V1 / V2 / V3` 的最低验证；`cc-test` 只允许补更高等级说明
 * **回退方式** : 若 task 失败，可保留 Task 1 代码修复，但不得把 review Findings 提前标记为 `fixed`
 * **完成后状态** : `done`
+* **Baseline / Delta** : 示例省略 baseline 文件；无新增失败
 * **对应 commit** : `[user-create-api-fix] 更新 review 并补回归测试`
 * **并发注意事项** : 与原变更共用 `user_service_test.go`，不与其他 change 并行修改
 * **数据库注意事项** : 无 migration / 回填 / 兼容窗口要求
