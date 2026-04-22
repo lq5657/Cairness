@@ -443,6 +443,31 @@ cc-test <change-id>
 
 `schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE 与命令契约覆盖，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。
 
+在实际 Golang 后台项目中，Harness 通常安装在项目根目录的 `.claude/` 下，可直接运行：
+
+```bash
+.claude/scripts/cc-lint .claude
+.claude/scripts/cc-sync-check .claude/changes
+```
+
+在本仓库调试框架本身时，对应命令是：
+
+```bash
+Golang/.claude/scripts/cc-lint Golang/.claude
+Golang/.claude/scripts/cc-sync-check Golang/.claude/changes
+```
+
+推荐使用时机：
+
+| 阶段 | 建议检查 |
+|------|----------|
+| `cc-propose` 后 | 跑 `cc-lint`，确认 spec/tasks 结构、HARD-GATE、验证矩阵与命令契约没有写错 |
+| `cc-apply` 后 | 先跑 `go test ./...` / `go vet ./...`，再跑 `cc-lint` 与 `cc-sync-check`，确认代码验证和文档闭环一致 |
+| `cc-test` / `cc-review` 后 | 跑 `cc-sync-check`，确认验证证据、review Findings 与 spec 状态一致 |
+| `cc-archive` 前或 CI 中 | 两个脚本都跑，作为归档或合并前的 Harness gate |
+
+`go test`、`go vet`、`golangci-lint` 检查代码本身；`cc-lint` 与 `cc-sync-check` 检查 AI Harness 的 spec、tasks、test-spec、review、log 是否可信且同步。两类检查应组合使用。
+
 ### 生命周期状态机
 
 `rules/lifecycle-state-machine.md` 是 `propose -> apply -> review -> done` 的唯一状态机来源。`blocked`、`partial`、`aborted` 只记录在 task、log、test-spec 或 review 中，不写入 `spec.status`。
