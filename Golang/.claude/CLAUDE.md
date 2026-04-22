@@ -16,8 +16,8 @@
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
 - `变更即记录`：改代码时必须同步更新 change 文档
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
-- 生命周期状态必须遵守 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
-- 每个 `cc-*` 命令必须遵守 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
+- 生命周期状态必须遵守 `workflows/cc-workflow.yaml` 与 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
+- 每个 `cc-*` 命令必须遵守 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 - 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
@@ -176,7 +176,7 @@ changes/<change-id>/
 ### 命令分发
 
 收到命令后按需装载：
-- 所有 `cc-*` 命令 -> 先对照 `rules/command-contracts.md` 与 `rules/lifecycle-state-machine.md`
+- 所有 `cc-*` 命令 -> 先对照 `workflows/cc-workflow.yaml`、`rules/command-contracts.md` 与 `rules/lifecycle-state-machine.md`
 - `cc-preflight` -> `commands/cc-preflight.md` + `checkpoints/cc-preflight.md`
 - `cc-new-project` -> `commands/cc-new-project.md` + `checkpoints/cc-new-project.md`
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
@@ -199,6 +199,7 @@ changes/<change-id>/
 - 测试分层 -> `rules/testing-strategy.md`
 - 发布与回滚 -> `rules/release.md`
 - 验证要求 -> `rules/verification.md`
+- 机器可读工作流 -> `workflows/cc-workflow.yaml`
 - 生命周期状态机 -> `rules/lifecycle-state-machine.md`
 - 命令契约 -> `rules/command-contracts.md`
 - 编码规范 -> `rules/coding-style.md`

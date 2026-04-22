@@ -50,7 +50,7 @@ Golang/.claude/changes/<change-id>/
 - 直接给可复制命令，如 `cc-new-project <项目想法>`、`cc-init`、`cc-inspect-codebase architecture`、`cc-propose <需求>`
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 只作兼容汇总索引
-- 所有 `cc-*` 命令都必须对照 `rules/command-contracts.md` 的状态机角色、输入输出、可写文件、校验项和禁止行为
+- 所有 `cc-*` 命令都必须对照 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 的状态机角色、输入输出、可写文件、校验项和禁止行为
 
 ### `cc-new-project <项目想法>`
 
@@ -325,6 +325,7 @@ Gate：
 - 禁止在 `main/master` 直接开发
 - 默认一个 task 一个 commit，是否自动 commit 由 `.claude/harness.config.yaml` 决定
 - 默认自动运行 Harness 校验；`validation.auto_run = true` 时，`cc-propose` / `cc-apply` / `cc-fix` / `cc-test` / `cc-review` / `cc-archive` 会按阶段触发 `cc-verify`，`cc-apply` 还会记录 baseline 并执行 delta 检查
+- `workflows/cc-workflow.yaml` 是机器可读工作流定义，新增或调整 `cc-*` 命令时必须同步更新，否则 `cc-lint` 应失败
 - commit 前必须检查 dirty worktree，不能混入无关修改
 - commit message 固定格式：
 

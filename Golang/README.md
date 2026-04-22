@@ -53,6 +53,8 @@
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
 │   └── security.md        # 安全红线
+├── workflows/
+│   └── cc-workflow.yaml   # 机器可读命令工作流定义
 ├── schemas/               # 文档契约 schema
 │   ├── spec.schema.json
 │   ├── tasks.schema.json
@@ -443,7 +445,7 @@ cc-test <change-id>
 
 ### 机器校验
 
-`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE 与命令契约覆盖，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。`scripts/cc-verify` 是统一验证入口，默认组合 Harness 校验与 Go 校验；`scripts/cc-delta-check` 比较验证基线，识别本次新增失败。
+`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`workflows/cc-workflow.yaml` 定义机器可读的 `cc-*` 命令状态、输入输出、可写文件、校验项和禁止行为；`scripts/cc-lint` 检查命令口径、元数据、验证映射、HARD-GATE、命令契约覆盖与 workflow 同步性，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。`scripts/cc-verify` 是统一验证入口，默认组合 Harness 校验与 Go 校验；`scripts/cc-delta-check` 比较验证基线，识别本次新增失败。
 
 在实际 Golang 后台项目中，Harness 通常安装在项目根目录的 `.claude/` 下，可直接运行：
 
@@ -473,6 +475,9 @@ Golang/.claude/scripts/cc-verify --harness-only
 可在 `.claude/harness.config.yaml` 中调整：
 
 ```yaml
+workflow:
+  definition: ".claude/workflows/cc-workflow.yaml"
+
 validation:
   auto_run: true
   fail_on_error: true
@@ -493,11 +498,11 @@ validation:
 
 ### 生命周期状态机
 
-`rules/lifecycle-state-machine.md` 是 `propose -> apply -> review -> done` 的唯一状态机来源。`blocked`、`partial`、`aborted` 只记录在 task、log、test-spec 或 review 中，不写入 `spec.status`。
+`workflows/cc-workflow.yaml` 是 `cc-*` 命令可机器读取的 workflow 定义；`rules/lifecycle-state-machine.md` 是同一状态机的人类解释。`propose -> apply -> review -> done` 只表达生命周期阶段；`blocked`、`partial`、`aborted` 只记录在 task、log、test-spec 或 review 中，不写入 `spec.status`。
 
 ### 命令契约矩阵
 
-`rules/command-contracts.md` 定义每个 `cc-*` 命令的状态机角色、输入、输出、可写文件、必须校验项和禁止行为。新增命令或调整命令边界时，必须同步更新该矩阵和对应 command / checkpoint。
+`rules/command-contracts.md` 定义每个 `cc-*` 命令的状态机角色、输入、输出、可写文件、必须校验项和禁止行为。新增命令或调整命令边界时，必须同步更新该矩阵、`workflows/cc-workflow.yaml` 和对应 command / checkpoint。
 
 ### 并发治理
 

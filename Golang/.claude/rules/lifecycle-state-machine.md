@@ -5,6 +5,8 @@ description: "Golang Harness 的生命周期状态机与状态迁移规范"
 
 ### Lifecycle State Machine
 
+机器可读定义位于 `workflows/cc-workflow.yaml`。本文件负责解释状态含义和迁移规则；新增状态、命令或迁移时，必须同时更新 `workflows/cc-workflow.yaml`、`rules/command-contracts.md` 和对应 command / checkpoint。
+
 #### 1. 状态类型
 
 `change` 主状态只能表示生命周期阶段，不承载失败原因：
@@ -68,5 +70,5 @@ description: "Golang Harness 的生命周期状态机与状态迁移规范"
 - `done` 只能由 `cc-archive` 设置；`cc-review` 只能给出“可归档”结论，不能直接归档。
 - 存在 `open` Finding、`blocked` task、未解释的 `gap` 映射项时，禁止进入 `done`。
 - context / audit / explain / preflight 类命令不得修改任何正式 change 的生命周期状态。
-- 每个命令的输入输出、可写文件、校验项和禁止行为必须同时遵守 `rules/command-contracts.md`。
+- 每个命令的输入输出、可写文件、校验项和禁止行为必须同时遵守 `rules/command-contracts.md` 与 `workflows/cc-workflow.yaml`。
 - `cc-verify` 应优先按本状态机触发 Harness 校验；底层 `cc-lint` / `cc-sync-check` 负责检查非法迁移和状态错配。

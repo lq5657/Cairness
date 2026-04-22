@@ -21,6 +21,7 @@
 | 已检查路径解释一致性 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查命令入口冲突 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 checkpoint 展示契约 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `workflows/cc-workflow.yaml` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `validation.auto_run` / `validation.fail_on_error` / `validation.run_on` 自动校验策略 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `cc-verify` / `cc-delta-check` 脚本存在且可执行 | ✅ / ❌ / ⚠️ / N/A |

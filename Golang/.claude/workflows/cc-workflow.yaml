@@ -1,0 +1,161 @@
+# Machine-readable workflow definition for all cc-* commands.
+# Keep this file synchronized with rules/lifecycle-state-machine.md and
+# rules/command-contracts.md. cc-lint checks command coverage and core
+# state invariants.
+
+version: 1
+workflow_id: golang-harness-cc-workflow
+
+sources:
+  lifecycle_state_machine: rules/lifecycle-state-machine.md
+  command_contracts: rules/command-contracts.md
+
+states:
+  change: [propose, apply, review, done]
+  task: [todo, in_progress, blocked, partial, aborted, done]
+  finding: [open, fixed, accepted]
+  validation_mapping: [todo, apply-covered, test-covered, gap]
+
+commands:
+  cc-new-project:
+    category: project
+    change_from: [none]
+    change_to: unchanged
+    inputs: [project_idea]
+    outputs: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md]
+    writes: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md]
+    validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge]
+    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply]
+    auto_validation: []
+
+  cc-preflight:
+    category: harness
+    change_from: [none]
+    change_to: unchanged
+    inputs: []
+    outputs: [structured_preflight_result]
+    writes: []
+    validates: [harness_structure, commands, checkpoints, schemas, scripts, harness_config, workflow_definition]
+    forbids: [business_code_scan, business_change_creation, auto_scaffold_fix, project_audit]
+    auto_validation: []
+
+  cc-init:
+    category: context
+    change_from: [none]
+    change_to: unchanged
+    inputs: []
+    outputs: [context/project-context.md]
+    writes: [context/project-context.md]
+    validates: [claude_scaffold_exists, entrypoints_confirmed, unknowns_recorded]
+    forbids: [scaffold_creation, change_creation, audit_creation, deep_code_review, fact_fabrication]
+    auto_validation: []
+
+  cc-enrich-context:
+    category: context
+    change_from: [none]
+    change_to: unchanged
+    inputs: []
+    outputs: [context/project-context.md]
+    writes: [context/project-context.md]
+    validates: [base_context_exists, assumptions_confirmed, evidence_locations, confidence_level]
+    forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply]
+    auto_validation: []
+
+  cc-explain-system:
+    category: context
+    change_from: [none]
+    change_to: unchanged
+    inputs: [optional_scope]
+    outputs: [context/system-overview.md]
+    writes: [context/system-overview.md]
+    validates: [code_evidence, config_evidence, flow_evidence, bounded_scope]
+    forbids: [finding_output, change_creation, audit_creation, business_code_write, preference_as_fact]
+    auto_validation: []
+
+  cc-inspect-codebase:
+    category: audit
+    change_from: [none]
+    change_to: unchanged
+    inputs: [mode, optional_scope]
+    outputs: [audits/<audit-id>/report.md]
+    writes: [audits/<audit-id>/report.md]
+    validates: [valid_mode, bounded_scope, evidence_per_finding]
+    forbids: [auto_fix, change_creation, audit_as_spec, unsupported_conclusion]
+    auto_validation: []
+
+  cc-promote-audit:
+    category: audit_bridge
+    change_from: [none]
+    change_to: unchanged
+    inputs: [audit_id, change_id]
+    outputs: [audits/<audit-id>/to-change.md]
+    writes: [audits/<audit-id>/to-change.md]
+    validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint]
+    forbids: [copy_entire_audit, direct_change_spec_write, unrelated_findings_merge]
+    auto_validation: []
+
+  cc-propose:
+    category: change
+    change_from: [none, propose]
+    change_to: propose
+    inputs: [requirement_description]
+    outputs: [changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md]
+    writes: [changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md]
+    validates: [hard_gate, validation_matrix, dependencies, scope_freeze, task_traceability]
+    forbids: [business_code_write, skipped_clarification, unverifiable_tasks, enter_apply_without_confirmation]
+    auto_validation: ["cc-verify --harness-only --change <change-id>"]
+
+  cc-apply:
+    category: change
+    change_from: [propose, apply]
+    change_to: review
+    inputs: [change_id]
+    outputs: [business_code_changes, change_docs_update, optional_commits]
+    writes: [task_declared_code_files, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/<change-id>/test-spec.md]
+    validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta]
+    forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge]
+    auto_validation: ["cc-verify --json --output changes/<change-id>/baseline/pre-apply.json", "cc-delta-check", "cc-verify --change <change-id>"]
+
+  cc-review:
+    category: change
+    change_from: [review]
+    change_to: review
+    inputs: [change_id]
+    outputs: [changes/<change-id>/review.md]
+    writes: [changes/<change-id>/review.md, changes/<change-id>/log.md]
+    validates: [task_coverage, verification_evidence, finding_status, evidence_matrix]
+    forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record]
+    auto_validation: ["cc-verify --harness-only --change <change-id>"]
+
+  cc-fix:
+    category: change
+    change_from: [review]
+    change_to: review
+    inputs: [change_id, optional_fix_description]
+    outputs: [fixed_code, updated_findings, synced_change_docs]
+    writes: [finding_related_code_files, changes/<change-id>/review.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/test-spec.md]
+    validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced]
+    forbids: [undeclared_scope_change, bypass_review, delete_open_finding, mark_fixed_without_verification]
+    auto_validation: ["cc-verify --change <change-id>"]
+
+  cc-test:
+    category: change
+    change_from: [apply, review]
+    change_to: unchanged
+    inputs: [change_id, optional_mode]
+    outputs: [changes/<change-id>/test-spec.md, tests_or_evidence, updated_mapping_status]
+    writes: [test_files, changes/<change-id>/test-spec.md, changes/<change-id>/log.md, changes/<change-id>/spec.md]
+    validates: [valid_mode, recovery_blocker_record, fresh_evidence, mapping_closure]
+    forbids: [default_apply_minimum_verification, fabricated_red_green, mark_covered_without_evidence]
+    auto_validation: ["cc-verify --change <change-id>"]
+
+  cc-archive:
+    category: change
+    change_from: [review]
+    change_to: done
+    inputs: [change_id]
+    outputs: [done_status, archival_log, optional_knowledge]
+    writes: [changes/<change-id>/spec.md, changes/<change-id>/log.md, knowledge/*]
+    validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence]
+    forbids: [business_code_write, skipped_knowledge_decision, archive_with_blocker, done_by_other_command]
+    auto_validation: ["cc-verify --change <change-id>"]

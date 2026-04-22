@@ -6,7 +6,8 @@ description: "所有 cc-* 命令的输入输出、写权限、校验项与禁止
 ### Command Contracts
 
 每个 `cc-*` 命令都必须先按本表确认自己的状态机角色、输入、输出、可写文件、校验项和禁止行为。
-若单个命令文件与本表冲突，以本表和 `rules/lifecycle-state-machine.md` 为准，并应优先修正命令文件。
+若单个命令文件与本表冲突，以本表、`rules/lifecycle-state-machine.md` 和 `workflows/cc-workflow.yaml` 为准，并应优先修正命令文件。
+新增命令或调整命令边界时，必须同步更新 `workflows/cc-workflow.yaml`，否则 `cc-lint` 应失败。
 
 | 命令 | 状态机角色 | 输入 | 输出 | 可写文件 | 必须校验 | 禁止行为 |
 |------|------------|------|------|----------|----------|----------|

@@ -7,6 +7,11 @@ git:
   allow_main_branch_apply: false
   require_clean_worktree_before_commit: true
 
+workflow:
+  definition: ".claude/workflows/cc-workflow.yaml"
+  lifecycle_state_machine: ".claude/rules/lifecycle-state-machine.md"
+  command_contracts: ".claude/rules/command-contracts.md"
+
 validation:
   auto_run: true
   fail_on_error: true

@@ -1,10 +1,10 @@
 ### Harness 协议回归评测样例
 
-用于维护者在修改命令口径、生命周期状态机、HARD-GATE、Git 策略、验证矩阵或校验脚本后，快速确认 Harness 仍然能约束 AI 行为。
+用于维护者在修改命令口径、机器工作流、生命周期状态机、HARD-GATE、Git 策略、验证矩阵或校验脚本后，快速确认 Harness 仍然能约束 AI 行为。
 
 #### 使用方式
 
-1. 修改 `commands/`、`rules/`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
+1. 修改 `commands/`、`workflows/`、`rules/`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
 2. 对真实样例目录执行：
    - `.claude/scripts/cc-verify --harness-only`
 3. 若某个样例未通过，优先修协议、模板或样例，不要靠人工提示兜底。
@@ -92,6 +92,18 @@
 期望：
 - 判为协议违规。
 - 只有 `cc-archive` 可以将 `spec.status` 设置为 `done`。
+
+#### Case 7.1：workflow 与命令契约不同步
+
+输入：
+
+```text
+新增 `commands/cc-foo.md`，但没有在 `workflows/cc-workflow.yaml` 和 `rules/command-contracts.md` 中登记。
+```
+
+期望：
+- `cc-lint` 报错。
+- 每个 `cc-*` 命令都必须同时存在 command 文件、workflow 定义和命令契约行。
 
 #### Case 8：命令完成但未自动运行 Harness 校验
 
