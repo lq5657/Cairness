@@ -57,11 +57,13 @@
 5. 形成最小修复假设
 6. 实施修复并重新验证
 7. 回写 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`
+8. 若 `validation.auto_run = true`，运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`
 
 ## 失败与恢复
 
 - 若部分问题已修复、部分未修复，`review.md` 中 Findings 状态必须区分 `fixed` 与 `open`
 - 修复失败时，不得清空原有 review 结论；应保留问题并补充本次尝试结果
+- 若自动 Harness 校验失败且 `validation.fail_on_error = true`，不得将本轮 Finding 标记为 `fixed`，必须先修正文档闭环或记录阻塞原因
 
 ## 建议读取
 

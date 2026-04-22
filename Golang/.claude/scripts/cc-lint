@@ -21,6 +21,7 @@ VALID_REVIEW_STATUS = {
 }
 VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
 VALID_TEST_MODE = {"supplement", "recovery"}
+AUTO_VALIDATION_COMMANDS = ["propose", "apply", "fix", "test", "review", "archive"]
 EVIDENCE_BY_LEVEL = {
     "L1": {"build", "doc-check"},
     "L2": {"package", "unit"},
@@ -225,6 +226,20 @@ def lint_command_contracts(root: Path, errors: list[str]) -> None:
             errors.append(f"{path}: missing 命令契约 section")
 
 
+def lint_harness_config(root: Path, errors: list[str]) -> None:
+    path = root / "harness.config.yaml"
+    if not path.exists():
+        errors.append(f"{path}: missing harness config")
+        return
+    text = read(path)
+    for key in ("validation:", "auto_run:", "fail_on_error:", "run_on:"):
+        if key not in text:
+            errors.append(f"{path}: missing {key.rstrip(':')}")
+    for command in AUTO_VALIDATION_COMMANDS:
+        if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
+            errors.append(f"{path}: validation.run_on missing {command}")
+
+
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:
     dirs: set[Path] = set()
     for item in inputs:
@@ -258,6 +273,8 @@ def main(argv: list[str]) -> int:
                 lint_slash_commands(md, errors)
             if (item / "commands").exists() and (item / "rules").exists():
                 lint_command_contracts(item, errors)
+            if item.name == ".claude" or (item / "harness.config.yaml").exists():
+                lint_harness_config(item, errors)
 
     for change_dir in discover_change_dirs(inputs):
         mapping_ids = lint_spec(change_dir, errors)

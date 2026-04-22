@@ -8,5 +8,26 @@ git:
   require_clean_worktree_before_commit: true
 
 validation:
+  auto_run: true
+  fail_on_error: true
   require_structured_hard_gate: true
   require_traceability_check: true
+  run_on:
+    propose:
+      - cc-lint
+      - cc-sync-check
+    apply:
+      - cc-lint
+      - cc-sync-check
+    fix:
+      - cc-lint
+      - cc-sync-check
+    test:
+      - cc-lint
+      - cc-sync-check
+    review:
+      - cc-lint
+      - cc-sync-check
+    archive:
+      - cc-lint
+      - cc-sync-check

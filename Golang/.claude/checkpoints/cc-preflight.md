@@ -22,6 +22,7 @@
 | 已检查命令入口冲突 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 checkpoint 展示契约 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `validation.auto_run` / `validation.fail_on_error` / `validation.run_on` 自动校验策略 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查关键功能资产是否齐全 | ✅ / ❌ / ⚠️ / N/A |
 | 已按最小试跑链路判断命令是否具备执行前提 | ✅ / ❌ / ⚠️ / N/A |
 | 未把 `cc-preflight` 扩展成业务代码审查 | ✅ / ❌ / ⚠️ / N/A |

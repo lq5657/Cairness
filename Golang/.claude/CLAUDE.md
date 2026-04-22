@@ -18,6 +18,7 @@
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
 - 生命周期状态必须遵守 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
 - 每个 `cc-*` 命令必须遵守 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
+- `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-lint` / `cc-sync-check`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 - 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
 

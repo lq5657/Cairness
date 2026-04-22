@@ -22,6 +22,7 @@
 |--------|----------|------|
 | 主规则存在 | `.claude/CLAUDE.md` 存在 | [ ] |
 | 运行策略存在 | `.claude/harness.config.yaml` 存在，或明确使用默认策略 | [ ] |
+| 自动校验策略存在 | `.claude/harness.config.yaml` 中包含 `validation.auto_run`、`validation.fail_on_error` 与 `validation.run_on`，或明确使用默认自动校验策略 | [ ] |
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
 | 生命周期状态机存在 | `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | 命令契约矩阵存在 | `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |

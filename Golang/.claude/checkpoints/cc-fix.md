@@ -43,3 +43,4 @@
 | `go build ./...` 通过 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 未清空原有 review 结论 | ✅ / ❌ / ⚠️ / N/A |
+| 已按 `validation.run_on.fix` 自动运行 `cc-lint` / `cc-sync-check`，且失败时未把 Finding 标记为 `fixed` | ✅ / ❌ / ⚠️ / N/A |

@@ -31,4 +31,5 @@ description: "所有 cc-* 命令的输入输出、写权限、校验项与禁止
 - `cc-propose` 是唯一创建正式 change 草案的命令；`cc-archive` 是唯一允许把 `spec.status` 设置为 `done` 的命令。
 - `cc-fix` 只能处理 `review.md` 中已记录的 `open` Findings 或用户明确追加并已记录的问题。
 - `cc-test` 默认是 `supplement`；只有存在 `cc-apply` 的 `blocked` / `partial` 记录时，才能使用 `recovery`。
+- `cc-propose`、`cc-apply`、`cc-fix`、`cc-test`、`cc-review`、`cc-archive` 必须按 `.claude/harness.config.yaml` 的 `validation.auto_run` 和 `validation.run_on` 自动触发 Harness 校验。
 - 命令中断时，必须把可恢复上下文写入本表允许的文档位置，不得用 `spec.status` 表示失败原因。

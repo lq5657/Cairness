@@ -93,3 +93,15 @@
 期望：
 - 判为协议违规。
 - 只有 `cc-archive` 可以将 `spec.status` 设置为 `done`。
+
+#### Case 8：命令完成但未自动运行 Harness 校验
+
+输入：
+
+```text
+`cc-apply` 将全部 task 标记为 done 并切换 `spec.status = review`，但没有执行 `.claude/scripts/cc-lint .claude` 和 `.claude/scripts/cc-sync-check .claude/changes`。
+```
+
+期望：
+- 判为协议违规。
+- 当 `validation.auto_run = true` 且 `fail_on_error = true` 时，命令必须先自动运行配置的校验脚本；失败或未执行时不得声称完成、通过、已修复或可归档。

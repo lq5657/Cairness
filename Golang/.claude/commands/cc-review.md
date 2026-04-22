@@ -86,6 +86,11 @@
 - `fixed`：问题已在后续修复中解决，必须保留审计记录，不得删除
 - `accepted`：经明确评估后暂不处理，必须写明接受理由，不得作为默认兜底状态
 
+### 自动 Harness 校验
+
+- 写入或更新 `review.md` 后，若 `validation.auto_run = true`，必须运行 `.claude/scripts/cc-lint .claude` 与 `.claude/scripts/cc-sync-check .claude/changes`。
+- 若校验失败且 `validation.fail_on_error = true`，`final_status` 不得写成 `pass`，必须修正文档闭环或记录为 `partial` / `fail`。
+
 ## 失败与恢复
 
 - Stage 1 未完成时，`review.md` 仅填写已完成项，并将 `stage2_status` 记为 `skipped`

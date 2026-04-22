@@ -24,6 +24,26 @@ description: "Golang Harness 的验证等级与证据规范"
 - 证据必须直接覆盖当前 task、当前 Finding 或当前归档结论对应的风险点。
 - 若验证无法覆盖全部风险，必须说明替代证据、剩余风险和为何仍允许继续。
 
+#### 1.2 自动 Harness 校验
+
+- `.claude/harness.config.yaml` 中 `validation.auto_run` 默认为 `true`，表示命令在确定节点必须自动执行 Harness 校验脚本。
+- `validation.fail_on_error` 默认为 `true`；自动校验失败时，当前命令不得宣称完成、通过、已修复或可归档，必须先修正文档/映射/状态不一致，或记录阻塞原因。
+- 默认触发点：
+  - `cc-propose`：生成 `spec.md` / `tasks.md` 后，进入 HARD-GATE 前运行 `cc-lint` 与 `cc-sync-check`。
+  - `cc-apply`：当前 task 文档同步后运行；全部 task 完成、切换到 `review` 前必须再次运行。
+  - `cc-fix`：每轮 Finding 修复和文档同步后运行。
+  - `cc-test`：更新 `test-spec.md`、测试证据和映射状态后运行。
+  - `cc-review`：写入或更新 `review.md` 后运行。
+  - `cc-archive`：归档前必须运行；切换 `spec.status = done` 后应再次运行。
+- 默认命令：
+
+```bash
+.claude/scripts/cc-lint .claude
+.claude/scripts/cc-sync-check .claude/changes
+```
+
+- 若脚本缺失或当前环境无法执行，必须记录为 `blocked` / `partial` 或 preflight 问题；不得静默跳过。
+
 #### 2. 验证等级
 
 | 等级 | 名称 | 最低要求 | 适用场景 |
