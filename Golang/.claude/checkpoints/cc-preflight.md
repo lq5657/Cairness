@@ -22,6 +22,7 @@
 | 已检查命令入口冲突 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 checkpoint 展示契约 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `workflows/cc-workflow.yaml` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `workflows/cc-workflow.yaml` 中每个命令的 `roles` 都已登记 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `rules/role-contracts.md` 与 `rules/memory-policy.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `context/dev-map.md` 与 `changes/task-board.md` 存在 | ✅ / ❌ / ⚠️ / N/A |

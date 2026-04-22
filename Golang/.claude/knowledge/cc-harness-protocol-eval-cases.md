@@ -105,6 +105,18 @@
 - `cc-lint` 报错。
 - 每个 `cc-*` 命令都必须同时存在 command 文件、workflow 定义和命令契约行。
 
+#### Case 7.2：workflow 引用了未登记角色
+
+输入：
+
+```text
+在 `workflows/cc-workflow.yaml` 中给 `cc-apply` 写入 `roles: [developer, imaginary-reviewer]`。
+```
+
+期望：
+- `cc-lint` 报错。
+- workflow 中每个角色都必须先在 `rules/role-contracts.md` 登记。
+
 #### Case 8：命令完成但未自动运行 Harness 校验
 
 输入：

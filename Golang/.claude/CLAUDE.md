@@ -18,7 +18,7 @@
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
 - 生命周期状态必须遵守 `workflows/cc-workflow.yaml` 与 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
 - 每个 `cc-*` 命令必须遵守 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
-- 调用 reviewer、子角色或写长期记忆时，必须遵守 `rules/role-contracts.md` 与 `rules/memory-policy.md`
+- 调用 reviewer、子角色或写长期记忆时，必须遵守 `rules/role-contracts.md` 与 `rules/memory-policy.md`；命令启用的角色以 `workflows/cc-workflow.yaml` 的 `roles` 为准
 - 项目长期导航优先写 `context/dev-map.md`，change 状态摘要优先写 `changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
@@ -178,7 +178,7 @@ changes/<change-id>/
 ### 命令分发
 
 收到命令后按需装载：
-- 所有 `cc-*` 命令 -> 先对照 `workflows/cc-workflow.yaml`、`rules/command-contracts.md` 与 `rules/lifecycle-state-machine.md`
+- 所有 `cc-*` 命令 -> 先对照 `workflows/cc-workflow.yaml`、`rules/command-contracts.md`、`rules/role-contracts.md` 与 `rules/lifecycle-state-machine.md`
 - `cc-preflight` -> `commands/cc-preflight.md` + `checkpoints/cc-preflight.md`
 - `cc-new-project` -> `commands/cc-new-project.md` + `checkpoints/cc-new-project.md`
 - `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`

@@ -19,6 +19,7 @@ states:
 commands:
   cc-new-project:
     category: project
+    roles: [pm-orchestrator, requirement-analyst, solution-designer, context-curator, backlog-curator, gatekeeper]
     change_from: [none]
     change_to: unchanged
     inputs: [project_idea]
@@ -30,6 +31,7 @@ commands:
 
   cc-preflight:
     category: harness
+    roles: [pm-orchestrator, gatekeeper, harness-maintainer]
     change_from: [none]
     change_to: unchanged
     inputs: []
@@ -41,6 +43,7 @@ commands:
 
   cc-init:
     category: context
+    roles: [pm-orchestrator, context-curator]
     change_from: [none]
     change_to: unchanged
     inputs: []
@@ -52,6 +55,7 @@ commands:
 
   cc-enrich-context:
     category: context
+    roles: [pm-orchestrator, context-curator]
     change_from: [none]
     change_to: unchanged
     inputs: []
@@ -63,6 +67,7 @@ commands:
 
   cc-explain-system:
     category: context
+    roles: [pm-orchestrator, context-curator]
     change_from: [none]
     change_to: unchanged
     inputs: [optional_scope]
@@ -74,6 +79,7 @@ commands:
 
   cc-inspect-codebase:
     category: audit
+    roles: [pm-orchestrator, reviewer]
     change_from: [none]
     change_to: unchanged
     inputs: [mode, optional_scope]
@@ -85,6 +91,7 @@ commands:
 
   cc-promote-audit:
     category: audit_bridge
+    roles: [pm-orchestrator, requirement-analyst, backlog-curator]
     change_from: [none]
     change_to: unchanged
     inputs: [audit_id, change_id]
@@ -96,6 +103,7 @@ commands:
 
   cc-propose:
     category: change
+    roles: [pm-orchestrator, requirement-analyst, solution-designer, backlog-curator, gatekeeper]
     change_from: [none, propose]
     change_to: propose
     inputs: [requirement_description]
@@ -107,6 +115,7 @@ commands:
 
   cc-apply:
     category: change
+    roles: [pm-orchestrator, developer, test-verifier, context-curator, backlog-curator, gatekeeper]
     change_from: [propose, apply]
     change_to: review
     inputs: [change_id]
@@ -118,6 +127,7 @@ commands:
 
   cc-review:
     category: change
+    roles: [pm-orchestrator, spec-reviewer, code-quality-reviewer, reviewer, backlog-curator, gatekeeper]
     change_from: [review]
     change_to: review
     inputs: [change_id]
@@ -129,6 +139,7 @@ commands:
 
   cc-fix:
     category: change
+    roles: [pm-orchestrator, developer, test-verifier, context-curator, backlog-curator, gatekeeper]
     change_from: [review]
     change_to: review
     inputs: [change_id, optional_fix_description]
@@ -140,6 +151,7 @@ commands:
 
   cc-test:
     category: change
+    roles: [pm-orchestrator, test-verifier, backlog-curator, gatekeeper]
     change_from: [apply, review]
     change_to: unchanged
     inputs: [change_id, optional_mode]
@@ -151,6 +163,7 @@ commands:
 
   cc-archive:
     category: change
+    roles: [pm-orchestrator, backlog-curator, gatekeeper]
     change_from: [review]
     change_to: done
     inputs: [change_id]

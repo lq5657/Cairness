@@ -8,6 +8,12 @@
 
 - `cc-archive <change-id>`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认归档前状态、阻塞项和下一命令。
+- `backlog-curator`：同步 `changes/task-board.md` 的归档状态。
+- `gatekeeper`：基于 review pass、无 open/blocked/gap、fresh evidence 和 `cc-verify` 判断是否允许进入 `done`。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

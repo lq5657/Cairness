@@ -8,6 +8,15 @@
 
 - `cc-apply <change-id>`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认当前 task、阻塞项、依赖和下一命令。
+- `developer`：在 task 范围内实现并同步 change 文档。
+- `test-verifier`：执行或核对 task 声明的 fresh verification evidence。
+- `context-curator`：在模块边界或验证入口变化时更新 `context/dev-map.md`。
+- `backlog-curator`：同步 `changes/task-board.md`。
+- `gatekeeper`：基于 baseline/delta、task gate 和 `cc-verify` 判断是否允许继续。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

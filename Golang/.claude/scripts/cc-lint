@@ -52,6 +52,7 @@ TASK_FIELDS = [
 ]
 WORKFLOW_REQUIRED_COMMAND_KEYS = [
     "category",
+    "roles",
     "change_from",
     "change_to",
     "inputs",
@@ -132,6 +133,20 @@ def command_contract_names(root: Path) -> set[str]:
         return set()
     rows = table_rows(read(contracts_path))
     return {row[0] for row in rows if row and row[0].startswith("cc-")}
+
+
+def role_contract_names(root: Path) -> set[str]:
+    path = root / "rules" / "role-contracts.md"
+    if not path.exists():
+        return set()
+    rows = table_rows(read(path))
+    return {
+        row[0]
+        for row in rows
+        if row
+        and re.fullmatch(r"[a-z][a-z0-9-]*", row[0])
+        and row[0] != "角色"
+    }
 
 
 def parse_workflow_commands(text: str) -> dict[str, str]:
@@ -321,6 +336,7 @@ def lint_workflow_definition(root: Path, errors: list[str]) -> None:
 
     command_names = {item.stem for item in commands_dir.glob("cc-*.md")} if commands_dir.exists() else set()
     contract_names = command_contract_names(root)
+    role_names = role_contract_names(root)
     workflow_names = set(workflow_blocks)
     for command in sorted(command_names - workflow_names):
         errors.append(f"{path}: missing workflow command for {command}")
@@ -335,6 +351,15 @@ def lint_workflow_definition(root: Path, errors: list[str]) -> None:
         for key in WORKFLOW_REQUIRED_COMMAND_KEYS:
             if re.search(rf"^\s{{4}}{re.escape(key)}:", block, re.M) is None:
                 errors.append(f"{path}: {command} missing {key}")
+
+        roles_value = parse_key_value(block, "roles")
+        if roles_value is not None:
+            roles = set(parse_inline_list(roles_value))
+            if not roles:
+                errors.append(f"{path}: {command} roles must not be empty")
+            unknown_roles = roles - role_names
+            if unknown_roles:
+                errors.append(f"{path}: {command} references unknown roles {sorted(unknown_roles)}")
 
         change_from_value = parse_key_value(block, "change_from")
         if change_from_value is None:

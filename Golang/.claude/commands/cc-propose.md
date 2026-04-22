@@ -10,6 +10,14 @@
 
 - `cc-propose <需求描述>`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认 change 状态、task-board 和下一命令。
+- `requirement-analyst`：澄清需求、冻结范围、识别成功标准。
+- `solution-designer`：完成方案比较、task 拆分和验证映射。
+- `backlog-curator`：同步 `changes/task-board.md`。
+- `gatekeeper`：执行 HARD-GATE 与自动校验放行判断。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

@@ -9,6 +9,15 @@
 - `cc-fix <change-id>`
 - `cc-fix <change-id> [描述]`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认本轮修复范围、阻塞项和下一命令。
+- `developer`：在 Finding 范围内完成最小修复并同步 change 文档。
+- `test-verifier`：验证修复证据，确认验证等级不降低。
+- `context-curator`：在模块边界、验证入口或易错边界变化时更新 `context/dev-map.md`。
+- `backlog-curator`：同步 `changes/task-board.md`。
+- `gatekeeper`：基于 Finding 状态、验证证据和 `cc-verify` 判断是否允许标记 fixed。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

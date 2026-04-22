@@ -8,6 +8,15 @@
 
 - `cc-review <change-id>`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认 review 阶段状态、task-board 和下一命令。
+- `spec-reviewer`：执行 Stage 1，只读检查实现是否符合 spec。
+- `code-quality-reviewer`：执行 Stage 2，只读检查质量、安全、兼容性和可观测性风险。
+- `reviewer`：承载综合审查视角，形成 Findings 输入。
+- `backlog-curator`：同步 `changes/task-board.md`。
+- `gatekeeper`：根据 Findings、review 状态和自动校验判断是否可进入修复或归档。
+
 ## 执行模型
 
 - `cc-review` 是用户触发的主流程命令

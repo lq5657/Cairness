@@ -528,7 +528,9 @@ validation:
 
 `rules/memory-policy.md` 规定哪些信息可以进入长期记忆，`rules/role-contracts.md` 规定 command-runner、context-curator、reviewer 等角色的权限边界。写入长期记忆或调用 reviewer 时，必须先遵守这两份规则。
 
-默认角色：
+角色分为两层。治理角色负责长期资产、写权限和审计边界；执行阶段角色负责一次 change 从需求到归档的专业接力。`workflows/cc-workflow.yaml` 中每个命令都必须声明 `roles`，`cc-lint` 会校验这些角色是否已在 `rules/role-contracts.md` 登记。
+
+治理角色：
 
 | 角色 | 主要职责 |
 |------|----------|
@@ -538,6 +540,18 @@ validation:
 | `spec-reviewer` | `cc-review` Stage 1 只读 reviewer，检查实现是否符合 spec |
 | `code-quality-reviewer` | `cc-review` Stage 2 只读 reviewer，检查质量、安全、兼容性和可观测性风险 |
 | `harness-maintainer` | 维护 `.claude/` 框架资产、schema、script、example、workflow 与协议回归 |
+
+执行阶段角色：
+
+| 角色 | 主要职责 |
+|------|----------|
+| `pm-orchestrator` | 维护流程状态、task-board、阻塞项和下一命令，不直接写代码 |
+| `requirement-analyst` | 澄清需求、冻结范围、识别用户/场景/成功标准 |
+| `solution-designer` | 做方案比较、技术决策、task 拆分和验证映射 |
+| `gatekeeper` | 基于 HARD-GATE、`cc-verify`、baseline/delta 和 review 状态判断能否进入下一阶段 |
+| `developer` | 在 task 或 Finding 范围内实现、修复并同步 change 文档 |
+| `test-verifier` | 设计测试、补强 fresh evidence、闭合验证映射或记录 gap |
+| `reviewer` | 执行审查视角，输出 spec 一致性、代码质量和风险 Findings |
 
 ### 并发治理
 

@@ -15,6 +15,13 @@
 - `cc-test <change-id> --mode supplement`
 - `cc-test <change-id> --mode recovery`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：确认当前状态、测试模式、阻塞项和下一命令。
+- `test-verifier`：设计测试、产出 fresh evidence、闭合映射或记录 gap。
+- `backlog-curator`：同步 `changes/task-board.md`。
+- `gatekeeper`：基于验证证据、映射闭环和 `cc-verify` 判断是否允许继续。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`

@@ -34,6 +34,15 @@
 命令格式：
 - `cc-new-project <项目想法>`
 
+## 执行阶段角色
+
+- `pm-orchestrator`：维护项目级流程状态、task-board 和推荐下一步。
+- `requirement-analyst`：澄清项目目标、用户、场景、成功标准和 MVP 边界。
+- `solution-designer`：形成技术方向、模块草图、MVP 路线图和首批 change backlog。
+- `context-curator`：同步 `context/dev-map.md` 的规划级模块导航。
+- `backlog-curator`：同步 `changes/task-board.md` 的 backlog 候选。
+- `gatekeeper`：检查项目定义是否足以自然桥接到 `cc-propose`。
+
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
 - `结果` 仅允许填写 `✅`、`❌`、`⚠️` 或 `N/A`
