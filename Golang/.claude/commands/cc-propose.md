@@ -34,7 +34,7 @@
 12. 验证映射：为主要功能点/风险点声明映射编号、最低验证等级、证据类型与对应 task 承接方式
 13. 生成 Spec：重点补齐需求收敛记录、背景、功能点、风险、成熟替代方案检查、方案比较、待澄清与验证映射
 14. 生成 Tasks：按最小可执行单元拆 task，而不是仅按文件罗列，并确保 task 验证步骤可回溯到验证映射编号
-15. HARD-GATE：等待用户确认再进入 `cc-apply`
+15. HARD-GATE：记录结构化确认信息，等待用户确认再进入 `cc-apply`
 
 ## 澄清执行要求
 
@@ -70,9 +70,11 @@
 - 成熟替代方案检查若触发，结论必须写入 `spec.md`；若不触发，可省略该节或明确写“不触发”
 - 未完成主要需求项/风险点到映射编号、验证等级与证据类型的映射前，不得生成最终版 `tasks.md`
 - `spec.md` 中的最低验证等级、验证证据要求与 `tasks.md` 的验证步骤必须可追溯，不得互相脱节；`tasks.md` 中必须显式承接映射编号
+- `spec.md` 的 `证据类型` 必须符合 `rules/verification.md` 中的证据类型矩阵，不得把 `L2` 写成 `manual` / `chain` 这类错配
 - 未完成范围冻结前，不得生成最终版 `tasks.md`
 - 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把新项目定义强行塞进 `cc-propose`
 - 若仍存在影响 task 拆分的关键未决问题，只能产出草案，保持 `status: propose`，不得宣称提案已就绪
+- 进入 `cc-apply` 前，必须在 `spec.md` 的 HARD-GATE 记录中写明 `confirmed_spec_revision`、`confirmed_tasks_revision`、`confirmed_scope`、`accepted_risks` 与 `human_review_status`
 
 ## 专题规则装载
 

@@ -11,7 +11,7 @@ created: YYYY-MM-DD
 * **展示工作** ：必须展示 `go test -v` 实际输出，禁止"测试通过"等无证据声明
 * **允许例外但必须记录** ：对历史系统、集成链路或难以稳定制造 Red 的场景，可退化为回归测试，但必须在本文档写明原因
 * **验证等级优先** ：测试计划必须覆盖 `spec.md` 中声明的最低验证等级
-* **不替代 `cc-apply`** ：`cc-test` 负责补强或补齐额外证据，不得把本应在 `cc-apply` 完成的最低验证事后补做成默认路径
+* **不替代 `cc-apply`** ：`cc-test` 默认负责补强额外证据，不得把本应在 `cc-apply` 完成的最低验证事后补做成默认路径；只有 `recovery` 模式可基于 `blocked` / `partial` 记录补齐最低验证缺口
 
 #### 1. 测试框架
 
@@ -29,6 +29,8 @@ created: YYYY-MM-DD
 |------|----|
 | 主测试层级 | `unit / repo / transport / chain / integration / manual` |
 | 选择原因 | |
+| `cc-test` 模式 | `supplement / recovery` |
+| recovery 对应阻塞记录 | |
 | 更高层测试是否跳过 | 是/否 |
 | 跳过原因 | |
 | bugfix 回归路径 | |
@@ -98,7 +100,7 @@ created: YYYY-MM-DD
 
 | 项目 | 值 |
 |------|----|
-| `cc-test` 需补齐的验证 | |
+| `cc-test` 需补强或 recovery 补齐的验证 | |
 | 补强原因 | |
 | 跳过的更高层测试 | |
 | 跳过原因 | |
@@ -111,5 +113,5 @@ created: YYYY-MM-DD
 * [ ]  Step 1: 运行已有测试套件 (`go test ./...`)，确认基线
 * [ ]  Step 2: 生成 P0 测试 → 确认 Red → 确认 Green
 * [ ]  Step 3: 生成 P1/P2 测试
-* [ ]  Step 4: 补足 `spec.md` 对应最低验证等级所需的链路/集成/手工验证证据
+* [ ]  Step 4: 补强 `spec.md` 对应的链路/集成/手工验证证据；若为 `recovery`，补齐已记录阻塞的最低验证缺口
 * [ ]  Step 5: 运行完整测试套件，确认覆盖率 (`go test -cover`)

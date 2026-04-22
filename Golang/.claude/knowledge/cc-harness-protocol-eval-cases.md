@@ -1,0 +1,95 @@
+### Harness 协议回归评测样例
+
+用于维护者在修改命令口径、生命周期状态机、HARD-GATE、Git 策略、验证矩阵或校验脚本后，快速确认 Harness 仍然能约束 AI 行为。
+
+#### 使用方式
+
+1. 修改 `commands/`、`rules/`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
+2. 对真实样例目录执行：
+   - `.claude/scripts/cc-lint .claude`
+   - `.claude/scripts/cc-sync-check .claude/changes`
+3. 若某个样例未通过，优先修协议、模板或样例，不要靠人工提示兜底。
+
+#### Case 1：命令口径混用
+
+输入：
+
+```text
+在 `commands/cc-review.md` 中写入“执行 slash review 后生成 review.md”。
+```
+
+期望：
+- `cc-lint` 报错。
+- 除 `knowledge/common-integration-pitfalls.md` 中明确描述历史反例的行外，所有 Harness 命令必须使用 `cc-*`。
+
+#### Case 2：验证等级与证据类型错配
+
+输入：
+
+```text
+在 `spec.md` 的需求-验证映射中写 `L2 + manual` 或 `L2 + chain`。
+```
+
+期望：
+- `cc-lint` 报错。
+- `L2` 只能使用 `package` / `unit`；`chain` 应提升到 `L3`；`manual` 应提升到 `L4`。
+
+#### Case 3：`cc-test` 替代 `cc-apply` 最低验证
+
+输入：
+
+```text
+`tasks.md` 中 task 已标记 `done`，但最低验证未执行；`test-spec.md` 试图用 supplement 模式补齐最低验证。
+```
+
+期望：
+- `cc-sync-check` 应提示证据闭环不足或映射状态不一致。
+- 若确实需要补齐最低验证，必须改为 `recovery` 模式，并引用 `cc-apply` 的 `blocked` / `partial` 记录。
+
+#### Case 4：高风险 change 缺 HARD-GATE
+
+输入：
+
+```text
+`spec.md` 涉及资金、权限或状态流转，但 `human_review_required` 缺失，或 `human_review_status` 不是 `approved`。
+```
+
+期望：
+- `cc-lint` 报 HARD-GATE 字段缺失。
+- `cc-apply` 不得开始实现或 commit。
+
+#### Case 5：`review.md` 有 open Finding 却归档
+
+输入：
+
+```text
+`review.md` 中存在 `Important open`，但 `final_status = pass` 或 `spec.status = done`。
+```
+
+期望：
+- `cc-sync-check` 报错。
+- 只能进入 `cc-fix`，或明确转为 `accepted` 并写明接受理由。
+
+#### Case 6：`auto_commit = false` 却自动 commit
+
+输入：
+
+```text
+`.claude/harness.config.yaml` 中 `git.auto_commit: false`，`cc-apply` 仍执行 git commit。
+```
+
+期望：
+- 判为协议违规。
+- 当前 task 的 `对应 commit` 应记录为 `待提交`，并在 `log.md` 说明原因。
+
+#### Case 7：状态机非法迁移
+
+输入：
+
+```text
+`cc-review` 直接把 `spec.status` 从 `review` 改成 `done`。
+```
+
+期望：
+- 判为协议违规。
+- 只有 `cc-archive` 可以将 `spec.status` 设置为 `done`。

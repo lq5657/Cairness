@@ -21,13 +21,16 @@
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
 | 主规则存在 | `.claude/CLAUDE.md` 存在 | [ ] |
+| 运行策略存在 | `.claude/harness.config.yaml` 存在，或明确使用默认策略 | [ ] |
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
+| 生命周期状态机存在 | `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | knowledge 存在 | `.claude/knowledge/index.md` 存在 | [ ] |
 | context 模板存在 | `.claude/context/project-context.md` 与 `.claude/context/templates/system-overview.md` 存在 | [ ] |
 | commands 完整 | `cc-init`、`cc-enrich-context`、`cc-explain-system`、`cc-inspect-codebase` 等主命令文件齐全 | [ ] |
 | checkpoints 完整 | 与主命令对应的 `checkpoints/*.md` 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/changes/templates/` 存在 | [ ] |
 | audits 模板存在 | `.claude/audits/templates/` 存在 | [ ] |
+| schema 与脚本存在 | `.claude/schemas/`、`.claude/scripts/cc-lint`、`.claude/scripts/cc-sync-check` 存在 | [ ] |
 | 示例可选但清晰 | 是否包含 examples 已明确，不会被误当成 `cc-init` 产物 | [ ] |
 
 #### 2. 路径解释一致性
@@ -52,6 +55,7 @@
 | 命令命名低冲突 | `cc-init`、`cc-inspect-codebase`、`cc-propose` 等命名不会撞宿主技能 | [ ] |
 | Claude Code 不会误判 | 输入一条 `cc-` 命令时，不会报 unknown skill / unknown command | [ ] |
 | 文档示例一致 | README / 速查表中的主入口命令统一 | [ ] |
+| 无旧命令口径残留 | 除历史反例说明外，不使用 slash 旧口径表示 Harness 命令 | [ ] |
 
 #### 3.1 checkpoint 展示契约检查
 

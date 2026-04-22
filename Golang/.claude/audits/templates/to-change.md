@@ -3,7 +3,7 @@
 文件位置：`audits/<audit-id>/to-change.md`
 
 用途：
-- 把 `/inspect-codebase` 产出的审查报告，转成一个可以进入 `/propose` 的正式 change 草稿
+- 把 `cc-inspect-codebase` 产出的审查报告，转成一个可以进入 `cc-propose` 的正式 change 草稿
 - 避免人工从 Findings 手工重写一遍 spec，降低信息丢失和语义漂移
 - 这不是 `changes/<change-id>/spec.md` 的替代品，而是它的上游桥接材料
 
@@ -117,7 +117,7 @@ branch: feat/<planned-change-id>
 complexity: 🟢简单 | 🟡中等 | 🔴复杂
 ```
 
-#### 10. 进入 `/propose` 前自检
+#### 10. 进入 `cc-propose` 前自检
 
 - [ ] 只选中了真正要处理的 Findings，没有把审查报告整份搬进一个 change
 - [ ] 已明确本次 change 的边界和不处理项

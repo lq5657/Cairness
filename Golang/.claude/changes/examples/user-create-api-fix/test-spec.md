@@ -25,8 +25,10 @@ created: 2026-04-11
 
 | 项目 | 值 |
 |------|----|
-| 主测试层级 | `unit` |
+| 主测试层级 | `package` |
 | 选择原因 | fix 风险集中在 Service/Repo 内部实现质量，无需新增更高层链路测试 |
+| `cc-test` 模式 | `supplement` |
+| recovery 对应阻塞记录 | 无 |
 | 更高层测试是否跳过 | 是 |
 | 跳过原因 | 样例不引入真实 DB 慢调用与 HTTP 环境 |
 | bugfix 回归路径 | `TestUserServiceCreateWrapRepoError` |
@@ -46,7 +48,7 @@ created: 2026-04-11
 |----------|------------------|--------------|----------------------|----------------|----------|----------|----------|
 | V1 | Service 错误包装保留底层 error | apply-covered | `TestUserServiceCreateWrapRepoError` + `go test ./...` | 无，现有回归测试已闭合 | 无 | 无 | 低 |
 | V2 | Repo 调用具备最小超时边界 | apply-covered | timeout 回归证据 + `go test ./...` | 无，最低 `L2` 证据已在 `cc-apply` 闭环 | 未引入真实 DB 慢调用 | helper test + review 说明 | 真实慢调用行为仍未实测 |
-| V3 | Findings 修复链路完整保留 | apply-covered | `review.md` 已回写为 `fixed` | 无 | 无 | 无 | 低 |
+| V3 | Findings 修复链路完整保留 | apply-covered | `review.md` 已回写为 `fixed`，并完成文档检查 | 无 | 无 | 无 | 低 |
 
 #### 2. 覆盖范围
 

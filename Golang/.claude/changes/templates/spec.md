@@ -163,7 +163,14 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
 
 | 编号 | 需求项 / 风险点 | 最低验证等级 | 证据类型 | 建议验证动作 | 对应 Task | 闭环状态 |
 |------|------------------|--------------|----------|--------------|-----------|----------|
-| V1 | | L1 / L2 / L3 / L4 / L5 | build / package / chain / integration / manual / release-safety | | | todo / apply-covered / test-covered / gap |
+| V1 | | L1 / L2 / L3 / L4 / L5 | build / doc-check / package / unit / chain / integration / manual / migration-safety / release-safety | | | todo / apply-covered / test-covered / gap |
+
+证据类型约束：
+- `L1`: `build` / `doc-check`
+- `L2`: `package` / `unit`
+- `L3`: `chain`
+- `L4`: `integration` / `manual`
+- `L5`: `migration-safety` / `release-safety`
 
 #### 9.2 发布与回滚
 
@@ -178,7 +185,7 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
 
 #### 10. 待澄清
 
-记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `/apply`。
+记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `cc-apply`。
 
 * [ ] 问题 1：
 
@@ -216,9 +223,17 @@ complexity: 🟢简单 | 🟡中等 | 🔴复杂
 
 * **Stage 1 / Spec Compliance**：
 * **Stage 2 / Code Quality**：
-* **总体结论**：可进入 `/fix` / 可归档
+* **总体结论**：可进入 `cc-fix` / 可归档
 
 #### 15. 确认记录（HARD-GATE）
 
-* **确认时间**：
-* **确认人**：
+进入 `cc-apply` 前必须填写。确认记录必须覆盖当前 spec / tasks 版本，而不是只记录“用户同意”。
+
+* **confirmed_at**：
+* **confirmed_by**：
+* **confirmed_spec_revision**：（commit / diff 摘要 / 文档版本）
+* **confirmed_tasks_revision**：（commit / diff 摘要 / 文档版本）
+* **confirmed_scope**：
+* **accepted_risks**：
+* **human_review_required**：true / false
+* **human_review_status**：not_required / pending / approved / rejected

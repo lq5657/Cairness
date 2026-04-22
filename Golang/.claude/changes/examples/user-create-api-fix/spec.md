@@ -14,9 +14,9 @@ complexity: 🟢简单
 #### 文档约束
 
 - 文件位置：`changes/examples/user-create-api-fix/spec.md`
-- 这是 `/fix` 工作流样例，用于展示 review 后修复、文档回写和再验证
+- 这是 `cc-fix` 工作流样例，用于展示 review 后修复、文档回写和再验证
 - 当前变更依赖 `user-create-api` 已完成首次实现和首次 review
-- 本样例额外展示：`/fix` 默认只处理 `review.md` 中 `status = open` 的 Findings，已修复问题保留为 `fixed` 不删除
+- 本样例额外展示：`cc-fix` 默认只处理 `review.md` 中 `status = open` 的 Findings，已修复问题保留为 `fixed` 不删除
 
 #### 0.1 需求收敛记录（仅 `light-clarify` / `brainstorm-needed` 时填写）
 
@@ -31,7 +31,7 @@ complexity: 🟢简单
 目标：
 - 为用户创建流程补充外部调用/持久化调用的 context 超时约束
 - 补齐 `%w` 错误包装
-- 更新 review 结论，形成一次完整的 `/fix` 闭环示例
+- 更新 review 结论，形成一次完整的 `cc-fix` 闭环示例
 
 #### 1.1 本次不做
 
@@ -60,7 +60,7 @@ complexity: 🟢简单
 
 - 风险 1：持久化调用长时间阻塞时，缺少明确超时会拖长请求生命周期
 - 风险 2：错误未包装时，后续日志和排障难以区分 service/repo 失败位置
-- 风险 3：若 `/fix` 直接删除旧 Findings，会丢失审计链路
+- 风险 3：若 `cc-fix` 直接删除旧 Findings，会丢失审计链路
 
 #### 3. 功能点
 
@@ -144,7 +144,7 @@ complexity: 🟢简单
 |------|------------------|--------------|----------|--------------|-----------|----------|
 | V1 | Service 错误包装保留底层 error | L2 | package | 展示错误包装回归测试，确认 `%w` 保留原始错误 | Task 1 / Task 2 | apply-covered |
 | V2 | Repo 调用具备最小超时边界 | L2 | package | 展示 timeout 接入测试或可重复回归证据，而不是仅展示代码接入说明 | Task 1 / Task 2 | apply-covered |
-| V3 | Findings 修复链路完整保留 | L1 | manual | review 文档回写 `fixed`，不删除原 Findings | Task 2 | apply-covered |
+| V3 | Findings 修复链路完整保留 | L1 | doc-check | review 文档回写 `fixed`，不删除原 Findings | Task 2 | apply-covered |
 
 #### 9.2 发布与回滚
 
@@ -159,7 +159,7 @@ complexity: 🟢简单
 
 #### 10. 待澄清
 
-记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `/apply`。
+记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `cc-apply`。
 
 * [x] 超时边界是否沿用项目默认 3 秒：是
 * [x] 修复是否需要新增对外错误码：否，仅增强内部错误上下文
@@ -199,5 +199,11 @@ complexity: 🟢简单
 
 #### 15. 确认记录（HARD-GATE）
 
-* **确认时间**：2026-04-11 16:10
-* **确认人**：Maintainer Demo
+* **confirmed_at**：2026-04-11 16:10
+* **confirmed_by**：Maintainer Demo
+* **confirmed_spec_revision**：example/user-create-api-fix spec v1
+* **confirmed_tasks_revision**：example/user-create-api-fix tasks v1
+* **confirmed_scope**：修复 repo timeout、service 错误包装、review Findings 回写和 L2 package 回归
+* **accepted_risks**：不引入真实 DB 慢调用环境，timeout 行为以 helper/package 回归和 review 说明替代
+* **human_review_required**：false
+* **human_review_status**：not_required

@@ -11,7 +11,7 @@
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
 - `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
-- 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
+- 本文件是 `cc-review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
 change_id: user-create-api
@@ -43,7 +43,7 @@ final_status: pass
 |----------|--------------------|----------|-------------|------|
 | V1 | `apply-covered` | 与证据一致 | `TestUserServiceCreateSuccess`、入口接线检查与 `go test ./...` 已支撑最低 `L2` 等级 | ✅ |
 | V2 | `apply-covered` | 与证据一致 | `TestUserServiceCreateDuplicateEmail` 已覆盖重复 email 风险 | ✅ |
-| V3 | `apply-covered` | 与证据一致 | review 已确认新增接口属于 `compatible_addition` | ✅ |
+| V3 | `apply-covered` | 与证据一致 | `go test ./...`、Handler 接线检查与兼容性分类共同支撑新增接口不破坏旧调用方 | ✅ |
 
 #### 2.2 风险镜头检查（按触发填写）
 

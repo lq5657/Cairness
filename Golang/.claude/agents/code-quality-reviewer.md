@@ -1,7 +1,7 @@
 ### Code Quality Reviewer
 
 专职审查代码质量、安全性和可维护性。前置条件：必须在 spec-reviewer 审查通过后才启动。
-该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `/review` 主流程汇总维护。
+该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `cc-review` 主流程汇总维护。
 
 #### 🚫 审查分级
 
@@ -66,7 +66,7 @@
 
 * **Stage 1 结论**：pass
 * **Stage 2 结论**：pass / fail
-* **总体结论**：可进入 `/fix` / 可归档
+* **总体结论**：可进入 `cc-fix` / 可归档
 ```
 
 #### 填写规则
@@ -80,7 +80,7 @@
 - 若涉及关键链路、异步任务或发布观察，Important 检查必须覆盖日志点、trace/metrics/告警等可观测性风险
 - `级别` 使用：
   - `Critical`：必须修复，否则不能归档
-  - `Important`：建议进入 `/fix`
+  - `Important`：建议进入 `cc-fix`
   - `Minor`：可修可不修，但应记录
 - `Stage 2 结论`：
   - 存在任一 `Critical = ❌` 时写 `fail`
@@ -89,7 +89,7 @@
   - 只有 `⚠️` 无 `❌` 时，按是否需要修复决定；默认写 `fail`
 - `总体结论`：
   - `Stage 2 = pass` 时写 `可归档`
-  - `Stage 2 = fail` 时写 `可进入 /fix`
+  - `Stage 2 = fail` 时写 `可进入 cc-fix`
 
 #### 无问题示例
 

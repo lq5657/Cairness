@@ -1,7 +1,7 @@
 ### Spec Compliance Reviewer
 
 专职验证代码实现是否符合 spec 规格。只读不写，独立于实现者的上下文。
-该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `/review` 主流程汇总维护。
+该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `cc-review` 主流程汇总维护。
 核心理念： **不信报告，只信代码**  — reviewer 必须读实际代码独立验证。
 
 #### 🚫 必检项（全部通过才 PASS）
@@ -41,7 +41,7 @@
 
 * **Stage 1 结论**：pass / fail
 * **Stage 2 结论**：skipped
-* **总体结论**：可进入 Stage 2 / 可进入 `/fix`
+* **总体结论**：可进入 Stage 2 / 可进入 `cc-fix`
 ```
 
 #### 填写规则
@@ -52,7 +52,7 @@
 - `Findings` 只记录发现的问题；无问题时保留表头并写一行 `无`
 - 若涉及数据库变更、接口变更或关键观测方案，`对外契约准确性` 一项必须同时核对 spec、迁移/兼容/观测策略与代码实现，不能只看一处
 - `级别` 使用：
-  - `Critical`：阻塞进入阶段二或必须进入 `/fix`
+  - `Critical`：阻塞进入阶段二或必须进入 `cc-fix`
   - `Important`：非阻塞但应修复
   - `Minor`：建议修复或补充说明
 - `Stage 1 结论`：
@@ -62,7 +62,7 @@
 - `Stage 2 结论` 固定写 `skipped`，因为本 reviewer 不负责阶段二
 - `总体结论`：
   - `Stage 1 = pass` 时写 `可进入 Stage 2`
-  - `Stage 1 = fail` 时写 `可进入 /fix`
+  - `Stage 1 = fail` 时写 `可进入 cc-fix`
 
 #### 无问题示例
 

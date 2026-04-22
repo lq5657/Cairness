@@ -42,9 +42,9 @@ updated: 2026-04-11
   * Repo 提供可复用的创建方法
   * `go build ./...` 通过
 * **验证步骤** :
-  * `V2`：运行 `go build ./...`
+  * `V1 / V2`：运行 `go build ./...`
   * `V1 / V2`：检查 `UserService.Create` 是否先查重再调用 `Repo.Create`
-* **测试要求** : 至少补 1 条覆盖重复 email 的最小回归证据；本 task 可先把 `V2` 推进到 `apply-covered`，但不得声称已完成 `V1` 的最低验证
+* **测试要求** : 本 task 只提供创建链路的前置实现和 L1 构建证据，不关闭 `V1 / V2` 的最低 `L2` 验证；`V1 / V2` 由 Task 2 的 package 回归测试关闭为 `apply-covered`
 * **回退方式** : 若 task 失败，可仅回退 `service/repo/model` 相关改动，不影响接口层与 schema
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 完成用户创建核心链路`
@@ -72,7 +72,7 @@ updated: 2026-04-11
   * `V1 / V2`：运行 `go test ./...`
   * `V3`：检查 `UserHandler.Create` 是否对业务错误做稳定映射
   * `V1 / V2`：检查 `TestUserServiceCreateSuccess` 与 `TestUserServiceCreateDuplicateEmail` 通过
-* **测试要求** : 先 Red 再 Green；若 Handler 层无法稳定制造 Red，至少提供 Service 回归测试和入口接线检查作为 `L2` 证据。本 task 必须在 `cc-apply` 内关闭 `V1 / V2 / V3` 的最低验证；`cc-test` 如执行，只能补更高层验证
+* **测试要求** : 先 Red 再 Green；若 Handler 层无法稳定制造 Red，至少提供 Service package 回归测试和入口接线检查作为 `L2` 证据。本 task 必须在 `cc-apply` 内关闭 `V1 / V2 / V3` 的最低验证；`cc-test` 如执行，只能补更高层验证
 * **回退方式** : 若 task 失败，可停留在仅有 Service/Repo 能力的状态，不改变 Task 1 已完成内容
 * **完成后状态** : `done`
 * **对应 commit** : `[user-create-api] 接入创建入口并补充测试`

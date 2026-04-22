@@ -6,11 +6,14 @@
 
 定位说明：
 - `cc-test` 是测试设计与验证补强命令，不替代 `cc-apply` 中的最小回归验证
-- `cc-test` 负责补齐 `cc-apply` 未覆盖的更高验证等级证据，以及复杂 change 的测试层级说明、退化原因和覆盖边界
+- `cc-test` 默认以 `supplement` 模式补强更高验证等级证据，以及复杂 change 的测试层级说明、退化原因和覆盖边界
+- 只有当 `cc-apply` 已因环境、依赖或历史系统限制记录 `blocked` / `partial` 时，才允许以 `recovery` 模式补齐最低验证缺口
 
 ## 命令格式
 
 - `cc-test <change-id>`
+- `cc-test <change-id> --mode supplement`
+- `cc-test <change-id> --mode recovery`
 
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
@@ -23,20 +26,24 @@
 - 变更状态为 `apply` 或 `review`
 - 用户同意补充或完善测试
 - 已读取本次 change 声明的最低验证等级
+- 已明确本轮模式：`supplement` / `recovery`
+- 若为 `recovery`，`log.md` 或 `tasks.md` 中必须已有 `cc-apply` 的 `blocked` / `partial` 记录
 
 ## 执行要求
 
 - 开始前必须读取 `rules/testing-strategy.md` 与 `rules/verification.md`
+- 默认模式为 `supplement`；不得在无阻塞记录时把 `cc-test` 当作最低验证兜底
+- `recovery` 模式必须先说明 `cc-apply` 未完成最低验证的原因、已保留修改、恢复条件和本轮 fresh evidence 目标
 - 优先遵循 Red / Green TDD；若无法做到，必须说明退化原因
 - 先读取 `spec.md` 中声明的最低验证等级、`spec.md` 的“需求-验证映射”编号与闭环状态、`tasks.md` 中各 task 的测试要求，以及已有 `test-spec.md`（如存在）
-- 必须明确区分：哪些验证已在 `cc-apply` 中完成，哪些验证需要在 `cc-test` 中补齐
-- 必须逐项说明：本次 change 的哪些映射项已满足，哪些仍缺证据，以及本次 `cc-test` 负责补齐哪些缺口
+- 必须明确区分：哪些验证已在 `cc-apply` 中完成，哪些验证需要在 `cc-test` 中补强或恢复补齐
+- 必须逐项说明：本次 change 的哪些映射项已满足，哪些仍缺证据，以及本次 `cc-test` 负责补强哪些证据；若为 `recovery`，必须标注对应 `blocked` / `partial` 记录
 - 不得重新定义 `cc-propose` 已冻结的最低验证等级；若发现等级明显不合理，只能记录偏差、替代证据与剩余风险
 - 在 `test-spec.md` 记录测试层级选择与原因
 - 若选择不做更高层测试，必须说明跳过原因和替代证据
 - 逐个运行测试并展示 `go test -v` 输出
 - 完成后运行完整测试套件并检查覆盖率
-- `cc-test` 补齐后的映射项必须更新为 `test-covered`；仍缺证据的项必须明确保持 `gap`
+- `cc-test` 补强或恢复补齐后的映射项必须更新为 `test-covered`；仍缺证据的项必须明确保持 `gap`
 - 不得把本应在 `cc-apply` 中完成的最低验证全部推迟到 `cc-test`
 - 若本轮测试涉及 migration / 回填 / contract 兼容，必须读取 `rules/database-changes.md`
 - 若本轮测试涉及对外接口、事件契约或兼容窗口，必须读取 `rules/api-compatibility.md`
@@ -50,6 +57,7 @@
 
 - 若测试写到一半中断，保留 `test-spec.md`，并在执行计划中标记停留步骤
 - 若测试失败但根因未明，不得声称 Green；应在 `log.md` 记录失败输出和下一步假设
+- 若 `recovery` 模式仍无法补齐最低验证，必须保持相关映射项为 `gap`，不得把 change 推进到可归档结论
 
 ## 建议读取
 

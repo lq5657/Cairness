@@ -71,7 +71,7 @@
 
 | 问题 | 原因 | 解决方案 | 已沉淀？ |
 |------|------|----------|----------|
-| 修复后容易只改代码不改 review | review 被当成一次性产物 | 明确 `/fix` 必须同步回写 review Findings | 否 |
+| 修复后容易只改代码不改 review | review 被当成一次性产物 | 明确 `cc-fix` 必须同步回写 review Findings | 否 |
 | 修复后容易把 reviewer 表述直接当根因 | finding 只描述现象，不一定解释失效原因 | 先在 log 里区分症状、根因和修复假设，再动代码 | 否 |
 | 修复后容易删除旧 Findings | 把 review 误当成“当前快照” | 保留问题行，只更新 `status` 为 `fixed` | 否 |
 
@@ -79,7 +79,7 @@
 
 | 关键词 | 一句话结论 | 出处 | 建议落点 | 复利判断 | 处理结果 |
 |--------|------------|------|----------|----------|----------|
-| `fix-must-update-review` | `/fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `changes/examples/user-create-api-fix/review.md` | `knowledge/index.md` | 更新既有知识 | 已沉淀 |
+| `fix-must-update-review` | `cc-fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `changes/examples/user-create-api-fix/review.md` | `knowledge/index.md` | 更新既有知识 | 已沉淀 |
 | `finding-root-cause-split` | 修 fix 前应先区分症状、失败点和根因，再形成最小修复假设 | `changes/examples/user-create-api-fix/log.md` | `knowledge/index.md` | 新增知识 | 已沉淀 |
 
 #### Spec-Code 偏差记录

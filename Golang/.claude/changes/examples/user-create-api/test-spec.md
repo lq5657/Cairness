@@ -25,8 +25,10 @@ created: 2026-04-11
 
 | 项目 | 值 |
 |------|----|
-| 主测试层级 | `unit` |
+| 主测试层级 | `package` |
 | 选择原因 | 样例当前仅提供稳定的 Service 回归测试与入口接线检查，最低验证等级已收敛为 `L2` |
+| `cc-test` 模式 | `supplement` |
+| recovery 对应阻塞记录 | 无 |
 | 更高层测试是否跳过 | 是 |
 | 跳过原因 | 示例避免引入真实数据库和 HTTP 集成环境 |
 | bugfix 回归路径 | 不适用，本例为新增需求 |
@@ -37,7 +39,7 @@ created: 2026-04-11
 
 | Task | 涉及映射项 | `cc-apply` 内已完成验证 | 证据 | 尚未覆盖的风险 |
 |------|------------|-------------------------|------|----------------|
-| Task 1 | `V1 / V2` | `go build ./...` 通过；Service 创建链路已具备重复 email 保护 | Task 1 验证记录 + 构建输出 | 尚未覆盖入口层参数校验与错误映射 |
+| Task 1 | `V1 / V2` | `go build ./...` 通过；Service 创建链路已具备重复 email 保护，但未关闭最低 `L2` 验证 | Task 1 验证记录 + 构建输出 | 尚未覆盖入口层参数校验与错误映射 |
 | Task 2 | `V1 / V2 / V3` | `go test ./...` 通过；成功与重复 email 回归已完成，兼容性 review 已记录 | `TestUserServiceCreateSuccess`、`TestUserServiceCreateDuplicateEmail`、兼容性说明 | 未引入真实 HTTP 集成环境 |
 
 #### 1.3 验证差距与补强计划
@@ -46,7 +48,7 @@ created: 2026-04-11
 |----------|------------------|--------------|----------------------|----------------|----------|----------|----------|
 | V1 | 创建用户成功主链路 | apply-covered | `TestUserServiceCreateSuccess` + `go test ./...` + Handler 接线检查 | 无，最低 `L2` 证据已在 `cc-apply` 闭环 | 未引入真实 HTTP / DB 环境 | Handler review + 契约兼容性说明 | 若要提升到真实链路级仍需后续集成验证 |
 | V2 | email 重复不得重复创建 | apply-covered | `TestUserServiceCreateDuplicateEmail` | 无，现有证据已闭合 | 无 | 无 | 低 |
-| V3 | 新增接口不破坏旧调用方 | apply-covered | 兼容性分类说明 | 无，现有证据已闭合 | 未跑真实客户端回归 | 变更说明 + Handler review | 低 |
+| V3 | 新增接口不破坏旧调用方 | apply-covered | `go test ./...` + 兼容性分类说明 | 无，现有证据已闭合 | 未跑真实客户端回归 | 变更说明 + Handler review | 低 |
 
 #### 2. 覆盖范围
 

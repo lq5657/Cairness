@@ -1,0 +1,12 @@
+# Golang Harness runtime policy.
+# Relative paths are interpreted from `.claude/`.
+
+git:
+  auto_commit: true
+  commit_per_task: true
+  allow_main_branch_apply: false
+  require_clean_worktree_before_commit: true
+
+validation:
+  require_structured_hard_gate: true
+  require_traceability_check: true

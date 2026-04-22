@@ -11,7 +11,7 @@
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
 - `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
-- 本文件是 `/review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
+- 本文件是 `cc-review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
 change_id: user-create-api-fix
@@ -35,7 +35,7 @@ final_status: pass
 | Task | 关联映射项 | 声明的验收标准 | 验证证据是否充分 | 闭环状态检查 | 结果 | 备注 |
 |------|------------|----------------|------------------|--------------|------|------|
 | Task 1 | `V1 / V2` | Repo 写入具备超时边界；Service 保留底层错误；`go build ./...` 通过 | 是 | Task 1 只完成代码接入和前置证据，未把 `L2` 最低验证错误地提前闭环 | ✅ | fix 聚焦实现质量，未超出任务边界 |
-| Task 2 | `V1 / V2 / V3` | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | `V1 / V2 / V3` 的最低验证均已在 `cc-apply` 内闭环，不依赖 `cc-test` 兜底 | ✅ | review 回写与回归测试都已完成，符合 `/fix` 约束 |
+| Task 2 | `V1 / V2 / V3` | `open` Findings 更新为 `fixed`；历史 Findings 不删除；`go test ./...` 通过 | 是 | `V1 / V2 / V3` 的最低验证均已在 `cc-apply` 内闭环，不依赖 `cc-test` 兜底 | ✅ | review 回写与回归测试都已完成，符合 `cc-fix` 约束 |
 
 #### 2.1 验证映射检查
 
@@ -49,7 +49,7 @@ final_status: pass
 
 | 镜头 | 触发原因 | 结论 | 是否形成 Finding |
 |------|----------|------|------------------|
-| scope-lens | `/fix` 只应处理 `open` Findings，需确认未顺手扩张范围 | 修复范围仍限定在本轮两个 open Finding 所对应的问题，未重写业务逻辑或历史 review 记录 | 否 |
+| scope-lens | `cc-fix` 只应处理 `open` Findings，需确认未顺手扩张范围 | 修复范围仍限定在本轮两个 open Finding 所对应的问题，未重写业务逻辑或历史 review 记录 | 否 |
 | feasibility-lens | timeout 场景 Red 难以稳定制造，需确认没有把代码说明冒充验证 | 当前已要求用可重复回归证据 + `go test ./...` 证明最低 `L2`，不存在纸面闭环 | 否 |
 | release-lens | fix 涉及 timeout 边界和发布观察窗口，需确认回滚和风险说明一致 | 直接发布、代码回滚和观察窗口说明完整，无新增阻塞 | 否 |
 
@@ -75,7 +75,7 @@ final_status: pass
 
 | 级别 | 描述 | 位置 | 建议动作 | 状态 |
 |------|------|------|----------|------|
-| Minor | 示例约束：`/fix` 默认只处理 `open` Findings，并在修复后改状态而非删除记录 | `changes/examples/user-create-api-fix/spec.md:L1` | 后续 fix 继续沿用该约定 | accepted |
+| Minor | 示例约束：`cc-fix` 默认只处理 `open` Findings，并在修复后改状态而非删除记录 | `changes/examples/user-create-api-fix/spec.md:L1` | 后续 fix 继续沿用该约定 | accepted |
 | Important | repo 创建路径缺少显式 timeout | `internal/repo/user_repo.go:L1` | 增加 `context.WithTimeout` | fixed |
 | Important | service 返回错误缺少上下文包装 | `internal/service/user_service.go:L1` | 用 `%w` 包装底层错误 | fixed |
 

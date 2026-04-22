@@ -23,6 +23,7 @@
 ```
 .claude/
 ├── CLAUDE.md              # Bootstrap 总纲：启动、路由、生命周期
+├── harness.config.yaml    # Harness 运行策略：Git、验证、确认 gate
 ├── context/
 │   ├── project-context.md      # 工程上下文（由 cc-init 填充）
 │   ├── project-definition.md   # 新项目定义（由 cc-new-project 产出）
@@ -47,9 +48,18 @@
 │   └── ...
 ├── rules/
 │   ├── checkpoint-index.md # 兼容保留的索引页，不是运行时默认入口
+│   ├── lifecycle-state-machine.md # 生命周期状态机
 │   ├── coding-style.md    # 编码规范
 │   ├── domain-rules.md    # 业务领域约束
 │   └── security.md        # 安全红线
+├── schemas/               # 文档契约 schema
+│   ├── spec.schema.json
+│   ├── tasks.schema.json
+│   ├── review.schema.json
+│   └── test-spec.schema.json
+├── scripts/               # 本地校验工具
+│   ├── cc-lint
+│   └── cc-sync-check
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
 │   └── code-quality-reviewer.md # 代码质量审查
@@ -406,7 +416,7 @@ cc-fix <change-id>
 cc-test <change-id>
 ```
 
-`cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply/review` 阶段补测试设计和补强验证证据。
+`cc-fix` 用于回收 review 问题并回写文档，`cc-test` 用于在 `apply 或 review` 阶段补测试设计和补强验证证据。
 
 `cc-fix` 补充说明：
 - 默认只处理 `review.md` 中 `status = open` 的 Findings
@@ -428,9 +438,21 @@ cc-test <change-id>
 
 这套 harness 不允许在没有 fresh verification evidence 的情况下声称“完成”“通过”“已修复”“可归档”。旧验证结果只能作为背景信息，不能直接复用为当前结论。
 
+### 机器校验
+
+`schemas/` 定义 spec、tasks、review、test-spec 的结构契约；`scripts/cc-lint` 检查命令口径、元数据、验证映射与 HARD-GATE，`scripts/cc-sync-check` 检查 spec、tasks、test-spec、review、log 之间的闭环一致性。
+
+### 生命周期状态机
+
+`rules/lifecycle-state-machine.md` 是 `propose -> apply -> review -> done` 的唯一状态机来源。`blocked`、`partial`、`aborted` 只记录在 task、log、test-spec 或 review 中，不写入 `spec.status`。
+
 ### 并发治理
 
 这套 harness 允许同一仓库存在多个进行中的 change，但不默认允许它们并行改同一代码区域。存在依赖时，应在 `spec.md` 中显式记录 `depends_on`；存在冲突时，应优先串行推进，而不是让 AI 自行并行修改同一链路。
+
+### Git 策略
+
+默认一个 task 一个 commit，但是否由 AI 自动 commit 由 `.claude/harness.config.yaml` 的 `git.auto_commit` 决定。commit 前必须检查 dirty worktree，且禁止自动 push / merge。
 
 ### 命令菜单
 
@@ -447,7 +469,7 @@ cc-test <change-id>
 | `cc-apply <change-id>` | 执行编码 |
 | `cc-fix <change-id>` | Review 后修正迭代 |
 | `cc-review <change-id>` | 两阶段审查 |
-| `cc-test <change-id>` | 在 `apply/review` 阶段生成测试 Spec 并执行 |
+| `cc-test <change-id>` | 在 `apply 或 review` 阶段生成测试 Spec 并执行 |
 | `cc-archive <change-id>` | 归档 + 知识沉淀 |
 
 ## 约束等级

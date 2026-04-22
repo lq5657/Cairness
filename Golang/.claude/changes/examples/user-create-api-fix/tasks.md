@@ -20,7 +20,7 @@ updated: 2026-04-11
 
 #### 前置条件
 
-* [x] `user-create-api` 已完成首次 `/review`
+* [x] `user-create-api` 已完成首次 `cc-review`
 * [x] `spec.md` 已确认且 `status = propose`
 * [x] `depends_on` 中列出的前置变更已满足执行条件
 

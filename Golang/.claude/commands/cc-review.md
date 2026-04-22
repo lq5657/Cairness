@@ -37,6 +37,7 @@
 - `cc-review` 不仅审 change 整体，还必须对照 `tasks.md` 检查每个 task 是否真正达到其声明的验收标准
 - `cc-review` 还必须检查：task 是否真正交付了其 promised outcome，而不是只完成了代码动作；若 task 目标、阶段目标或 roadmap 对齐关系未被实现结果支撑，应形成 Findings
 - `cc-review` 必须逐项检查 `spec.md` 的“需求-验证映射”编号与闭环状态，确认其是否已被 task、`test-spec.md`（如存在）与实际证据完整支撑
+- `cc-review` 必须检查验证等级与证据类型是否符合 `rules/verification.md` 的证据类型矩阵
 - 若映射项标记为 `apply-covered` / `test-covered`，但证据不足、`test-spec.md` 结论不一致，或状态未同步，应形成 Findings
 - 若 `tasks.md` 已声明依赖 / wave，`cc-review` 应检查实际执行结果是否违反依赖顺序、是否把需要顺序闭环的 task 错误当成并行独立任务
 - 若 task 的验证证据不足、执行结果与验收标准不一致、需求-验证映射未闭环，或 change 文档未同步，应形成 Findings，而不是只写总体备注
@@ -45,12 +46,12 @@
 
 - `cc-review` 默认先做基础两阶段审查；只有命中特定风险信号时，才追加对应镜头
 - 风险镜头只允许使用以下四种，避免无限扩张：
-  - `scope-lens`：检查范围漂移、顺手多做、YAGNI 失守、`/fix` 是否越界
+  - `scope-lens`：检查范围漂移、顺手多做、YAGNI 失守、`cc-fix` 是否越界
   - `feasibility-lens`：检查方案是否可落地、验证是否纸面成立、实现是否与约束脱节
   - `security-lens`：检查权限、敏感数据、外部接口、安全边界
   - `release-lens`：检查兼容性、配置变更、发布方式、回滚路径、上线风险
 - 触发方式优先复用 `spec.md` 现有信号，而不是临时自由发挥：
-  - 出现明显“本次不做 / 实际改动”不一致、`/fix` 只应处理 `open` Findings 却顺手扩张时，触发 `scope-lens`
+  - 出现明显“本次不做 / 实际改动”不一致、`cc-fix` 只应处理 `open` Findings 却顺手扩张时，触发 `scope-lens`
   - 出现高验证等级、替代证据、复杂方案比较、明显实现受限等信号时，触发 `feasibility-lens`
   - 涉及权限、鉴权、敏感字段、外部依赖安全边界时，触发 `security-lens`
   - 涉及接口变更、配置变更、发布与回滚、兼容窗口时，触发 `release-lens`

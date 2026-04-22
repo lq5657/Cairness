@@ -303,11 +303,11 @@ Gate：
 
 | 等级 | 含义 | 最低证据 |
 |------|------|----------|
-| `L1` | Build | `go build ./...` |
-| `L2` | Unit/Package | 受影响包 `go test` |
-| `L3` | Chain Regression | 主链路回归步骤和结果 |
-| `L4` | Integration/Manual Evidence | 集成验证或手工验证证据 |
-| `L5` | Migration/Release Safety | 迁移、灰度、回滚、安全说明 |
+| `L1` | Build / Doc Check | `go build ./...` 或纯文档检查 |
+| `L2` | Unit/Package | 受影响包 `go test`，证据类型 `package` / `unit` |
+| `L3` | Chain Regression | 主链路回归步骤和结果，证据类型 `chain` |
+| `L4` | Integration/Manual Evidence | 集成验证或手工验证证据，证据类型 `integration` / `manual` |
+| `L5` | Migration/Release Safety | 迁移、灰度、回滚、安全说明，证据类型 `migration-safety` / `release-safety` |
 
 经验规则：
 - 默认从 `L2` 起步
@@ -322,7 +322,8 @@ Gate：
   - `feat/<change-id>`
   - `fix/<change-id>`
 - 禁止在 `main/master` 直接开发
-- 默认一个 task 一个 commit
+- 默认一个 task 一个 commit，是否自动 commit 由 `.claude/harness.config.yaml` 决定
+- commit 前必须检查 dirty worktree，不能混入无关修改
 - commit message 固定格式：
 
 ```text

@@ -79,7 +79,8 @@
 允许读取：
 - `.claude/` 脚手架目录结构
 - `knowledge/integration-preflight-checklist.md`
-- 必要的 `commands/`、`checkpoints/`、`context/`、`changes/templates/`、`audits/templates/`
+- 必要的 `commands/`、`checkpoints/`、`context/`、`changes/templates/`、`audits/templates/`、`schemas/`、`scripts/`
+- `.claude/harness.config.yaml` 与 `rules/lifecycle-state-machine.md`
 - README / CLAUDE 中与入口、路径和结构相关的说明
 
 禁止读取：
@@ -91,16 +92,18 @@
 
 1. 读取 `knowledge/integration-preflight-checklist.md`
 2. 检查脚手架完整性、路径解释、命令入口和 checkpoint 契约
-3. 检查关键功能资产是否齐全
-4. 按最小试跑链路验证各主命令是否具备执行前提
-5. 输出通过项、风险项、阻塞项和建议下一步
-6. 结束，不自动进入其他命令
+3. 检查 schema、lint / sync-check 脚本、生命周期状态机和 Harness 配置是否齐全
+4. 检查关键功能资产是否齐全
+5. 按最小试跑链路验证各主命令是否具备执行前提
+6. 输出通过项、风险项、阻塞项和建议下一步
+7. 结束，不自动进入其他命令
 
 ## 失败处理
 
 若以下情况出现，必须停止并说明：
 - `.claude/` 脚手架明显缺失
 - 关键模板或命令文件缺失
+- schema、校验脚本或生命周期状态机缺失
 - 路径解释口径不一致
 - 命令入口冲突导致无法稳定使用 `cc-*`
 

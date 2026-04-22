@@ -140,7 +140,7 @@ Repository/DAO
 | 默认值策略 | 显式默认值 / 启动失败 / 混合 | |
 | 必填校验 | 启动期校验 / 懒校验 / 无 | |
 | 敏感配置处理 | Secret / 脱敏 / 禁止落日志 | |
-| 环境差异 | dev/test/staging/prod 的主要差异 | |
+| 环境差异 | dev、test、staging、prod 的主要差异 | |
 | Feature Flag | 是否使用及管理方式 | |
 
 #### 11. 可观测性（选填）

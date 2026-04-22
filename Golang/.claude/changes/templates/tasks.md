@@ -59,6 +59,6 @@ updated: YYYY-MM-DD
 * **依赖 / Wave** : （如：`wave-1` / 依赖 `Task 1` / 可与 `Task 3` 并行；若无并发规划可写 `顺序执行`）
 * **回退方式** : （说明此 task 失败时如何安全撤回、停留或局部回滚）
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
-* **对应 commit（按需）** : 完成后回写；尚未提交可写 `待提交`
+* **对应 commit（按需）** : 完成后回写；若 `.claude/harness.config.yaml` 中 `auto_commit = false` 或当前环境无法提交，写 `待提交` 并在 `log.md` 说明原因
 * **并发注意事项（按需）** : 无并发风险可写 `无`；若 `parallel_safe = true`，必须说明可并行理由
 * **数据库注意事项（按需）** : 不涉及 migration / 回填 / 兼容窗口可写 `无`

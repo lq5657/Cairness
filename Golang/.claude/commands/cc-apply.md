@@ -18,12 +18,15 @@
 - `spec.md` 存在
 - `tasks.md` 存在且至少有一个 task
 - 用户已确认执行
+- `spec.md` 的 HARD-GATE 确认记录完整，且确认内容覆盖当前 spec / tasks 版本
 - `depends_on` 指向的变更已达到允许继续的阶段
 
 ## 执行要求
 
 - 开始执行时将 `spec.md` 状态改为 `apply`
 - 开始执行前确认当前分支与 `change-id` 匹配，且不在 `main` / `master`
+- 开始执行前读取 `.claude/harness.config.yaml`（如存在），确认 `auto_commit`、`commit_per_task`、`require_clean_worktree_before_commit` 等 Git 策略
+- 若 `spec.md` 标记 `human_review_required = true`，必须确认 `human_review_status = approved` 后才能进入可执行实现或 commit
 - 以 task 为最小执行单元推进；任一时刻只允许一个 task 处于 `in_progress`
 - 开始某个 task 前，必须先做 Task Plan Review：确认当前 task 仍然必要、前置依赖已满足、`依赖 / Wave` 顺序未被违反、边界清晰、验收标准和验证步骤一一对应、测试要求可执行，且当前 task 的 `验证步骤` / `测试要求` 已明确承接 `spec.md` 的“需求-验证映射”编号
 - 开始某个 task 前，必须先读取并对齐该 task 的目标、不包含范围、涉及文件、验收标准、验证步骤、测试要求、回退方式
@@ -34,7 +37,9 @@
 - 若实现中发现 plan 不足、错误或受实际代码约束无法落地，必须先更新 `spec.md`、`tasks.md`、`log.md`，再继续编码
 - 若使用子代理，子代理只能处理当前 task 的受限范围；主流程必须复核其结果，不得直接视为 task 完成
 - 若涉及 DB、配置、关键链路等高风险专题，必须补充对应规则要求
-- 自动 git commit（一个 task 一个 commit）
+- 默认一个 task 一个 commit；是否自动 commit 由 `.claude/harness.config.yaml` 的 `auto_commit` 决定
+- commit 前必须展示 dirty worktree 摘要，且不得把无关修改静默混入当前 task
+- 若 `auto_commit = false` 或当前环境无法 commit，必须在 `log.md` 和当前 task 中记录 `待提交` 与原因
 - 所有 task 完成后，将 `spec.md` 状态改为 `review`
 
 ### Task 级 Gate
@@ -51,6 +56,7 @@
 8. 若实现与原计划发生偏差，已先同步 `spec.md`、`tasks.md`、`log.md`
 9. 若 `tasks.md` 已声明 `依赖 / Wave`，当前 task 的执行顺序未越过前置 task，且未把串行任务误当成可并行
 10. 当前 task 的状态、备注、实际改动文件已同步到 change 文档
+11. commit 策略已按 `.claude/harness.config.yaml` 执行；未自动 commit 时已记录原因和待提交状态
 
 未通过上述 gate 的 task，不得切换到下一个 task。
 

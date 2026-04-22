@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Lightweight lint checks for Golang Harness change documents."""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SLASH_COMMAND_RE = re.compile(
+    r"(?<![A-Za-z0-9_.<>-])/(propose|apply|review|test|fix|archive|init|new-project|inspect-codebase|preflight|enrich-context|explain-system)\b"
+)
+VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
+VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
+VALID_REVIEW_STATUS = {
+    "stage1_status": {"pass", "fail", "partial"},
+    "stage2_status": {"pass", "fail", "skipped", "partial"},
+    "final_status": {"pass", "fail", "partial"},
+}
+VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
+VALID_TEST_MODE = {"supplement", "recovery"}
+EVIDENCE_BY_LEVEL = {
+    "L1": {"build", "doc-check"},
+    "L2": {"package", "unit"},
+    "L3": {"chain"},
+    "L4": {"integration", "manual"},
+    "L5": {"migration-safety", "release-safety"},
+}
+HARD_GATE_FIELDS = [
+    "confirmed_at",
+    "confirmed_by",
+    "confirmed_spec_revision",
+    "confirmed_tasks_revision",
+    "confirmed_scope",
+    "accepted_risks",
+    "human_review_required",
+    "human_review_status",
+]
+TASK_FIELDS = [
+    "**目标**",
+    "**涉及文件**",
+    "**验收标准**",
+    "**验证步骤**",
+    "**测试要求**",
+    "**回退方式**",
+    "**完成后状态**",
+]
+
+
+class LintError(Exception):
+    pass
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def parse_meta(text: str) -> dict[str, str]:
+    match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
+    meta: dict[str, str] = {}
+    lines = match.group(1).splitlines() if match else text.splitlines()[:20]
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        meta[key.strip()] = value.strip().split("#", 1)[0].strip()
+    return meta
+
+
+def table_rows(text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or "---" in stripped:
+            continue
+        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
+        rows.append(cells)
+    return rows
+
+
+def validation_rows(text: str) -> list[list[str]]:
+    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
+
+
+def task_sections(text: str) -> list[str]:
+    matches = list(re.finditer(r"^#### Task [0-9]+:", text, re.M))
+    sections: list[str] = []
+    for idx, match in enumerate(matches):
+        start = match.start()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        sections.append(text[start:end])
+    return sections
+
+
+def finding_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    section = match.group(1)
+    rows = []
+    for row in table_rows(section):
+        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}:
+            rows.append(row)
+    return rows
+
+
+def line_allowed_for_slash(path: Path, line: str) -> bool:
+    return path.name == "common-integration-pitfalls.md" and "文档示例混用了" in line
+
+
+def lint_slash_commands(path: Path, errors: list[str]) -> None:
+    if path.suffix != ".md":
+        return
+    for lineno, line in enumerate(read(path).splitlines(), 1):
+        if SLASH_COMMAND_RE.search(line) and not line_allowed_for_slash(path, line):
+            errors.append(f"{path}:{lineno}: use cc-* command literal instead of slash command")
+
+
+def lint_spec(change_dir: Path, errors: list[str]) -> set[str]:
+    path = change_dir / "spec.md"
+    text = read(path)
+    meta = parse_meta(text)
+    cid = meta.get("change_id", "")
+    if not CHANGE_ID_RE.match(cid):
+        errors.append(f"{path}: invalid or missing change_id")
+    if meta.get("status") not in VALID_CHANGE_STATUS:
+        errors.append(f"{path}: invalid or missing status")
+    for required in ("depends_on", "parallel_safe", "branch", "created", "updated", "complexity"):
+        if required not in meta:
+            errors.append(f"{path}: missing metadata field {required}")
+
+    ids: set[str] = set()
+    for row in validation_rows(text):
+        if len(row) < 7:
+            errors.append(f"{path}: validation row {row[0]} has fewer than 7 columns")
+            continue
+        vid, level, evidence, status = row[0], row[2], row[3], row[6]
+        ids.add(vid)
+        if level not in EVIDENCE_BY_LEVEL:
+            errors.append(f"{path}: {vid} has invalid level {level}")
+        elif evidence not in EVIDENCE_BY_LEVEL[level]:
+            errors.append(f"{path}: {vid} evidence {evidence} does not match {level}")
+        if status not in VALID_MAPPING_STATUS:
+            errors.append(f"{path}: {vid} has invalid closure status {status}")
+
+    for field in HARD_GATE_FIELDS:
+        if f"**{field}**" not in text:
+            errors.append(f"{path}: HARD-GATE missing {field}")
+    return ids
+
+
+def lint_tasks(change_dir: Path, mapping_ids: set[str], errors: list[str]) -> None:
+    path = change_dir / "tasks.md"
+    text = read(path)
+    meta = parse_meta(text)
+    if not CHANGE_ID_RE.match(meta.get("change_id", "")):
+        errors.append(f"{path}: invalid or missing change_id")
+    sections = task_sections(text)
+    if not sections:
+        errors.append(f"{path}: no task sections found")
+    for section in sections:
+        title = section.splitlines()[0].strip()
+        for field in TASK_FIELDS:
+            if field not in section:
+                errors.append(f"{path}: {title} missing {field}")
+        match = re.search(r"\*\*完成后状态\*\*\s*:\s*`?([a-z_]+)`?", section)
+        if match and match.group(1) not in VALID_TASK_STATUS:
+            errors.append(f"{path}: {title} has invalid task status {match.group(1)}")
+    for vid in mapping_ids:
+        if vid not in text:
+            errors.append(f"{path}: mapping {vid} from spec.md is not referenced")
+
+
+def lint_review(change_dir: Path, errors: list[str]) -> None:
+    path = change_dir / "review.md"
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    for key, allowed in VALID_REVIEW_STATUS.items():
+        if meta.get(key) not in allowed:
+            errors.append(f"{path}: invalid or missing {key}")
+    rows = finding_rows(text)
+    for row in rows:
+        status = row[4].strip("` ")
+        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+            errors.append(f"{path}: finding has invalid status {status}")
+
+
+def lint_test_spec(change_dir: Path, errors: list[str]) -> None:
+    path = change_dir / "test-spec.md"
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    if meta and meta.get("status") not in VALID_CHANGE_STATUS:
+        errors.append(f"{path}: invalid status")
+    if "`cc-test` 模式" not in text and "cc-test` 模式" not in text:
+        errors.append(f"{path}: missing cc-test mode row")
+    for row in table_rows(text):
+        if len(row) >= 2 and row[0].replace("`", "") == "cc-test 模式":
+            mode = row[1].strip("` ")
+            if mode not in VALID_TEST_MODE:
+                errors.append(f"{path}: invalid cc-test mode {mode}")
+            break
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if item.is_file():
+            parent = item.parent
+            if (parent / "spec.md").exists() and (parent / "tasks.md").exists():
+                dirs.add(parent)
+            continue
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        for spec in item.rglob("spec.md"):
+            if "templates" in spec.parts:
+                continue
+            parent = spec.parent
+            if (parent / "tasks.md").exists():
+                dirs.add(parent)
+    return sorted(dirs)
+
+
+def main(argv: list[str]) -> int:
+    root = Path.cwd()
+    inputs = [Path(arg) for arg in argv] if argv else [root / "Golang" / ".claude"]
+    errors: list[str] = []
+
+    for item in inputs:
+        if item.is_file():
+            lint_slash_commands(item, errors)
+        else:
+            for md in item.rglob("*.md"):
+                lint_slash_commands(md, errors)
+
+    for change_dir in discover_change_dirs(inputs):
+        mapping_ids = lint_spec(change_dir, errors)
+        lint_tasks(change_dir, mapping_ids, errors)
+        lint_review(change_dir, errors)
+        lint_test_spec(change_dir, errors)
+
+    if errors:
+        for error in errors:
+            print(error, file=sys.stderr)
+        return 1
+    print("cc-lint: ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

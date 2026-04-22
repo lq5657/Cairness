@@ -24,8 +24,8 @@
 
 | 时间 | 分支/提交动作 | 影响范围 | 验证等级 | 备注 |
 |------|---------------|----------|----------|------|
-| 2026-04-11 14:15 | `feat/user-create-api` 提交 Task 1 | service/repo/model | L2 | 主体实现完成 |
-| 2026-04-11 14:45 | `feat/user-create-api` 提交 Task 2 | handler/test | L3 | 补链路回归说明与核心测试 |
+| 2026-04-11 14:15 | `feat/user-create-api` 提交 Task 1 | service/repo/model | L1 | 主体实现完成，最低 L2 验证留到 Task 2 闭环 |
+| 2026-04-11 14:45 | `feat/user-create-api` 提交 Task 2 | handler 与 test | L2 | 补 package 回归说明与核心测试 |
 
 #### 配置记录
 

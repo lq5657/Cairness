@@ -162,8 +162,8 @@ complexity: 🟡中等
 | 编号 | 需求项 / 风险点 | 最低验证等级 | 证据类型 | 建议验证动作 | 对应 Task | 闭环状态 |
 |------|------------------|--------------|----------|--------------|-----------|----------|
 | V1 | 创建用户成功主链路 | L2 | package | 展示 `Create` 成功路径回归测试，并说明 Handler 到 Service 的接线关系 | Task 1 / Task 2 | apply-covered |
-| V2 | email 重复不得重复创建 | L2 | chain | 展示重复 email 回归测试，确认返回稳定业务错误 | Task 1 / Task 2 | apply-covered |
-| V3 | 新增接口不破坏旧调用方 | L2 | manual | review 对照新增接口语义与兼容性分类，确认属于 `compatible_addition` | Task 2 | apply-covered |
+| V2 | email 重复不得重复创建 | L2 | package | 展示重复 email package 回归测试，确认返回稳定业务错误 | Task 1 / Task 2 | apply-covered |
+| V3 | 新增接口不破坏旧调用方 | L2 | package | 展示 `go test ./...` 与 Handler 接线检查，并确认属于 `compatible_addition` | Task 2 | apply-covered |
 
 #### 9.2 发布与回滚
 
@@ -178,7 +178,7 @@ complexity: 🟡中等
 
 #### 10. 待澄清
 
-记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `/apply`。
+记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `cc-apply`。
 
 * [x] email 是否作为幂等键使用：是
 * [x] 重复 email 返回 409 还是业务错误码：返回业务错误码，由 Handler 映射 HTTP 状态
@@ -219,5 +219,11 @@ complexity: 🟡中等
 
 #### 15. 确认记录（HARD-GATE）
 
-* **确认时间**：2026-04-11 14:30
-* **确认人**：Maintainer Demo
+* **confirmed_at**：2026-04-11 14:30
+* **confirmed_by**：Maintainer Demo
+* **confirmed_spec_revision**：example/user-create-api spec v1
+* **confirmed_tasks_revision**：example/user-create-api tasks v1
+* **confirmed_scope**：新增用户创建接口、Service 幂等检查、Handler 接线与 L2 package 回归
+* **accepted_risks**：不引入真实 HTTP / DB 集成环境；若后续需要链路级证据，另开 change 补强
+* **human_review_required**：false
+* **human_review_status**：not_required

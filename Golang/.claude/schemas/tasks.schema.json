@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/tasks.schema.json",
+  "title": "Golang Harness Tasks",
+  "type": "object",
+  "required": ["change_id", "tasks"],
+  "properties": {
+    "change_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "goal",
+          "files",
+          "acceptance",
+          "verification",
+          "test_requirement",
+          "rollback",
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "blocked", "partial", "aborted", "done"]
+          },
+          "mapping_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^V[0-9]+$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
 - `变更即记录`：改代码时必须同步更新 change 文档
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
+- 生命周期状态必须遵守 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 - 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
 
@@ -82,6 +83,7 @@
 - 命令展示应尽量可复制，优先给出完整命令示例
 - 本框架命令必须按 `cc-*` 字面量原样展示
 - 不得改写为 `Skill`、`/command` 或其他宿主命令形式
+- 除描述历史反例外，Harness 命令不得使用 `/xxx` 旧口径
 - 该约束仅限本框架命令展示，不影响宿主原生命令或技能
 
 **推荐启动文案模板：**
@@ -194,6 +196,7 @@ changes/<change-id>/
 - 测试分层 -> `rules/testing-strategy.md`
 - 发布与回滚 -> `rules/release.md`
 - 验证要求 -> `rules/verification.md`
+- 生命周期状态机 -> `rules/lifecycle-state-machine.md`
 - 编码规范 -> `rules/coding-style.md`
 - 安全红线 -> `rules/security.md`
 - 并发与分支 -> `rules/git-workflow.md`
