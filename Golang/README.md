@@ -528,6 +528,17 @@ validation:
 
 `rules/memory-policy.md` 规定哪些信息可以进入长期记忆，`rules/role-contracts.md` 规定 command-runner、context-curator、reviewer 等角色的权限边界。写入长期记忆或调用 reviewer 时，必须先遵守这两份规则。
 
+默认角色：
+
+| 角色 | 主要职责 |
+|------|----------|
+| `command-runner` | 执行 `cc-*` 主命令，按 workflow、命令契约、checkpoint 和自动校验推进流程 |
+| `context-curator` | 维护 `project-context.md` 与 `dev-map.md`，只沉淀可验证的项目事实和开发导航 |
+| `backlog-curator` | 维护 `changes/task-board.md`，记录 backlog、change 状态、阻塞项和下一命令 |
+| `spec-reviewer` | `cc-review` Stage 1 只读 reviewer，检查实现是否符合 spec |
+| `code-quality-reviewer` | `cc-review` Stage 2 只读 reviewer，检查质量、安全、兼容性和可观测性风险 |
+| `harness-maintainer` | 维护 `.claude/` 框架资产、schema、script、example、workflow 与协议回归 |
+
 ### 并发治理
 
 这套 harness 允许同一仓库存在多个进行中的 change，但不默认允许它们并行改同一代码区域。存在依赖时，应在 `spec.md` 中显式记录 `depends_on`；存在冲突时，应优先串行推进，而不是让 AI 自行并行修改同一链路。
