@@ -63,6 +63,14 @@ WORKFLOW_REQUIRED_COMMAND_KEYS = [
 ]
 WORKFLOW_SPECIAL_FROM_STATES = {"none"}
 WORKFLOW_SPECIAL_TO_STATES = {"unchanged"}
+GOVERNANCE_ASSETS = [
+    "context/dev-map.md",
+    "context/templates/dev-map.md",
+    "changes/task-board.md",
+    "changes/templates/task-board.md",
+    "rules/role-contracts.md",
+    "rules/memory-policy.md",
+]
 
 
 class LintError(Exception):
@@ -350,13 +358,36 @@ def lint_workflow_definition(root: Path, errors: list[str]) -> None:
         errors.append(f"{path}: cc-archive must set change_to done")
 
 
+def lint_governance_assets(root: Path, errors: list[str]) -> None:
+    for relative in GOVERNANCE_ASSETS:
+        path = root / relative
+        if not path.exists():
+            errors.append(f"{path}: missing governance asset")
+
+
 def lint_harness_config(root: Path, errors: list[str]) -> None:
     path = root / "harness.config.yaml"
     if not path.exists():
         errors.append(f"{path}: missing harness config")
         return
     text = read(path)
-    for key in ("workflow:", "definition:", "validation:", "auto_run:", "fail_on_error:", "verify_command:", "delta_command:", "baseline_dir:", "go:", "run_on:"):
+    for key in (
+        "workflow:",
+        "definition:",
+        "memory:",
+        "dev_map:",
+        "task_board:",
+        "policy:",
+        "roles:",
+        "validation:",
+        "auto_run:",
+        "fail_on_error:",
+        "verify_command:",
+        "delta_command:",
+        "baseline_dir:",
+        "go:",
+        "run_on:",
+    ):
         if key not in text:
             errors.append(f"{path}: missing {key.rstrip(':')}")
     for command in AUTO_VALIDATION_COMMANDS:
@@ -404,6 +435,7 @@ def main(argv: list[str]) -> int:
             if (item / "commands").exists() and (item / "rules").exists():
                 lint_command_contracts(item, errors)
                 lint_workflow_definition(item, errors)
+                lint_governance_assets(item, errors)
             if item.name == ".claude" or (item / "harness.config.yaml").exists():
                 lint_harness_config(item, errors)
 

@@ -22,16 +22,18 @@
 |--------|----------|------|
 | 主规则存在 | `.claude/CLAUDE.md` 存在 | [ ] |
 | 运行策略存在 | `.claude/harness.config.yaml` 存在，或明确使用默认策略 | [ ] |
-| 自动校验策略存在 | `.claude/harness.config.yaml` 中包含 `workflow.definition`、`validation.auto_run`、`validation.fail_on_error`、`validation.verify_command`、`validation.delta_command` 与 `validation.run_on`，或明确使用默认自动校验策略 | [ ] |
+| 自动校验策略存在 | `.claude/harness.config.yaml` 中包含 `workflow.definition`、`memory.dev_map`、`memory.task_board`、`roles.contracts`、`validation.auto_run`、`validation.fail_on_error`、`validation.verify_command`、`validation.delta_command` 与 `validation.run_on`，或明确使用默认自动校验策略 | [ ] |
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
 | 机器工作流存在 | `.claude/workflows/cc-workflow.yaml` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | 生命周期状态机存在 | `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | 命令契约矩阵存在 | `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
+| 角色与记忆规则存在 | `.claude/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
 | knowledge 存在 | `.claude/knowledge/index.md` 存在 | [ ] |
-| context 模板存在 | `.claude/context/project-context.md` 与 `.claude/context/templates/system-overview.md` 存在 | [ ] |
+| context 模板存在 | `.claude/context/project-context.md`、`.claude/context/dev-map.md` 与 `.claude/context/templates/system-overview.md`、`.claude/context/templates/dev-map.md` 存在 | [ ] |
 | commands 完整 | `cc-init`、`cc-enrich-context`、`cc-explain-system`、`cc-inspect-codebase` 等主命令文件齐全 | [ ] |
 | checkpoints 完整 | 与主命令对应的 `checkpoints/*.md` 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/changes/templates/` 存在 | [ ] |
+| task-board 存在 | `.claude/changes/task-board.md` 与 `.claude/changes/templates/task-board.md` 存在 | [ ] |
 | audits 模板存在 | `.claude/audits/templates/` 存在 | [ ] |
 | schema 与脚本存在 | `.claude/schemas/`、`.claude/scripts/cc-lint`、`.claude/scripts/cc-sync-check`、`.claude/scripts/cc-verify`、`.claude/scripts/cc-delta-check` 存在 | [ ] |
 | 示例可选但清晰 | 是否包含 examples 已明确，不会被误当成 `cc-init` 产物 | [ ] |

@@ -11,6 +11,7 @@
 | 已确认本次目标是“新项目定义”，不是“已有项目 change 提案” | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次不会直接进入编码 | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次需要产出项目级文档，而不是 `changes/<change-id>/` 文档 | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `rules/memory-policy.md`、`context/dev-map.md` 和 `changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已接受当前 scope 为项目级 / 系统级 / MVP 级定义 | ✅ / ❌ / ⚠️ / N/A |
 
 ## 执行中检查
@@ -25,6 +26,7 @@
 | 已形成技术方向、模块草图或待确认实现点 | ✅ / ❌ / ⚠️ / N/A |
 | 已形成 MVP 路线图，而不是只停留在需求描述 | ✅ / ❌ / ⚠️ / N/A |
 | 已形成首批推荐 change backlog | ✅ / ❌ / ⚠️ / N/A |
+| 已准备同步 `context/dev-map.md` 的规划级模块导航和 `changes/task-board.md` 的 backlog 候选 | ✅ / ❌ / ⚠️ / N/A |
 | 已明确记录“当前已明确 / 仍待确认”的关键讨论结论 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查首批推荐 change 是否能自然进入 `cc-propose`，而不是仍停留在项目级空话 | ✅ / ❌ / ⚠️ / N/A |
 | 未把 `cc-new-project` 退化成 `cc-propose`、`cc-init` 或直接编码 | ✅ / ❌ / ⚠️ / N/A |
@@ -36,6 +38,7 @@
 | 已输出 `context/project-definition.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已输出 `context/mvp-roadmap.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已输出 `context/architecture-outline.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已同步 `context/dev-map.md` 和 `changes/task-board.md` 的项目级摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 已给出推荐下一步，而不是自动进入 `cc-propose` 或 `cc-apply` | ✅ / ❌ / ⚠️ / N/A |
 | 仍待确认的关键点已明确记录 | ✅ / ❌ / ⚠️ / N/A |
 | 未将项目级产物错误写入 `changes/<change-id>/` | ✅ / ❌ / ⚠️ / N/A |

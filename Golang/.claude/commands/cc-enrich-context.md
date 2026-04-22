@@ -2,7 +2,7 @@
 
 ## 用途
 
-`cc-enrich-context` 用于在已有 `project-context.md` 基础上补充更完整的项目事实画像。
+`cc-enrich-context` 用于在已有 `project-context.md` 基础上补充更完整的项目事实画像，并更新 `context/dev-map.md` 的开发导航。
 它承接 `cc-init` 之后尚未确认、但后续命令会受益的高解释成本事实。
 
 它的目标不是做项目体检或输出 Findings，而是在“基础事实层”之上补齐“补充事实层”，例如：
@@ -47,6 +47,7 @@
 
 产出：
 - 增量更新 `context/project-context.md` 中的“补充事实层”内容
+- 增量更新 `context/dev-map.md` 中的模块边界、关键链路、验证入口和易错边界
 
 不产出：
 - `changes/<change-id>/`
@@ -59,15 +60,15 @@
 以 `rules/command-contracts.md` 中 `cc-enrich-context` 行为准：
 - 状态机定位：项目事实补充命令，不创建也不改变 change 状态
 - 输入：无
-- 输出：`context/project-context.md` 的补充事实层
-- 可写文件：仅 `context/project-context.md`
-- 必须校验：基础事实层已存在、关键假设已确认或降级为待确认、证据位置和信心等级清楚
+- 输出：`context/project-context.md` 的补充事实层、`context/dev-map.md` 的开发导航
+- 可写文件：仅 `context/project-context.md`、`context/dev-map.md`
+- 必须校验：基础事实层已存在、关键假设已确认或降级为待确认、证据位置和信心等级清楚，且长期记忆写入符合 `rules/memory-policy.md`
 - 禁止行为：输出 Findings、创建 change 或 audit、把假设写成事实、自动转入 `cc-inspect-codebase` / `cc-propose` / `cc-apply`
 
 ## 必守边界
 
 - 只补充项目事实，不创建脚手架资产
-- 只回写 `context/project-context.md`
+- 只回写 `context/project-context.md` 和 `context/dev-map.md`
 - 不得把 `cc-enrich-context` 扩展为 `cc-inspect-codebase`、`cc-review` 或 `cc-explain-system`
 - 允许读取更多入口和样本代码，但仍以“确认事实”为目标，不输出问题审查结论
 - 允许提出“基于证据的待确认假设”，但不得把假设直接写成事实
@@ -127,7 +128,7 @@
    - 每轮最多发起 1 组阻塞式确认，且阻塞假设不超过 3 条
    - 超过 3 条时，优先保留最影响事实准确性的 1-3 条，其余写入“待确认事项”
    - 不影响当前事实回写的非阻塞假设，直接写入“待确认事项”，不强制打断
-6. 只将已确认事实回写 `project-context.md` 的补充事实层
+6. 只将已确认事实回写 `project-context.md` 的补充事实层和 `dev-map.md` 的开发导航
    - `关键链路索引` 默认最多保留 3-5 条高价值链路，并标注 `P0 / P1 / P2`
 7. 对仍无法可靠确认的内容继续保留“待确认”
 8. 结束，不自动进入 `cc-inspect-codebase`、`cc-propose`、`cc-explain-system` 或其他命令
@@ -158,3 +159,5 @@
 
 - `checkpoints/cc-enrich-context.md`
 - `context/project-context.md`
+- `context/dev-map.md`
+- `rules/memory-policy.md`

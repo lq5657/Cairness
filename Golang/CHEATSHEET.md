@@ -51,6 +51,8 @@ Golang/.claude/changes/<change-id>/
 - 不要在启动阶段全量读取 `rules/`，按命令延迟加载 `commands/`、`checkpoints/` 和专题规则
 - 运行时优先按命令读取 `checkpoints/cc-*.md`，`rules/checkpoint-index.md` 只作兼容汇总索引
 - 所有 `cc-*` 命令都必须对照 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 的状态机角色、输入输出、可写文件、校验项和禁止行为
+- 写长期上下文时遵守 `rules/memory-policy.md`；调用 reviewer 或子角色时遵守 `rules/role-contracts.md`
+- `context/dev-map.md` 用于模块/链路导航，`changes/task-board.md` 用于 change 状态看板，二者不能替代 spec/tasks/review
 
 ### `cc-new-project <项目想法>`
 
@@ -326,6 +328,7 @@ Gate：
 - 默认一个 task 一个 commit，是否自动 commit 由 `.claude/harness.config.yaml` 决定
 - 默认自动运行 Harness 校验；`validation.auto_run = true` 时，`cc-propose` / `cc-apply` / `cc-fix` / `cc-test` / `cc-review` / `cc-archive` 会按阶段触发 `cc-verify`，`cc-apply` 还会记录 baseline 并执行 delta 检查
 - `workflows/cc-workflow.yaml` 是机器可读工作流定义，新增或调整 `cc-*` 命令时必须同步更新，否则 `cc-lint` 应失败
+- `context/dev-map.md`、`changes/task-board.md`、`rules/role-contracts.md`、`rules/memory-policy.md` 是默认治理资产，缺失时 `cc-lint` 应失败
 - commit 前必须检查 dirty worktree，不能混入无关修改
 - commit message 固定格式：
 

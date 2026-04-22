@@ -25,9 +25,9 @@
 以 `rules/command-contracts.md` 中 `cc-test` 行为准：
 - 状态机定位：验证补强或恢复命令，允许在 `apply / review` 中执行且不改变主状态
 - 输入：`change-id`，可选 `--mode supplement` / `--mode recovery`
-- 输出：`test-spec.md`、测试代码或验证证据、映射状态更新
-- 可写文件：测试文件、当前 change 的 `test-spec.md`、`log.md`，必要时同步 `spec.md` 映射状态
-- 必须校验：模式合法、`recovery` 具备 `blocked` / `partial` 记录、fresh evidence、映射闭环
+- 输出：`test-spec.md`、测试代码或验证证据、映射状态更新、`changes/task-board.md` 状态更新
+- 可写文件：测试文件、当前 change 的 `test-spec.md`、`log.md`、`changes/task-board.md`，必要时同步 `spec.md` 映射状态
+- 必须校验：模式合法、`recovery` 具备 `blocked` / `partial` 记录、fresh evidence、映射闭环、task-board 同步
 - 禁止行为：默认补做 `cc-apply` 最低验证、伪造 Red / Green、无证据标记 covered
 
 ## 前提
@@ -54,6 +54,7 @@
 - 逐个运行测试并展示 `go test -v` 输出
 - 完成后运行完整测试套件并检查覆盖率
 - `cc-test` 补强或恢复补齐后的映射项必须更新为 `test-covered`；仍缺证据的项必须明确保持 `gap`
+- 完成或阻塞时必须同步 `changes/task-board.md`，记录本轮测试状态、剩余 gap 和下一命令
 - 不得把本应在 `cc-apply` 中完成的最低验证全部推迟到 `cc-test`
 - 若 `validation.auto_run = true`，更新 `test-spec.md`、测试证据和映射状态后必须运行 `.claude/scripts/cc-verify --change <change-id>`；若失败且 `fail_on_error = true`，不得声称测试补强已完成
 - 若本轮测试涉及 migration / 回填 / contract 兼容，必须读取 `rules/database-changes.md`
@@ -73,6 +74,7 @@
 ## 建议读取
 
 - `checkpoints/cc-test.md`
+- `changes/task-board.md`
 - `rules/testing-strategy.md`
 - `rules/verification.md`
 - 命中专题时读取对应规则：`database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security`

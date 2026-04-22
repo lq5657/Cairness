@@ -18,9 +18,9 @@
 以 `rules/command-contracts.md` 中 `cc-apply` 行为准：
 - 状态机定位：执行实现，允许 `propose / apply -> review`
 - 输入：`change-id`
-- 输出：代码改动、change 文档更新、按配置生成 commit
-- 可写文件：task 声明范围内代码，当前 change 的 `spec.md`、`tasks.md`、`log.md`，必要的 `test-spec.md`
-- 必须校验：HARD-GATE、task gate、最低验证证据、Git 策略、dirty worktree
+- 输出：代码改动、change 文档更新、必要的 `context/dev-map.md` / `changes/task-board.md` 更新、按配置生成 commit
+- 可写文件：task 声明范围内代码，当前 change 的 `spec.md`、`tasks.md`、`log.md`，必要的 `test-spec.md`、`context/dev-map.md`、`changes/task-board.md`
+- 必须校验：HARD-GATE、task gate、最低验证证据、Git 策略、dirty worktree、baseline/delta、记忆同步
 - 禁止行为：越界改动、把最低验证推给 `cc-test`、无证据标记 done、自动 push / merge
 
 ## 前提
@@ -41,11 +41,13 @@
 - 以 task 为最小执行单元推进；任一时刻只允许一个 task 处于 `in_progress`
 - 开始某个 task 前，必须先做 Task Plan Review：确认当前 task 仍然必要、前置依赖已满足、`依赖 / Wave` 顺序未被违反、边界清晰、验收标准和验证步骤一一对应、测试要求可执行，且当前 task 的 `验证步骤` / `测试要求` 已明确承接 `spec.md` 的“需求-验证映射”编号
 - 开始某个 task 前，必须先读取并对齐该 task 的目标、不包含范围、涉及文件、验收标准、验证步骤、测试要求、回退方式
+- 开始某个 task 前，应读取 `context/dev-map.md` 和 `changes/task-board.md`，确认影响模块、既有验证入口、阻塞/依赖和下一命令记录没有冲突
 - 若项目存在 `context/mvp-roadmap.md`，开始当前 task 前还应确认该 task 与本次 change 在 roadmap 中的定位未发生偏移
 - 开始某个 task 时，必须先做 task 启动简报：明确本次要做什么、本次不做什么、如何验证、若发生偏差会回写哪些文档
 - 若当前 task 涉及业务逻辑、缺陷修复、接口链路、数据库访问、异步任务、外部依赖或任何需要测试层级选择的改动，必须同时读取 `rules/testing-strategy.md`
 - 逐 task 执行；每个 task 完成后必须先通过 task 级 gate，再推进下一个 task
 - 若实现中发现 plan 不足、错误或受实际代码约束无法落地，必须先更新 `spec.md`、`tasks.md`、`log.md`，再继续编码
+- 若实现导致模块边界、关键链路、测试入口或易错边界发生实质变化，必须同步 `context/dev-map.md`；每个 task 完成或阻塞时必须同步 `changes/task-board.md`
 - 若使用子代理，子代理只能处理当前 task 的受限范围；主流程必须复核其结果，不得直接视为 task 完成
 - 若涉及 DB、配置、关键链路等高风险专题，必须补充对应规则要求
 - 默认一个 task 一个 commit；是否自动 commit 由 `.claude/harness.config.yaml` 的 `auto_commit` 决定
@@ -70,8 +72,9 @@
 8. 若实现与原计划发生偏差，已先同步 `spec.md`、`tasks.md`、`log.md`
 9. 若 `tasks.md` 已声明 `依赖 / Wave`，当前 task 的执行顺序未越过前置 task，且未把串行任务误当成可并行
 10. 当前 task 的状态、备注、实际改动文件已同步到 change 文档
-11. commit 策略已按 `.claude/harness.config.yaml` 执行；未自动 commit 时已记录原因和待提交状态
-12. 自动 Harness 校验已按 `.claude/harness.config.yaml` 执行并通过，或失败原因已记录为 `blocked` / `partial`
+11. `changes/task-board.md` 已同步当前状态、阻塞/依赖和下一命令；如模块导航变化，`context/dev-map.md` 已同步
+12. commit 策略已按 `.claude/harness.config.yaml` 执行；未自动 commit 时已记录原因和待提交状态
+13. 自动 Harness 校验已按 `.claude/harness.config.yaml` 执行并通过，或失败原因已记录为 `blocked` / `partial`
 
 未通过上述 gate 的 task，不得切换到下一个 task。
 
@@ -88,7 +91,10 @@
 ## 建议读取
 
 - `checkpoints/cc-apply.md`
+- `context/dev-map.md`
+- `changes/task-board.md`
 - `context/mvp-roadmap.md`（如存在）
+- `rules/memory-policy.md`
 - `rules/verification.md`
 - `rules/testing-strategy.md`（涉及逻辑/缺陷修复/链路/数据访问时）
 - `rules/coding-style.md`

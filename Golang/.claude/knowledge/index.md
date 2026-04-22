@@ -64,6 +64,7 @@
   ```
 * **Harness试点验收** : 发布前先用验收清单确认生命周期、规则边界、reviewer 契约和样例是否可跑通 → `knowledge/pilot-checklist.md`
 * **Harness接入预检** : 当需要验收或排查当前项目对框架的接入完整性时，执行 `cc-preflight`；`knowledge/integration-preflight-checklist.md` 是该命令的执行依据，而不是隐性入口 → `commands/cc-preflight.md`
+* **Harness长期记忆** : 项目导航写 `context/dev-map.md`，change 看板写 `changes/task-board.md`，写入边界遵守 `rules/memory-policy.md`，角色权限遵守 `rules/role-contracts.md`
 * **cc-new-project回归评测** : 修改 `cc-new-project`、项目级模板或项目生命周期路由后，先用回归样例验证是否仍能正确完成项目定义、MVP 路线图和首批 change backlog，并自然桥接到后续 `cc-propose` → `knowledge/cc-new-project-eval-cases.md`
 * **Harness接入高频问题** : 接入真实项目时，优先排查 `cc-init` 边界、路径解释、命令冲突、checkpoint 展示契约和验证等级等常见跑偏点 → `knowledge/common-integration-pitfalls.md`
 * **cc-propose回归评测** : 修改 `cc-propose` 提问策略、路由边界、roadmap 对齐逻辑或 checkpoint 后，先用回归样例验证是否仍能正确区分新项目与已有项目 change，并把 change 放回 phase / backlog 语义中收敛 → `knowledge/cc-propose-eval-cases.md`

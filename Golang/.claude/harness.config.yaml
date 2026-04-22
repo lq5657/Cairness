@@ -12,6 +12,15 @@ workflow:
   lifecycle_state_machine: ".claude/rules/lifecycle-state-machine.md"
   command_contracts: ".claude/rules/command-contracts.md"
 
+memory:
+  project_context: ".claude/context/project-context.md"
+  dev_map: ".claude/context/dev-map.md"
+  task_board: ".claude/changes/task-board.md"
+  policy: ".claude/rules/memory-policy.md"
+
+roles:
+  contracts: ".claude/rules/role-contracts.md"
+
 validation:
   auto_run: true
   fail_on_error: true

@@ -101,6 +101,7 @@
 
 允许读取：
 - `context/project-context.md`
+- `context/dev-map.md`
 - 与当前 scope 相关的目录结构、入口文件、关键调用链代码
 - 配置、日志、测试、可观测性相关入口
 - 关键领域模型、关键流程样本
@@ -114,7 +115,7 @@
 
 1. 确认 `project-context.md` 存在；若明显过薄，可先建议执行 `cc-enrich-context`
 2. 确认 `scope`；若缺省则按全仓
-3. 读取与当前 `scope` 相关的结构、入口和关键链路
+3. 读取 `context/dev-map.md` 与当前 `scope` 相关的结构、入口和关键链路
 4. 用“系统理解”视角整理结构、链路、数据流、领域模型、技术机制、难点、运维与治理视角
 5. 对明确不具备的能力写“当前不具备”，对证据不足项写“待确认”
 6. 输出到 `context/system-overview.md`
@@ -147,4 +148,5 @@
 
 - `checkpoints/cc-explain-system.md`
 - `context/project-context.md`
+- `context/dev-map.md`
 - `context/templates/system-overview.md`

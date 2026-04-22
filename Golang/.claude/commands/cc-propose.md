@@ -20,15 +20,15 @@
 以 `rules/command-contracts.md` 中 `cc-propose` 行为准：
 - 状态机定位：创建或更新正式 change 草案，成功后 `spec.status = propose`
 - 输入：需求描述
-- 输出：`changes/<change-id>/spec.md`、`tasks.md`、`log.md`
-- 可写文件：当前 change 文档；不得写业务代码
-- 必须校验：HARD-GATE、验证矩阵、依赖关系、范围冻结、task 到验证映射的可追溯性
+- 输出：`changes/<change-id>/spec.md`、`tasks.md`、`log.md`、`changes/task-board.md` 状态摘要
+- 可写文件：当前 change 文档与 `changes/task-board.md`；不得写业务代码
+- 必须校验：HARD-GATE、验证矩阵、依赖关系、范围冻结、task 到验证映射的可追溯性、task-board 同步
 - 禁止行为：写业务代码、跳过澄清和范围冻结、生成不可验证 tasks、未确认即进入 `cc-apply`
 
 ## 执行流程
 
 1. 命令边界判断：先判断当前请求是否属于已有项目中的正式 change；若仍是新项目定义，路由到 `cc-new-project`
-2. 若存在 `context/project-definition.md` / `context/mvp-roadmap.md`，先读取项目定义、当前阶段和推荐 change backlog，确认本次 change 与项目路线图一致
+2. 若存在 `context/project-definition.md` / `context/mvp-roadmap.md` / `context/dev-map.md` / `changes/task-board.md`，先读取项目定义、当前阶段、开发导航和推荐 change backlog，确认本次 change 与项目路线图和模块边界一致
 3. Research：先做本地 Research，读代码、查链路、识别现有实现与项目约定
 4. 上下文充分性判断：判断本地代码、需求信息、项目上下文和既有约定是否足以支撑方案收敛
 5. 需求清晰度判断：先判断当前请求应走 `direct`、`light-clarify` 还是 `brainstorm-needed`
@@ -44,8 +44,9 @@
 12. 验证映射：为主要功能点/风险点声明映射编号、最低验证等级、证据类型与对应 task 承接方式
 13. 生成 Spec：重点补齐需求收敛记录、背景、功能点、风险、成熟替代方案检查、方案比较、待澄清与验证映射
 14. 生成 Tasks：按最小可执行单元拆 task，而不是仅按文件罗列，并确保 task 验证步骤可回溯到验证映射编号
-15. 自动 Harness 校验：按 `.claude/harness.config.yaml` 的 `validation.run_on.propose` 运行 `cc-verify --harness-only --change <change-id>`
-16. HARD-GATE：记录结构化确认信息，等待用户确认再进入 `cc-apply`
+15. 更新 `changes/task-board.md`：新增或刷新当前 change 的状态、影响模块、阻塞/依赖和下一命令
+16. 自动 Harness 校验：按 `.claude/harness.config.yaml` 的 `validation.run_on.propose` 运行 `cc-verify --harness-only --change <change-id>`
+17. HARD-GATE：记录结构化确认信息，等待用户确认再进入 `cc-apply`
 
 ## 澄清执行要求
 
@@ -110,6 +111,8 @@
 ## 建议读取
 
 - `context/project-context.md`
+- `context/dev-map.md`
+- `changes/task-board.md`
 - `context/project-definition.md`（如存在）
 - `context/mvp-roadmap.md`（如存在）
 - `checkpoints/cc-propose.md`

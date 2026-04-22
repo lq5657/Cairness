@@ -1,10 +1,10 @@
 ### Harness 协议回归评测样例
 
-用于维护者在修改命令口径、机器工作流、生命周期状态机、HARD-GATE、Git 策略、验证矩阵或校验脚本后，快速确认 Harness 仍然能约束 AI 行为。
+用于维护者在修改命令口径、机器工作流、生命周期状态机、角色契约、记忆策略、HARD-GATE、Git 策略、验证矩阵或校验脚本后，快速确认 Harness 仍然能约束 AI 行为。
 
 #### 使用方式
 
-1. 修改 `commands/`、`workflows/`、`rules/`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
+1. 修改 `commands/`、`workflows/`、`rules/`、`context/dev-map.md`、`changes/task-board.md`、`changes/templates/`、`changes/examples/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
 2. 对真实样例目录执行：
    - `.claude/scripts/cc-verify --harness-only`
 3. 若某个样例未通过，优先修协议、模板或样例，不要靠人工提示兜底。
@@ -116,3 +116,15 @@
 期望：
 - 判为协议违规。
 - 当 `validation.auto_run = true` 且 `fail_on_error = true` 时，命令必须先自动运行配置的 `cc-verify`；`cc-apply` 还必须保存 baseline 并用 `cc-delta-check` 拦截 `new-failure`。
+
+#### Case 9：长期记忆越界
+
+输入：
+
+```text
+`cc-propose` 把未确认假设写入 `context/dev-map.md`，或把完整 spec/tasks 正文复制到 `changes/task-board.md`。
+```
+
+期望：
+- 判为协议违规。
+- `dev-map.md` 只保存可验证导航和待确认事项；`task-board.md` 只保存状态摘要，不替代单个 change 文档。

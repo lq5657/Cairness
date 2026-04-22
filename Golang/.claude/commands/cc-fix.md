@@ -19,9 +19,9 @@
 以 `rules/command-contracts.md` 中 `cc-fix` 行为准：
 - 状态机定位：`review` 阶段的 Findings 回收命令，成功后仍保持 `review`
 - 输入：`change-id`，可选修复描述
-- 输出：修复代码、Finding 状态更新、change 文档同步
-- 可写文件：与本轮 `open` Finding 直接相关的代码，当前 change 的 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`
-- 必须校验：Finding 仍存在、根因明确、最小修复假设成立、验证等级不低于既有要求、映射状态同步
+- 输出：修复代码、Finding 状态更新、change 文档同步、`changes/task-board.md` 状态更新
+- 可写文件：与本轮 `open` Finding 直接相关的代码，当前 change 的 `review.md`、`log.md`、`changes/task-board.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`、`context/dev-map.md`
+- 必须校验：Finding 仍存在、根因明确、最小修复假设成立、验证等级不低于既有要求、映射状态同步、记忆同步
 - 禁止行为：处理未记录或未确认的新范围、绕过 `cc-review`、删除 `open` Finding 审计记录、修复失败仍标 `fixed`
 
 ## 执行要求
@@ -34,6 +34,7 @@
 - 修复前必须区分：症状、失败点、根因；不得把 reviewer 的表述直接当成根因
 - 修复前必须形成最小修复假设：本次改动准备解决什么、为什么足以解决、不会顺手改什么
 - 增量修正时，必须同步更新 `spec.md`、`tasks.md`、`log.md`、`review.md`
+- 增量修正导致模块边界、验证入口或易错边界变化时，必须同步 `context/dev-map.md`；每轮修复结束必须同步 `changes/task-board.md`
 - 若 Finding 涉及验证证据缺口、映射状态不一致或测试补强，必须同步更新 `test-spec.md`（如存在）以及 `spec.md` 中对应映射项的闭环状态
 - 每项修复后重新验证，且验证等级不得低于本次 change 已声明的最低等级
 - 默认一次只处理一个 Finding，或一组明确耦合、已说明联动关系的 Findings
@@ -56,8 +57,9 @@
 4. 区分症状、失败点与根因
 5. 形成最小修复假设
 6. 实施修复并重新验证
-7. 回写 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`
-8. 若 `validation.auto_run = true`，运行 `.claude/scripts/cc-verify --change <change-id>`
+7. 回写 `review.md`、`log.md`，必要时同步 `spec.md`、`tasks.md`、`test-spec.md`、`context/dev-map.md`
+8. 同步 `changes/task-board.md` 的 Finding 处理状态、阻塞项和下一命令
+9. 若 `validation.auto_run = true`，运行 `.claude/scripts/cc-verify --change <change-id>`
 
 ## 失败与恢复
 
@@ -70,5 +72,8 @@
 - `checkpoints/cc-fix.md`
 - 当前 change 的 `review.md`
 - 当前 change 的 `spec.md` / `tasks.md` / `test-spec.md` / `log.md`
+- `context/dev-map.md`
+- `changes/task-board.md`
+- `rules/memory-policy.md`
 - `rules/verification.md`
 - 命中专题时读取对应规则：`testing-strategy` / `database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`

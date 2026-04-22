@@ -11,6 +11,7 @@
 | `spec.md` 已存在 | ✅ / ❌ / ⚠️ / N/A |
 | `spec.status` 为 `apply` 或 `review` | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `rules/testing-strategy.md` 与 `rules/verification.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已读取本次 change 声明的最低验证等级 | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `spec.md` 中的“需求-验证映射”编号与闭环状态 | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `tasks.md` 中各 task 的测试要求 | ✅ / ❌ / ⚠️ / N/A |
@@ -32,6 +33,7 @@
 | 已逐个运行测试并展示验证证据 | ✅ / ❌ / ⚠️ / N/A |
 | 已说明为什么当前测试层级足以覆盖本次风险 | ✅ / ❌ / ⚠️ / N/A |
 | 若未执行更高层测试，已写明跳过原因和替代证据 | ✅ / ❌ / ⚠️ / N/A |
+| 已准备同步 `changes/task-board.md` 的测试状态、剩余 gap 和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 
 ## 完成后检查
 
@@ -45,5 +47,6 @@
 | `test-spec.md` 已记录验证差距、替代证据与剩余风险 | ✅ / ❌ / ⚠️ / N/A |
 | 验证证据已覆盖本次 change 的高风险点 | ✅ / ❌ / ⚠️ / N/A |
 | 当前测试结论与 `tasks.md` 的测试要求不冲突 | ✅ / ❌ / ⚠️ / N/A |
+| `changes/task-board.md` 已同步测试结论、剩余 gap 和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 已按 `validation.run_on.test` 自动运行 `cc-verify`，且失败时未声称补强完成 | ✅ / ❌ / ⚠️ / N/A |

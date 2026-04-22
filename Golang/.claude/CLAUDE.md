@@ -18,6 +18,8 @@
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
 - 生命周期状态必须遵守 `workflows/cc-workflow.yaml` 与 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
 - 每个 `cc-*` 命令必须遵守 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
+- 调用 reviewer、子角色或写长期记忆时，必须遵守 `rules/role-contracts.md` 与 `rules/memory-policy.md`
+- 项目长期导航优先写 `context/dev-map.md`，change 状态摘要优先写 `changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 - 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
@@ -202,6 +204,8 @@ changes/<change-id>/
 - 机器可读工作流 -> `workflows/cc-workflow.yaml`
 - 生命周期状态机 -> `rules/lifecycle-state-machine.md`
 - 命令契约 -> `rules/command-contracts.md`
+- 角色契约 -> `rules/role-contracts.md`
+- 记忆写入策略 -> `rules/memory-policy.md`
 - 编码规范 -> `rules/coding-style.md`
 - 安全红线 -> `rules/security.md`
 - 并发与分支 -> `rules/git-workflow.md`
@@ -209,6 +213,7 @@ changes/<change-id>/
 ### 文档职责
 
 - `context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
+- `context/dev-map.md`：开发导航图，记录模块边界、关键链路、验证入口和易错边界
 - `context/project-definition.md`：新项目的目标、用户、核心能力、MVP 范围与首批 change backlog
 - `context/mvp-roadmap.md`：新项目的阶段划分、MVP 路线图与推荐 change 顺序
 - `context/architecture-outline.md`：新项目的运行形态、模块边界、关键对象与技术方向草图
@@ -218,3 +223,4 @@ changes/<change-id>/
 - `log.md`：执行日志、技术决策、踩坑与冲突处理
 - `test-spec.md`：测试范围、优先级、验证计划
 - `review.md`：两阶段审查结果、问题列表、结论
+- `changes/task-board.md`：change 状态摘要、backlog 候选、阻塞项和下一命令，不替代单个 change 文档

@@ -3,7 +3,7 @@
 ## 用途
 
 `cc-init` 用于建立项目的最小长期上下文。
-它只识别后续命令会高频复用、且能低成本确认的项目事实，并回写 `context/project-context.md`。
+它只识别后续命令会高频复用、且能低成本确认的项目事实，并回写 `context/project-context.md` 与 `context/dev-map.md` 的基础导航。
 
 它的目标不是一次性完成完整项目画像，而是提供一份可长期复用的“基础事实摘要”：
 - 让后续命令知道从哪里开始读项目
@@ -38,6 +38,7 @@
 
 产出：
 - 更新 `context/project-context.md` 中的“基础事实层”内容
+- 更新 `context/dev-map.md` 中的基础模块、入口和测试导航
 
 不产出：
 - `changes/<change-id>/`
@@ -51,9 +52,9 @@
 以 `rules/command-contracts.md` 中 `cc-init` 行为准：
 - 状态机定位：项目基础事实初始化命令，不创建也不改变 change 状态
 - 输入：无
-- 输出：`context/project-context.md` 的基础事实层
-- 可写文件：仅 `context/project-context.md`
-- 必须校验：`.claude/` 脚手架存在、基础入口可低成本确认、未确认事项已显式记录
+- 输出：`context/project-context.md` 的基础事实层、`context/dev-map.md` 的基础导航
+- 可写文件：仅 `context/project-context.md`、`context/dev-map.md`
+- 必须校验：`.claude/` 脚手架存在、基础入口可低成本确认、未确认事项已显式记录，且长期记忆写入符合 `rules/memory-policy.md`
 - 禁止行为：创建脚手架资产、创建 `changes/` 或 `audits/` 产物、深度审查业务代码、把猜测写成事实
 
 展示 checkpoint 表时：
@@ -64,7 +65,7 @@
 ## 必守边界
 
 - 只做项目基础事实识别，不做问题审查
-- 只回写 `project-context.md`，不创建脚手架资产
+- 只回写 `project-context.md` 和 `dev-map.md`，不创建脚手架资产
 - 不得因为缺少脚手架而创建 `rules/`、`knowledge/`、`changes/`、`audits/`
 - 不得因为缺少 examples/templates 而补目录
 - 不得把 `cc-init` 扩展为 `cc-enrich-context`、`cc-explain-system` 或 `cc-inspect-codebase`
@@ -177,7 +178,8 @@
    - 基础导航信息
 4. 将无法低成本确认的内容标记为“待确认”
 5. 更新 `context/project-context.md`
-6. 结束，不自动进入 `cc-enrich-context`、`cc-propose`、`cc-explain-system` 或 `cc-inspect-codebase`
+6. 更新 `context/dev-map.md` 的基础导航与待确认事项
+7. 结束，不自动进入 `cc-enrich-context`、`cc-propose`、`cc-explain-system` 或 `cc-inspect-codebase`
 
 ## 失败处理
 
@@ -199,3 +201,5 @@
 
 - `checkpoints/cc-init.md`
 - `context/project-context.md`
+- `context/dev-map.md`
+- `rules/memory-policy.md`
