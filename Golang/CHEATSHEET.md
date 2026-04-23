@@ -10,6 +10,20 @@
 2. `Spec is Truth`：`review/done` 阶段发现 spec 和代码不一致，必须先修偏差
 3. `变更即记录`：改代码时必须同步更新 `changes/` 文档
 
+## 1.1 Claude Code Skill 入口
+
+本项目提供 `.claude/skills/cc-harness/`，用于让 Claude Code 在处理 `cc-*` 请求时稳定装载总纲、workflow、命令契约、状态机、角色契约、对应 command 和 checkpoint。
+
+Skill 不是独立 CLI，也不替代命令文档；它负责触发和按需装载，确定性校验仍由脚本完成：
+
+```bash
+.claude/scripts/cc-verify --harness-only
+.claude/scripts/cc-verify --change <change-id>
+.claude/scripts/cc-verify --fixture <fixture-path>
+.claude/scripts/cc-role-check --command <cc-command> --change <change-id>
+.claude/scripts/cc-eval .claude/evals
+```
+
 ## 2. 目录契约
 
 每个真实变更必须放在：

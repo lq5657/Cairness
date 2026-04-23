@@ -1,15 +1,15 @@
-### 需求名称
-
-```
+---
 change_id: kebab-case-id
-status: propose | apply | review | done
-depends_on: []            # 可选；依赖的 change-id 列表
-parallel_safe: true | false
+status: propose
+depends_on: []
+parallel_safe: true
 branch: feat/<change-id>
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-complexity: 🟢简单 | 🟡中等 | 🔴复杂
-```
+complexity: simple | medium | complex
+---
+
+### 需求名称
 
 #### 文档约束
 

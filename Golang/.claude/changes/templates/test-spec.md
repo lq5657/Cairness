@@ -1,8 +1,11 @@
-### 单测 Spec — 需求名称
-
+---
 change_id: kebab-case-id
-status: propose | apply | review | done
+status: propose
 created: YYYY-MM-DD
+mode: supplement
+---
+
+### 单测 Spec — 需求名称
 
 #### 0. 测试原则
 

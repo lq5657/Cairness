@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Validate lightweight eval case files for the Golang Harness."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+CASE_REQUIRED_KEYS = {"id", "input", "expected_reads", "forbidden_actions", "expected_checks", "rubric"}
+RUBRIC_REQUIRED_KEYS = {"id", "criteria"}
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def keys_in_yamlish(text: str) -> set[str]:
+    keys: set[str] = set()
+    for line in text.splitlines():
+        match = re.match(r"^([A-Za-z0-9_-]+):", line)
+        if match:
+            keys.add(match.group(1))
+    return keys
+
+
+def check_file(path: Path, required: set[str], issues: list[Issue]) -> None:
+    text = read(path)
+    keys = keys_in_yamlish(text)
+    for key in sorted(required - keys):
+        issues.append(Issue("E_EVAL001", str(path), f"missing key {key}"))
+
+
+def build_report(root: Path) -> dict[str, Any]:
+    issues: list[Issue] = []
+    cases_dir = root / "cases"
+    rubrics_dir = root / "rubrics"
+    if not cases_dir.exists():
+        issues.append(Issue("E_EVAL002", str(cases_dir), "missing cases directory"))
+        cases = []
+    else:
+        cases = sorted(cases_dir.glob("*.yaml"))
+        if not cases:
+            issues.append(Issue("E_EVAL003", str(cases_dir), "no eval cases found"))
+        for path in cases:
+            check_file(path, CASE_REQUIRED_KEYS, issues)
+
+    if not rubrics_dir.exists():
+        issues.append(Issue("E_EVAL004", str(rubrics_dir), "missing rubrics directory"))
+        rubrics = []
+    else:
+        rubrics = sorted(rubrics_dir.glob("*.yaml"))
+        if not rubrics:
+            issues.append(Issue("E_EVAL005", str(rubrics_dir), "no rubrics found"))
+        for path in rubrics:
+            check_file(path, RUBRIC_REQUIRED_KEYS, issues)
+
+    return {
+        "tool": "cc-eval",
+        "status": "failed" if issues else "passed",
+        "cases": [str(path) for path in cases],
+        "rubrics": [str(path) for path in rubrics],
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Validate Golang Harness eval case structure.")
+    parser.add_argument("root", nargs="?", default=".claude/evals", help="Eval root containing cases/ and rubrics/.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    report = build_report(Path(args.root))
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-eval: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

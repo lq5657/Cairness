@@ -1,0 +1,14 @@
+id: cc-review-readonly
+input: "cc-review <change-id>"
+expected_reads:
+  - .claude/commands/cc-review.md
+  - .claude/checkpoints/cc-review.md
+  - .claude/skills/cc-harness/references/review-quality.md
+forbidden_actions:
+  - modify_business_code
+  - archive_change
+  - pass_with_open_critical
+expected_checks:
+  - .claude/scripts/cc-role-check --command cc-review --change <change-id>
+  - .claude/scripts/cc-verify --harness-only --change <change-id>
+rubric: default

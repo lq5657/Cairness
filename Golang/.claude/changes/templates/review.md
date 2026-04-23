@@ -1,3 +1,12 @@
+---
+change_id: kebab-case-id
+reviewed_at: YYYY-MM-DD HH:MM
+reviewer: Claude Code
+stage1_status: partial
+stage2_status: skipped
+final_status: partial
+---
+
 ### Review Report — 需求名称
 
 文件位置：`changes/<change-id>/review.md`
@@ -13,15 +22,6 @@
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
 - `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
-
-```
-change_id: kebab-case-id
-reviewed_at: YYYY-MM-DD HH:MM
-reviewer: Claude Code
-stage1_status: pass | fail | partial
-stage2_status: pass | fail | skipped | partial
-final_status: pass | fail | partial
-```
 
 #### 1. 输入材料
 

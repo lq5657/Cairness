@@ -71,6 +71,8 @@ GOVERNANCE_ASSETS = [
     "changes/templates/task-board.md",
     "rules/role-contracts.md",
     "rules/memory-policy.md",
+    "skills/cc-harness/SKILL.md",
+    "evals/rubrics/default.yaml",
 ]
 
 
@@ -409,7 +411,11 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "fail_on_error:",
         "verify_command:",
         "delta_command:",
+        "schema_command:",
+        "role_command:",
+        "eval_command:",
         "baseline_dir:",
+        "fixture_dir:",
         "go:",
         "run_on:",
     ):
@@ -418,7 +424,7 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
     for command in AUTO_VALIDATION_COMMANDS:
         if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
             errors.append(f"{path}: validation.run_on missing {command}")
-    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check"):
+    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check", "cc-schema-check", "cc-role-check", "cc-eval"):
         script_path = root / "scripts" / script
         if not script_path.exists():
             errors.append(f"{script_path}: missing validation script")

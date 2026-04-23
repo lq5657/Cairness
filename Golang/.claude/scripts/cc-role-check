@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Dirty-worktree write-scope checks for cc-* command contracts."""
+
+from __future__ import annotations
+
+import argparse
+import fnmatch
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+
+DETERMINISTIC_WRITES = {
+    "cc-preflight": [],
+    "cc-init": [".claude/context/project-context.md", ".claude/context/dev-map.md"],
+    "cc-enrich-context": [".claude/context/project-context.md", ".claude/context/dev-map.md"],
+    "cc-explain-system": [".claude/context/system-overview.md"],
+    "cc-review": [
+        ".claude/changes/<change-id>/review.md",
+        ".claude/changes/<change-id>/log.md",
+        ".claude/changes/task-board.md",
+    ],
+    "cc-promote-audit": [".claude/audits/*/to-change.md", ".claude/changes/task-board.md"],
+    "cc-archive": [
+        ".claude/changes/<change-id>/spec.md",
+        ".claude/changes/<change-id>/log.md",
+        ".claude/changes/task-board.md",
+        ".claude/knowledge/*",
+    ],
+}
+
+
+def run_git(project_root: Path, args: list[str]) -> list[str]:
+    completed = subprocess.run(
+        ["git", "-C", str(project_root), *args],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "git command failed")
+    return [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+
+
+def dirty_paths(project_root: Path) -> list[str]:
+    paths: set[str] = set()
+    for args in (
+        ["diff", "--name-only", "--relative", "--", "."],
+        ["diff", "--cached", "--name-only", "--relative", "--", "."],
+        ["ls-files", "--others", "--exclude-standard", "--", "."],
+    ):
+        for path in run_git(project_root, args):
+            paths.add(path)
+    return sorted(paths)
+
+
+def expand(pattern: str, change_id: str | None) -> str:
+    return pattern.replace("<change-id>", change_id or "")
+
+
+def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
+    expanded = [expand(pattern, change_id) for pattern in patterns]
+    return any(fnmatch.fnmatch(path, pattern) for pattern in expanded)
+
+
+def build_report(command: str, change_id: str | None, project_root: Path) -> dict[str, Any]:
+    if command not in DETERMINISTIC_WRITES:
+        return {
+            "tool": "cc-role-check",
+            "status": "skipped",
+            "reason": f"{command} has task-dependent or broad write scope",
+            "dirty_paths": [],
+            "violations": [],
+        }
+    patterns = DETERMINISTIC_WRITES[command]
+    if any("<change-id>" in pattern for pattern in patterns) and not change_id:
+        return {
+            "tool": "cc-role-check",
+            "status": "failed",
+            "reason": f"{command} requires --change",
+            "dirty_paths": [],
+            "violations": [{"code": "E_ROLE001", "path": "", "message": "missing --change"}],
+        }
+    paths = dirty_paths(project_root)
+    violations = [
+        {"code": "E_ROLE002", "path": path, "message": f"{command} may not write this path"}
+        for path in paths
+        if not is_allowed(path, patterns, change_id)
+    ]
+    return {
+        "tool": "cc-role-check",
+        "status": "failed" if violations else "passed",
+        "command": command,
+        "change_id": change_id or "",
+        "allowed": [expand(pattern, change_id) for pattern in patterns],
+        "dirty_paths": paths,
+        "violations": violations,
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Check dirty worktree against cc-* command write scope.")
+    parser.add_argument("--command", required=True, help="cc-* command, for example cc-review.")
+    parser.add_argument("--change", help="Formal change-id when the command is change-scoped.")
+    parser.add_argument("--project-root", help="Project root. Defaults to parent of .claude.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = Path(args.project_root) if args.project_root else claude_root.parent
+    try:
+        report = build_report(args.command, args.change, project_root)
+    except RuntimeError as exc:
+        report = {
+            "tool": "cc-role-check",
+            "status": "failed",
+            "reason": str(exc),
+            "violations": [{"code": "E_ROLE003", "path": "", "message": str(exc)}],
+        }
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-role-check: ok")
+    elif report["status"] == "skipped":
+        print(f"cc-role-check: skipped ({report['reason']})")
+    else:
+        for violation in report.get("violations", []):
+            print(f"{violation['code']} {violation['path']}: {violation['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

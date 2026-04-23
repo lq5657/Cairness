@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""Metadata and document-shape checks for Golang Harness artifacts.
+
+The checker accepts both YAML frontmatter and the legacy fenced metadata block
+used by earlier Harness examples. This lets projects migrate metadata format
+without breaking existing changes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
+VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
+VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
+VALID_TEST_MODE = {"supplement", "recovery"}
+VALID_REVIEW_STATUS = {
+    "stage1_status": {"pass", "fail", "partial"},
+    "stage2_status": {"pass", "fail", "skipped", "partial"},
+    "final_status": {"pass", "fail", "partial"},
+}
+EVIDENCE_BY_LEVEL = {
+    "L1": {"build", "doc-check"},
+    "L2": {"package", "unit"},
+    "L3": {"chain"},
+    "L4": {"integration", "manual"},
+    "L5": {"migration-safety", "release-safety"},
+}
+HARD_GATE_FIELDS = [
+    "confirmed_at",
+    "confirmed_by",
+    "confirmed_spec_revision",
+    "confirmed_tasks_revision",
+    "confirmed_scope",
+    "accepted_risks",
+    "human_review_required",
+    "human_review_status",
+]
+TASK_FIELDS = [
+    "**目标**",
+    "**涉及文件**",
+    "**验收标准**",
+    "**验证步骤**",
+    "**测试要求**",
+    "**回退方式**",
+    "**完成后状态**",
+    "**Baseline / Delta",
+]
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def parse_scalar(raw: str) -> Any:
+    value = raw.strip().strip('"').strip("'")
+    if value == "[]":
+        return []
+    if value.startswith("[") and value.endswith("]"):
+        body = value[1:-1].strip()
+        if not body:
+            return []
+        return [item.strip().strip('"').strip("'") for item in body.split(",")]
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    return value
+
+
+def parse_key_values(block: str) -> dict[str, Any]:
+    meta: dict[str, Any] = {}
+    for line in block.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+        key, value = stripped.split(":", 1)
+        meta[key.strip()] = parse_scalar(value.split("#", 1)[0])
+    return meta
+
+
+def parse_frontmatter(text: str) -> dict[str, Any]:
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---", 4)
+    if end == -1:
+        return {}
+    block = text[4:end]
+    try:
+        import yaml  # type: ignore
+
+        loaded = yaml.safe_load(block)
+        return loaded if isinstance(loaded, dict) else {}
+    except Exception:
+        return parse_key_values(block)
+
+
+def parse_legacy_meta(text: str) -> dict[str, Any]:
+    match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
+    if match:
+        return parse_key_values(match.group(1))
+    return parse_key_values("\n".join(text.splitlines()[:25]))
+
+
+def parse_meta(text: str) -> dict[str, Any]:
+    return parse_frontmatter(text) or parse_legacy_meta(text)
+
+
+def table_rows(text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or "---" in stripped:
+            continue
+        rows.append([cell.strip().strip("`") for cell in stripped.strip("|").split("|")])
+    return rows
+
+
+def validation_rows(text: str) -> list[list[str]]:
+    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
+
+
+def task_sections(text: str) -> list[str]:
+    matches = list(re.finditer(r"^#### Task [0-9]+:", text, re.M))
+    sections: list[str] = []
+    for idx, match in enumerate(matches):
+        start = match.start()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        sections.append(text[start:end])
+    return sections
+
+
+def finding_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    return [
+        row
+        for row in table_rows(match.group(1))
+        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}
+    ]
+
+
+def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
+    issues.append(Issue(code=code, path=str(path), message=message))
+
+
+def validate_change_id(value: Any) -> bool:
+    return isinstance(value, str) and bool(CHANGE_ID_RE.match(value))
+
+
+def validate_spec(path: Path, issues: list[Issue]) -> set[str]:
+    text = read(path)
+    meta = parse_meta(text)
+    if not validate_change_id(meta.get("change_id")):
+        add(issues, "E_SCHEMA001", path, "invalid or missing change_id")
+    if meta.get("status") not in VALID_CHANGE_STATUS:
+        add(issues, "E_SCHEMA002", path, "invalid or missing status")
+    for key in ("depends_on", "parallel_safe", "branch", "created", "updated", "complexity"):
+        if key not in meta:
+            add(issues, "E_SCHEMA003", path, f"missing metadata field {key}")
+    depends_on = meta.get("depends_on")
+    if depends_on is not None and not isinstance(depends_on, list):
+        add(issues, "E_SCHEMA004", path, "depends_on must be a list")
+    if "parallel_safe" in meta and not isinstance(meta.get("parallel_safe"), bool):
+        add(issues, "E_SCHEMA005", path, "parallel_safe must be boolean")
+
+    mapping_ids: set[str] = set()
+    rows = validation_rows(text)
+    if not rows:
+        add(issues, "E_SCHEMA006", path, "missing validation mapping rows")
+    for row in rows:
+        if len(row) < 7:
+            add(issues, "E_SCHEMA007", path, f"validation row {row[0]} has fewer than 7 columns")
+            continue
+        vid, level, evidence, status = row[0], row[2], row[3], row[6]
+        mapping_ids.add(vid)
+        if level not in EVIDENCE_BY_LEVEL:
+            add(issues, "E_SCHEMA008", path, f"{vid} has invalid level {level}")
+        elif evidence not in EVIDENCE_BY_LEVEL[level]:
+            add(issues, "E_SCHEMA009", path, f"{vid} evidence {evidence} does not match {level}")
+        if status not in VALID_MAPPING_STATUS:
+            add(issues, "E_SCHEMA010", path, f"{vid} has invalid closure status {status}")
+
+    for field in HARD_GATE_FIELDS:
+        if f"**{field}**" not in text:
+            add(issues, "E_SCHEMA011", path, f"HARD-GATE missing {field}")
+    return mapping_ids
+
+
+def validate_tasks(path: Path, mapping_ids: set[str], issues: list[Issue]) -> None:
+    text = read(path)
+    meta = parse_meta(text)
+    if not validate_change_id(meta.get("change_id")):
+        add(issues, "E_SCHEMA012", path, "invalid or missing change_id")
+    sections = task_sections(text)
+    if not sections:
+        add(issues, "E_SCHEMA013", path, "no task sections found")
+    for section in sections:
+        title = section.splitlines()[0].strip()
+        for field in TASK_FIELDS:
+            if field not in section:
+                add(issues, "E_SCHEMA014", path, f"{title} missing {field}")
+        match = re.search(r"\*\*完成后状态\*\*\s*:\s*`?([a-z_]+)`?", section)
+        if match and match.group(1) not in VALID_TASK_STATUS:
+            add(issues, "E_SCHEMA015", path, f"{title} has invalid task status {match.group(1)}")
+    for vid in mapping_ids:
+        if vid not in text:
+            add(issues, "E_SCHEMA016", path, f"missing validation mapping {vid}")
+
+
+def validate_review(path: Path, issues: list[Issue]) -> None:
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    for key, allowed in VALID_REVIEW_STATUS.items():
+        if meta.get(key) not in allowed:
+            add(issues, "E_SCHEMA017", path, f"invalid or missing {key}")
+    for row in finding_rows(text):
+        status = row[4].strip("` ")
+        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+            add(issues, "E_SCHEMA018", path, f"finding has invalid status {status}")
+
+
+def validate_test_spec(path: Path, issues: list[Issue]) -> None:
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    if meta and meta.get("status") not in VALID_CHANGE_STATUS:
+        add(issues, "E_SCHEMA019", path, "invalid status")
+    for row in table_rows(text):
+        if len(row) >= 2 and row[0].replace("`", "") == "cc-test 模式":
+            mode = row[1].strip("` ")
+            if mode not in VALID_TEST_MODE:
+                add(issues, "E_SCHEMA020", path, f"invalid cc-test mode {mode}")
+            return
+    add(issues, "E_SCHEMA021", path, "missing cc-test mode row")
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if item.is_file():
+            parent = item.parent
+            if (parent / "spec.md").exists() and (parent / "tasks.md").exists():
+                dirs.add(parent)
+            continue
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        if item.is_dir():
+            for spec in item.rglob("spec.md"):
+                if "templates" in spec.parts:
+                    continue
+                parent = spec.parent
+                if (parent / "tasks.md").exists():
+                    dirs.add(parent)
+    return sorted(dirs)
+
+
+def default_input() -> Path:
+    cwd = Path.cwd()
+    if (cwd / ".claude" / "changes").exists():
+        return cwd / ".claude" / "changes"
+    return Path(__file__).resolve().parent.parent / "changes"
+
+
+def build_report(inputs: list[Path]) -> dict[str, Any]:
+    issues: list[Issue] = []
+    change_dirs = discover_change_dirs(inputs)
+    for change_dir in change_dirs:
+        mapping_ids = validate_spec(change_dir / "spec.md", issues)
+        validate_tasks(change_dir / "tasks.md", mapping_ids, issues)
+        validate_review(change_dir / "review.md", issues)
+        validate_test_spec(change_dir / "test-spec.md", issues)
+    return {
+        "tool": "cc-schema-check",
+        "status": "failed" if issues else "passed",
+        "checked_changes": [str(path) for path in change_dirs],
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Check Golang Harness document metadata and shape.")
+    parser.add_argument("paths", nargs="*", help="Change directories, files, or changes root.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    inputs = [Path(path) for path in args.paths] if args.paths else [default_input()]
+    report = build_report(inputs)
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-schema-check: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

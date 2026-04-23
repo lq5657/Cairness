@@ -26,7 +26,11 @@ validation:
   fail_on_error: true
   verify_command: ".claude/scripts/cc-verify"
   delta_command: ".claude/scripts/cc-delta-check"
+  schema_command: ".claude/scripts/cc-schema-check"
+  role_command: ".claude/scripts/cc-role-check"
+  eval_command: ".claude/scripts/cc-eval"
   baseline_dir: "changes/<change-id>/baseline"
+  fixture_dir: "fixtures"
   require_structured_hard_gate: true
   require_traceability_check: true
   go:

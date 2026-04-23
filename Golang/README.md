@@ -68,7 +68,16 @@
 │   ├── cc-lint
 │   ├── cc-sync-check
 │   ├── cc-verify
-│   └── cc-delta-check
+│   ├── cc-delta-check
+│   ├── cc-schema-check
+│   ├── cc-role-check
+│   └── cc-eval
+├── skills/
+│   └── cc-harness/        # Claude Code Skill：cc-* 入口路由与按需规则装载
+├── evals/                 # AI 执行质量评测用例与评分维度
+├── VERSION
+├── CHANGELOG.md
+├── UPGRADE.md
 ├── agents/
 │   ├── spec_reviewer.md       # Spec 合规审查
 │   └── code-quality-reviewer.md # 代码质量审查
@@ -101,6 +110,24 @@
         ├── log.md
         └── task-board.md
 ```
+
+## Claude Code Skill 入口
+
+本 Harness 的推荐交互入口是项目级 Skill：`.claude/skills/cc-harness/`。
+
+它不替代 `commands/`、`checkpoints/`、`rules/` 和 `workflows/`，只负责让 Claude Code 在用户输入 `cc-*` 时稳定按顺序装载这些真源文件，并按命令族读取更小的 reference。
+
+建议配合本地脚本使用：
+
+```bash
+.claude/scripts/cc-verify --harness-only
+.claude/scripts/cc-verify --change <change-id>
+.claude/scripts/cc-verify --fixture <fixture-path>
+.claude/scripts/cc-role-check --command <cc-command> --change <change-id>
+.claude/scripts/cc-eval .claude/evals
+```
+
+其中 `<change-id>` 和 `<fixture-path>` 是占位符，必须替换为当前真实 change 或 fixture 路径。
 
 ## 我是维护者
 
