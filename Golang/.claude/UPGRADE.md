@@ -1,19 +1,24 @@
 # Upgrade Guide
 
-## Upgrade To 0.2.0
+## Upgrade To 0.5.0
 
-This release keeps the existing `cc-*` command documents as the source of truth and adds a Claude Code Skill plus stronger local validation scripts.
+This release expands runtime-first coverage to `cc-preflight` and `cc-promote-audit`. Runtime-first commands are now `cc-preflight`, the full main change lifecycle, and `cc-promote-audit`. Project/context/inspect commands still fall back to legacy command/checkpoint docs.
 
 ### New Files To Copy
 
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-preflight.yaml`
+- `.claude/runtime/commands/cc-propose.yaml`
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/runtime/commands/cc-archive.yaml`
+- `.claude/runtime/commands/cc-promote-audit.yaml`
+- `docs/examples/`
+- `docs/adoption/`
+- `docs/maintenance/`
 - `.claude/skills/cc-harness/`
-- `.claude/scripts/cc-schema-check`
-- `.claude/scripts/cc-role-check`
-- `.claude/scripts/cc-eval`
-- `.claude/evals/`
-- `.claude/VERSION`
-- `.claude/CHANGELOG.md`
-- `.claude/UPGRADE.md`
 
 If the target project wants fixture-based Harness regression checks, also copy:
 
@@ -21,11 +26,14 @@ If the target project wants fixture-based Harness regression checks, also copy:
 
 ### Existing Files To Merge
 
+- `.claude/workflows/cc-workflow.yaml`
+- `.claude/harness.config.yaml`
 - `.claude/scripts/cc-verify`
 - `.claude/scripts/cc-lint`
-- `.claude/harness.config.yaml`
+- `.claude/scripts/cc-role-check`
+- `.claude/scripts/cc-sync-check`
 
-Preserve any project-local edits while adding the new validation command entries.
+Preserve any project-local edits while merging the new runtime paths and docs directory layout.
 
 ### Post-Upgrade Checks
 
@@ -41,4 +49,5 @@ Run from the Golang project root:
 
 - Existing fenced metadata blocks remain supported.
 - New documents may use YAML frontmatter, but migration is not required.
-- The new role check is opt-in through `cc-verify --command <cc-command>` or direct `cc-role-check` usage.
+- `cc-preflight`, the full main change lifecycle, and `cc-promote-audit` should now read `.claude/runtime/*` first.
+- Commands without runtime manifests continue to use legacy `.claude/commands/*` and `.claude/checkpoints/*` as fallback.

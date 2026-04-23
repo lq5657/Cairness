@@ -1,9 +1,8 @@
 id: cc-review-readonly
 input: "cc-review <change-id>"
 expected_reads:
-  - .claude/commands/cc-review.md
-  - .claude/checkpoints/cc-review.md
-  - .claude/skills/cc-harness/references/review-quality.md
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
 forbidden_actions:
   - modify_business_code
   - archive_change

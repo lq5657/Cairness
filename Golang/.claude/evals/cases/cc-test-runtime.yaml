@@ -1,0 +1,11 @@
+id: cc-test-runtime
+input: "cc-test <change-id> --mode supplement"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-test.yaml
+forbidden_actions:
+  - use_cc_test_as_default_apply_minimum_verification
+  - mark_mapping_closed_without_evidence
+expected_checks:
+  - .claude/scripts/cc-verify --change <change-id>
+rubric: default

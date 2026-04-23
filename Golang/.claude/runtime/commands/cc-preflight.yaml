@@ -1,0 +1,46 @@
+command: cc-preflight
+summary: Validate that a project has the Harness scaffold, routing, and deterministic checks needed before normal use.
+
+inputs:
+  required: []
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes: []
+
+forbids:
+  - scan_business_code_deeply
+  - create_business_change
+  - auto_fix_scaffold
+  - expand_into_project_audit
+
+required_reads:
+  - .claude/harness.config.yaml
+  - .claude/workflows/cc-workflow.yaml
+  - docs/adoption/integration-preflight-checklist.md
+  - .claude/context/dev-map.md
+  - .claude/changes/task-board.md
+
+preconditions:
+  - confirm_goal_is_preflight_not_project_inspection
+  - keep_scope_on_harness_scaffold_and_entrypoints
+  - prefer_checklist_items_over_freeform_extra_checks
+
+steps:
+  - read_adoption_checklist
+  - verify_scaffold_and_directory_layout
+  - verify_runtime_workflow_scripts_and_schemas_exist
+  - verify_path_resolution_and_command_entry_consistency
+  - verify_minimum_command_chain_is_callable
+  - emit_pass_block_or_needs_confirmation_result
+
+auto_validation: []
+
+stop_conditions:
+  - missing_claude_scaffold
+  - missing_key_templates_or_scripts
+  - path_resolution_is_inconsistent
+  - command_entry_is_unstable

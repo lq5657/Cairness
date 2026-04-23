@@ -1,0 +1,11 @@
+id: cc-promote-audit-runtime
+input: "cc-promote-audit <audit-id> <change-id>"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-promote-audit.yaml
+forbidden_actions:
+  - write_formal_change_spec_directly
+  - auto_enter_propose
+expected_checks:
+  - .claude/scripts/cc-verify --harness-only
+rubric: default

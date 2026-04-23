@@ -1,0 +1,80 @@
+command: cc-test
+summary: Add test design and fresh evidence to supplement or recover change validation without replacing apply minimum verification.
+
+inputs:
+  required:
+    - change_id
+  optional:
+    - mode
+
+state:
+  change_from:
+    - apply
+    - review
+  change_to: unchanged
+
+writes:
+  - test_files
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/task-board.md
+
+forbids:
+  - use_cc_test_as_default_apply_minimum_verification
+  - fabricate_red_green
+  - mark_mapping_closed_without_evidence
+
+required_reads:
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/changes/task-board.md
+  - .claude/rules/testing-strategy.md
+  - .claude/rules/verification.md
+
+optional_reads:
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/changes/<change-id>/log.md
+
+preconditions:
+  - spec_status_is_apply_or_review
+  - choose_mode_supplement_or_recovery
+  - if_recovery_then_blocked_or_partial_record_exists
+  - distinguish_apply_completed_evidence_from_test_supplement
+  - read_validation_mapping_and_task_test_requirements
+
+topic_rules:
+  always:
+    - .claude/rules/testing-strategy.md
+    - .claude/rules/verification.md
+  when_change_touches_database:
+    - .claude/rules/database-changes.md
+  when_change_touches_external_contract:
+    - .claude/rules/api-compatibility.md
+  when_change_touches_configuration:
+    - .claude/rules/configuration.md
+  when_change_touches_observability:
+    - .claude/rules/observability.md
+  when_change_touches_release_or_rollback:
+    - .claude/rules/release.md
+  when_change_touches_security_boundary:
+    - .claude/rules/security.md
+
+steps:
+  - confirm_test_mode
+  - choose_test_levels_and_explain_why
+  - write_or_update_test_spec
+  - generate_fresh_test_evidence
+  - update_mapping_status_to_test_covered_or_gap
+  - sync_task_board
+  - run_change_validation
+
+auto_validation:
+  - .claude/scripts/cc-verify --change <change-id>
+
+stop_conditions:
+  - missing_required_argument
+  - invalid_mode
+  - recovery_mode_without_blocked_or_partial_record
+  - evidence_missing_for_declared_level
+  - change_validation_failed

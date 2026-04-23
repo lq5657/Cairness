@@ -1,0 +1,89 @@
+command: cc-apply
+summary: Implement one formal change task-by-task and promote the change to review only after evidence is fresh.
+
+inputs:
+  required:
+    - change_id
+
+state:
+  change_from:
+    - propose
+    - apply
+  change_to: review
+
+writes:
+  - task_declared_code_files
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/context/dev-map.md
+  - .claude/changes/task-board.md
+
+forbids:
+  - out_of_scope_change
+  - defer_minimum_verification_to_cc_test
+  - mark_done_without_evidence
+  - auto_push_or_merge
+
+required_reads:
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/context/dev-map.md
+  - .claude/changes/task-board.md
+  - .claude/harness.config.yaml
+
+preconditions:
+  - spec_and_tasks_exist
+  - hard_gate_confirmed_for_current_revisions
+  - depends_on_satisfied
+  - branch_matches_change_and_is_not_main
+  - save_pre_apply_baseline_before_first_code_edit
+  - only_one_task_may_be_in_progress
+
+topic_rules:
+  always:
+    - .claude/rules/verification.md
+    - .claude/rules/coding-style.md
+  when_task_touches_logic_bug_chain_or_data_access:
+    - .claude/rules/testing-strategy.md
+  when_task_touches_database:
+    - .claude/rules/database-changes.md
+  when_task_touches_external_contract:
+    - .claude/rules/api-compatibility.md
+  when_task_touches_configuration:
+    - .claude/rules/configuration.md
+  when_task_touches_observability:
+    - .claude/rules/observability.md
+  when_task_touches_release_or_rollback:
+    - .claude/rules/release.md
+  when_task_touches_security_boundary:
+    - .claude/rules/security.md
+  when_change_has_dependency_or_parallelism_constraints:
+    - .claude/rules/git-workflow.md
+
+steps:
+  - mark_change_apply
+  - select_one_ready_task
+  - review_task_goal_scope_acceptance_and_verification
+  - implement_only_declared_scope
+  - sync_change_docs_and_governance_assets
+  - run_post_task_validation
+  - compare_baseline_delta
+  - mark_task_done_only_with_fresh_evidence
+  - repeat_until_all_tasks_closed
+  - run_final_change_validation
+  - promote_change_to_review
+
+auto_validation:
+  - .claude/scripts/cc-verify --json --output .claude/changes/<change-id>/baseline/pre-apply.json --change <change-id>
+  - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
+  - .claude/scripts/cc-verify --change <change-id>
+
+stop_conditions:
+  - missing_required_argument
+  - hard_gate_not_confirmed
+  - baseline_capture_failed
+  - minimum_verification_missing
+  - delta_reports_new_failure
+  - final_validation_failed

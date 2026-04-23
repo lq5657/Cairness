@@ -9,8 +9,12 @@ git:
 
 workflow:
   definition: ".claude/workflows/cc-workflow.yaml"
-  lifecycle_state_machine: ".claude/rules/lifecycle-state-machine.md"
-  command_contracts: ".claude/rules/command-contracts.md"
+
+runtime:
+  core: ".claude/runtime/core.yaml"
+  command_dir: ".claude/runtime/commands"
+  legacy_command_dir: ".claude/commands"
+  legacy_checkpoint_dir: ".claude/checkpoints"
 
 memory:
   project_context: ".claude/context/project-context.md"
@@ -18,8 +22,10 @@ memory:
   task_board: ".claude/changes/task-board.md"
   policy: ".claude/rules/memory-policy.md"
 
-roles:
-  contracts: ".claude/rules/role-contracts.md"
+docs:
+  examples_dir: "docs/examples"
+  adoption_dir: "docs/adoption"
+  maintenance_dir: "docs/maintenance"
 
 validation:
   auto_run: true

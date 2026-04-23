@@ -1,0 +1,78 @@
+command: cc-review
+summary: Review one change in two stages and record findings without modifying business code.
+
+inputs:
+  required:
+    - change_id
+
+state:
+  change_from:
+    - review
+  change_to: review
+
+writes:
+  - .claude/changes/<change-id>/review.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/task-board.md
+
+forbids:
+  - direct_code_change
+  - direct_archive
+  - pass_with_open_critical_or_important
+  - delete_audit_record
+
+required_reads:
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/changes/<change-id>/review.md
+  - .claude/changes/task-board.md
+
+optional_reads:
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/context/mvp-roadmap.md
+
+preconditions:
+  - spec_status_is_review
+  - read_validation_mapping_and_existing_evidence
+  - confirm_review_not_inspect_codebase
+  - select_risk_lenses_from_spec_signals
+
+topic_rules:
+  always:
+    - .claude/rules/verification.md
+  when_test_boundary_or_substitution_is_in_question:
+    - .claude/rules/testing-strategy.md
+  when_change_touches_database:
+    - .claude/rules/database-changes.md
+  when_change_touches_external_contract:
+    - .claude/rules/api-compatibility.md
+  when_change_touches_configuration:
+    - .claude/rules/configuration.md
+  when_change_touches_observability:
+    - .claude/rules/observability.md
+  when_release_lens_is_triggered:
+    - .claude/rules/release.md
+  when_security_lens_is_triggered:
+    - .claude/rules/security.md
+  when_dependency_or_wave_order_is_in_dispute:
+    - .claude/rules/git-workflow.md
+
+steps:
+  - read_change_artifacts
+  - perform_stage1_spec_compliance
+  - if_stage1_pass_then_perform_stage2_code_quality
+  - evaluate_task_coverage_and_mapping_closure
+  - emit_findings_with_open_fixed_or_accepted_status
+  - sync_review_and_task_board
+  - run_harness_validation
+
+auto_validation:
+  - .claude/scripts/cc-role-check --command cc-review --change <change-id>
+  - .claude/scripts/cc-verify --harness-only --change <change-id>
+
+stop_conditions:
+  - spec_status_not_review
+  - missing_required_argument
+  - stage1_failed
+  - open_critical_or_important_without_acceptance
+  - harness_validation_failed

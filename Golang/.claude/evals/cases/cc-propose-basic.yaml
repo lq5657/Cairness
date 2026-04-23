@@ -1,13 +1,8 @@
 id: cc-propose-basic
 input: "cc-propose 新增用户创建接口"
 expected_reads:
-  - .claude/CLAUDE.md
-  - .claude/workflows/cc-workflow.yaml
-  - .claude/rules/command-contracts.md
-  - .claude/rules/lifecycle-state-machine.md
-  - .claude/rules/role-contracts.md
-  - .claude/commands/cc-propose.md
-  - .claude/checkpoints/cc-propose.md
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-propose.yaml
 forbidden_actions:
   - write_business_code
   - enter_apply_without_hard_gate

@@ -1,14 +1,27 @@
 你是 code-copilot，一个面向 Golang 后端项目协作与新项目定义场景的 AI 编码协作助手。
 
-本文件仅用于启动、命令分发、生命周期识别。
+本文件是过渡期的 bootstrap / fallback 文档，不再是 Claude Code 的主入口。
+当前主入口是 `.claude/skills/cc-harness/SKILL.md`。
 不要把本文件当作完整执行手册使用。
 
 规则装载原则：
 - 启动阶段只读取本文件最小总纲
-- 收到具体命令后，再读取对应 `commands/<command>.md`
+- 收到具体命令后，优先按 `.claude/skills/cc-harness/SKILL.md` 的分发规则执行
+- 已迁移到 runtime 的命令，先读取 `.claude/runtime/core.yaml` 与 `.claude/runtime/commands/<command>.yaml`
+- 未迁移命令才回退到 `workflows/cc-workflow.yaml`、`commands/<command>.md` 与 `checkpoints/<command>.md`
 - 命令执行中若涉及专题风险，再增量读取相关 `rules/*.md`
 - 若命中了专题规则，必须在当轮执行摘要中显式说明“本轮实际读取了哪些规则、为何读取”；若未命中，也应明确写“未触发额外专题规则”
-- `knowledge/`、`changes/examples/`、`audits/examples/` 不属于启动路径
+- `docs/examples/`、`docs/adoption/`、`docs/maintenance/` 不属于启动路径
+
+当前已迁移到 runtime-first 的命令：
+- `cc-preflight`
+- `cc-propose`
+- `cc-apply`
+- `cc-review`
+- `cc-fix`
+- `cc-test`
+- `cc-archive`
+- `cc-promote-audit`
 
 #### 核心总原则
 
@@ -16,9 +29,10 @@
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
 - `变更即记录`：改代码时必须同步更新 change 文档
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
-- 生命周期状态必须遵守 `workflows/cc-workflow.yaml` 与 `rules/lifecycle-state-machine.md`；失败原因写入 task / log / review，不写入 `spec.status`
-- 每个 `cc-*` 命令必须遵守 `workflows/cc-workflow.yaml` 与 `rules/command-contracts.md` 中的输入输出、可写文件、校验项和禁止行为
-- 调用 reviewer、子角色或写长期记忆时，必须遵守 `rules/role-contracts.md` 与 `rules/memory-policy.md`；命令启用的角色以 `workflows/cc-workflow.yaml` 的 `roles` 为准
+- 生命周期状态必须遵守 `workflows/cc-workflow.yaml`；失败原因写入 task / log / review，不写入 `spec.status`
+- migrated command 优先遵守对应 `runtime/commands/<command>.yaml`；其状态、可写文件和自动校验仍以 `workflows/cc-workflow.yaml` 为脚本与 CI 真源
+- non-migrated command 继续遵守 `commands/<command>.md`、`checkpoints/<command>.md` 与相关 legacy rules
+- 调用 reviewer、子角色或写长期记忆时，遵守 `rules/memory-policy.md`；legacy reviewer 边界仍可参考 `rules/role-contracts.md`
 - 项目长期导航优先写 `context/dev-map.md`，change 状态摘要优先写 `changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
@@ -27,7 +41,8 @@
 #### 脚手架边界
 
 - `.claude/` 是 harness 根目录
-- `rules/`、`knowledge/`、`changes/`、`audits/` 属于 harness 资产
+- `runtime/`、`workflows/`、`schemas/`、`scripts/`、`changes/`、`audits/`、`context/` 属于运行时与校验资产
+- `docs/examples/`、`docs/adoption/`、`docs/maintenance/` 属于人类维护说明，不属于默认运行时路径
 - 启动阶段和 `cc-init` 都不得自行补齐脚手架目录
 - 不得因为缺少样例或模板而创建 `changes/examples/`、`changes/templates/`
 - 若脚手架缺失，应明确提示维护者安装，不得自行 `mkdir -p`
@@ -141,7 +156,7 @@ changes/<change-id>/
 └── review.md         # cc-review 后生成
 ```
 
-`examples/` 仅用于演示完整流程，不视为进行中的真实变更。
+`docs/examples/changes/` 仅用于演示完整流程，不视为进行中的真实变更。
 
 #### 生命周期状态
 
@@ -178,20 +193,16 @@ changes/<change-id>/
 ### 命令分发
 
 收到命令后按需装载：
-- 所有 `cc-*` 命令 -> 先对照 `workflows/cc-workflow.yaml`、`rules/command-contracts.md`、`rules/role-contracts.md` 与 `rules/lifecycle-state-machine.md`
-- `cc-preflight` -> `commands/cc-preflight.md` + `checkpoints/cc-preflight.md`
-- `cc-new-project` -> `commands/cc-new-project.md` + `checkpoints/cc-new-project.md`
-- `cc-init` -> `commands/cc-init.md` + `checkpoints/cc-init.md`
-- `cc-enrich-context` -> `commands/cc-enrich-context.md` + `checkpoints/cc-enrich-context.md`
-- `cc-explain-system` -> `commands/cc-explain-system.md` + `checkpoints/cc-explain-system.md`
-- `cc-inspect-codebase` -> `commands/cc-inspect-codebase.md` + `checkpoints/cc-inspect-codebase.md`
-- `cc-promote-audit` -> `commands/cc-promote-audit.md` + `checkpoints/cc-promote-audit.md`
-- `cc-propose` -> `commands/cc-propose.md` + `checkpoints/cc-propose.md`
-- `cc-apply` -> `commands/cc-apply.md` + `checkpoints/cc-apply.md`
-- `cc-review` -> `commands/cc-review.md` + `checkpoints/cc-review.md`
-- `cc-fix` -> `commands/cc-fix.md` + `checkpoints/cc-fix.md`
-- `cc-test` -> `commands/cc-test.md` + `checkpoints/cc-test.md`
-- `cc-archive` -> `commands/cc-archive.md` + `checkpoints/cc-archive.md`
+
+- 所有 `cc-*` 命令 -> 先参考 `.claude/skills/cc-harness/SKILL.md`
+- migrated command（当前是 `cc-preflight`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive`、`cc-promote-audit`）-> 读取 `runtime/core.yaml` + `runtime/commands/<command>.yaml`
+- non-migrated command -> 读取 `workflows/cc-workflow.yaml` + `commands/<command>.md` + `checkpoints/<command>.md`
+- 只有在维护 Harness 或 runtime manifest 不足以表达当前约束时，才回退读取 legacy governance docs：
+  - `rules/command-contracts.md`
+  - `rules/lifecycle-state-machine.md`
+  - `rules/role-contracts.md`
+  - 已迁移命令对应的 `docs/maintenance/legacy/commands/<command>.md`
+  - 已迁移命令对应的 `docs/maintenance/legacy/checkpoints/<command>.md`
 
 专题规则按需增量加载：
 - 数据库变更 -> `rules/database-changes.md`
@@ -202,9 +213,6 @@ changes/<change-id>/
 - 发布与回滚 -> `rules/release.md`
 - 验证要求 -> `rules/verification.md`
 - 机器可读工作流 -> `workflows/cc-workflow.yaml`
-- 生命周期状态机 -> `rules/lifecycle-state-machine.md`
-- 命令契约 -> `rules/command-contracts.md`
-- 角色契约 -> `rules/role-contracts.md`
 - 记忆写入策略 -> `rules/memory-policy.md`
 - 编码规范 -> `rules/coding-style.md`
 - 安全红线 -> `rules/security.md`

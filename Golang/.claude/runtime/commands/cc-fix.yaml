@@ -1,0 +1,86 @@
+command: cc-fix
+summary: Resolve review findings with minimal scoped fixes and keep the change in review.
+
+inputs:
+  required:
+    - change_id
+  optional:
+    - fix_description
+
+state:
+  change_from:
+    - review
+  change_to: review
+
+writes:
+  - finding_related_code_files
+  - .claude/changes/<change-id>/review.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/context/dev-map.md
+  - .claude/changes/task-board.md
+
+forbids:
+  - handle_unrecorded_scope
+  - bypass_review
+  - delete_open_finding_record
+  - mark_fixed_without_verification
+
+required_reads:
+  - .claude/changes/<change-id>/review.md
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/tasks.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/task-board.md
+
+optional_reads:
+  - .claude/changes/<change-id>/test-spec.md
+  - .claude/context/dev-map.md
+
+preconditions:
+  - select_open_findings_only_by_default
+  - restate_finding_in_technical_terms
+  - confirm_finding_still_applies_or_record_why_not
+  - separate_symptom_failure_point_and_root_cause
+  - define_minimal_fix_hypothesis
+
+topic_rules:
+  always:
+    - .claude/rules/verification.md
+  when_test_boundary_or_substitution_is_in_question:
+    - .claude/rules/testing-strategy.md
+  when_finding_touches_database:
+    - .claude/rules/database-changes.md
+  when_finding_touches_external_contract:
+    - .claude/rules/api-compatibility.md
+  when_finding_touches_configuration:
+    - .claude/rules/configuration.md
+  when_finding_touches_observability:
+    - .claude/rules/observability.md
+  when_finding_touches_release_or_rollback:
+    - .claude/rules/release.md
+  when_finding_touches_security_boundary:
+    - .claude/rules/security.md
+  when_finding_touches_dependency_or_wave_order:
+    - .claude/rules/git-workflow.md
+
+steps:
+  - load_open_findings
+  - validate_problem_still_exists
+  - implement_minimal_fix
+  - rerun_verification_without_lowering_required_level
+  - update_review_log_and_change_docs
+  - sync_dev_map_if_boundaries_changed
+  - sync_task_board
+  - run_change_validation
+
+auto_validation:
+  - .claude/scripts/cc-verify --change <change-id>
+
+stop_conditions:
+  - missing_required_argument
+  - finding_not_open_and_not_explicitly_reframed
+  - minimal_fix_hypothesis_not_clear
+  - verification_failed

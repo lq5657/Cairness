@@ -16,15 +16,20 @@ def read(path: Path) -> str:
 
 
 def parse_meta(text: str) -> dict[str, str]:
-    match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
     meta: dict[str, str] = {}
-    if not match:
-        return meta
-    for line in match.group(1).splitlines():
+    frontmatter = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    if frontmatter:
+        lines = frontmatter.group(1).splitlines()
+    else:
+        match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
+        if not match:
+            return meta
+        lines = match.group(1).splitlines()
+    for line in lines:
         if ":" not in line:
             continue
         key, value = line.split(":", 1)
-        meta[key.strip()] = value.strip().split("#", 1)[0].strip()
+        meta[key.strip()] = value.strip().split("#", 1)[0].strip().strip('"').strip("'")
     return meta
 
 

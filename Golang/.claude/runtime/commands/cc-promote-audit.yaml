@@ -1,0 +1,57 @@
+command: cc-promote-audit
+summary: Bridge selected audit findings into a bounded change candidate without creating formal change docs.
+
+inputs:
+  required:
+    - audit_id
+    - change_id
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .claude/audits/<audit-id>/to-change.md
+  - .claude/changes/task-board.md
+
+forbids:
+  - copy_entire_audit_verbatim
+  - write_formal_change_spec_directly
+  - merge_unrelated_findings
+  - auto_enter_propose
+
+required_reads:
+  - .claude/audits/<audit-id>/report.md
+  - .claude/changes/task-board.md
+
+optional_reads:
+  - .claude/runtime/commands/cc-propose.yaml
+
+preconditions:
+  - audit_report_exists
+  - target_change_id_is_decided
+  - clarify_this_is_bridge_scope_not_implementation
+  - converge_findings_into_one_bounded_change_or_split
+
+topic_rules:
+  when_verification_level_hint_is_needed:
+    - .claude/rules/verification.md
+  when_test_level_hint_is_needed:
+    - .claude/rules/testing-strategy.md
+
+steps:
+  - select_findings_for_this_change
+  - define_in_scope_and_out_of_scope
+  - map_findings_to_background_risks_and_tasks
+  - propose_validation_level_hint
+  - write_to_change_bridge_note
+  - update_task_board_backlog_candidate
+
+auto_validation: []
+
+stop_conditions:
+  - missing_required_argument
+  - audit_report_missing
+  - scope_not_converged
+  - findings_should_be_split_but_are_still_mixed

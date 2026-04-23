@@ -1,0 +1,11 @@
+id: cc-fix-runtime
+input: "cc-fix <change-id>"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+forbidden_actions:
+  - delete_open_finding_record
+  - mark_fixed_without_verification
+expected_checks:
+  - .claude/scripts/cc-verify --change <change-id>
+rubric: default

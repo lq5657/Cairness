@@ -1,0 +1,11 @@
+id: cc-preflight-runtime
+input: "cc-preflight"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-preflight.yaml
+forbidden_actions:
+  - create_business_change
+  - expand_into_project_audit
+expected_checks:
+  - .claude/scripts/cc-verify --harness-only
+rubric: default

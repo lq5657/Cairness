@@ -1,14 +1,14 @@
 # Machine-readable workflow definition for all cc-* commands.
-# Keep this file synchronized with rules/lifecycle-state-machine.md and
-# rules/command-contracts.md. cc-lint checks command coverage and core
-# state invariants.
+# This file is the script and CI truth for lifecycle, write scope,
+# validation wiring, and command coverage. Runtime manifests may
+# provide slimmer execution guidance for high-frequency commands.
 
 version: 1
 workflow_id: golang-harness-cc-workflow
 
 sources:
-  lifecycle_state_machine: rules/lifecycle-state-machine.md
-  command_contracts: rules/command-contracts.md
+  runtime_core: runtime/core.yaml
+  maintenance_guide: ../docs/maintenance/runtime-model.md
 
 states:
   change: [propose, apply, review, done]

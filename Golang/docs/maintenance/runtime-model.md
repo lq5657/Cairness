@@ -1,0 +1,110 @@
+# Runtime Model
+
+## 目标
+
+把运行时读上下文和维护时读说明拆开：
+
+- 运行时更轻
+- Claude 不容易漏读关键规则
+- 脚本校验链路保持完整
+
+## 当前分层
+
+### Runtime
+
+运行时优先读：
+
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/<command>.yaml`
+
+当前已迁移：
+
+- `cc-preflight`
+- `cc-propose`
+- `cc-apply`
+- `cc-review`
+- `cc-fix`
+- `cc-test`
+- `cc-archive`
+- `cc-promote-audit`
+
+### Script / CI Truth
+
+脚本和 CI 仍然围绕：
+
+- `.claude/workflows/cc-workflow.yaml`
+- `.claude/harness.config.yaml`
+- `.claude/schemas/*.json`
+- `.claude/scripts/*`
+- `.claude/evals/*`
+- `fixtures/*`
+
+### Human Docs
+
+维护说明统一放在：
+
+- `docs/examples/*`
+- `docs/adoption/*`
+- `docs/maintenance/*`
+
+## 技术取舍
+
+### 为什么 workflow 仍保留
+
+`cc-workflow.yaml` 仍是脚本和 CI 的总真源。`cc-role-check`、`cc-lint`、`cc-verify` 需要一个稳定的机器可读入口来判断：
+
+- 状态迁移
+- 写权限
+- 自动校验
+- 命令覆盖
+
+runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验职责。
+
+### 为什么 legacy docs 还没全部删
+
+项目定义、context 和 inspect 类命令还没完成 runtime 化。当前保留 legacy docs，是为了在迁移期继续给低频命令提供 fallback。
+
+当前策略：
+
+- migrated command：只读 runtime
+- non-migrated command：workflow + legacy docs fallback
+
+## 迁移状态
+
+### 已迁出运行时主路径
+
+- `docs/examples/changes/*`
+- `docs/examples/audits/*`
+- `docs/examples/context/*`
+- `docs/adoption/pilot-checklist.md`
+- `docs/adoption/integration-preflight-checklist.md`
+- `docs/maintenance/common-integration-pitfalls.md`
+- `.claude/agents/*`
+- `.claude/skills/cc-harness/references/*`
+- 已迁移命令的 legacy command/checkpoint：`docs/maintenance/legacy/*`
+
+### 仍在 `.claude/` 的 legacy 文档
+
+- 未迁移命令的 `.claude/commands/*`
+- 未迁移命令的 `.claude/checkpoints/*`
+- `.claude/rules/command-contracts.md`
+- `.claude/rules/lifecycle-state-machine.md`
+- `.claude/rules/role-contracts.md`
+
+这些文档现在的定位是：
+
+- fallback 执行说明
+- 迁移期参考
+- 人类维护辅助
+
+不再是 migrated command 的默认运行时读取面。
+
+## 下一步
+
+优先继续迁移：
+
+1. `cc-init`
+2. `cc-enrich-context`
+3. `cc-inspect-codebase`
+4. `cc-new-project`

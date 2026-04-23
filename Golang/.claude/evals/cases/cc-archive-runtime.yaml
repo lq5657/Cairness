@@ -1,0 +1,11 @@
+id: cc-archive-runtime
+input: "cc-archive <change-id>"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-archive.yaml
+forbidden_actions:
+  - business_code_write
+  - archive_with_open_or_blocked_state
+expected_checks:
+  - .claude/scripts/cc-verify --change <change-id>
+rubric: default

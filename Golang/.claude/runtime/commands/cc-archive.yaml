@@ -1,0 +1,58 @@
+command: cc-archive
+summary: Archive a reviewed change, optionally compound reusable knowledge, and set status to done only when closure is clean.
+
+inputs:
+  required:
+    - change_id
+
+state:
+  change_from:
+    - review
+  change_to: done
+
+writes:
+  - .claude/changes/<change-id>/spec.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/task-board.md
+  - .claude/knowledge/*
+
+forbids:
+  - business_code_write
+  - skip_knowledge_decision
+  - archive_with_open_or_blocked_state
+  - set_done_from_other_command
+
+required_reads:
+  - .claude/changes/<change-id>/review.md
+  - .claude/changes/<change-id>/log.md
+  - .claude/changes/task-board.md
+  - .claude/rules/memory-policy.md
+
+optional_reads:
+  - .claude/knowledge/index.md
+
+preconditions:
+  - review_exists_and_allows_archive
+  - spec_status_is_review
+  - no_open_findings_or_blocked_tasks
+  - no_unexplained_gap
+  - fresh_verification_evidence_exists
+  - knowledge_compounding_decision_is_explicit
+
+steps:
+  - classify_knowledge_candidate_as_none_new_or_update
+  - if_knowledge_is_needed_select_destination
+  - rerun_pre_archive_validation
+  - mark_spec_done
+  - sync_log_and_task_board
+  - rerun_post_archive_validation
+
+auto_validation:
+  - .claude/scripts/cc-verify --change <change-id>
+
+stop_conditions:
+  - missing_required_argument
+  - review_not_passed
+  - stale_or_missing_evidence
+  - pre_archive_validation_failed
+  - post_archive_validation_failed

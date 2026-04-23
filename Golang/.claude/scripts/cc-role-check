@@ -6,29 +6,30 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 
-DETERMINISTIC_WRITES = {
-    "cc-preflight": [],
-    "cc-init": [".claude/context/project-context.md", ".claude/context/dev-map.md"],
-    "cc-enrich-context": [".claude/context/project-context.md", ".claude/context/dev-map.md"],
-    "cc-explain-system": [".claude/context/system-overview.md"],
-    "cc-review": [
-        ".claude/changes/<change-id>/review.md",
-        ".claude/changes/<change-id>/log.md",
-        ".claude/changes/task-board.md",
-    ],
-    "cc-promote-audit": [".claude/audits/*/to-change.md", ".claude/changes/task-board.md"],
-    "cc-archive": [
-        ".claude/changes/<change-id>/spec.md",
-        ".claude/changes/<change-id>/log.md",
-        ".claude/changes/task-board.md",
-        ".claude/knowledge/*",
-    ],
+ABSTRACT_WRITE_PATTERNS = {
+    "task_declared_code_files",
+    "finding_related_code_files",
+    "business_code_changes",
+    "test_files",
+    "fixed_code",
+    "change_docs_update",
+    "synced_change_docs",
+    "tests_or_evidence",
+    "change_docs_update",
+    "change_docs_update_if_needed",
+    "task_board_update",
+    "updated_findings",
+    "task_board_archive_state",
+    "optional_commits",
+    "optional_knowledge",
+    "structured_preflight_result",
 }
 
 
@@ -56,6 +57,82 @@ def dirty_paths(project_root: Path) -> list[str]:
     return sorted(paths)
 
 
+def parse_inline_list(raw: str) -> list[str]:
+    value = raw.strip()
+    if value == "[]":
+        return []
+    if not value.startswith("[") or not value.endswith("]"):
+        return []
+    body = value[1:-1].strip()
+    if not body:
+        return []
+    return [item.strip().strip('"').strip("'") for item in body.split(",")]
+
+
+def parse_workflow_commands(text: str) -> dict[str, str]:
+    match = re.search(r"^commands:\s*\n(?P<body>.*)\Z", text, re.S | re.M)
+    if not match:
+        return {}
+    body = match.group("body")
+    matches = list(re.finditer(r"^  (cc-[a-z0-9-]+):\s*$", body, re.M))
+    blocks: dict[str, str] = {}
+    for idx, item in enumerate(matches):
+        start = item.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
+        blocks[item.group(1)] = body[start:end]
+    return blocks
+
+
+def parse_key_value(block: str, key: str) -> str | None:
+    match = re.search(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$", block, re.M)
+    return match.group(1).strip() if match else None
+
+
+def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], bool]:
+    workflow_path = claude_root / "workflows" / "cc-workflow.yaml"
+    if not workflow_path.exists():
+        raise RuntimeError(f"{workflow_path} not found")
+    blocks = parse_workflow_commands(workflow_path.read_text(encoding="utf-8"))
+    if command not in blocks:
+        raise RuntimeError(f"{command} not defined in workflow")
+    writes_value = parse_key_value(blocks[command], "writes")
+    if writes_value is None:
+        raise RuntimeError(f"{command} missing writes field")
+    writes = parse_inline_list(writes_value)
+    has_abstract = any(item in ABSTRACT_WRITE_PATTERNS for item in writes)
+    concrete: list[str] = []
+    for item in writes:
+        if item in ABSTRACT_WRITE_PATTERNS:
+            continue
+        concrete.append(concretize_pattern(item))
+    return concrete, has_abstract
+
+
+def concretize_pattern(pattern: str) -> str:
+    if pattern.startswith(".claude/"):
+        return pattern
+    claude_relative_prefixes = (
+        "changes/",
+        "context/",
+        "audits/",
+        "knowledge/",
+        "rules/",
+        "schemas/",
+        "scripts/",
+        "skills/",
+        "workflows/",
+        "runtime/",
+        "evals/",
+        "CHANGELOG.md",
+        "UPGRADE.md",
+        "VERSION",
+        "harness.config.yaml",
+    )
+    if pattern.startswith(claude_relative_prefixes):
+        return f".claude/{pattern}"
+    return pattern
+
+
 def expand(pattern: str, change_id: str | None) -> str:
     return pattern.replace("<change-id>", change_id or "")
 
@@ -66,15 +143,8 @@ def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
 
 
 def build_report(command: str, change_id: str | None, project_root: Path) -> dict[str, Any]:
-    if command not in DETERMINISTIC_WRITES:
-        return {
-            "tool": "cc-role-check",
-            "status": "skipped",
-            "reason": f"{command} has task-dependent or broad write scope",
-            "dirty_paths": [],
-            "violations": [],
-        }
-    patterns = DETERMINISTIC_WRITES[command]
+    claude_root = project_root / ".claude"
+    patterns, has_abstract = load_command_writes(claude_root, command)
     if any("<change-id>" in pattern for pattern in patterns) and not change_id:
         return {
             "tool": "cc-role-check",
@@ -82,6 +152,15 @@ def build_report(command: str, change_id: str | None, project_root: Path) -> dic
             "reason": f"{command} requires --change",
             "dirty_paths": [],
             "violations": [{"code": "E_ROLE001", "path": "", "message": "missing --change"}],
+        }
+    if has_abstract:
+        return {
+            "tool": "cc-role-check",
+            "status": "skipped",
+            "reason": f"{command} has task-dependent or abstract write scope",
+            "allowed": [expand(pattern, change_id) for pattern in patterns],
+            "dirty_paths": [],
+            "violations": [],
         }
     paths = dirty_paths(project_root)
     violations = [
