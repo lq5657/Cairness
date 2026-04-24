@@ -64,7 +64,18 @@ WORKFLOW_REQUIRED_COMMAND_KEYS = [
 ]
 WORKFLOW_SPECIAL_FROM_STATES = {"none"}
 WORKFLOW_SPECIAL_TO_STATES = {"unchanged"}
-REQUIRED_RUNTIME_COMMANDS = {"cc-preflight", "cc-propose", "cc-apply", "cc-review", "cc-fix", "cc-test", "cc-archive", "cc-promote-audit"}
+REQUIRED_RUNTIME_COMMANDS = {
+    "cc-preflight",
+    "cc-init",
+    "cc-inspect-codebase",
+    "cc-propose",
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+    "cc-archive",
+    "cc-promote-audit",
+}
 TOPIC_RULE_KEYS = {
     "verification",
     "testing_strategy",
@@ -353,6 +364,11 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         errors.append(f"{runtime_dir}: missing runtime command directory")
         return
     for command in sorted(REQUIRED_RUNTIME_COMMANDS):
+        if re.search(rf"^\s+-\s+{re.escape(command)}\s*$", core_text, re.M) is None:
+            errors.append(f"{core_path}: migrated_commands missing {command}")
+        expected_mapping = rf"^\s+{re.escape(command)}:\s*\.claude/runtime/commands/{re.escape(command)}\.yaml\s*$"
+        if re.search(expected_mapping, core_text, re.M) is None:
+            errors.append(f"{core_path}: runtime_commands missing {command}")
         path = runtime_dir / f"{command}.yaml"
         if not path.exists():
             errors.append(f"{path}: missing migrated runtime command")

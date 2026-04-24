@@ -1,5 +1,43 @@
 # Upgrade Guide
 
+## Upgrade To 0.6.0
+
+This release expands runtime-first coverage to `cc-init` and `cc-inspect-codebase`. Runtime-first commands now include preflight, basic context initialization, brownfield audit, the full main change lifecycle, and audit promotion.
+
+### New Files To Copy
+
+- `.claude/runtime/commands/cc-init.yaml`
+- `.claude/runtime/commands/cc-inspect-codebase.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/CLAUDE.md`
+- `.claude/scripts/cc-lint`
+- `.claude/evals/cases/cc-init-runtime.yaml`
+- `.claude/evals/cases/cc-inspect-codebase-runtime.yaml`
+- `docs/adoption/integration-preflight-checklist.md`
+- `docs/maintenance/runtime-model.md`
+
+Preserve project-local context files and command docs while merging the new runtime paths.
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Existing legacy command/checkpoint docs remain valid fallback references, but `cc-init` and `cc-inspect-codebase` should read `.claude/runtime/*` first.
+- `cc-init` remains context-only and must not install or repair scaffold assets.
+- `cc-inspect-codebase` remains audit-only and must not create change docs or modify business code.
+
 ## Upgrade To 0.5.0
 
 This release expands runtime-first coverage to `cc-preflight` and `cc-promote-audit`. Runtime-first commands are now `cc-preflight`, the full main change lifecycle, and `cc-promote-audit`. Project/context/inspect commands still fall back to legacy command/checkpoint docs.

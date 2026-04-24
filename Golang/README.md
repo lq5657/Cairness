@@ -17,13 +17,14 @@
 ```text
 .claude/skills/cc-harness/SKILL.md
 .claude/runtime/core.yaml
-.claude/runtime/commands/cc-propose.yaml
-.claude/runtime/commands/cc-apply.yaml
+.claude/runtime/commands/<command>.yaml
 ```
 
 当前已经完成 runtime slimming 的命令：
 
 - `cc-preflight`
+- `cc-init`
+- `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
 - `cc-review`
@@ -97,7 +98,7 @@ docs/maintenance/*
 - 未迁移命令的 fallback 仍保留在 `.claude/commands/*` 与 `.claude/checkpoints/*`
 - 已迁移命令的 legacy 参考文档已迁到 `docs/maintenance/legacy/`
 
-原因很直接：项目定义、context 和 inspect 类命令还没全部迁进 runtime manifest。当前策略是：
+原因很直接：项目定义、context enrichment 和 explain 类命令还没全部迁进 runtime manifest。当前策略是：
 
 - migrated command：runtime first
 - non-migrated command：workflow + legacy docs fallback
@@ -173,6 +174,20 @@ docs/maintenance/*
 - `.claude/runtime/core.yaml`
 - `.claude/runtime/commands/cc-preflight.yaml`
 
+### `cc-init`
+
+默认读取：
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-init.yaml`
+
+### `cc-inspect-codebase`
+
+默认读取：
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-inspect-codebase.yaml`
+
 ### `cc-promote-audit`
 
 默认读取：
@@ -206,7 +221,6 @@ docs/maintenance/*
 
 下一轮更适合继续迁这些低频但仍有上下文收益的命令：
 
-1. `cc-init`
-2. `cc-enrich-context`
-3. `cc-inspect-codebase`
-4. `cc-new-project`
+1. `cc-enrich-context`
+2. `cc-explain-system`
+3. `cc-new-project`

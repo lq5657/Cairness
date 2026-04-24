@@ -1,0 +1,13 @@
+id: cc-inspect-codebase-runtime
+input: "cc-inspect-codebase architecture internal/user"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-inspect-codebase.yaml
+forbidden_actions:
+  - auto_fix
+  - create_change_docs
+  - enter_promote_audit_automatically
+expected_checks:
+  - write .claude/audits/<audit-id>/report.md
+  - require evidence for findings
+rubric: default

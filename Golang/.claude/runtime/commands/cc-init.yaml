@@ -1,0 +1,51 @@
+command: cc-init
+summary: Establish the minimum reusable project fact layer without creating changes, audits, or scaffold assets.
+
+inputs:
+  required: []
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .claude/context/project-context.md
+  - .claude/context/dev-map.md
+
+forbids:
+  - create_scaffold_assets
+  - create_change_or_audit
+  - deep_code_review
+  - expand_into_enrich_explain_or_inspect
+  - record_assumptions_as_facts
+
+required_reads:
+  - .claude/context/project-context.md
+  - .claude/context/dev-map.md
+  - .claude/rules/memory-policy.md
+
+preconditions:
+  - claude_scaffold_exists
+  - confirm_goal_is_basic_fact_initialization
+  - keep_read_scope_low_cost_and_navigation_focused
+  - distinguish_confirmed_facts_from_unknowns
+  - do_not_install_or_repair_harness_scaffold
+
+steps:
+  - verify_scaffold_and_context_files
+  - identify_project_identity_and_runtime_shape
+  - identify_dependency_build_and_start_entries
+  - identify_key_directories_configuration_and_test_entries
+  - record_unknowns_for_unconfirmed_high_cost_context
+  - update_project_context_basic_fact_layer
+  - update_dev_map_basic_navigation
+  - stop_without_entering_other_cc_workflows
+
+auto_validation: []
+
+stop_conditions:
+  - missing_claude_scaffold
+  - project_structure_cannot_support_basic_fact_identification
+  - key_entries_unconfirmed_and_unknowns_not_recorded
+  - requested_scope_is_project_audit_or_system_explanation

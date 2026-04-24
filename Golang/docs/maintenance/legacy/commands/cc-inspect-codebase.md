@@ -163,6 +163,6 @@
 
 ## 需要加载的附加文件
 
-- `checkpoints/cc-inspect-codebase.md`
+- `docs/maintenance/legacy/checkpoints/cc-inspect-codebase.md`
 - `context/project-context.md`
 - 按 `mode` 增量加载相关专题规则

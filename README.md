@@ -14,8 +14,7 @@ Code Spec. 目前主维护资产是 `Golang/` 下这套面向 Claude Code 的 Sp
 
 - `Golang/.claude/skills/cc-harness/SKILL.md`
 - `Golang/.claude/runtime/core.yaml`
-- `Golang/.claude/runtime/commands/cc-propose.yaml`
-- `Golang/.claude/runtime/commands/cc-apply.yaml`
+- `Golang/.claude/runtime/commands/<command>.yaml`
 
 ### 脚本和 CI 真源
 

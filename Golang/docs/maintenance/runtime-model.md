@@ -21,6 +21,8 @@
 当前已迁移：
 
 - `cc-preflight`
+- `cc-init`
+- `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
 - `cc-review`
@@ -63,7 +65,7 @@ runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验
 
 ### 为什么 legacy docs 还没全部删
 
-项目定义、context 和 inspect 类命令还没完成 runtime 化。当前保留 legacy docs，是为了在迁移期继续给低频命令提供 fallback。
+项目定义、context enrichment 和 explain 类命令还没完成 runtime 化。当前保留 legacy docs，是为了在迁移期继续给低频命令提供 fallback。
 
 当前策略：
 
@@ -104,7 +106,6 @@ runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验
 
 优先继续迁移：
 
-1. `cc-init`
-2. `cc-enrich-context`
-3. `cc-inspect-codebase`
-4. `cc-new-project`
+1. `cc-enrich-context`
+2. `cc-explain-system`
+3. `cc-new-project`

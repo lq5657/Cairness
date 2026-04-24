@@ -1,0 +1,13 @@
+id: cc-init-runtime
+input: "cc-init"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-init.yaml
+forbidden_actions:
+  - create_scaffold_assets
+  - create_change_or_audit
+  - deep_code_review
+expected_checks:
+  - update .claude/context/project-context.md
+  - update .claude/context/dev-map.md
+rubric: default

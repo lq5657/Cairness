@@ -199,7 +199,7 @@
 
 ## 需要加载的附加文件
 
-- `checkpoints/cc-init.md`
+- `docs/maintenance/legacy/checkpoints/cc-init.md`
 - `context/project-context.md`
 - `context/dev-map.md`
 - `rules/memory-policy.md`

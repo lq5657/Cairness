@@ -27,6 +27,8 @@ If a required argument is missing, stop before reading business code or executin
 Runtime-slimmed commands currently are:
 
 - `cc-preflight`
+- `cc-init`
+- `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
 - `cc-review`

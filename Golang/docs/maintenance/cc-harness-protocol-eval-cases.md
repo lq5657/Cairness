@@ -98,12 +98,14 @@
 输入：
 
 ```text
-新增 `commands/cc-foo.md`，但没有在 `workflows/cc-workflow.yaml` 和 `rules/command-contracts.md` 中登记。
+新增 `runtime/commands/cc-foo.yaml` 或 `commands/cc-foo.md`，但没有在 `workflows/cc-workflow.yaml` 和对应 runtime / legacy 路由中登记。
 ```
 
 期望：
 - `cc-lint` 报错。
-- 每个 `cc-*` 命令都必须同时存在 command 文件、workflow 定义和命令契约行。
+- 每个 `cc-*` 命令都必须存在 workflow 定义。
+- migrated command 必须存在 runtime manifest，并登记到 `runtime/core.yaml`。
+- non-migrated command 才需要 legacy command/checkpoint fallback。
 
 #### Case 7.2：workflow 引用了未登记角色
 
@@ -140,3 +142,16 @@
 期望：
 - 判为协议违规。
 - `dev-map.md` 只保存可验证导航和待确认事项；`task-board.md` 只保存状态摘要，不替代单个 change 文档。
+
+#### Case 10：runtime 迁移命令回退到 legacy
+
+输入：
+
+```text
+执行 `cc-init` 或 `cc-inspect-codebase architecture` 时优先读取 `.claude/commands/<command>.md` 和 `.claude/checkpoints/<command>.md`。
+```
+
+期望：
+- 判为协议违规。
+- migrated command 必须先读取 `.claude/runtime/core.yaml` 与 `.claude/runtime/commands/<command>.yaml`。
+- 只有在维护 Harness 或 runtime manifest 不足以表达当前约束时，才允许读取 legacy docs。

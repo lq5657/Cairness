@@ -5,6 +5,8 @@ workflow_definition: .claude/workflows/cc-workflow.yaml
 
 migrated_commands:
   - cc-preflight
+  - cc-init
+  - cc-inspect-codebase
   - cc-propose
   - cc-apply
   - cc-review
@@ -15,6 +17,8 @@ migrated_commands:
 
 runtime_commands:
   cc-preflight: .claude/runtime/commands/cc-preflight.yaml
+  cc-init: .claude/runtime/commands/cc-init.yaml
+  cc-inspect-codebase: .claude/runtime/commands/cc-inspect-codebase.yaml
   cc-propose: .claude/runtime/commands/cc-propose.yaml
   cc-apply: .claude/runtime/commands/cc-apply.yaml
   cc-review: .claude/runtime/commands/cc-review.yaml

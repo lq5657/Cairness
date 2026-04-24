@@ -1,0 +1,63 @@
+command: cc-inspect-codebase
+summary: Perform an explicit evidence-based brownfield codebase audit and write an audit report without fixing code.
+
+inputs:
+  required:
+    - mode
+  optional:
+    - scope
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .claude/audits/<audit-id>/report.md
+
+forbids:
+  - auto_fix
+  - create_change_docs
+  - review_existing_change_implementation
+  - unsupported_findings
+  - enter_promote_audit_automatically
+
+required_reads:
+  - .claude/context/project-context.md
+
+preconditions:
+  - explicit_cc_inspect_codebase_command_received
+  - mode_is_one_of_architecture_logic_observability_test_debt
+  - scope_is_explicit_or_defaults_to_whole_repo
+  - confirm_this_is_not_cc_review_or_cc_init
+  - select_only_mode_relevant_rules_and_code_scope
+
+topic_rules:
+  when_mode_is_architecture:
+    - .claude/rules/coding-style.md
+  when_mode_is_logic:
+    - .claude/rules/testing-strategy.md
+    - .claude/rules/security.md
+  when_mode_is_observability:
+    - .claude/rules/observability.md
+  when_mode_is_test_debt:
+    - .claude/rules/testing-strategy.md
+    - .claude/rules/verification.md
+
+steps:
+  - validate_mode_and_scope
+  - read_project_context
+  - load_minimum_mode_rules
+  - inspect_scope_for_code_config_or_call_chain_evidence
+  - group_findings_by_severity
+  - identify_candidates_for_future_changes
+  - write_audit_report
+  - stop_without_promoting_audit_or_modifying_code
+
+auto_validation: []
+
+stop_conditions:
+  - missing_required_mode
+  - invalid_mode
+  - scope_too_large_without_bounded_plan
+  - evidence_insufficient_for_findings

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - 2026-04-24
+
+- Added runtime manifests for `cc-init` and `cc-inspect-codebase`.
+- Expanded runtime-first coverage to include basic context initialization and brownfield audit flows.
+- Updated docs, eval cases, and lint coverage for the wider runtime surface.
+
 ## 0.5.0 - 2026-04-24
 
 - Added runtime manifests for `cc-preflight` and `cc-promote-audit`.

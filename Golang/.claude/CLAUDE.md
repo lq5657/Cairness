@@ -15,6 +15,8 @@
 
 当前已迁移到 runtime-first 的命令：
 - `cc-preflight`
+- `cc-init`
+- `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
 - `cc-review`
@@ -195,7 +197,7 @@ changes/<change-id>/
 收到命令后按需装载：
 
 - 所有 `cc-*` 命令 -> 先参考 `.claude/skills/cc-harness/SKILL.md`
-- migrated command（当前是 `cc-preflight`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive`、`cc-promote-audit`）-> 读取 `runtime/core.yaml` + `runtime/commands/<command>.yaml`
+- migrated command（当前是 `cc-preflight`、`cc-init`、`cc-inspect-codebase`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive`、`cc-promote-audit`）-> 读取 `runtime/core.yaml` + `runtime/commands/<command>.yaml`
 - non-migrated command -> 读取 `workflows/cc-workflow.yaml` + `commands/<command>.md` + `checkpoints/<command>.md`
 - 只有在维护 Harness 或 runtime manifest 不足以表达当前约束时，才回退读取 legacy governance docs：
   - `rules/command-contracts.md`
