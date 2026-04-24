@@ -57,6 +57,29 @@ topic_rules:
   when_dependency_or_wave_order_is_in_dispute:
     - .claude/rules/git-workflow.md
 
+subagents:
+  enabled: true
+  policy: docs/maintenance/subagent-model.md
+  merge_owner: main_flow
+  final_writes_by: main_flow
+  agents:
+    - name: spec-reviewer
+      role: spec-reviewer
+      mode: read_only
+      trigger: stage1_spec_compliance
+      writes: []
+      output: stage1_review_fragment
+    - name: code-quality-reviewer
+      role: code-quality-reviewer
+      mode: read_only
+      trigger: stage2_after_stage1_pass
+      writes: []
+      output: stage2_review_fragment
+  merge_requirements:
+    - main_flow_writes_review_md
+    - stage2_must_not_run_when_stage1_fails
+    - findings_status_decided_by_main_flow
+
 steps:
   - read_change_artifacts
   - perform_stage1_spec_compliance

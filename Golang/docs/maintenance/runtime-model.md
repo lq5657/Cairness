@@ -18,6 +18,10 @@
 - `.claude/runtime/core.yaml`
 - `.claude/runtime/commands/<command>.yaml`
 
+当命令 manifest 声明 `subagents.enabled: true` 时，额外读取：
+
+- `docs/maintenance/subagent-model.md`
+
 当前已迁移：
 
 - `cc-preflight`
@@ -50,6 +54,8 @@
 - `docs/adoption/*`
 - `docs/maintenance/*`
 
+其中 `docs/maintenance/subagent-model.md` 是子 agent 调度协议，约束主流程、只读 reviewer、scoped worker 和 test verifier 的边界。
+
 ## 技术取舍
 
 ### 为什么 workflow 仍保留
@@ -62,6 +68,15 @@
 - 命令覆盖
 
 runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验职责。
+
+### 为什么 subagent 仍由主流程合并
+
+子 agent 适合独立审查、证据收集、局部实现和验证，但不应拥有生命周期最终解释权。主流程保留最终 merge，是为了保证：
+
+- 状态迁移只发生在命令契约允许的位置
+- 子 agent 不能扩大写权限
+- Findings、验证映射和 task-board 不被多个输出源写散
+- `cc-verify` 与 role/sync/schema check 仍然是完成声明的硬门槛
 
 ### 为什么 legacy docs 还没全部删
 

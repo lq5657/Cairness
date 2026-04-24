@@ -60,6 +60,24 @@ topic_rules:
   when_change_touches_security_boundary:
     - .claude/rules/security.md
 
+subagents:
+  enabled: true
+  policy: docs/maintenance/subagent-model.md
+  merge_owner: main_flow
+  final_writes_by: main_flow
+  agents:
+    - name: test-verifier
+      role: test-verifier
+      mode: scoped_write
+      trigger: design_and_collect_fresh_test_evidence
+      writes:
+        - test_files
+      output: test_plan_evidence_and_mapping_recommendation
+  merge_requirements:
+    - main_flow_updates_test_spec_and_mapping
+    - red_green_or_exception_must_be_recorded
+    - old_evidence_must_not_close_mapping
+
 steps:
   - confirm_test_mode
   - choose_test_levels_and_explain_why

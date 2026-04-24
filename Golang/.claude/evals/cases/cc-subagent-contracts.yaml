@@ -1,0 +1,14 @@
+id: cc-subagent-contracts
+input: "cc-review <change-id> with subagents enabled"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - docs/maintenance/subagent-model.md
+forbidden_actions:
+  - let_subagent_write_final_review
+  - let_subagent_expand_command_write_scope
+  - skip_parent_merge_and_validation
+expected_checks:
+  - .claude/scripts/cc-verify --harness-only
+  - parent command owns final artifacts
+rubric: default

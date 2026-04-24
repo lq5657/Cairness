@@ -1,5 +1,44 @@
 # Upgrade Guide
 
+## Upgrade To 0.7.0
+
+This release adds bounded subagent contracts for the five highest-value commands: `cc-review`, `cc-inspect-codebase`, `cc-test`, `cc-fix`, and `cc-apply`.
+
+### New Files To Copy
+
+- `docs/maintenance/subagent-model.md`
+- `.claude/evals/cases/cc-subagent-contracts.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-inspect-codebase.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/rules/role-contracts.md`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/scripts/cc-lint`
+- `docs/maintenance/runtime-model.md`
+- `README.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Subagents do not expand command write scope.
+- The parent command remains responsible for final artifacts, state transitions, and deterministic checks.
+- `cc-apply` keeps the one-task-in-progress rule. Parallel work is allowed only inside a selected task with explicit disjoint write scopes.
+
 ## Upgrade To 0.6.0
 
 This release expands runtime-first coverage to `cc-init` and `cc-inspect-codebase`. Runtime-first commands now include preflight, basic context initialization, brownfield audit, the full main change lifecycle, and audit promotion.

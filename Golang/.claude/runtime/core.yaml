@@ -35,6 +35,7 @@ governance:
   task_board: .claude/changes/task-board.md
   dev_map: .claude/context/dev-map.md
   memory_policy: .claude/rules/memory-policy.md
+  subagent_policy: docs/maintenance/subagent-model.md
 
 scripts:
   verify: .claude/scripts/cc-verify
@@ -59,3 +60,4 @@ default_runtime_rules:
   - runtime_first_for_migrated_commands
   - do_not_load_legacy_docs_for_migrated_commands_without_need
   - task_board_and_dev_map_are_governance_assets_not_primary_specs
+  - main_flow_owns_subagent_merge_and_final_writes

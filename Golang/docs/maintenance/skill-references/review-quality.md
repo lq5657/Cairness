@@ -9,6 +9,8 @@ Use this reference for `cc-review`, `cc-fix`, `cc-inspect-codebase`, and `cc-pro
 1. Spec Compliance: check missing implementation, extra implementation, misunderstandings, business rules, and external contracts.
 2. Code Quality: only proceed when Stage 1 allows it. Check Critical, Important, and Minor risks.
 
+These stages may run through bounded read-only subagents. The main flow still writes `review.md` and decides final finding status.
+
 `cc-review` must not edit business code. Use `cc-role-check` before finalizing when the worktree may contain edits:
 
 ```bash
@@ -26,6 +28,7 @@ Use this reference for `cc-review`, `cc-fix`, `cc-inspect-codebase`, and `cc-pro
 ## Audit Boundary
 
 - `cc-inspect-codebase` creates `audits/<audit-id>/report.md`; it does not fix code.
+- `cc-inspect-codebase` may use read-only audit subagents for mode/scope evidence collection; the main flow deduplicates findings and writes the final report.
 - `cc-promote-audit` creates `audits/<audit-id>/to-change.md` and task-board candidates; it does not create `changes/<change-id>/spec.md`.
 - Every finding needs concrete evidence: file path, symbol, behavior, command result, or explicit "待确认".
 

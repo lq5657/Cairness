@@ -66,6 +66,37 @@ topic_rules:
   when_finding_touches_dependency_or_wave_order:
     - .claude/rules/git-workflow.md
 
+subagents:
+  enabled: true
+  policy: docs/maintenance/subagent-model.md
+  merge_owner: main_flow
+  final_writes_by: main_flow
+  agents:
+    - name: root-cause-reviewer
+      role: reviewer
+      mode: read_only
+      trigger: confirm_finding_still_applies
+      writes: []
+      output: root_cause_and_minimal_fix_hypothesis
+    - name: fix-worker
+      role: developer
+      mode: scoped_write
+      trigger: implement_selected_finding_fix
+      writes:
+        - finding_related_code_files
+      output: scoped_patch_summary
+    - name: test-verifier
+      role: test-verifier
+      mode: scoped_write
+      trigger: verify_fixed_finding
+      writes:
+        - test_files
+      output: fix_verification_evidence
+  merge_requirements:
+    - main_flow_updates_finding_status
+    - fixed_requires_fresh_verification
+    - unrecorded_scope_requires_return_to_propose_or_review
+
 steps:
   - load_open_findings
   - validate_problem_still_exists

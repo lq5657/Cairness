@@ -80,6 +80,7 @@ commands:
   cc-inspect-codebase:
     category: audit
     roles: [pm-orchestrator, reviewer]
+    subagents: [mode-audit-reviewer, scope-split-reviewer]
     change_from: [none]
     change_to: unchanged
     inputs: [mode, optional_scope]
@@ -116,6 +117,7 @@ commands:
   cc-apply:
     category: change
     roles: [pm-orchestrator, developer, test-verifier, context-curator, backlog-curator, gatekeeper]
+    subagents: [task-worker, test-verifier, context-curator]
     change_from: [propose, apply]
     change_to: review
     inputs: [change_id]
@@ -128,6 +130,7 @@ commands:
   cc-review:
     category: change
     roles: [pm-orchestrator, spec-reviewer, code-quality-reviewer, reviewer, backlog-curator, gatekeeper]
+    subagents: [spec-reviewer, code-quality-reviewer]
     change_from: [review]
     change_to: review
     inputs: [change_id]
@@ -140,6 +143,7 @@ commands:
   cc-fix:
     category: change
     roles: [pm-orchestrator, developer, test-verifier, context-curator, backlog-curator, gatekeeper]
+    subagents: [root-cause-reviewer, fix-worker, test-verifier]
     change_from: [review]
     change_to: review
     inputs: [change_id, optional_fix_description]
@@ -152,6 +156,7 @@ commands:
   cc-test:
     category: change
     roles: [pm-orchestrator, test-verifier, backlog-curator, gatekeeper]
+    subagents: [test-verifier]
     change_from: [apply, review]
     change_to: unchanged
     inputs: [change_id, optional_mode]

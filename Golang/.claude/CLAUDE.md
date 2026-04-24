@@ -35,6 +35,7 @@
 - migrated command 优先遵守对应 `runtime/commands/<command>.yaml`；其状态、可写文件和自动校验仍以 `workflows/cc-workflow.yaml` 为脚本与 CI 真源
 - non-migrated command 继续遵守 `commands/<command>.md`、`checkpoints/<command>.md` 与相关 legacy rules
 - 调用 reviewer、子角色或写长期记忆时，遵守 `rules/memory-policy.md`；legacy reviewer 边界仍可参考 `rules/role-contracts.md`
+- 当 runtime manifest 声明 `subagents.enabled: true` 时，必须同时遵守 `docs/maintenance/subagent-model.md`；主流程仍负责最终 merge、落盘、状态迁移和校验。
 - 项目长期导航优先写 `context/dev-map.md`，change 状态摘要优先写 `changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查

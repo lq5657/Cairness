@@ -44,6 +44,29 @@ topic_rules:
     - .claude/rules/testing-strategy.md
     - .claude/rules/verification.md
 
+subagents:
+  enabled: true
+  policy: docs/maintenance/subagent-model.md
+  merge_owner: main_flow
+  final_writes_by: main_flow
+  agents:
+    - name: mode-audit-reviewer
+      role: reviewer
+      mode: read_only
+      trigger: inspect_selected_mode_and_scope
+      writes: []
+      output: evidence_backed_findings
+    - name: scope-split-reviewer
+      role: reviewer
+      mode: read_only
+      trigger: optional_large_scope_split
+      writes: []
+      output: scoped_findings_fragment
+  merge_requirements:
+    - main_flow_deduplicates_findings
+    - main_flow_sets_final_severity
+    - main_flow_writes_audit_report
+
 steps:
   - validate_mode_and_scope
   - read_project_context

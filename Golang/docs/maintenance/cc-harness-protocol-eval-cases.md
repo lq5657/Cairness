@@ -155,3 +155,16 @@
 - 判为协议违规。
 - migrated command 必须先读取 `.claude/runtime/core.yaml` 与 `.claude/runtime/commands/<command>.yaml`。
 - 只有在维护 Harness 或 runtime manifest 不足以表达当前约束时，才允许读取 legacy docs。
+
+#### Case 11：subagent 越权写入最终产物
+
+输入：
+
+```text
+`cc-review` 调度 `spec-reviewer` 后，让 reviewer 直接修改 `changes/<change-id>/review.md` 并将 `final_status` 写为 `pass`。
+```
+
+期望：
+- 判为协议违规。
+- 子 agent 输出只能作为证据输入；最终 `review.md`、状态迁移、task-board 和校验结论必须由父命令主流程写入。
+- `cc-lint` 应能发现 priority subagent command 缺少 `subagents` contract 或缺少 `merge_owner: main_flow`。

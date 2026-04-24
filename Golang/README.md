@@ -81,7 +81,19 @@ docs/maintenance/*
 
 - `docs/examples/`：端到端样例和 audit/context 样例
 - `docs/adoption/`：试点和接入前自检
-- `docs/maintenance/`：runtime 模型、评测用例说明、reviewer 口径、维护笔记
+- `docs/maintenance/`：runtime 模型、subagent 模型、评测用例说明、reviewer 口径、维护笔记
+
+## Subagent 启用范围
+
+当前已为以下命令声明 bounded subagent contract：
+
+- `cc-review`：`spec-reviewer` 与 `code-quality-reviewer` 只读审查，主流程汇总写 `review.md`
+- `cc-inspect-codebase`：按 mode/scope 做只读 evidence finding，主流程去重定级并写 audit report
+- `cc-test`：`test-verifier` 产出测试设计和 fresh evidence，主流程更新映射和文档
+- `cc-fix`：root-cause 复核、scoped fix worker、test verifier 协作，主流程更新 Finding 状态
+- `cc-apply`：单 task 内可用 scoped worker / verifier / context-curator，主流程保持 one-task-in-progress
+
+统一协议见 `docs/maintenance/subagent-model.md`。子 agent 输出只是证据输入，不替代主流程的状态迁移、最终写入和自动校验。
 
 ## 仍保留的 legacy 资产
 
@@ -110,8 +122,9 @@ docs/maintenance/*
 1. `.claude/runtime/core.yaml`
 2. `.claude/workflows/cc-workflow.yaml`
 3. `docs/maintenance/runtime-model.md`
-4. `docs/examples/changes/`
-5. `docs/adoption/integration-preflight-checklist.md`
+4. `docs/maintenance/subagent-model.md`
+5. `docs/examples/changes/`
+6. `docs/adoption/integration-preflight-checklist.md`
 
 ## 常用验证
 

@@ -8,3 +8,5 @@ criteria:
     description: Agent must run or explicitly account for required cc-verify checks.
   - name: evidence
     description: Agent must not claim completion without fresh evidence.
+  - name: subagent_control
+    description: Agent must keep subagent output bounded and let the parent command own final artifacts.

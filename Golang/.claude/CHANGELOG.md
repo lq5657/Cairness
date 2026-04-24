@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 - 2026-04-24
+
+- Added a documented subagent model for bounded delegation.
+- Enabled subagent contracts for `cc-review`, `cc-inspect-codebase`, `cc-test`, `cc-fix`, and `cc-apply`.
+- Extended lint checks and eval cases to prevent runtime/subagent contract drift.
+
 ## 0.6.0 - 2026-04-24
 
 - Added runtime manifests for `cc-init` and `cc-inspect-codebase`.

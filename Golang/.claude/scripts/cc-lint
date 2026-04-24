@@ -76,6 +76,13 @@ REQUIRED_RUNTIME_COMMANDS = {
     "cc-archive",
     "cc-promote-audit",
 }
+SUBAGENT_ENABLED_COMMANDS = {
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+    "cc-inspect-codebase",
+}
 TOPIC_RULE_KEYS = {
     "verification",
     "testing_strategy",
@@ -315,6 +322,9 @@ def lint_workflow_definition(root: Path, errors: list[str]) -> None:
         roles_value = parse_key_value(block, "roles")
         if roles_value is not None and not parse_inline_list(roles_value):
             errors.append(f"{path}: {command} roles must not be empty")
+        subagents_value = parse_key_value(block, "subagents")
+        if command in SUBAGENT_ENABLED_COMMANDS and not parse_inline_list(subagents_value or ""):
+            errors.append(f"{path}: {command} subagents must not be empty")
 
         change_from_value = parse_key_value(block, "change_from")
         if change_from_value is None:
@@ -350,6 +360,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         "runtime_commands:",
         "legacy_fallback:",
         "governance:",
+        "subagent_policy:",
         "scripts:",
         "topic_rules:",
     ):
@@ -379,6 +390,18 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         for key in ("inputs:", "state:", "writes:", "preconditions:", "steps:", "auto_validation:"):
             if key not in text:
                 errors.append(f"{path}: missing {key.rstrip(':')}")
+        if command in SUBAGENT_ENABLED_COMMANDS:
+            for key in (
+                "subagents:",
+                "enabled: true",
+                "policy: docs/maintenance/subagent-model.md",
+                "merge_owner: main_flow",
+                "final_writes_by: main_flow",
+                "agents:",
+                "merge_requirements:",
+            ):
+                if key not in text:
+                    errors.append(f"{path}: missing subagent contract field {key.rstrip(':')}")
 
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
@@ -452,6 +475,7 @@ def lint_docs_layout(project_root: Path, errors: list[str]) -> None:
         project_root / "docs" / "adoption" / "pilot-checklist.md",
         project_root / "docs" / "adoption" / "integration-preflight-checklist.md",
         project_root / "docs" / "maintenance" / "runtime-model.md",
+        project_root / "docs" / "maintenance" / "subagent-model.md",
     ]
     for path in required:
         if not path.exists():
