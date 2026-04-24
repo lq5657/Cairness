@@ -16,3 +16,7 @@ criteria:
     description: Agent must verify external or version-sensitive technical claims against local pinned sources or official documentation.
   - name: debugging_discipline
     description: Agent must separate symptom, failure point, root cause, minimal fix, guard, and fresh verification before marking findings fixed.
+  - name: change_sizing
+    description: Agent must split or stop oversized proposal scope before HARD-GATE and map each task to concrete files, acceptance, rollback, and validation IDs.
+  - name: runtime_manifest_schema
+    description: Agent must keep runtime core and command manifests schema-valid, cross-referenced, and covered by cc-schema-check.

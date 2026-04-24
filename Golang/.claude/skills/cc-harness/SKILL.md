@@ -19,7 +19,7 @@ For any `cc-*` request:
    - `.claude/checkpoints/<command>.md`
 5. If the runtime contract declares `subagents.enabled: true`, read `docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
 6. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
-7. Load only the topic rules named by the runtime contract or required by the active task. For external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
+7. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
 8. Run the deterministic checks declared by `.claude/harness.config.yaml`.
 
 If a required argument is missing, stop before reading business code or executing the workflow.
@@ -72,5 +72,6 @@ Use project scripts instead of re-describing checks in prose:
 .claude/scripts/cc-verify --change <change-id>
 .claude/scripts/cc-verify --fixture <fixture-path>
 .claude/scripts/cc-role-check --command <cc-command> --change <change-id>
+.claude/scripts/cc-schema-check .claude/changes
 .claude/scripts/cc-eval .claude/evals
 ```

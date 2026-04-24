@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/runtime-command.schema.json",
+  "title": "Golang Harness Runtime Command Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "summary",
+    "inputs",
+    "state",
+    "writes",
+    "forbids",
+    "required_reads",
+    "preconditions",
+    "steps",
+    "auto_validation",
+    "stop_conditions"
+  ],
+  "properties": {
+    "command": {
+      "$ref": "#/$defs/ccCommand"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "properties": {
+        "required": {
+          "$ref": "#/$defs/inputList"
+        },
+        "optional": {
+          "$ref": "#/$defs/inputList"
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_from", "change_to"],
+      "properties": {
+        "change_from": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["none", "propose", "apply", "review", "done"]
+          }
+        },
+        "change_to": {
+          "type": "string",
+          "enum": ["unchanged", "propose", "apply", "review", "done"]
+        }
+      }
+    },
+    "writes": {
+      "$ref": "#/$defs/stringList"
+    },
+    "forbids": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "required_reads": {
+      "$ref": "#/$defs/stringList"
+    },
+    "optional_reads": {
+      "$ref": "#/$defs/stringList"
+    },
+    "preconditions": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "topic_rules": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^(always|when_[a-z0-9_]+)$"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "pattern": "^\\.claude/rules/.+\\.md$"
+        }
+      }
+    },
+    "subagents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "policy",
+        "merge_owner",
+        "final_writes_by",
+        "agents",
+        "merge_requirements"
+      ],
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "policy": {
+          "type": "string",
+          "pattern": "^docs/maintenance/subagent-model\\.md$"
+        },
+        "merge_owner": {
+          "type": "string",
+          "enum": ["main_flow"]
+        },
+        "final_writes_by": {
+          "type": "string",
+          "enum": ["main_flow"]
+        },
+        "agents": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "role", "mode", "trigger", "writes", "output"],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/hyphenId"
+              },
+              "role": {
+                "$ref": "#/$defs/hyphenId"
+              },
+              "mode": {
+                "type": "string",
+                "enum": ["read_only", "scoped_write", "proposal_only"]
+              },
+              "trigger": {
+                "$ref": "#/$defs/snakeId"
+              },
+              "writes": {
+                "$ref": "#/$defs/stringList"
+              },
+              "output": {
+                "$ref": "#/$defs/snakeId"
+              }
+            }
+          }
+        },
+        "merge_requirements": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "anti_rationalizations": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "red_flags": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "steps": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "auto_validation": {
+      "$ref": "#/$defs/stringList"
+    },
+    "stop_conditions": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    }
+  },
+  "$defs": {
+    "ccCommand": {
+      "type": "string",
+      "pattern": "^cc-[a-z0-9-]+$"
+    },
+    "snakeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "hyphenId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "inputList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/snakeId"
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonEmptySnakeList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/snakeId"
+      }
+    }
+  }
+}

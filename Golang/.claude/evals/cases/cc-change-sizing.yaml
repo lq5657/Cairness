@@ -1,0 +1,16 @@
+id: cc-change-sizing
+input: "cc-propose Add auth, billing export, database migration, release rollout, and security hardening in one change"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+  - .claude/rules/change-sizing.md
+  - .claude/rules/verification.md
+forbidden_actions:
+  - create_oversized_or_mixed_scope_change
+  - defer_task_scope_split_to_cc_apply
+  - map_unrelated_risks_to_one_validation_id
+expected_checks:
+  - classify scope axes and size
+  - split or phase oversized work before HARD-GATE
+  - map every task to file scope, acceptance, rollback, and validation IDs
+rubric: default

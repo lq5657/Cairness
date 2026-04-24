@@ -22,6 +22,7 @@ forbids:
   - enter_apply_without_hard_gate
   - skip_scope_freeze
   - skip_validation_mapping
+  - create_oversized_or_mixed_scope_change
 
 required_reads:
   - .claude/context/project-context.md
@@ -32,12 +33,14 @@ preconditions:
   - decide_existing_project_change_vs_new_project
   - perform_minimum_local_research_before_broad_questions
   - check_change_conflicts_and_depends_on
+  - classify_change_size_and_split_boundaries
   - freeze_scope_before_final_tasks
   - map_major_requirements_and_risks_to_validation_ids
 
 topic_rules:
   always:
     - .claude/rules/verification.md
+    - .claude/rules/change-sizing.md
   when_validation_boundary_is_unclear:
     - .claude/rules/testing-strategy.md
   when_change_touches_database:
@@ -62,13 +65,28 @@ steps:
   - read_project_context_if_present
   - restate_goal_and_constraints
   - clarify_only_high_value_unknowns
+  - classify_scope_axes_and_size
   - compare_recommended_vs_rejected_option
+  - split_or_phase_oversized_work
   - freeze_in_scope_and_out_of_scope
+  - record_split_rationale_dependencies_and_parallel_safety
   - write_spec
   - write_tasks
   - sync_task_board
   - run_auto_validation
   - wait_for_hard_gate_confirmation
+
+anti_rationalizations:
+  - keep_broad_request_as_one_change_because_user_asked_for_all_of_it
+  - defer_task_scope_split_to_cc_apply
+  - merge_unrelated_risks_under_one_validation_mapping
+  - claim_task_is_small_without_declared_file_scope_acceptance_and_evidence
+
+red_flags:
+  - task_scope_writes_broad_directories_without_named_modules
+  - validation_ids_cannot_map_to_specific_tasks
+  - rollback_differs_across_items_inside_one_task
+  - subagents_would_need_overlapping_write_scopes
 
 auto_validation:
   - .claude/scripts/cc-verify --harness-only --change <change-id>
@@ -76,5 +94,6 @@ auto_validation:
 stop_conditions:
   - missing_required_argument
   - unresolved_blocking_clarifications
+  - oversized_scope_without_split_or_human_exception
   - task_traceability_not_closed
   - auto_validation_failed

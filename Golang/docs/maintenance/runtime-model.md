@@ -18,6 +18,13 @@
 - `.claude/runtime/core.yaml`
 - `.claude/runtime/commands/<command>.yaml`
 
+runtime manifest 的机器契约是：
+
+- `.claude/schemas/runtime-core.schema.json`
+- `.claude/schemas/runtime-command.schema.json`
+
+`.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用和 subagent contract 基础结构。
+
 当命令 manifest 声明 `subagents.enabled: true` 时，额外读取：
 
 - `docs/maintenance/subagent-model.md`
@@ -29,6 +36,10 @@
 当命令涉及外部 API、SDK、CLI、云服务、框架行为或版本敏感判断时，runtime manifest 可加载：
 
 - `.claude/rules/source-driven-development.md`
+
+当 `cc-propose` 创建或更新 proposal、冻结 scope、拆分 tasks 时，runtime manifest 会加载：
+
+- `.claude/rules/change-sizing.md`
 
 当命令处理 Finding、失败测试或 recovery-style 故障分析时，runtime manifest 可加载：
 
@@ -69,6 +80,7 @@
 其中 `docs/maintenance/subagent-model.md` 是子 agent 调度协议，约束主流程、只读 reviewer、scoped worker 和 test verifier 的边界。
 其中 `docs/maintenance/rule-skill-anatomy.md` 是 topic rule 的 skill-like 写作标准，约束触发条件、反合理化、红旗和验证出口。
 `.claude/rules/source-driven-development.md` 是运行时 topic rule，不是维护说明；它用于约束外部或版本敏感技术判断必须有本地固定证据或官方来源。
+`.claude/rules/change-sizing.md` 是运行时 topic rule，不是维护说明；它用于约束 proposal 阶段必须在 HARD-GATE 前完成 scope 分类、任务拆分、依赖/并行安全和验证映射。
 `.claude/rules/debugging-workflow.md` 是运行时 topic rule，用于约束修复前必须区分症状、失败点、根因、最小修复和验证 guard。
 
 ## 技术取舍
@@ -83,6 +95,10 @@
 - 命令覆盖
 
 runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验职责。
+
+### 为什么 runtime manifest 需要 schema
+
+runtime manifest 已经成为 migrated command 的默认执行入口。只靠正则检查无法稳定发现字段类型错误、额外字段、topic rule 漏注册、command path 漂移或 subagent contract 结构破损。`runtime-core.schema.json` 与 `runtime-command.schema.json` 把这些约束变成可校验契约，`cc-schema-check` 负责把 schema 校验和跨文件引用校验放进常规 `cc-verify`。
 
 ### 为什么 subagent 仍由主流程合并
 

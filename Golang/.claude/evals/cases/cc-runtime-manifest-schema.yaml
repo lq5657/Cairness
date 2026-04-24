@@ -1,0 +1,16 @@
+id: cc-runtime-manifest-schema
+input: "Maintain runtime manifests after adding or changing a migrated cc-* command"
+expected_reads:
+  - .claude/schemas/runtime-core.schema.json
+  - .claude/schemas/runtime-command.schema.json
+  - .claude/scripts/cc-schema-check
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - add_runtime_command_without_schema_validation
+  - leave_topic_rule_reference_unregistered
+  - bypass_cc_schema_check_after_manifest_edit
+expected_checks:
+  - validate runtime/core.yaml against runtime-core schema
+  - validate every runtime command manifest against runtime-command schema
+  - check runtime command paths, topic rule registration, and subagent contract references
+rubric: default

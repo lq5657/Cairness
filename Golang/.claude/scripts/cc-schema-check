@@ -54,6 +54,23 @@ TASK_FIELDS = [
     "**完成后状态**",
     "**Baseline / Delta",
 ]
+RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
+RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
+SUBAGENT_REQUIRED_COMMANDS = {
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+    "cc-inspect-codebase",
+}
+ANTI_RATIONALIZATION_COMMANDS = {
+    "cc-propose",
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+}
+READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 
 
 @dataclass
@@ -158,6 +175,339 @@ def finding_rows(text: str) -> list[list[str]]:
 
 def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
     issues.append(Issue(code=code, path=str(path), message=message))
+
+
+def load_json_file(path: Path, issues: list[Issue]) -> dict[str, Any] | None:
+    if not path.exists():
+        add(issues, "E_SCHEMA100", path, "missing JSON schema")
+        return None
+    try:
+        loaded = json.loads(read(path))
+    except json.JSONDecodeError as exc:
+        add(issues, "E_SCHEMA101", path, f"invalid JSON schema: {exc}")
+        return None
+    if not isinstance(loaded, dict):
+        add(issues, "E_SCHEMA102", path, "JSON schema root must be an object")
+        return None
+    return loaded
+
+
+def load_yaml_file(path: Path, issues: list[Issue]) -> dict[str, Any] | None:
+    if not path.exists():
+        add(issues, "E_SCHEMA103", path, "missing YAML manifest")
+        return None
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        add(issues, "E_SCHEMA104", path, f"PyYAML is required to parse runtime manifests: {exc}")
+        return None
+    try:
+        loaded = yaml.safe_load(read(path))
+    except Exception as exc:
+        add(issues, "E_SCHEMA105", path, f"invalid YAML manifest: {exc}")
+        return None
+    if not isinstance(loaded, dict):
+        add(issues, "E_SCHEMA106", path, "YAML manifest root must be a mapping")
+        return None
+    return loaded
+
+
+def schema_location(parts: list[str | int]) -> str:
+    if not parts:
+        return "<root>"
+    return ".".join(str(part) for part in parts)
+
+
+def type_matches(value: Any, expected: str) -> bool:
+    if expected == "object":
+        return isinstance(value, dict)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    if expected == "null":
+        return value is None
+    return True
+
+
+def json_type_name(value: Any) -> str:
+    if isinstance(value, dict):
+        return "object"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "integer"
+    if value is None:
+        return "null"
+    return type(value).__name__
+
+
+def resolve_schema_ref(ref: str, root_schema: dict[str, Any]) -> dict[str, Any]:
+    if not ref.startswith("#/"):
+        raise ValueError(f"unsupported schema ref {ref}")
+    current: Any = root_schema
+    for raw_part in ref[2:].split("/"):
+        part = raw_part.replace("~1", "/").replace("~0", "~")
+        current = current[part]
+    if not isinstance(current, dict):
+        raise ValueError(f"schema ref {ref} does not point to an object")
+    return current
+
+
+def validate_against_schema(
+    value: Any,
+    schema: dict[str, Any],
+    root_schema: dict[str, Any],
+    path: list[str | int],
+    subject_path: Path,
+    issues: list[Issue],
+) -> None:
+    if "$ref" in schema:
+        try:
+            schema = resolve_schema_ref(str(schema["$ref"]), root_schema)
+        except Exception as exc:
+            add(issues, "E_SCHEMA107", subject_path, f"{schema_location(path)}: {exc}")
+            return
+
+    location = schema_location(path)
+    if "const" in schema and value != schema["const"]:
+        add(issues, "E_SCHEMA108", subject_path, f"{location}: expected constant {schema['const']!r}")
+        return
+    if "enum" in schema and value not in schema["enum"]:
+        add(issues, "E_SCHEMA109", subject_path, f"{location}: value {value!r} is not one of {schema['enum']!r}")
+
+    expected_type = schema.get("type")
+    if expected_type is not None:
+        expected_types = expected_type if isinstance(expected_type, list) else [expected_type]
+        if not any(type_matches(value, str(item)) for item in expected_types):
+            add(
+                issues,
+                "E_SCHEMA110",
+                subject_path,
+                f"{location}: expected type {expected_type!r}, got {json_type_name(value)}",
+            )
+            return
+
+    if isinstance(value, str):
+        if "minLength" in schema and len(value) < int(schema["minLength"]):
+            add(issues, "E_SCHEMA111", subject_path, f"{location}: string is shorter than minLength")
+        if "pattern" in schema and re.search(str(schema["pattern"]), value) is None:
+            add(issues, "E_SCHEMA112", subject_path, f"{location}: value {value!r} does not match pattern")
+
+    if isinstance(value, int) and not isinstance(value, bool):
+        if "minimum" in schema and value < int(schema["minimum"]):
+            add(issues, "E_SCHEMA113", subject_path, f"{location}: value is below minimum {schema['minimum']}")
+
+    if isinstance(value, list):
+        if "minItems" in schema and len(value) < int(schema["minItems"]):
+            add(issues, "E_SCHEMA114", subject_path, f"{location}: array has fewer than minItems")
+        if schema.get("uniqueItems") is True:
+            seen: set[str] = set()
+            for item in value:
+                marker = json.dumps(item, ensure_ascii=False, sort_keys=True)
+                if marker in seen:
+                    add(issues, "E_SCHEMA115", subject_path, f"{location}: array items must be unique")
+                    break
+                seen.add(marker)
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for idx, item in enumerate(value):
+                validate_against_schema(item, item_schema, root_schema, path + [idx], subject_path, issues)
+
+    if isinstance(value, dict):
+        if "minProperties" in schema and len(value) < int(schema["minProperties"]):
+            add(issues, "E_SCHEMA116", subject_path, f"{location}: object has fewer than minProperties")
+        property_name_schema = schema.get("propertyNames")
+        if isinstance(property_name_schema, dict):
+            for key in value:
+                validate_against_schema(key, property_name_schema, root_schema, path + [f"{key}<property>"], subject_path, issues)
+        required = schema.get("required", [])
+        if isinstance(required, list):
+            for key in required:
+                if key not in value:
+                    add(issues, "E_SCHEMA117", subject_path, f"{location}: missing required property {key}")
+        properties = schema.get("properties", {})
+        if isinstance(properties, dict):
+            for key, child_schema in properties.items():
+                if key in value and isinstance(child_schema, dict):
+                    validate_against_schema(value[key], child_schema, root_schema, path + [key], subject_path, issues)
+        additional = schema.get("additionalProperties", True)
+        known = set(properties.keys()) if isinstance(properties, dict) else set()
+        extras = sorted(set(value.keys()) - known)
+        if additional is False and extras:
+            add(issues, "E_SCHEMA118", subject_path, f"{location}: additional properties are not allowed: {extras}")
+        elif isinstance(additional, dict):
+            for key in extras:
+                validate_against_schema(value[key], additional, root_schema, path + [key], subject_path, issues)
+
+
+def project_path(project_root: Path, declared: Any) -> Path | None:
+    if not isinstance(declared, str):
+        return None
+    if "<" in declared or "*" in declared:
+        return None
+    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+        return project_root / declared
+    return None
+
+
+def require_declared_path(project_root: Path, subject_path: Path, declared: Any, field: str, issues: list[Issue]) -> None:
+    resolved = project_path(project_root, declared)
+    if resolved is not None and not resolved.exists():
+        add(issues, "E_SCHEMA119", subject_path, f"{field} references missing path {declared}")
+
+
+def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, Any] | None:
+    project_root = claude_root.parent
+    core_path = claude_root / "runtime" / "core.yaml"
+    schema_path = claude_root / "schemas" / RUNTIME_CORE_SCHEMA
+    core = load_yaml_file(core_path, issues)
+    schema = load_json_file(schema_path, issues)
+    if core is None:
+        return None
+    if schema is not None:
+        validate_against_schema(core, schema, schema, [], core_path, issues)
+
+    for field in ("workflow_definition",):
+        require_declared_path(project_root, core_path, core.get(field), field, issues)
+    for section in ("legacy_fallback", "governance", "scripts", "topic_rules"):
+        values = core.get(section)
+        if isinstance(values, dict):
+            for key, declared in values.items():
+                require_declared_path(project_root, core_path, declared, f"{section}.{key}", issues)
+
+    migrated = core.get("migrated_commands")
+    runtime_commands = core.get("runtime_commands")
+    if isinstance(migrated, list) and isinstance(runtime_commands, dict):
+        migrated_set = set(migrated)
+        mapped_set = set(runtime_commands.keys())
+        if migrated_set != mapped_set:
+            add(
+                issues,
+                "E_SCHEMA120",
+                core_path,
+                f"migrated_commands and runtime_commands differ: missing={sorted(migrated_set - mapped_set)}, extra={sorted(mapped_set - migrated_set)}",
+            )
+        for command in sorted(mapped_set):
+            expected = f".claude/runtime/commands/{command}.yaml"
+            actual = runtime_commands.get(command)
+            if actual != expected:
+                add(issues, "E_SCHEMA121", core_path, f"runtime_commands.{command} must be {expected}")
+            require_declared_path(project_root, core_path, actual, f"runtime_commands.{command}", issues)
+    return core
+
+
+def validate_subagent_runtime_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
+    subagents = manifest.get("subagents")
+    if command in SUBAGENT_REQUIRED_COMMANDS:
+        if not isinstance(subagents, dict) or subagents.get("enabled") is not True:
+            add(issues, "E_SCHEMA122", path, f"{command} must declare enabled subagents")
+            return
+    if not isinstance(subagents, dict):
+        return
+
+    agents = subagents.get("agents")
+    if not isinstance(agents, list):
+        return
+    names: set[str] = set()
+    for idx, agent in enumerate(agents):
+        if not isinstance(agent, dict):
+            continue
+        name = agent.get("name")
+        if isinstance(name, str):
+            if name in names:
+                add(issues, "E_SCHEMA123", path, f"subagents.agents[{idx}] duplicate name {name}")
+            names.add(name)
+        mode = agent.get("mode")
+        writes = agent.get("writes")
+        if mode in READ_ONLY_SUBAGENT_MODES and isinstance(writes, list) and writes:
+            add(issues, "E_SCHEMA124", path, f"subagent {name} mode {mode} must not declare writes")
+        if mode == "scoped_write" and isinstance(writes, list) and not writes:
+            add(issues, "E_SCHEMA125", path, f"subagent {name} mode scoped_write must declare writes")
+
+
+def validate_runtime_command_references(
+    project_root: Path,
+    core: dict[str, Any] | None,
+    command: str,
+    manifest: dict[str, Any],
+    path: Path,
+    issues: list[Issue],
+) -> None:
+    registered_topics: set[str] = set()
+    if isinstance(core, dict) and isinstance(core.get("topic_rules"), dict):
+        registered_topics = {value for value in core["topic_rules"].values() if isinstance(value, str)}
+
+    if manifest.get("command") != command:
+        add(issues, "E_SCHEMA126", path, f"command field must match runtime core key {command}")
+    if path.name != f"{command}.yaml":
+        add(issues, "E_SCHEMA127", path, f"filename must be {command}.yaml")
+
+    state = manifest.get("state")
+    if isinstance(state, dict) and state.get("change_to") == "done" and command != "cc-archive":
+        add(issues, "E_SCHEMA128", path, "only cc-archive may set change_to done")
+
+    if command in ANTI_RATIONALIZATION_COMMANDS:
+        for key in ("anti_rationalizations", "red_flags"):
+            if not isinstance(manifest.get(key), list) or not manifest.get(key):
+                add(issues, "E_SCHEMA129", path, f"{command} must declare non-empty {key}")
+
+    for idx, declared in enumerate(manifest.get("required_reads", []) if isinstance(manifest.get("required_reads"), list) else []):
+        require_declared_path(project_root, path, declared, f"required_reads[{idx}]", issues)
+
+    topic_rules = manifest.get("topic_rules")
+    if isinstance(topic_rules, dict):
+        for condition, rules in topic_rules.items():
+            if not isinstance(rules, list):
+                continue
+            for idx, rule_path in enumerate(rules):
+                if registered_topics and rule_path not in registered_topics:
+                    add(issues, "E_SCHEMA130", path, f"topic_rules.{condition}[{idx}] is not registered in runtime/core.yaml: {rule_path}")
+                require_declared_path(project_root, path, rule_path, f"topic_rules.{condition}[{idx}]", issues)
+
+    subagents = manifest.get("subagents")
+    if isinstance(subagents, dict):
+        require_declared_path(project_root, path, subagents.get("policy"), "subagents.policy", issues)
+
+
+def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
+    project_root = claude_root.parent
+    schema_path = claude_root / "schemas" / RUNTIME_COMMAND_SCHEMA
+    schema = load_json_file(schema_path, issues)
+    runtime_commands = core.get("runtime_commands") if isinstance(core, dict) else None
+    if isinstance(runtime_commands, dict):
+        command_paths = [(command, project_path(project_root, path)) for command, path in sorted(runtime_commands.items())]
+    else:
+        command_paths = [(path.stem, path) for path in sorted((claude_root / "runtime" / "commands").glob("cc-*.yaml"))]
+
+    checked: list[str] = []
+    for command, resolved_path in command_paths:
+        if resolved_path is None:
+            continue
+        checked.append(str(resolved_path))
+        manifest = load_yaml_file(resolved_path, issues)
+        if manifest is None:
+            continue
+        if schema is not None:
+            validate_against_schema(manifest, schema, schema, [], resolved_path, issues)
+        validate_runtime_command_references(project_root, core, command, manifest, resolved_path, issues)
+        validate_subagent_runtime_contract(command, manifest, resolved_path, issues)
+    return checked
+
+
+def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> list[str]:
+    core = validate_runtime_core(claude_root, issues)
+    checked = [str(claude_root / "runtime" / "core.yaml")]
+    checked.extend(validate_runtime_commands(claude_root, core, issues))
+    return checked
 
 
 def validate_change_id(value: Any) -> bool:
@@ -284,6 +634,8 @@ def default_input() -> Path:
 
 def build_report(inputs: list[Path]) -> dict[str, Any]:
     issues: list[Issue] = []
+    claude_root = Path(__file__).resolve().parent.parent
+    checked_runtime = validate_runtime_manifests(claude_root, issues)
     change_dirs = discover_change_dirs(inputs)
     for change_dir in change_dirs:
         mapping_ids = validate_spec(change_dir / "spec.md", issues)
@@ -293,6 +645,7 @@ def build_report(inputs: list[Path]) -> dict[str, Any]:
     return {
         "tool": "cc-schema-check",
         "status": "failed" if issues else "passed",
+        "checked_runtime": checked_runtime,
         "checked_changes": [str(path) for path in change_dirs],
         "issues": [issue.__dict__ for issue in issues],
     }

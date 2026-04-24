@@ -12,7 +12,9 @@ workflow:
 
 runtime:
   core: ".claude/runtime/core.yaml"
+  core_schema: ".claude/schemas/runtime-core.schema.json"
   command_dir: ".claude/runtime/commands"
+  command_schema: ".claude/schemas/runtime-command.schema.json"
   legacy_command_dir: ".claude/commands"
   legacy_checkpoint_dir: ".claude/checkpoints"
 

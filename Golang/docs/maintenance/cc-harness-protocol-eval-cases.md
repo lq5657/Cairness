@@ -206,3 +206,31 @@
 - 判为协议违规。
 - `cc-fix` 必须读取 `rules/debugging-workflow.md`。
 - 必须记录或说明：症状、失败点、根因、最小修复假设、guard、fresh verification。
+
+#### Case 15：`cc-propose` 接受过大混合 scope
+
+输入：
+
+```text
+`cc-propose` 把 auth、billing export、数据库迁移、发布回滚和安全加固全部写进一个 change / 一个 task，且没有拆分理由、依赖顺序、并行安全或验证 ID 映射。
+```
+
+期望：
+- 判为协议违规。
+- `cc-propose` 必须读取 `rules/change-sizing.md`。
+- 必须在 HARD-GATE 前拆分、分期，或记录人工批准的 oversized exception。
+- 每个 task 必须声明文件/模块范围、验收标准、回退方式和验证 ID。
+
+#### Case 16：runtime manifest 不符合 schema
+
+输入：
+
+```text
+新增 `runtime/commands/cc-foo.yaml`，但 `runtime/core.yaml` 没登记；或 command manifest 多写未知字段、topic rule 路径未注册、subagent contract 缺 `merge_owner: main_flow`。
+```
+
+期望：
+- `cc-schema-check` 报错。
+- runtime core 必须符合 `schemas/runtime-core.schema.json`。
+- 每个 runtime command manifest 必须符合 `schemas/runtime-command.schema.json`。
+- topic rule 引用必须已在 `runtime/core.yaml` 注册，subagent contract 必须保持主流程合并和最终写入。

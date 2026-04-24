@@ -115,6 +115,27 @@ docs/maintenance/*
 
 它要求先确认问题仍存在，再定位失败点、区分症状和根因、提出最小修复假设、补 guard，并用 fresh verification 后才能标记 `fixed`。
 
+## Change Sizing Topic Rule
+
+`cc-propose` 在生成 `spec.md` / `tasks.md` 前会始终加载：
+
+```text
+.claude/rules/change-sizing.md
+```
+
+它要求先按目标、模块、风险、验证等级、发布/回滚边界分类，再决定一个 change 和每个 task 的粒度。过大的混合需求必须在 HARD-GATE 前拆分、分期，或记录人工批准的例外。
+
+## Runtime Manifest Schemas
+
+runtime manifest 现在有机器 schema：
+
+```text
+.claude/schemas/runtime-core.schema.json
+.claude/schemas/runtime-command.schema.json
+```
+
+`.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径和 subagent contract 引用。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

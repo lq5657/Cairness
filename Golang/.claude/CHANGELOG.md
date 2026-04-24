@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.0 - 2026-04-24
+
+- Added JSON schemas for runtime core and runtime command manifests.
+- Extended `cc-schema-check` to validate runtime manifest structure and cross-file references.
+- Added checks for topic rule registration, runtime command paths, and subagent contract shape.
+- Added eval and documentation coverage for runtime manifest schema drift.
+
+## 0.11.0 - 2026-04-24
+
+- Added `change-sizing` as a runtime topic rule for proposal scope and task split decisions.
+- Connected the rule to `cc-propose` as an always-loaded proposal guard.
+- Added anti-rationalization and red-flag coverage for oversized or mixed-scope proposal output.
+- Added eval and lint coverage for change sizing drift.
+
 ## 0.10.0 - 2026-04-24
 
 - Added `debugging-workflow` as a runtime topic rule for finding and failure recovery.

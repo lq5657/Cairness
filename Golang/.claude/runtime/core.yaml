@@ -46,6 +46,7 @@ scripts:
 topic_rules:
   verification: .claude/rules/verification.md
   testing_strategy: .claude/rules/testing-strategy.md
+  change_sizing: .claude/rules/change-sizing.md
   coding_style: .claude/rules/coding-style.md
   debugging_workflow: .claude/rules/debugging-workflow.md
   database_changes: .claude/rules/database-changes.md

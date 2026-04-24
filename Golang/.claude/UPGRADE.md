@@ -1,5 +1,78 @@
 # Upgrade Guide
 
+## Upgrade To 0.12.0
+
+This release adds schema validation for runtime manifests.
+
+### New Files To Copy
+
+- `.claude/schemas/runtime-core.schema.json`
+- `.claude/schemas/runtime-command.schema.json`
+- `.claude/evals/cases/cc-runtime-manifest-schema.yaml`
+
+### Existing Files To Merge
+
+- `.claude/harness.config.yaml`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- `cc-schema-check` now validates runtime manifests in addition to change document shape.
+- Runtime command manifests fail on unknown fields, invalid field types, missing required fields, unregistered topic rule paths, and broken subagent contract references.
+- The checker parses runtime YAML with PyYAML, which is expected in the Harness Python environment.
+
+## Upgrade To 0.11.0
+
+This release adds a change sizing policy for `cc-propose` so broad requests are split or phased before HARD-GATE.
+
+### New Files To Copy
+
+- `.claude/rules/change-sizing.md`
+- `.claude/evals/cases/cc-change-sizing.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-propose.yaml`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/scripts/cc-lint`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- `cc-propose` now always loads `.claude/rules/change-sizing.md`.
+- Oversized or mixed-scope proposals must be split, phased, or recorded as a human-approved exception before HARD-GATE.
+- `cc-apply` should treat broad or stale task scope as a stop signal instead of redefining task boundaries while coding.
+
 ## Upgrade To 0.10.0
 
 This release adds a source-backed debugging workflow for `cc-fix` and recovery-style failure handling.

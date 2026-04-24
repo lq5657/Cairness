@@ -84,6 +84,7 @@ SUBAGENT_ENABLED_COMMANDS = {
     "cc-inspect-codebase",
 }
 ANTI_RATIONALIZATION_COMMANDS = {
+    "cc-propose",
     "cc-apply",
     "cc-review",
     "cc-fix",
@@ -92,6 +93,7 @@ ANTI_RATIONALIZATION_COMMANDS = {
 TOPIC_RULE_KEYS = {
     "verification",
     "testing_strategy",
+    "change_sizing",
     "coding_style",
     "debugging_workflow",
     "database_changes",
@@ -423,6 +425,8 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         "changes/task-board.md",
         "changes/templates/task-board.md",
         "runtime/core.yaml",
+        "schemas/runtime-core.schema.json",
+        "schemas/runtime-command.schema.json",
         "skills/cc-harness/SKILL.md",
         "evals/rubrics/default.yaml",
     ]
@@ -443,7 +447,9 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "definition:",
         "runtime:",
         "core:",
+        "core_schema:",
         "command_dir:",
+        "command_schema:",
         "memory:",
         "dev_map:",
         "task_board:",
