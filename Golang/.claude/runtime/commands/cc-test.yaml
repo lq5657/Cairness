@@ -78,6 +78,18 @@ subagents:
     - red_green_or_exception_must_be_recorded
     - old_evidence_must_not_close_mapping
 
+anti_rationalizations:
+  - use_supplement_mode_to_cover_apply_minimum_gap
+  - fabricate_or_imply_red_green_without_output
+  - close_mapping_with_unrelated_low_level_tests
+  - treat_old_test_output_as_fresh_evidence
+
+red_flags:
+  - recovery_mode_without_blocked_or_partial_apply_record
+  - test_level_does_not_match_risk
+  - manual_evidence_missing_environment_input_output_or_result
+  - mapping_status_changed_without_evidence_reference
+
 steps:
   - confirm_test_mode
   - choose_test_levels_and_explain_why

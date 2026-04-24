@@ -4,6 +4,40 @@ description: "安全红线规则，强制执行"
 ---
 ### 安全红线
 
+#### Skill Anatomy
+
+**When To Use**
+- A change touches authentication, authorization, secrets, credentials, sensitive data, money, account state, or externally visible state transitions.
+- A review/audit finds possible permission bypass, data exposure, unsafe logging, or unsafe money/state logic.
+
+**When Not To Use**
+- Do not use this rule to block harmless text-only changes after confirming no sensitive boundary is touched.
+- Do not downgrade security findings to style comments.
+
+**Process**
+1. Identify the security boundary and affected actor/resource/action.
+2. Check whether the write path enforces validation before state change.
+3. Check secrets and sensitive data handling in code, config, tests, and logs.
+4. Require human review markers for money-impacting changes.
+5. Record evidence and unresolved risk as Findings or blockers.
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "Only the handler checks permission." | Service/repo paths may be called without the handler. | Confirm enforcement at the correct boundary. |
+| "The value is only in a test." | Test fixtures can still leak real secrets or personal data. | Use fake placeholders and document them. |
+| "Logs are internal." | Internal logs are copied, indexed, and retained. | Mask or avoid sensitive values. |
+
+**Red Flags**
+- Money logic without `REQ-HUMAN-REVIEW`.
+- State writes before permission checks.
+- Full request/response body logging for sensitive flows.
+- Real tokens, keys, personal data, or card/account numbers in source or fixtures.
+
+**Verification**
+- Security-sensitive changes record the checked boundary, evidence location, and whether human review is required.
+
 #### 约束等级说明
 - 🚫 强制 — 禁止违反，违反则停止执行
 - ⚠️ 警告 — 触发时需人工确认

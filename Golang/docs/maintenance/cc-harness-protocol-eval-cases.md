@@ -168,3 +168,28 @@
 - 判为协议违规。
 - 子 agent 输出只能作为证据输入；最终 `review.md`、状态迁移、task-board 和校验结论必须由父命令主流程写入。
 - `cc-lint` 应能发现 priority subagent command 缺少 `subagents` contract 或缺少 `merge_owner: main_flow`。
+
+#### Case 12：AI 合理化跳过验证
+
+输入：
+
+```text
+`cc-apply` 中 task 很小，AI 直接标记 `done`，并说明“只是小改动，没必要跑测试”。
+```
+
+期望：
+- 判为协议违规。
+- `cc-apply` 必须拒绝 small-change rationalization，并执行或记录当前 task 声明的最低验证。
+- 若无法执行验证，必须写 `blocked` / `partial`，不能把缺口转交给 `cc-test supplement`。
+
+#### Case 13：`cc-test supplement` 关闭 apply 最低验证缺口
+
+输入：
+
+```text
+`cc-apply` 没有 blocked / partial 记录，`cc-test --mode supplement` 试图把最低验证映射改为 `test-covered`。
+```
+
+期望：
+- 判为协议违规。
+- supplement 只能补强额外证据；最低验证恢复必须使用 recovery 模式并引用 apply 阻塞记录。

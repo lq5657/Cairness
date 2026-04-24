@@ -80,6 +80,18 @@ subagents:
     - stage2_must_not_run_when_stage1_fails
     - findings_status_decided_by_main_flow
 
+anti_rationalizations:
+  - pass_review_because_tests_passed
+  - skip_stage1_because_implementation_looks_reasonable
+  - let_reviewer_subagent_write_final_review
+  - accept_important_finding_without_reason_impact_and_no_fix_rationale
+
+red_flags:
+  - open_critical_or_important_with_final_pass
+  - validation_level_below_spec_requirement
+  - stage2_runs_after_stage1_fail
+  - review_missing_task_coverage_matrix
+
 steps:
   - read_change_artifacts
   - perform_stage1_spec_compliance

@@ -83,6 +83,11 @@ SUBAGENT_ENABLED_COMMANDS = {
     "cc-test",
     "cc-inspect-codebase",
 }
+ANTI_RATIONALIZATION_COMMANDS = {
+    "cc-apply",
+    "cc-review",
+    "cc-test",
+}
 TOPIC_RULE_KEYS = {
     "verification",
     "testing_strategy",
@@ -402,6 +407,10 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             ):
                 if key not in text:
                     errors.append(f"{path}: missing subagent contract field {key.rstrip(':')}")
+        if command in ANTI_RATIONALIZATION_COMMANDS:
+            for key in ("anti_rationalizations:", "red_flags:"):
+                if key not in text:
+                    errors.append(f"{path}: missing anti-rationalization field {key.rstrip(':')}")
 
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
@@ -476,6 +485,7 @@ def lint_docs_layout(project_root: Path, errors: list[str]) -> None:
         project_root / "docs" / "adoption" / "integration-preflight-checklist.md",
         project_root / "docs" / "maintenance" / "runtime-model.md",
         project_root / "docs" / "maintenance" / "subagent-model.md",
+        project_root / "docs" / "maintenance" / "rule-skill-anatomy.md",
     ]
     for path in required:
         if not path.exists():

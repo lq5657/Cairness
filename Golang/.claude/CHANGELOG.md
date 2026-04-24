@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 - 2026-04-24
+
+- Added a rule skill anatomy standard for topic rules.
+- Added skill-like trigger/process/rationalization/red-flag sections to verification, testing, security, and release rules.
+- Added anti-rationalization contracts for `cc-apply`, `cc-review`, and `cc-test`.
+- Added negative eval cases for skipped verification, review pass rationalization, and supplement-mode validation gaps.
+
 ## 0.7.0 - 2026-04-24
 
 - Added a documented subagent model for bounded delegation.

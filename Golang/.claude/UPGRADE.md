@@ -1,5 +1,47 @@
 # Upgrade Guide
 
+## Upgrade To 0.8.0
+
+This release introduces skill-like topic rule anatomy and negative eval coverage for common AI shortcut failures.
+
+### New Files To Copy
+
+- `docs/maintenance/rule-skill-anatomy.md`
+- `.claude/evals/cases/cc-negative-skip-verification.yaml`
+- `.claude/evals/cases/cc-negative-review-pass.yaml`
+- `.claude/evals/cases/cc-negative-test-supplement-gap.yaml`
+
+### Existing Files To Merge
+
+- `.claude/rules/verification.md`
+- `.claude/rules/testing-strategy.md`
+- `.claude/rules/security.md`
+- `.claude/rules/release.md`
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/scripts/cc-lint`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/runtime-model.md`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Existing topic rules remain Markdown files; the new anatomy is a writing standard, not a runtime parser requirement.
+- `cc-apply`, `cc-review`, and `cc-test` now declare anti-rationalization and red-flag entries in runtime manifests.
+- Negative eval cases are structure checks today; they document behavior that AI executions must reject.
+
 ## Upgrade To 0.7.0
 
 This release adds bounded subagent contracts for the five highest-value commands: `cc-review`, `cc-inspect-codebase`, `cc-test`, `cc-fix`, and `cc-apply`.

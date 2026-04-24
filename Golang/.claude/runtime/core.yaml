@@ -61,3 +61,4 @@ default_runtime_rules:
   - do_not_load_legacy_docs_for_migrated_commands_without_need
   - task_board_and_dev_map_are_governance_assets_not_primary_specs
   - main_flow_owns_subagent_merge_and_final_writes
+  - reject_declared_anti_rationalizations_and_red_flags

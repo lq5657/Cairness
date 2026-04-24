@@ -81,7 +81,7 @@ docs/maintenance/*
 
 - `docs/examples/`：端到端样例和 audit/context 样例
 - `docs/adoption/`：试点和接入前自检
-- `docs/maintenance/`：runtime 模型、subagent 模型、评测用例说明、reviewer 口径、维护笔记
+- `docs/maintenance/`：runtime 模型、subagent 模型、rule skill anatomy、评测用例说明、reviewer 口径、维护笔记
 
 ## Subagent 启用范围
 
@@ -123,8 +123,9 @@ docs/maintenance/*
 2. `.claude/workflows/cc-workflow.yaml`
 3. `docs/maintenance/runtime-model.md`
 4. `docs/maintenance/subagent-model.md`
-5. `docs/examples/changes/`
-6. `docs/adoption/integration-preflight-checklist.md`
+5. `docs/maintenance/rule-skill-anatomy.md`
+6. `docs/examples/changes/`
+7. `docs/adoption/integration-preflight-checklist.md`
 
 ## 常用验证
 

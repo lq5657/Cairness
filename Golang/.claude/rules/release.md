@@ -5,6 +5,40 @@ description: "当变更涉及上线策略、灰度、回滚路径、发布观察
 
 ### Release And Rollback
 
+#### Skill Anatomy
+
+**When To Use**
+- A change affects schema, configuration, external contracts, feature flags, rollout order, rollback cost, or post-release observation.
+- `cc-propose`, `cc-review`, or `cc-archive` must decide whether the release plan is safe enough.
+
+**When Not To Use**
+- Do not force a heavy rollout plan for a confirmed internal-only low-risk code cleanup.
+- Do not treat "git revert" as enough when data, config, clients, or flags also need recovery.
+
+**Process**
+1. Classify release risk and impacted runtime surfaces.
+2. Define rollout mechanism, enable/disable strategy, rollback path, and observation window.
+3. Check whether rollback is symmetric; if not, document roll-forward or compensation.
+4. Tie observation signals to concrete metrics, logs, or business checks.
+5. Block archive if release/rollback evidence is missing for high-risk changes.
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "We can just revert." | Data/config/contract changes may survive code revert. | List all rollback surfaces. |
+| "Feature flag exists." | A flag without ownership and disable criteria is not a rollback plan. | Record enable/disable conditions. |
+| "Monitoring will catch it." | Monitoring must name concrete signals and thresholds. | Record observation window and signals. |
+
+**Red Flags**
+- Schema or contract change with no compatibility window.
+- One-way migration described as directly rollbackable.
+- Feature flag dependency without kill-switch behavior.
+- Archive requested before release evidence is fresh.
+
+**Verification**
+- `spec.md`, `review.md`, or `log.md` records rollout, rollback, observation window, and residual risk.
+
 #### 约束等级
 
 - 🚫 强制 — 违反则停止执行

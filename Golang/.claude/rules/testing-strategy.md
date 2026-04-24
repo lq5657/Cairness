@@ -5,6 +5,40 @@ description: "当变更涉及测试设计、回归验证、测试分层选择时
 
 ### Testing Strategy
 
+#### Skill Anatomy
+
+**When To Use**
+- A change adds or modifies business logic, data access, transport mapping, or async behavior.
+- A bugfix needs reproduction or regression proof.
+- `cc-test`, `cc-apply`, `cc-fix`, or `cc-review` evaluates test levels or validation gaps.
+
+**When Not To Use**
+- Do not use this rule to add unrelated tests outside the declared task/finding scope.
+- Do not use low-level tests to avoid a required chain, integration, or manual verification level.
+
+**Process**
+1. Identify the risk that must be proven covered.
+2. Choose the lowest test level that directly covers that risk.
+3. Prefer Red/Green for bugfixes; record an exception when Red cannot be produced safely.
+4. Map each test/evidence item back to validation IDs.
+5. Record skipped higher-level tests and residual risks.
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "Existing coverage is enough." | Existing coverage may not cover the changed risk. | Identify the exact changed risk and evidence. |
+| "Unit tests are easier." | Ease does not prove handler, repo, or integration risk. | Pick the layer that matches the risk. |
+| "Manual check is fine." | Manual evidence needs environment, inputs, outputs, and observed result. | Record a reproducible manual evidence block. |
+
+**Red Flags**
+- Bugfix with no regression proof.
+- Test evidence that cannot be traced to a validation ID.
+- A higher-risk interface, DB, or async change closed only by unrelated unit tests.
+
+**Verification**
+- `test-spec.md` or `log.md` records chosen level, commands/evidence, Red/Green or exception, and residual risk.
+
 #### 约束等级
 
 - 🚫 强制 — 违反则停止执行

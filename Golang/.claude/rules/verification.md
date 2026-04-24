@@ -5,6 +5,41 @@ description: "Golang Harness 的验证等级与证据规范"
 
 ### Verification Matrix
 
+#### Skill Anatomy
+
+**When To Use**
+- Any command claims `done`, `fixed`, `pass`, `test-covered`, `apply-covered`, or `archive`.
+- A change declares validation mapping, minimum verification level, baseline/delta, or fresh evidence.
+- A subagent produces verification evidence that the parent command may merge.
+
+**When Not To Use**
+- Do not use this rule to invent new requirements beyond the current spec/task mapping.
+- Do not use old verification output as current evidence unless it is explicitly rerun or marked as historical context.
+
+**Process**
+1. Read the declared validation mapping and required evidence level.
+2. Run or inspect the fresh evidence for the current task, finding, or archive decision.
+3. Compare evidence type against the level matrix.
+4. Record gaps as `blocked`, `partial`, `gap`, or Findings instead of silently passing.
+5. Run the command's deterministic checks before completion claims.
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "The code is simple, so build is enough." | Simplicity does not lower a declared `L2+` requirement. | Meet the declared level or update the spec before apply. |
+| "The tests passed before my edit." | Old evidence is not fresh evidence for the current implementation. | Re-run or record why the command is blocked/partial. |
+| "The subagent verified it." | Subagent output is evidence input, not final completion. | Main flow must merge evidence and run required checks. |
+
+**Red Flags**
+- `done`, `fixed`, `pass`, or `archive` without command output or explicit substitute evidence.
+- `cc-test supplement` used to cover missing `cc-apply` minimum evidence.
+- `L2` mapped to `manual` or `chain`, or `L3+` claimed with only package tests.
+
+**Verification**
+- Evidence command, scope, result, and residual risk are recorded in the relevant change document.
+- `cc-verify` and any required baseline/delta checks pass or are recorded as blockers.
+
 #### 1. 核心原则
 
 - 变更完成的最低标准不是“代码写完”，而是“达到本次声明的最低验证等级”。

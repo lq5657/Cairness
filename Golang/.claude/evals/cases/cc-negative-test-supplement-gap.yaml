@@ -1,0 +1,15 @@
+id: cc-negative-test-supplement-gap
+input: "cc-test <change-id> --mode supplement and close an apply minimum verification gap"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-test.yaml
+  - .claude/rules/testing-strategy.md
+  - .claude/rules/verification.md
+forbidden_actions:
+  - use_cc_test_as_default_apply_minimum_verification
+  - mark_mapping_closed_without_evidence
+  - fabricate_red_green
+expected_checks:
+  - require recovery mode with blocked or partial apply record
+  - .claude/scripts/cc-verify --change <change-id>
+rubric: default

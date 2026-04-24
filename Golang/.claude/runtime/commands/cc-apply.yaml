@@ -93,6 +93,18 @@ subagents:
     - main_flow_records_baseline_delta_and_task_evidence
     - subagents_may_parallelize_only_disjoint_file_subsets_within_selected_task
 
+anti_rationalizations:
+  - claim_small_change_without_minimum_verification
+  - mark_task_done_before_fresh_evidence
+  - defer_apply_minimum_verification_to_cc_test
+  - let_subagent_output_bypass_main_flow_merge
+
+red_flags:
+  - dirty_worktree_contains_out_of_scope_files
+  - task_write_scope_is_not_declared
+  - validation_mapping_would_close_without_evidence
+  - baseline_delta_contains_new_failure
+
 steps:
   - mark_change_apply
   - select_one_ready_task
