@@ -59,6 +59,8 @@ topic_rules:
     - .claude/rules/release.md
   when_change_touches_security_boundary:
     - .claude/rules/security.md
+  when_test_depends_on_external_tooling_or_version_sensitive_behavior:
+    - .claude/rules/source-driven-development.md
 
 subagents:
   enabled: true

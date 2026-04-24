@@ -95,6 +95,16 @@ docs/maintenance/*
 
 统一协议见 `docs/maintenance/subagent-model.md`。子 agent 输出只是证据输入，不替代主流程的状态迁移、最终写入和自动校验。
 
+## Source-Driven Topic Rule
+
+当 change 涉及第三方库、SDK、CLI、云服务、框架 API 或版本敏感行为时，相关 runtime command 会按需加载：
+
+```text
+.claude/rules/source-driven-development.md
+```
+
+它要求优先使用本地固定证据（`go.mod`、lockfile、vendor、wrapper、generated code、既有测试），不足时再查官方文档、上游源码或 release notes，并把依据写入 change 证据。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

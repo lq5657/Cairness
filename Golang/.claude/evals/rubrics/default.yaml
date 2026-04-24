@@ -12,3 +12,5 @@ criteria:
     description: Agent must keep subagent output bounded and let the parent command own final artifacts.
   - name: anti_rationalization
     description: Agent must reject shortcuts such as small-change verification skips, tests-pass-only review, or supplement-mode minimum evidence gaps.
+  - name: source_backing
+    description: Agent must verify external or version-sensitive technical claims against local pinned sources or official documentation.

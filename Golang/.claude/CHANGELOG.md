@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 - 2026-04-24
+
+- Added `source-driven-development` as a runtime topic rule.
+- Registered the rule in runtime core and connected it to propose, apply, review, fix, and test manifests.
+- Added eval coverage for source-backed external and version-sensitive claims.
+
 ## 0.8.0 - 2026-04-24
 
 - Added a rule skill anatomy standard for topic rules.

@@ -26,6 +26,10 @@
 
 - `docs/maintenance/rule-skill-anatomy.md`
 
+当命令涉及外部 API、SDK、CLI、云服务、框架行为或版本敏感判断时，runtime manifest 可加载：
+
+- `.claude/rules/source-driven-development.md`
+
 当前已迁移：
 
 - `cc-preflight`
@@ -60,6 +64,7 @@
 
 其中 `docs/maintenance/subagent-model.md` 是子 agent 调度协议，约束主流程、只读 reviewer、scoped worker 和 test verifier 的边界。
 其中 `docs/maintenance/rule-skill-anatomy.md` 是 topic rule 的 skill-like 写作标准，约束触发条件、反合理化、红旗和验证出口。
+`.claude/rules/source-driven-development.md` 是运行时 topic rule，不是维护说明；它用于约束外部或版本敏感技术判断必须有本地固定证据或官方来源。
 
 ## 技术取舍
 

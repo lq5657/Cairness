@@ -53,6 +53,7 @@ topic_rules:
   observability: .claude/rules/observability.md
   release: .claude/rules/release.md
   security: .claude/rules/security.md
+  source_driven_development: .claude/rules/source-driven-development.md
   git_workflow: .claude/rules/git-workflow.md
 
 default_runtime_rules:

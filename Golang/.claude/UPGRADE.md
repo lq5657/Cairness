@@ -1,5 +1,41 @@
 # Upgrade Guide
 
+## Upgrade To 0.9.0
+
+This release adds source-driven development as a runtime topic rule for external APIs, SDKs, CLIs, cloud services, framework behavior, and version-sensitive claims.
+
+### New Files To Copy
+
+- `.claude/rules/source-driven-development.md`
+- `.claude/evals/cases/cc-source-driven-development.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-propose.yaml`
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/scripts/cc-lint`
+- `.claude/evals/rubrics/default.yaml`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- The new rule is conditional, not always loaded.
+- Prefer local pinned evidence first: `go.mod`, lockfiles, vendored code, wrappers, generated code, and existing tests.
+- Use official docs or upstream source when local evidence cannot confirm the external/version-sensitive claim.
+
 ## Upgrade To 0.8.0
 
 This release introduces skill-like topic rule anatomy and negative eval coverage for common AI shortcut failures.

@@ -98,6 +98,7 @@ TOPIC_RULE_KEYS = {
     "observability",
     "release",
     "security",
+    "source_driven_development",
     "git_workflow",
 }
 
