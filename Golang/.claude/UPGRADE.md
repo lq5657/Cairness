@@ -1,5 +1,38 @@
 # Upgrade Guide
 
+## Upgrade To 0.13.0
+
+This release adds workflow/runtime parity checks for migrated commands.
+
+### New Files To Copy
+
+- `.claude/evals/cases/cc-workflow-runtime-parity.yaml`
+
+### Existing Files To Merge
+
+- `.claude/workflows/cc-workflow.yaml`
+- `.claude/scripts/cc-schema-check`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- `cc-schema-check` now compares migrated command `change_from`, `change_to`, `writes`, `forbids`, and `auto_validation` between workflow and runtime manifests.
+- Workflow and runtime command entries must use the same canonical `forbids` names for migrated commands.
+- Auto-validation paths normalize `.claude/` and `.claude/scripts/` prefixes, but command order and arguments must remain aligned.
+
 ## Upgrade To 0.12.0
 
 This release adds schema validation for runtime manifests.

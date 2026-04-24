@@ -234,3 +234,16 @@
 - runtime core 必须符合 `schemas/runtime-core.schema.json`。
 - 每个 runtime command manifest 必须符合 `schemas/runtime-command.schema.json`。
 - topic rule 引用必须已在 `runtime/core.yaml` 注册，subagent contract 必须保持主流程合并和最终写入。
+
+#### Case 17：workflow 与 runtime manifest 漂移
+
+输入：
+
+```text
+修改 `runtime/commands/cc-apply.yaml` 的 `writes`、`forbids` 或 `auto_validation`，但没有同步 `workflows/cc-workflow.yaml` 中的 `cc-apply` 条目。
+```
+
+期望：
+- `cc-schema-check` 报错。
+- migrated command 的 `change_from` / `change_to`、`writes`、`forbids`、`auto_validation` 必须与 workflow 对齐。
+- workflow 可保留 roles、outputs、validates 等全局信息；runtime 可保留 steps、topic rules、subagents 等执行信息。

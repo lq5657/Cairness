@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.0 - 2026-04-24
+
+- Added workflow/runtime parity checks for migrated commands.
+- Canonicalized migrated command `forbids` and `auto_validation` fields between workflow and runtime manifests.
+- Extended `cc-schema-check` to compare state transitions, write scope, forbids, and auto-validation sequence.
+- Added eval and documentation coverage for workflow/runtime drift.
+
 ## 0.12.0 - 2026-04-24
 
 - Added JSON schemas for runtime core and runtime command manifests.

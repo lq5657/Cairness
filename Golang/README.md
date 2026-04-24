@@ -136,6 +136,17 @@ runtime manifest 现在有机器 schema：
 
 `.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径和 subagent contract 引用。
 
+## Workflow Runtime Parity
+
+`cc-workflow.yaml` 仍是脚本和 CI 真源，runtime manifest 是 Claude 的轻量执行面。为避免两者漂移，`.claude/scripts/cc-schema-check` 现在会对所有 migrated commands 校验：
+
+- `change_from` / `change_to`
+- `writes`
+- `forbids`
+- `auto_validation`
+
+修改 runtime command 时，必须同步更新 workflow 中对应命令；反过来也一样。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

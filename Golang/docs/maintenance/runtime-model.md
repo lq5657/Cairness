@@ -25,6 +25,13 @@ runtime manifest 的机器契约是：
 
 `.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用和 subagent contract 基础结构。
 
+同一个检查还会校验 migrated command 的 workflow/runtime parity：
+
+- `change_from` / `change_to`
+- `writes`
+- `forbids`
+- `auto_validation`
+
 当命令 manifest 声明 `subagents.enabled: true` 时，额外读取：
 
 - `docs/maintenance/subagent-model.md`
@@ -95,10 +102,15 @@ runtime manifest 的机器契约是：
 - 命令覆盖
 
 runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验职责。
+`cc-schema-check` 会把 migrated command 的关键执行字段在 workflow 与 runtime manifest 之间做 parity 检查，避免双入口长期漂移。
 
 ### 为什么 runtime manifest 需要 schema
 
 runtime manifest 已经成为 migrated command 的默认执行入口。只靠正则检查无法稳定发现字段类型错误、额外字段、topic rule 漏注册、command path 漂移或 subagent contract 结构破损。`runtime-core.schema.json` 与 `runtime-command.schema.json` 把这些约束变成可校验契约，`cc-schema-check` 负责把 schema 校验和跨文件引用校验放进常规 `cc-verify`。
+
+### 为什么 workflow/runtime parity 只校验关键字段
+
+workflow 保留全局生命周期和 CI 真源职责，runtime manifest 负责 Claude 执行上下文。二者不需要逐字相同，但状态迁移、写范围、禁令和自动校验会直接影响安全边界，因此必须保持一致。更细的执行步骤、topic rule、subagent contract 可以只存在于 runtime manifest。
 
 ### 为什么 subagent 仍由主流程合并
 
