@@ -49,6 +49,7 @@ preconditions:
 topic_rules:
   always:
     - .claude/rules/verification.md
+    - .claude/rules/debugging-workflow.md
   when_test_boundary_or_substitution_is_in_question:
     - .claude/rules/testing-strategy.md
   when_finding_touches_database:
@@ -99,10 +100,26 @@ subagents:
     - fixed_requires_fresh_verification
     - unrecorded_scope_requires_return_to_propose_or_review
 
+anti_rationalizations:
+  - treat_reviewer_text_as_proven_root_cause
+  - implement_fix_before_reproducing_or_confirming_finding
+  - broaden_fix_into_unrelated_cleanup
+  - mark_fixed_without_guard_or_fresh_verification
+
+red_flags:
+  - root_cause_not_backed_by_code_or_command_evidence
+  - patch_touches_files_outside_finding_scope
+  - reproduction_impossible_without_substitute_evidence
+  - verification_failure_dismissed_without_delta_analysis
+
 steps:
   - load_open_findings
-  - validate_problem_still_exists
+  - reproduce_or_confirm_problem_still_applies
+  - localize_failure_point
+  - separate_symptom_failure_point_root_cause_and_blast_radius
+  - define_minimal_fix_hypothesis
   - implement_minimal_fix
+  - add_or_identify_regression_guard
   - rerun_verification_without_lowering_required_level
   - update_review_log_and_change_docs
   - sync_dev_map_if_boundaries_changed

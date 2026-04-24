@@ -105,6 +105,16 @@ docs/maintenance/*
 
 它要求优先使用本地固定证据（`go.mod`、lockfile、vendor、wrapper、generated code、既有测试），不足时再查官方文档、上游源码或 release notes，并把依据写入 change 证据。
 
+## Debugging Topic Rule
+
+当 `cc-fix` 处理 Finding，或 `cc-test` recovery 需要分析失败原因时，runtime 会加载：
+
+```text
+.claude/rules/debugging-workflow.md
+```
+
+它要求先确认问题仍存在，再定位失败点、区分症状和根因、提出最小修复假设、补 guard，并用 fresh verification 后才能标记 `fixed`。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

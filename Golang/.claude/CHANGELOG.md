@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0 - 2026-04-24
+
+- Added `debugging-workflow` as a runtime topic rule for finding and failure recovery.
+- Connected the rule to `cc-fix` and `cc-test` recovery paths.
+- Strengthened `cc-fix` runtime steps with reproduce, localize, root cause, minimal fix, guard, and fresh verification gates.
+- Added eval coverage for disciplined debugging before marking findings fixed.
+
 ## 0.9.0 - 2026-04-24
 
 - Added `source-driven-development` as a runtime topic rule.

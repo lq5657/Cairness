@@ -86,12 +86,14 @@ SUBAGENT_ENABLED_COMMANDS = {
 ANTI_RATIONALIZATION_COMMANDS = {
     "cc-apply",
     "cc-review",
+    "cc-fix",
     "cc-test",
 }
 TOPIC_RULE_KEYS = {
     "verification",
     "testing_strategy",
     "coding_style",
+    "debugging_workflow",
     "database_changes",
     "api_compatibility",
     "configuration",

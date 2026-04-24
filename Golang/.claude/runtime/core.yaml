@@ -47,6 +47,7 @@ topic_rules:
   verification: .claude/rules/verification.md
   testing_strategy: .claude/rules/testing-strategy.md
   coding_style: .claude/rules/coding-style.md
+  debugging_workflow: .claude/rules/debugging-workflow.md
   database_changes: .claude/rules/database-changes.md
   api_compatibility: .claude/rules/api-compatibility.md
   configuration: .claude/rules/configuration.md

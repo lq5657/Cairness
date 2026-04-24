@@ -30,6 +30,10 @@
 
 - `.claude/rules/source-driven-development.md`
 
+当命令处理 Finding、失败测试或 recovery-style 故障分析时，runtime manifest 可加载：
+
+- `.claude/rules/debugging-workflow.md`
+
 当前已迁移：
 
 - `cc-preflight`
@@ -65,6 +69,7 @@
 其中 `docs/maintenance/subagent-model.md` 是子 agent 调度协议，约束主流程、只读 reviewer、scoped worker 和 test verifier 的边界。
 其中 `docs/maintenance/rule-skill-anatomy.md` 是 topic rule 的 skill-like 写作标准，约束触发条件、反合理化、红旗和验证出口。
 `.claude/rules/source-driven-development.md` 是运行时 topic rule，不是维护说明；它用于约束外部或版本敏感技术判断必须有本地固定证据或官方来源。
+`.claude/rules/debugging-workflow.md` 是运行时 topic rule，用于约束修复前必须区分症状、失败点、根因、最小修复和验证 guard。
 
 ## 技术取舍
 

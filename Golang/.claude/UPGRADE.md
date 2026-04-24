@@ -1,5 +1,41 @@
 # Upgrade Guide
 
+## Upgrade To 0.10.0
+
+This release adds a source-backed debugging workflow for `cc-fix` and recovery-style failure handling.
+
+### New Files To Copy
+
+- `.claude/rules/debugging-workflow.md`
+- `.claude/evals/cases/cc-debugging-workflow.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/scripts/cc-lint`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- `cc-fix` now treats reviewer text as a symptom until root cause is confirmed.
+- A Finding should not be marked `fixed` without a guard and fresh verification evidence.
+- `cc-test` may load this rule when recovery requires debugging a failure.
+
 ## Upgrade To 0.9.0
 
 This release adds source-driven development as a runtime topic rule for external APIs, SDKs, CLIs, cloud services, framework behavior, and version-sensitive claims.

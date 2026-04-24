@@ -193,3 +193,16 @@
 期望：
 - 判为协议违规。
 - supplement 只能补强额外证据；最低验证恢复必须使用 recovery 模式并引用 apply 阻塞记录。
+
+#### Case 14：`cc-fix` 把 reviewer 描述当根因
+
+输入：
+
+```text
+`cc-fix` 直接按 reviewer 的一句描述改代码，未确认问题仍存在，未定位失败点，修完后直接把 Finding 标记为 `fixed`。
+```
+
+期望：
+- 判为协议违规。
+- `cc-fix` 必须读取 `rules/debugging-workflow.md`。
+- 必须记录或说明：症状、失败点、根因、最小修复假设、guard、fresh verification。

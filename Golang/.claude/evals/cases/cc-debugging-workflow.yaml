@@ -1,0 +1,16 @@
+id: cc-debugging-workflow
+input: "cc-fix <change-id> for an open finding"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/rules/debugging-workflow.md
+  - .claude/rules/verification.md
+forbidden_actions:
+  - treat_reviewer_text_as_proven_root_cause
+  - mark_fixed_without_guard_or_fresh_verification
+  - broaden_fix_into_unrelated_cleanup
+expected_checks:
+  - reproduce or confirm finding still applies
+  - record root cause and minimal fix hypothesis
+  - .claude/scripts/cc-verify --change <change-id>
+rubric: default
