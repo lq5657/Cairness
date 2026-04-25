@@ -98,6 +98,8 @@ docs/maintenance/*
 
 `.claude/scripts/cc-schema-check` 会对这些 contract 做深度校验：role 必须在 `role-contracts.md` 登记，scoped writes 必须是父命令 `writes` 子集，多个 scoped writer 不能写同一目标，最终产物只能由 `main_flow` 写入。
 
+每个 subagent 还必须声明 `output_contract: structured_subagent_result`。主流程合并前必须拿到 `summary`、`scope`、`writes`、`evidence`、`risks` 和 `merge_notes`，不能接受 freeform subagent output。
+
 ## Source-Driven Topic Rule
 
 当 change 涉及第三方库、SDK、CLI、云服务、框架 API 或版本敏感行为时，相关 runtime command 会按需加载：
@@ -138,7 +140,7 @@ runtime manifest 现在有机器 schema：
 .claude/schemas/runtime-readset.schema.json
 ```
 
-`.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径、subagent contract 深度边界和 result contract。
+`.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径、subagent contract 深度边界、subagent output contract 和 result contract。
 
 ## Runtime Readsets
 

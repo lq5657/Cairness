@@ -21,6 +21,7 @@ Subagents provide bounded evidence, review fragments, verification notes, or sco
 - A subagent role must be registered in `.claude/rules/role-contracts.md`.
 - Runtime manifests must declare `write_scope_policy: parent_writes_subset`.
 - Runtime manifests must declare `parallel_policy: read_only_parallel_only` for read-only subagent sets, or `parallel_policy: disjoint_writes_only` when any scoped writer exists.
+- Runtime manifests must declare each subagent `output_contract` as `structured_subagent_result`.
 - Read-only subagents must not edit files.
 - Worker subagents may write only when the task or finding declares a concrete, disjoint write set.
 - Scoped writers may not write final command artifacts such as `review.md`, `test-spec.md`, audit reports, `task-board.md`, or `dev-map.md`; the main flow owns those writes.
@@ -89,6 +90,19 @@ For every subagent result, the main flow must record or incorporate:
 
 When a subagent result conflicts with spec, tasks, or another subagent, the main flow must stop and resolve the conflict before writing final command artifacts.
 
+## Output Contract
+
+Subagent output must not be freeform prose. Every subagent result must provide these fields before the parent merge:
+
+- `summary`
+- `scope`
+- `writes`
+- `evidence`
+- `risks`
+- `merge_notes`
+
+The main flow must reject freeform subagent output, omitted evidence, or output that cannot explain scope and risks. For read-only agents, `writes` must explicitly say read-only or empty. For scoped writers, `writes` must match the declared scoped write targets.
+
 ## Deterministic Enforcement
 
 `.claude/scripts/cc-schema-check` validates the runtime subagent contract:
@@ -99,3 +113,5 @@ When a subagent result conflicts with spec, tasks, or another subagent, the main
 - read-only and proposal-only agents declare no writes
 - final artifacts remain owned by `main_flow`
 - merge requirements record main-flow ownership and disjoint parallel write handling where needed
+- output contracts use `structured_subagent_result`
+- output required fields include `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`

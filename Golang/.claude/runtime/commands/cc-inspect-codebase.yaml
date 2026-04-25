@@ -58,12 +58,30 @@ subagents:
       trigger: inspect_selected_mode_and_scope
       writes: []
       output: evidence_backed_findings
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
     - name: scope-split-reviewer
       role: reviewer
       mode: read_only
       trigger: optional_large_scope_split
       writes: []
       output: scoped_findings_fragment
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
   merge_requirements:
     - main_flow_deduplicates_findings
     - main_flow_sets_final_severity

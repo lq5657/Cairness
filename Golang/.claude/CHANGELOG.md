@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.0 - 2026-04-25
+
+- Added structured `output_contract` declarations to subagent-enabled runtime commands.
+- Extended runtime command schema, `cc-schema-check`, and `cc-lint` to require `structured_subagent_result` output fields.
+- Updated the `cc-harness` skill and subagent maintenance docs to reject freeform subagent output before parent merge.
+- Added eval coverage for subagent output contract drift.
+
 ## 0.18.0 - 2026-04-25
 
 - Added deep subagent contract checks for registered roles, parent write-scope subsets, disjoint scoped writers, and main-flow final artifact ownership.

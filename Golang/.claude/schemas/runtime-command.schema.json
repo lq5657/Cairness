@@ -133,7 +133,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "role", "mode", "trigger", "writes", "output"],
+            "required": ["name", "role", "mode", "trigger", "writes", "output", "output_contract"],
             "properties": {
               "name": {
                 "$ref": "#/$defs/hyphenId"
@@ -153,6 +153,9 @@
               },
               "output": {
                 "$ref": "#/$defs/snakeId"
+              },
+              "output_contract": {
+                "$ref": "#/$defs/subagentOutputContract"
               }
             }
           }
@@ -273,6 +276,25 @@
         },
         "sources": {
           "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "subagentOutputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "required_fields"],
+      "properties": {
+        "format": {
+          "const": "structured_subagent_result"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["summary", "scope", "writes", "evidence", "risks", "merge_notes"]
+          }
         }
       }
     }

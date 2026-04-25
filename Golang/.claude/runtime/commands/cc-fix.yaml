@@ -84,6 +84,15 @@ subagents:
       trigger: confirm_finding_still_applies
       writes: []
       output: root_cause_and_minimal_fix_hypothesis
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
     - name: fix-worker
       role: developer
       mode: scoped_write
@@ -91,6 +100,15 @@ subagents:
       writes:
         - finding_related_code_files
       output: scoped_patch_summary
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
     - name: test-verifier
       role: test-verifier
       mode: scoped_write
@@ -98,6 +116,15 @@ subagents:
       writes:
         - test_files
       output: fix_verification_evidence
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
   merge_requirements:
     - main_flow_updates_finding_status
     - subagents_may_parallelize_only_disjoint_finding_write_scopes

@@ -79,6 +79,15 @@ subagents:
       writes:
         - test_files
       output: test_plan_evidence_and_mapping_recommendation
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
   merge_requirements:
     - main_flow_updates_test_spec_and_mapping
     - red_green_or_exception_must_be_recorded

@@ -1,5 +1,47 @@
 # Upgrade Guide
 
+## Upgrade To 0.19.0
+
+This release adds structured output contracts for subagent results.
+
+### New Files To Copy
+
+- `.claude/evals/cases/cc-subagent-output-contract.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/runtime/commands/cc-inspect-codebase.yaml`
+- `.claude/schemas/runtime-command.schema.json`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/evals/rubrics/default.yaml`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+- `docs/maintenance/subagent-model.md`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Existing `agents[].output` remains the output type name.
+- Every subagent must also declare `agents[].output_contract.format: structured_subagent_result`.
+- Subagent output required fields are `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`.
+- Parent command flows should reject freeform subagent output or output that omits evidence, scope, or risks.
+
 ## Upgrade To 0.18.0
 
 This release deepens runtime subagent contract validation.

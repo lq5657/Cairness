@@ -70,6 +70,8 @@ TOPIC_RULE_REQUIRED_SECTIONS = [
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "next_action"}
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
+SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
+SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
 READSET_GENERATOR = ".claude/scripts/cc-readset"
 SUBAGENT_REQUIRED_COMMANDS = {
     "cc-apply",
@@ -781,6 +783,20 @@ def validate_subagent_runtime_contract(
         role = agent.get("role")
         if isinstance(role, str) and registered_roles and role not in registered_roles:
             add(issues, "E_SCHEMA154", path, f"subagent {name} role {role} is not registered in role-contracts")
+        output_contract = agent.get("output_contract")
+        if not isinstance(output_contract, dict):
+            add(issues, "E_SCHEMA162", path, f"subagent {name} must declare output_contract")
+        else:
+            if output_contract.get("format") != SUBAGENT_OUTPUT_FORMAT:
+                add(issues, "E_SCHEMA162", path, f"subagent {name} output_contract.format must be {SUBAGENT_OUTPUT_FORMAT}")
+            output_fields = set(string_list(output_contract.get("required_fields")))
+            if output_fields != SUBAGENT_OUTPUT_REQUIRED_FIELDS:
+                add(
+                    issues,
+                    "E_SCHEMA163",
+                    path,
+                    f"subagent {name} output_contract.required_fields must be {sorted(SUBAGENT_OUTPUT_REQUIRED_FIELDS)}",
+                )
         writes = agent.get("writes")
         if mode in READ_ONLY_SUBAGENT_MODES and isinstance(writes, list) and writes:
             add(issues, "E_SCHEMA124", path, f"subagent {name} mode {mode} must not declare writes")

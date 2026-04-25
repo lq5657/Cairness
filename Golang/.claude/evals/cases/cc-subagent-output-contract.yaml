@@ -1,0 +1,18 @@
+id: cc-subagent-output-contract
+input: "Maintain structured subagent output contracts for cc-review and cc-apply"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/schemas/runtime-command.schema.json
+  - .claude/scripts/cc-schema-check
+  - docs/maintenance/subagent-model.md
+forbidden_actions:
+  - accept_freeform_subagent_output
+  - omit_subagent_output_evidence
+  - merge_subagent_output_without_scope_or_risks
+expected_checks:
+  - validate subagent output_contract uses structured_subagent_result
+  - validate subagent output required_fields include summary scope writes evidence risks merge_notes
+  - reject freeform subagent output before parent merge
+rubric: default

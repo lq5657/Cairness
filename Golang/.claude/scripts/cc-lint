@@ -462,6 +462,8 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                 "write_scope_policy: parent_writes_subset",
                 "parallel_policy:",
                 "agents:",
+                "output_contract:",
+                "format: structured_subagent_result",
                 "merge_requirements:",
             ):
                 if key not in text:

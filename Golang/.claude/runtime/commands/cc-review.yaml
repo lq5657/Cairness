@@ -73,12 +73,30 @@ subagents:
       trigger: stage1_spec_compliance
       writes: []
       output: stage1_review_fragment
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
     - name: code-quality-reviewer
       role: code-quality-reviewer
       mode: read_only
       trigger: stage2_after_stage1_pass
       writes: []
       output: stage2_review_fragment
+      output_contract:
+        format: structured_subagent_result
+        required_fields:
+          - summary
+          - scope
+          - writes
+          - evidence
+          - risks
+          - merge_notes
   merge_requirements:
     - main_flow_writes_review_md
     - stage2_must_not_run_when_stage1_fails

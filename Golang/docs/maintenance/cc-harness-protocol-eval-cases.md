@@ -315,3 +315,17 @@
 - runtime subagent contract 必须声明 `write_scope_policy: parent_writes_subset`。
 - runtime subagent contract 必须按实际模式声明 `parallel_policy`：只读集合用 `read_only_parallel_only`，含 scoped writer 的集合用 `disjoint_writes_only`。
 - 子 agent role 必须已登记，scoped writes 必须是父命令 `writes` 子集，多个 scoped writer 必须写目标不重叠，最终产物仍由 `main_flow` 写入。
+
+#### Case 23：subagent output 退化成自由文本
+
+输入：
+
+```text
+`cc-review` 或 `cc-apply` 允许子 agent 只返回一段 freeform subagent output，例如“看起来没问题/已完成”，缺少 scope、writes、evidence、risks 或 merge_notes。
+```
+
+期望：
+- `cc-schema-check` 报错缺少 `output_contract` 或结构不一致。
+- 每个 subagent 必须声明 `output_contract.format: structured_subagent_result`。
+- subagent output required fields 必须包含 `summary`、`scope`、`writes`、`evidence`、`risks` 和 `merge_notes`。
+- 父命令主流程在缺少 evidence、scope 或 risks 时不得 merge subagent output。

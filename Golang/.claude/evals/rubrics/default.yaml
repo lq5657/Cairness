@@ -32,3 +32,5 @@ criteria:
     description: Agent must keep generated runtime readsets current with command manifests, preserving always, optional, and conditional read boundaries.
   - name: subagent_deep_check
     description: Agent must keep subagent roles registered, scoped writes inside parent writes, parallel scoped writers disjoint, and final artifacts owned by the main flow.
+  - name: subagent_output_contract
+    description: Agent must require structured subagent output with summary, scope, writes, evidence, risks, and merge notes before parent merge.
