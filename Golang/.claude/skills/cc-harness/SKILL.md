@@ -61,6 +61,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Treat `.claude/runtime/commands/<command>.yaml` as the highest-priority runtime source for migrated commands.
 - Treat `.claude/workflows/cc-workflow.yaml` as the script and CI truth for state, writes, and auto-validation.
 - Treat subagent output as evidence input. The parent command remains responsible for state, final artifacts, and deterministic checks.
+- Respect `subagents.write_scope_policy` and `subagents.parallel_policy`: scoped subagent writes must stay inside parent `writes`, and parallel scoped writers must have disjoint write targets.
 - Treat `anti_rationalizations` and `red_flags` as stop-or-correct signals, not advisory prose.
 - Treat `result_contract` as the command closeout shape; do not replace evidence, risks, or next action with a freeform summary.
 - Do not create, modify, archive, or mark complete a change without fresh verification evidence.

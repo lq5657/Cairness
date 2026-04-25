@@ -25,7 +25,7 @@ runtime manifest 的机器契约是：
 - `.claude/schemas/topic-rule.schema.json`
 - `.claude/schemas/runtime-readset.schema.json`
 
-`.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用、topic rule skill-like 结构和 subagent contract 基础结构。
+`.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用、topic rule skill-like 结构和 subagent contract。对 subagent contract，它会进一步检查 role 已登记、scoped writes 不扩大父命令写范围、多个 scoped writer 写目标不重叠、最终产物仍由主流程写入。
 
 每个 migrated command manifest 还必须声明 `result_contract`。该契约要求命令最终输出包含 `status`、`summary`、`writes`、`evidence`、`risks` 和 `next_action`，并把 evidence / risks 回指到 auto validation、写入产物、forbids、red flags 或 stop conditions。
 
@@ -84,7 +84,7 @@ runtime manifest 的机器契约是：
 - `.claude/evals/*`
 - `fixtures/*`
 
-`.claude/scripts/cc-eval` 会对 eval case 做语义校验：`expected_reads` 必须能解析到真实 runtime/rule/script 文件，runtime command 和 topic rule 读取必须已注册，`forbidden_actions` 与 `expected_checks` 必须能在期望读取内容中找到依据。
+`.claude/scripts/cc-eval` 会对 eval case 做语义校验：`expected_reads` 必须能解析到真实 runtime/rule/script 文件，runtime command 和 runtime topic rule 读取必须已注册；维护类 eval 可读取允许的治理规则如 `role-contracts.md`。`forbidden_actions` 与 `expected_checks` 必须能在期望读取内容中找到依据。
 
 `.claude/scripts/cc-readset` 会从 runtime command manifest 生成 always / optional / conditional reads，并在 `cc-verify` 中检查落盘文件是否最新。
 
@@ -144,6 +144,8 @@ workflow 保留全局生命周期和 CI 真源职责，runtime manifest 负责 C
 - 子 agent 不能扩大写权限
 - Findings、验证映射和 task-board 不被多个输出源写散
 - `cc-verify` 与 role/sync/schema check 仍然是完成声明的硬门槛
+
+runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel_policy` 是这条边界的机器可读表达。`read_only_parallel_only` 只允许只读/提案型子 agent 并行；`disjoint_writes_only` 允许 scoped writer，但每个写目标必须属于父命令 `writes` 且彼此不重叠。
 
 ### 为什么 legacy docs 还没全部删
 

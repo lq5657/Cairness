@@ -273,7 +273,7 @@
 期望：
 - `cc-eval` 报错。
 - concrete `cc-*` case 必须声明读取 `runtime/core.yaml` 和对应 runtime command manifest。
-- `expected_reads` 中的 runtime command 必须在 `runtime/core.yaml` 注册，topic rule 必须在 `topic_rules` 注册。
+- `expected_reads` 中的 runtime command 必须在 `runtime/core.yaml` 注册，runtime topic rule 必须在 `topic_rules` 注册；维护类治理规则只能使用 `cc-eval` 允许的例外。
 - `forbidden_actions` 与 `expected_checks` 不能只写在 eval case 里，必须能被期望读取的 runtime、rule 或 script 内容语义支撑。
 
 #### Case 20：命令结果退化成自由文本
@@ -301,3 +301,17 @@
 - `.claude/scripts/cc-readset --check` 报错。
 - `cc-schema-check` 报 readset stale。
 - `always_reads`、`optional_reads` 和 `conditional_reads` 必须由 runtime manifest 派生，不能手工改生成物绕过。
+
+#### Case 22：subagent contract 深度边界失效
+
+输入：
+
+```text
+给 `cc-apply` 或 `cc-fix` 增加 scoped writer，但 role 未在 `role-contracts.md` 登记；或让子 agent 写父命令未声明的目标、与另一个 scoped writer 写同一目标、直接写 `review.md` / `test-spec.md` / task-board 等最终产物。
+```
+
+期望：
+- `cc-schema-check` 报错。
+- runtime subagent contract 必须声明 `write_scope_policy: parent_writes_subset`。
+- runtime subagent contract 必须按实际模式声明 `parallel_policy`：只读集合用 `read_only_parallel_only`，含 scoped writer 的集合用 `disjoint_writes_only`。
+- 子 agent role 必须已登记，scoped writes 必须是父命令 `writes` 子集，多个 scoped writer 必须写目标不重叠，最终产物仍由 `main_flow` 写入。

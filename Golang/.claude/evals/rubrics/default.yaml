@@ -30,3 +30,5 @@ criteria:
     description: Agent must close migrated cc-* commands with the declared result contract fields for status, summary, writes, evidence, risks, and next action.
   - name: runtime_readset_generator
     description: Agent must keep generated runtime readsets current with command manifests, preserving always, optional, and conditional read boundaries.
+  - name: subagent_deep_check
+    description: Agent must keep subagent roles registered, scoped writes inside parent writes, parallel scoped writers disjoint, and final artifacts owned by the main flow.

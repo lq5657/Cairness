@@ -86,6 +86,21 @@ ANTI_RATIONALIZATION_COMMANDS = {
     "cc-test",
 }
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
+ROLE_CONTRACTS_PATH = ".claude/rules/role-contracts.md"
+FINAL_ARTIFACT_WRITE_PREFIXES = (
+    ".claude/changes/",
+    "changes/",
+    ".claude/audits/",
+    "audits/",
+    ".claude/context/",
+    "context/",
+)
+FINAL_ARTIFACT_WRITE_NAMES = {
+    ".claude/changes/task-board.md",
+    "changes/task-board.md",
+    ".claude/context/dev-map.md",
+    "context/dev-map.md",
+}
 
 
 @dataclass
@@ -422,6 +437,35 @@ def ordered_unique(values: list[str]) -> list[str]:
     return result
 
 
+def load_registered_roles(project_root: Path, issues: list[Issue]) -> set[str]:
+    path = project_root / ROLE_CONTRACTS_PATH
+    if not path.exists():
+        add(issues, "E_SCHEMA153", path, "missing role contracts for subagent role validation")
+        return set()
+    roles: set[str] = set()
+    for row in table_rows(read(path)):
+        if not row:
+            continue
+        role = row[0].strip().strip("`")
+        if role and role not in {"角色", "role"}:
+            roles.add(role)
+    if not roles:
+        add(issues, "E_SCHEMA153", path, "role contracts must register at least one role")
+    return roles
+
+
+def is_final_artifact_write(value: str) -> bool:
+    normalized = normalize_declared_path(value)
+    if normalized in {normalize_declared_path(item) for item in FINAL_ARTIFACT_WRITE_NAMES}:
+        return True
+    return normalized.startswith(tuple(normalize_declared_path(item) for item in FINAL_ARTIFACT_WRITE_PREFIXES))
+
+
+def expected_subagent_parallel_policy(agents: list[Any]) -> str:
+    has_scoped_writer = any(isinstance(agent, dict) and agent.get("mode") == "scoped_write" for agent in agents)
+    return "disjoint_writes_only" if has_scoped_writer else "read_only_parallel_only"
+
+
 def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict):
         return []
@@ -690,7 +734,13 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
     return core
 
 
-def validate_subagent_runtime_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
+def validate_subagent_runtime_contract(
+    command: str,
+    manifest: dict[str, Any],
+    path: Path,
+    issues: list[Issue],
+    registered_roles: set[str],
+) -> None:
     subagents = manifest.get("subagents")
     if command in SUBAGENT_REQUIRED_COMMANDS:
         if not isinstance(subagents, dict) or subagents.get("enabled") is not True:
@@ -702,7 +752,23 @@ def validate_subagent_runtime_contract(command: str, manifest: dict[str, Any], p
     agents = subagents.get("agents")
     if not isinstance(agents, list):
         return
+    parent_writes = {normalize_declared_path(item) for item in string_list(manifest.get("writes"))}
+    merge_requirements = string_list(subagents.get("merge_requirements"))
+    if subagents.get("write_scope_policy") != "parent_writes_subset":
+        add(issues, "E_SCHEMA155", path, f"{command} subagents.write_scope_policy must be parent_writes_subset")
+    expected_parallel_policy = expected_subagent_parallel_policy(agents)
+    if subagents.get("parallel_policy") != expected_parallel_policy:
+        add(
+            issues,
+            "E_SCHEMA156",
+            path,
+            f"{command} subagents.parallel_policy must be {expected_parallel_policy}",
+        )
+    if not any("main_flow" in requirement for requirement in merge_requirements):
+        add(issues, "E_SCHEMA160", path, f"{command} subagents.merge_requirements must include main_flow ownership")
+
     names: set[str] = set()
+    scoped_write_owners: dict[str, str] = {}
     for idx, agent in enumerate(agents):
         if not isinstance(agent, dict):
             continue
@@ -712,11 +778,50 @@ def validate_subagent_runtime_contract(command: str, manifest: dict[str, Any], p
                 add(issues, "E_SCHEMA123", path, f"subagents.agents[{idx}] duplicate name {name}")
             names.add(name)
         mode = agent.get("mode")
+        role = agent.get("role")
+        if isinstance(role, str) and registered_roles and role not in registered_roles:
+            add(issues, "E_SCHEMA154", path, f"subagent {name} role {role} is not registered in role-contracts")
         writes = agent.get("writes")
         if mode in READ_ONLY_SUBAGENT_MODES and isinstance(writes, list) and writes:
             add(issues, "E_SCHEMA124", path, f"subagent {name} mode {mode} must not declare writes")
         if mode == "scoped_write" and isinstance(writes, list) and not writes:
             add(issues, "E_SCHEMA125", path, f"subagent {name} mode scoped_write must declare writes")
+        if mode != "scoped_write" or not isinstance(writes, list):
+            continue
+        for write in string_list(writes):
+            normalized_write = normalize_declared_path(write)
+            if normalized_write not in parent_writes:
+                add(
+                    issues,
+                    "E_SCHEMA157",
+                    path,
+                    f"subagent {name} write {write} is outside parent command writes",
+                )
+            if is_final_artifact_write(write):
+                add(
+                    issues,
+                    "E_SCHEMA158",
+                    path,
+                    f"subagent {name} must not write final artifact {write}",
+                )
+            previous_owner = scoped_write_owners.get(normalized_write)
+            if previous_owner is not None:
+                add(
+                    issues,
+                    "E_SCHEMA159",
+                    path,
+                    f"subagent {name} overlaps scoped write {write} with {previous_owner}",
+                )
+            scoped_write_owners[normalized_write] = str(name)
+    if len(scoped_write_owners) > 1 and not any(
+        "disjoint" in requirement or "parallel" in requirement for requirement in merge_requirements
+    ):
+        add(
+            issues,
+            "E_SCHEMA161",
+            path,
+            f"{command} subagents.merge_requirements must declare disjoint parallel write handling",
+        )
 
 
 def result_sources(result_contract: dict[str, Any], section: str) -> set[str]:
@@ -823,6 +928,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     project_root = claude_root.parent
     schema_path = claude_root / "schemas" / RUNTIME_COMMAND_SCHEMA
     schema = load_json_file(schema_path, issues)
+    registered_roles = load_registered_roles(project_root, issues)
     runtime_commands = core.get("runtime_commands") if isinstance(core, dict) else None
     if isinstance(runtime_commands, dict):
         command_paths = [(command, project_path(project_root, path)) for command, path in sorted(runtime_commands.items())]
@@ -840,7 +946,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         if schema is not None:
             validate_against_schema(manifest, schema, schema, [], resolved_path, issues)
         validate_runtime_command_references(project_root, core, command, manifest, resolved_path, issues)
-        validate_subagent_runtime_contract(command, manifest, resolved_path, issues)
+        validate_subagent_runtime_contract(command, manifest, resolved_path, issues, registered_roles)
         validate_result_contract(command, manifest, resolved_path, issues)
     return checked
 

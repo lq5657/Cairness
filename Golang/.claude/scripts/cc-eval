@@ -17,6 +17,9 @@ RUBRIC_REQUIRED_KEYS = {"id", "criteria"}
 COMMAND_RE = re.compile(r"\bcc-[a-z0-9-]+\b")
 PATH_RE = re.compile(r"(?:(?:\.claude|docs|fixtures)/[A-Za-z0-9_./<>*-]+|README\.md)")
 SCRIPT_COMMAND_RE = re.compile(r"^(\.claude/scripts/[A-Za-z0-9_-]+)\b")
+GOVERNANCE_RULE_READS = {
+    ".claude/rules/role-contracts.md",
+}
 GENERIC_TOKENS = {
     "a",
     "an",
@@ -280,7 +283,7 @@ def validate_case_semantics(
         corpus_paths.append(resolved)
         if item.startswith(".claude/runtime/commands/") and item not in registered_runtime_commands:
             issues.append(Issue("E_EVAL024", str(path), f"runtime command read is not registered in runtime/core.yaml: {item}"))
-        if item.startswith(".claude/rules/") and item not in registered_topic_rules:
+        if item.startswith(".claude/rules/") and item not in registered_topic_rules and item not in GOVERNANCE_RULE_READS:
             issues.append(Issue("E_EVAL025", str(path), f"topic rule read is not registered in runtime/core.yaml: {item}"))
 
     command = concrete_command(case)

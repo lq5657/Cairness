@@ -1,5 +1,50 @@
 # Upgrade Guide
 
+## Upgrade To 0.18.0
+
+This release deepens runtime subagent contract validation.
+
+### New Files To Copy
+
+- `.claude/evals/cases/cc-subagent-deep-check.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/commands/cc-apply.yaml`
+- `.claude/runtime/commands/cc-review.yaml`
+- `.claude/runtime/commands/cc-fix.yaml`
+- `.claude/runtime/commands/cc-test.yaml`
+- `.claude/runtime/commands/cc-inspect-codebase.yaml`
+- `.claude/workflows/cc-workflow.yaml`
+- `.claude/schemas/runtime-command.schema.json`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/scripts/cc-eval`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/evals/rubrics/default.yaml`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+- `docs/maintenance/subagent-model.md`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-readset --write
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Every subagent-enabled runtime command must declare `write_scope_policy: parent_writes_subset`.
+- Commands with scoped writer subagents must declare `parallel_policy: disjoint_writes_only`; read-only-only subagent sets should declare `parallel_policy: read_only_parallel_only`.
+- Subagent roles must exist in `.claude/rules/role-contracts.md`.
+- Subagent writes must be a subset of parent command `writes`; final artifacts remain owned by `main_flow`.
+
 ## Upgrade To 0.17.0
 
 This release adds generated runtime readsets for migrated commands.

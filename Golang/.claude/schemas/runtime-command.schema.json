@@ -98,6 +98,8 @@
         "policy",
         "merge_owner",
         "final_writes_by",
+        "write_scope_policy",
+        "parallel_policy",
         "agents",
         "merge_requirements"
       ],
@@ -116,6 +118,14 @@
         "final_writes_by": {
           "type": "string",
           "enum": ["main_flow"]
+        },
+        "write_scope_policy": {
+          "type": "string",
+          "enum": ["parent_writes_subset"]
+        },
+        "parallel_policy": {
+          "type": "string",
+          "enum": ["disjoint_writes_only", "read_only_parallel_only"]
         },
         "agents": {
           "type": "array",

@@ -96,6 +96,8 @@ docs/maintenance/*
 
 统一协议见 `docs/maintenance/subagent-model.md`。子 agent 输出只是证据输入，不替代主流程的状态迁移、最终写入和自动校验。
 
+`.claude/scripts/cc-schema-check` 会对这些 contract 做深度校验：role 必须在 `role-contracts.md` 登记，scoped writes 必须是父命令 `writes` 子集，多个 scoped writer 不能写同一目标，最终产物只能由 `main_flow` 写入。
+
 ## Source-Driven Topic Rule
 
 当 change 涉及第三方库、SDK、CLI、云服务、框架 API 或版本敏感行为时，相关 runtime command 会按需加载：
@@ -136,7 +138,7 @@ runtime manifest 现在有机器 schema：
 .claude/schemas/runtime-readset.schema.json
 ```
 
-`.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径和 subagent contract 引用。
+`.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径、subagent contract 深度边界和 result contract。
 
 ## Runtime Readsets
 
@@ -194,7 +196,7 @@ docs/maintenance/rule-skill-anatomy.md
 
 `.claude/scripts/cc-eval` 不再只检查 eval YAML 是否有必填键。它会解析 case 与 rubric，并校验：
 
-- `expected_reads` 指向真实文件，runtime command 和 topic rule read 必须已注册。
+- `expected_reads` 指向真实文件，runtime command 和 runtime topic rule read 必须已注册；维护类 eval 可读取允许的治理规则如 `role-contracts.md`。
 - concrete `cc-*` case 必须声明读取 `.claude/runtime/core.yaml` 和对应 command manifest。
 - `forbidden_actions` 与 `expected_checks` 必须能在期望读取的 runtime/rule/script 内容中找到语义依据。
 - `rubric` 必须引用已存在的 rubric，criterion 必须有 `name` 和 `description`。

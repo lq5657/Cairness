@@ -49,6 +49,8 @@ subagents:
   policy: docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
+  write_scope_policy: parent_writes_subset
+  parallel_policy: read_only_parallel_only
   agents:
     - name: mode-audit-reviewer
       role: reviewer

@@ -1,0 +1,20 @@
+id: cc-subagent-deep-check
+input: "Maintain subagent contracts for cc-apply and cc-fix scoped writers"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/scripts/cc-schema-check
+  - .claude/rules/role-contracts.md
+  - docs/maintenance/subagent-model.md
+forbidden_actions:
+  - allow_unregistered_subagent_role
+  - allow_subagent_write_scope_outside_parent
+  - allow_overlapping_scoped_write_agents
+  - let_subagent_write_final_artifacts
+expected_checks:
+  - validate subagent roles are registered in role-contracts
+  - validate scoped_write writes are a subset of parent command writes
+  - validate parallel scoped_write agents have disjoint writes
+  - validate final artifacts remain owned by main_flow
+rubric: default

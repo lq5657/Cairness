@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.0 - 2026-04-25
+
+- Added deep subagent contract checks for registered roles, parent write-scope subsets, disjoint scoped writers, and main-flow final artifact ownership.
+- Added explicit `write_scope_policy` and `parallel_policy` fields to subagent-enabled runtime commands.
+- Aligned `cc-apply` and `cc-fix` parent write scopes with their verifier subagent `test_files` writes.
+- Allowed semantic eval maintenance cases to read `role-contracts.md` as a governance rule while keeping runtime topic rule registration checks.
+- Added eval and documentation coverage for subagent contract boundary drift.
+
 ## 0.17.0 - 2026-04-25
 
 - Added `cc-readset` to generate runtime readsets from migrated command manifests.

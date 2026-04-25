@@ -122,7 +122,7 @@ commands:
     change_to: review
     inputs: [change_id]
     outputs: [business_code_changes, change_docs_update, dev_map_update_if_needed, task_board_update, optional_commits]
-    writes: [task_declared_code_files, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
+    writes: [task_declared_code_files, test_files, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
     validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync]
     forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge]
     auto_validation: ["cc-verify --json --output changes/<change-id>/baseline/pre-apply.json --change <change-id>", "cc-delta-check --before <before-report> --after <after-report>", "cc-verify --change <change-id>"]
@@ -148,7 +148,7 @@ commands:
     change_to: review
     inputs: [change_id, optional_fix_description]
     outputs: [fixed_code, updated_findings, synced_change_docs, task_board_update]
-    writes: [finding_related_code_files, changes/<change-id>/review.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
+    writes: [finding_related_code_files, test_files, changes/<change-id>/review.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
     validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync]
     forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification]
     auto_validation: ["cc-verify --change <change-id>"]

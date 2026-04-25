@@ -18,8 +18,12 @@ Subagents provide bounded evidence, review fragments, verification notes, or sco
 
 - A subagent must not expand the parent command write scope.
 - A subagent must receive a concrete role, input set, output schema, and allowed write scope.
+- A subagent role must be registered in `.claude/rules/role-contracts.md`.
+- Runtime manifests must declare `write_scope_policy: parent_writes_subset`.
+- Runtime manifests must declare `parallel_policy: read_only_parallel_only` for read-only subagent sets, or `parallel_policy: disjoint_writes_only` when any scoped writer exists.
 - Read-only subagents must not edit files.
 - Worker subagents may write only when the task or finding declares a concrete, disjoint write set.
+- Scoped writers may not write final command artifacts such as `review.md`, `test-spec.md`, audit reports, `task-board.md`, or `dev-map.md`; the main flow owns those writes.
 - The main flow must merge, review, and record subagent output before claiming completion.
 - The main flow must run the command's deterministic checks after merging subagent output.
 - Do not run subagents for missing required arguments. Stop first and ask for the required input.
@@ -84,3 +88,14 @@ For every subagent result, the main flow must record or incorporate:
 - residual risks or rejected findings
 
 When a subagent result conflicts with spec, tasks, or another subagent, the main flow must stop and resolve the conflict before writing final command artifacts.
+
+## Deterministic Enforcement
+
+`.claude/scripts/cc-schema-check` validates the runtime subagent contract:
+
+- subagent roles are registered in `.claude/rules/role-contracts.md`
+- scoped writes are a subset of parent command `writes`
+- scoped writer targets are disjoint
+- read-only and proposal-only agents declare no writes
+- final artifacts remain owned by `main_flow`
+- merge requirements record main-flow ownership and disjoint parallel write handling where needed
