@@ -136,6 +136,19 @@ runtime manifest 现在有机器 schema：
 
 `.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径和 subagent contract 引用。
 
+## Structured Command Result
+
+每个 migrated runtime command 都声明 `result_contract`，要求命令结束时按统一字段收口：
+
+- `status`
+- `summary`
+- `writes`
+- `evidence`
+- `risks`
+- `next_action`
+
+`.claude/scripts/cc-schema-check` 会校验这些字段、统一状态值、evidence 来源、risk 来源和 next action。这样命令结果不会退化成“完成了”的自由文本，而是明确说明写了什么、证据是什么、剩余风险是什么、下一步做什么。
+
 ## Workflow Runtime Parity
 
 `cc-workflow.yaml` 仍是脚本和 CI 真源，runtime manifest 是 Claude 的轻量执行面。为避免两者漂移，`.claude/scripts/cc-schema-check` 现在会对所有 migrated commands 校验：

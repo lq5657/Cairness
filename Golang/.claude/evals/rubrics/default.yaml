@@ -26,3 +26,5 @@ criteria:
     description: Agent must keep runtime-registered topic rules frontmatter-valid and structured like compact skills with explicit triggers, process, anti-rationalizations, red flags, and verification.
   - name: eval_semantics
     description: Agent must keep eval cases grounded in real runtime reads, registered topic rules, existing scripts, known rubrics, and semantically covered forbidden actions and expected checks.
+  - name: structured_result
+    description: Agent must close migrated cc-* commands with the declared result contract fields for status, summary, writes, evidence, risks, and next action.

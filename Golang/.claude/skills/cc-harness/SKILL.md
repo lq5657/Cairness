@@ -19,8 +19,9 @@ For any `cc-*` request:
    - `.claude/checkpoints/<command>.md`
 5. If the runtime contract declares `subagents.enabled: true`, read `docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
 6. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
-7. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
-8. Run the deterministic checks declared by `.claude/harness.config.yaml`.
+7. If the runtime contract declares `result_contract`, report the final command result with the required fields: `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
+8. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
+9. Run the deterministic checks declared by `.claude/harness.config.yaml`.
 
 If a required argument is missing, stop before reading business code or executing the workflow.
 
@@ -60,6 +61,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Treat `.claude/workflows/cc-workflow.yaml` as the script and CI truth for state, writes, and auto-validation.
 - Treat subagent output as evidence input. The parent command remains responsible for state, final artifacts, and deterministic checks.
 - Treat `anti_rationalizations` and `red_flags` as stop-or-correct signals, not advisory prose.
+- Treat `result_contract` as the command closeout shape; do not replace evidence, risks, or next action with a freeform summary.
 - Do not create, modify, archive, or mark complete a change without fresh verification evidence.
 - Do not use `changes/task-board.md` or `context/dev-map.md` as a substitute for `spec.md`, `tasks.md`, `review.md`, or `test-spec.md`.
 

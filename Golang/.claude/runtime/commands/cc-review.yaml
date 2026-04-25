@@ -107,6 +107,36 @@ auto_validation:
   - .claude/scripts/cc-role-check --command cc-review --change <change-id>
   - .claude/scripts/cc-verify --harness-only --change <change-id>
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - auto_validation
+      - written_artifacts
+      - review_findings
+      - task_coverage
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+  next_actions:
+    - run_cc_fix_or_cc_archive
+
 stop_conditions:
   - spec_status_not_review
   - missing_required_argument

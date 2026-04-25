@@ -91,6 +91,35 @@ red_flags:
 auto_validation:
   - .claude/scripts/cc-verify --harness-only --change <change-id>
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - auto_validation
+      - written_artifacts
+      - hard_gate_state
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+  next_actions:
+    - wait_for_hard_gate_or_revise_scope
+
 stop_conditions:
   - missing_required_argument
   - unresolved_blocking_clarifications

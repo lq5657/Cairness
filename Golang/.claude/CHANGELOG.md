@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.0 - 2026-04-25
+
+- Added structured `result_contract` declarations to migrated runtime commands.
+- Extended runtime command schema, `cc-schema-check`, and `cc-lint` to validate command result closeout fields.
+- Updated the `cc-harness` skill to require structured command closeout.
+- Added eval and documentation coverage for command result drift.
+
 ## 0.15.0 - 2026-04-25
 
 - Upgraded `cc-eval` from YAML key checks to semantic eval coverage checks.

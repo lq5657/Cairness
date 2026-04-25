@@ -1,5 +1,41 @@
 # Upgrade Guide
 
+## Upgrade To 0.16.0
+
+This release adds structured result contracts for migrated runtime commands.
+
+### New Files To Copy
+
+- `.claude/evals/cases/cc-structured-result.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/commands/*.yaml`
+- `.claude/schemas/runtime-command.schema.json`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Every migrated runtime command must declare `result_contract`.
+- Command closeout should include `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
+- `cc-schema-check` now rejects result contracts that omit universal fields, status values, evidence sources, risk sources, or next actions.
+
 ## Upgrade To 0.15.0
 
 This release upgrades `cc-eval` from key-shape validation to semantic coverage validation.

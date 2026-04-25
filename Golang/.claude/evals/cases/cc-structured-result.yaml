@@ -1,0 +1,17 @@
+id: cc-structured-result
+input: "Maintain migrated runtime command result contracts"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/schemas/runtime-command.schema.json
+  - .claude/scripts/cc-schema-check
+  - .claude/scripts/cc-lint
+forbidden_actions:
+  - omit_structured_command_result
+  - return_unstructured_summary_without_evidence
+  - hide_risks_or_next_action
+expected_checks:
+  - validate result_contract required fields and status values
+  - validate evidence, risks, and next_actions are declared for every runtime command
+  - .claude/scripts/cc-schema-check .claude/changes
+rubric: default

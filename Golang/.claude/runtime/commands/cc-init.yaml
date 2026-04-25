@@ -44,6 +44,34 @@ steps:
 
 auto_validation: []
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - written_artifacts
+      - updated_context_files
+      - recorded_unknowns
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+  next_actions:
+    - proceed_to_propose_or_inspect
+
 stop_conditions:
   - missing_claude_scaffold
   - project_structure_cannot_support_basic_fact_identification

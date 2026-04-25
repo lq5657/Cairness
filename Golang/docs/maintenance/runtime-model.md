@@ -26,6 +26,8 @@ runtime manifest 的机器契约是：
 
 `.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用、topic rule skill-like 结构和 subagent contract 基础结构。
 
+每个 migrated command manifest 还必须声明 `result_contract`。该契约要求命令最终输出包含 `status`、`summary`、`writes`、`evidence`、`risks` 和 `next_action`，并把 evidence / risks 回指到 auto validation、写入产物、forbids、red flags 或 stop conditions。
+
 同一个检查还会校验 migrated command 的 workflow/runtime parity：
 
 - `change_from` / `change_to`
@@ -112,6 +114,10 @@ runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验
 ### 为什么 runtime manifest 需要 schema
 
 runtime manifest 已经成为 migrated command 的默认执行入口。只靠正则检查无法稳定发现字段类型错误、额外字段、topic rule 漏注册、command path 漂移或 subagent contract 结构破损。`runtime-core.schema.json` 与 `runtime-command.schema.json` 把这些约束变成可校验契约，`cc-schema-check` 负责把 schema 校验和跨文件引用校验放进常规 `cc-verify`。
+
+### 为什么命令结果也要结构化
+
+如果命令只用自由文本收尾，AI 很容易漏掉实际写入、验证证据、剩余风险或下一步动作。`result_contract` 把 closeout 变成 runtime contract 的一部分，让 migrated commands 在结束时必须说明状态、摘要、写入、证据、风险和 next action。这样用户和后续命令都能稳定消费结果。
 
 ### 为什么 topic rule 也需要 schema/lint
 

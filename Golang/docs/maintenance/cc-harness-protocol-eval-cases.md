@@ -275,3 +275,16 @@
 - concrete `cc-*` case 必须声明读取 `runtime/core.yaml` 和对应 runtime command manifest。
 - `expected_reads` 中的 runtime command 必须在 `runtime/core.yaml` 注册，topic rule 必须在 `topic_rules` 注册。
 - `forbidden_actions` 与 `expected_checks` 不能只写在 eval case 里，必须能被期望读取的 runtime、rule 或 script 内容语义支撑。
+
+#### Case 20：命令结果退化成自由文本
+
+输入：
+
+```text
+`cc-apply` 或 `cc-review` 结束时只输出“已完成/已通过”，没有列出 status、summary、writes、evidence、risks 和 next_action。
+```
+
+期望：
+- migrated runtime command 必须声明 `result_contract`。
+- `cc-schema-check` 报缺失或结构不一致。
+- 命令收尾必须包含统一字段，并且 evidence / risks 要能追溯到 auto validation、写入产物、forbids、red flags 或 stop conditions。

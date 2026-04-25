@@ -15,6 +15,7 @@
     "preconditions",
     "steps",
     "auto_validation",
+    "result_contract",
     "stop_conditions"
   ],
   "properties": {
@@ -163,6 +164,55 @@
     "auto_validation": {
       "$ref": "#/$defs/stringList"
     },
+    "result_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "required_fields",
+        "status_values",
+        "writes",
+        "evidence",
+        "risks",
+        "next_actions"
+      ],
+      "properties": {
+        "format": {
+          "const": "structured_command_result"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["status", "summary", "writes", "evidence", "risks", "next_action"]
+          }
+        },
+        "status_values": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["passed", "blocked", "partial"]
+          }
+        },
+        "writes": {
+          "type": "string",
+          "enum": ["manifest_writes"]
+        },
+        "evidence": {
+          "$ref": "#/$defs/resultSection"
+        },
+        "risks": {
+          "$ref": "#/$defs/resultSection"
+        },
+        "next_actions": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
     "stop_conditions": {
       "$ref": "#/$defs/nonEmptySnakeList"
     }
@@ -201,6 +251,19 @@
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/snakeId"
+      }
+    },
+    "resultSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "sources"],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "sources": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
       }
     }
   }

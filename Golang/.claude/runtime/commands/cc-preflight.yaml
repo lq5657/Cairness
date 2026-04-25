@@ -39,6 +39,33 @@ steps:
 
 auto_validation: []
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - checked_artifacts
+      - adoption_checklist
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+  next_actions:
+    - fix_scaffold_or_continue
+
 stop_conditions:
   - missing_claude_scaffold
   - missing_key_templates_or_scripts

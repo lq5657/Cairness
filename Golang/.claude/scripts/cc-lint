@@ -115,6 +115,7 @@ TOPIC_RULE_REQUIRED_MARKERS = [
     "**Verification**",
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
+RESULT_CONTRACT_FIELDS = ["status", "summary", "writes", "evidence", "risks", "next_action"]
 
 
 def read(path: Path) -> str:
@@ -433,9 +434,23 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         text = read(path)
         if re.search(rf"^command:\s*{re.escape(command)}\s*$", text, re.M) is None:
             errors.append(f"{path}: command field must match filename")
-        for key in ("inputs:", "state:", "writes:", "preconditions:", "steps:", "auto_validation:"):
+        for key in ("inputs:", "state:", "writes:", "preconditions:", "steps:", "auto_validation:", "result_contract:"):
             if key not in text:
                 errors.append(f"{path}: missing {key.rstrip(':')}")
+        for key in (
+            "format: structured_command_result",
+            "required_fields:",
+            "status_values:",
+            "writes: manifest_writes",
+            "evidence:",
+            "risks:",
+            "next_actions:",
+        ):
+            if key not in text:
+                errors.append(f"{path}: missing result contract field {key.rstrip(':')}")
+        for field in RESULT_CONTRACT_FIELDS:
+            if re.search(rf"^\s+-\s+{re.escape(field)}\s*$", text, re.M) is None:
+                errors.append(f"{path}: result_contract.required_fields missing {field}")
         if command in SUBAGENT_ENABLED_COMMANDS:
             for key in (
                 "subagents:",

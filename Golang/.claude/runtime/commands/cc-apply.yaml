@@ -125,6 +125,36 @@ auto_validation:
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - auto_validation
+      - written_artifacts
+      - baseline_delta
+      - task_evidence
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+  next_actions:
+    - run_cc_review_or_fix_validation
+
 stop_conditions:
   - missing_required_argument
   - hard_gate_not_confirmed

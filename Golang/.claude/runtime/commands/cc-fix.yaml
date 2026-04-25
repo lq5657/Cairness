@@ -129,6 +129,36 @@ steps:
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
 
+result_contract:
+  format: structured_command_result
+  required_fields:
+    - status
+    - summary
+    - writes
+    - evidence
+    - risks
+    - next_action
+  status_values:
+    - passed
+    - blocked
+    - partial
+  writes: manifest_writes
+  evidence:
+    required: true
+    sources:
+      - auto_validation
+      - written_artifacts
+      - finding_fix_evidence
+      - fresh_verification
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+  next_actions:
+    - rerun_cc_review_or_continue_fixes
+
 stop_conditions:
   - missing_required_argument
   - finding_not_open_and_not_explicitly_reframed

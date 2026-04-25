@@ -12,5 +12,5 @@ forbidden_actions:
 expected_checks:
   - validate runtime/core.yaml against runtime-core schema
   - validate every runtime command manifest against runtime-command schema
-  - check runtime command paths, topic rule registration, and subagent contract references
+  - check runtime command paths, topic rule registration, subagent contract references, and result contracts
 rubric: default
