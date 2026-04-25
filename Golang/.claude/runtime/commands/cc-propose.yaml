@@ -23,6 +23,8 @@ forbids:
   - skip_scope_freeze
   - skip_validation_mapping
   - create_oversized_or_mixed_scope_change
+  - treat_listed_clarifications_as_resolved
+  - present_hard_gate_without_user_choice
 
 required_reads:
   - .claude/context/project-context.md
@@ -32,10 +34,45 @@ required_reads:
 preconditions:
   - decide_existing_project_change_vs_new_project
   - perform_minimum_local_research_before_broad_questions
+  - distinguish_resolved_vs_blocking_clarifications
   - check_change_conflicts_and_depends_on
   - classify_change_size_and_split_boundaries
   - freeze_scope_before_final_tasks
   - map_major_requirements_and_risks_to_validation_ids
+
+interaction_contract:
+  mode: interactive_required
+  clarification:
+    when: blocking_unknowns_affect_scope_acceptance_or_task_split
+    presentation:
+      - show_current_understanding_summary
+      - ask_numbered_questions_with_expected_answer_shape
+      - offer_explicit_options_when_question_has_known_choices
+      - wait_for_user_answer_before_freezing_scope
+    blocking_behavior:
+      - unresolved_blocking_clarifications_status_blocked_or_partial
+      - do_not_present_hard_gate_as_ready_until_blockers_resolved
+      - next_action_must_be_answer_clarification_questions
+    max_questions_per_round: 4
+    resolution_required_before_ready: true
+  hard_gate:
+    when: artifacts_written_and_auto_validation_passed_without_blocking_clarifications
+    presentation:
+      - show_confirmable_items_scope_acceptance_risks_validation_mapping
+      - ask_user_to_choose_confirm_revise_or_block
+      - record_selected_confirmation_in_spec_hard_gate
+    confirmation_options:
+      - confirm_scope_and_apply_next
+      - request_revision
+      - block_until_clarified
+    required_confirmations:
+      - confirmed_scope
+      - accepted_risks
+      - validation_mapping
+      - human_review_status
+    blocking_behavior:
+      - do_not_enter_apply_without_explicit_user_confirmation
+      - next_action_must_be_choose_hard_gate_confirmation_option
 
 topic_rules:
   always:
@@ -65,6 +102,7 @@ steps:
   - read_project_context_if_present
   - restate_goal_and_constraints
   - clarify_only_high_value_unknowns
+  - present_blocking_clarification_questions_and_wait_for_answers
   - classify_scope_axes_and_size
   - compare_recommended_vs_rejected_option
   - split_or_phase_oversized_work
@@ -74,6 +112,7 @@ steps:
   - write_tasks
   - sync_task_board
   - run_auto_validation
+  - present_hard_gate_choices_and_wait_for_user_selection
   - wait_for_hard_gate_confirmation
 
 anti_rationalizations:
@@ -81,12 +120,16 @@ anti_rationalizations:
   - defer_task_scope_split_to_cc_apply
   - merge_unrelated_risks_under_one_validation_mapping
   - claim_task_is_small_without_declared_file_scope_acceptance_and_evidence
+  - treat_clarification_list_as_if_user_answered_it
+  - treat_hard_gate_summary_as_if_user_confirmed_it
 
 red_flags:
   - task_scope_writes_broad_directories_without_named_modules
   - validation_ids_cannot_map_to_specific_tasks
   - rollback_differs_across_items_inside_one_task
   - subagents_would_need_overlapping_write_scopes
+  - final_output_contains_pending_questions_but_no_direct_question_to_user
+  - final_output_says_execute_cc_apply_without_confirm_revise_block_options
 
 auto_validation:
   - .claude/scripts/cc-verify --harness-only --change <change-id>
@@ -111,18 +154,24 @@ result_contract:
       - auto_validation
       - written_artifacts
       - hard_gate_state
+      - interaction_state
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
       - red_flags
+      - interaction_state
   next_actions:
     - wait_for_hard_gate_or_revise_scope
+    - answer_clarification_questions
+    - choose_hard_gate_confirmation_option
 
 stop_conditions:
   - missing_required_argument
   - unresolved_blocking_clarifications
+  - user_answer_required_for_blocking_clarification
   - oversized_scope_without_split_or_human_exception
   - task_traceability_not_closed
   - auto_validation_failed
+  - hard_gate_confirmation_missing

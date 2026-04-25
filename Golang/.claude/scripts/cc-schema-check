@@ -72,6 +72,28 @@ RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "n
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
 SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
 SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
+PROPOSE_INTERACTION_PRESENTATION = {
+    "clarification": {
+        "ask_numbered_questions_with_expected_answer_shape",
+        "wait_for_user_answer_before_freezing_scope",
+    },
+    "hard_gate": {
+        "ask_user_to_choose_confirm_revise_or_block",
+    },
+}
+PROPOSE_INTERACTION_CONFIRMATION_OPTIONS = {
+    "confirm_scope_and_apply_next",
+    "request_revision",
+    "block_until_clarified",
+}
+PROPOSE_INTERACTION_BLOCKING_BEHAVIOR = {
+    "clarification": {
+        "do_not_present_hard_gate_as_ready_until_blockers_resolved",
+    },
+    "hard_gate": {
+        "do_not_enter_apply_without_explicit_user_confirmation",
+    },
+}
 READSET_GENERATOR = ".claude/scripts/cc-readset"
 SUBAGENT_REQUIRED_COMMANDS = {
     "cc-apply",
@@ -896,6 +918,54 @@ def validate_result_contract(command: str, manifest: dict[str, Any], path: Path,
         add(issues, "E_SCHEMA149", path, f"{command} result_contract.next_actions must not be empty")
 
 
+def validate_propose_interaction_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
+    if command != "cc-propose":
+        return
+    contract = manifest.get("interaction_contract")
+    if not isinstance(contract, dict):
+        add(issues, "E_SCHEMA164", path, "cc-propose must declare interaction_contract")
+        return
+    if contract.get("mode") != "interactive_required":
+        add(issues, "E_SCHEMA165", path, "cc-propose interaction_contract.mode must be interactive_required")
+
+    clarification = contract.get("clarification")
+    if not isinstance(clarification, dict):
+        add(issues, "E_SCHEMA166", path, "cc-propose interaction_contract.clarification must be an object")
+    else:
+        if clarification.get("resolution_required_before_ready") is not True:
+            add(
+                issues,
+                "E_SCHEMA167",
+                path,
+                "cc-propose clarification.resolution_required_before_ready must be true",
+            )
+        presentation = set(string_list(clarification.get("presentation")))
+        missing = sorted(PROPOSE_INTERACTION_PRESENTATION["clarification"] - presentation)
+        if missing:
+            add(issues, "E_SCHEMA168", path, f"cc-propose clarification.presentation missing {missing}")
+        blocking = set(string_list(clarification.get("blocking_behavior")))
+        missing = sorted(PROPOSE_INTERACTION_BLOCKING_BEHAVIOR["clarification"] - blocking)
+        if missing:
+            add(issues, "E_SCHEMA169", path, f"cc-propose clarification.blocking_behavior missing {missing}")
+
+    hard_gate = contract.get("hard_gate")
+    if not isinstance(hard_gate, dict):
+        add(issues, "E_SCHEMA170", path, "cc-propose interaction_contract.hard_gate must be an object")
+        return
+    presentation = set(string_list(hard_gate.get("presentation")))
+    missing = sorted(PROPOSE_INTERACTION_PRESENTATION["hard_gate"] - presentation)
+    if missing:
+        add(issues, "E_SCHEMA171", path, f"cc-propose hard_gate.presentation missing {missing}")
+    options = set(string_list(hard_gate.get("confirmation_options")))
+    missing = sorted(PROPOSE_INTERACTION_CONFIRMATION_OPTIONS - options)
+    if missing:
+        add(issues, "E_SCHEMA172", path, f"cc-propose hard_gate.confirmation_options missing {missing}")
+    blocking = set(string_list(hard_gate.get("blocking_behavior")))
+    missing = sorted(PROPOSE_INTERACTION_BLOCKING_BEHAVIOR["hard_gate"] - blocking)
+    if missing:
+        add(issues, "E_SCHEMA173", path, f"cc-propose hard_gate.blocking_behavior missing {missing}")
+
+
 def validate_runtime_command_references(
     project_root: Path,
     core: dict[str, Any] | None,
@@ -964,6 +1034,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         validate_runtime_command_references(project_root, core, command, manifest, resolved_path, issues)
         validate_subagent_runtime_contract(command, manifest, resolved_path, issues, registered_roles)
         validate_result_contract(command, manifest, resolved_path, issues)
+        validate_propose_interaction_contract(command, manifest, resolved_path, issues)
     return checked
 
 

@@ -90,6 +90,74 @@
         }
       }
     },
+    "interaction_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "clarification", "hard_gate"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["interactive_required"]
+        },
+        "clarification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "when",
+            "presentation",
+            "blocking_behavior",
+            "max_questions_per_round",
+            "resolution_required_before_ready"
+          ],
+          "properties": {
+            "when": {
+              "$ref": "#/$defs/snakeId"
+            },
+            "presentation": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            },
+            "blocking_behavior": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            },
+            "max_questions_per_round": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resolution_required_before_ready": {
+              "type": "boolean"
+            }
+          }
+        },
+        "hard_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "when",
+            "presentation",
+            "confirmation_options",
+            "required_confirmations",
+            "blocking_behavior"
+          ],
+          "properties": {
+            "when": {
+              "$ref": "#/$defs/snakeId"
+            },
+            "presentation": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            },
+            "confirmation_options": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            },
+            "required_confirmations": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            },
+            "blocking_behavior": {
+              "$ref": "#/$defs/nonEmptySnakeList"
+            }
+          }
+        }
+      }
+    },
     "subagents": {
       "type": "object",
       "additionalProperties": false,

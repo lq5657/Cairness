@@ -1,0 +1,17 @@
+id: cc-propose-interactive-gates
+input: "cc-propose 让订单服务的异常处理更智能一点，最好能自动处理"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+  - .claude/rules/verification.md
+  - .claude/rules/change-sizing.md
+forbidden_actions:
+  - treat_listed_clarifications_as_resolved
+  - present_hard_gate_without_user_choice
+  - enter_apply_without_hard_gate
+expected_checks:
+  - ask numbered questions with expected answer shape before freezing scope
+  - do not present hard gate as ready until blockers resolved
+  - ask user to choose confirm request revision or block until clarified at hard gate
+  - next action is answer clarification questions or choose hard gate confirmation option
+rubric: default

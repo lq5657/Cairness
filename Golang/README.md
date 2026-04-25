@@ -255,6 +255,11 @@ docs/maintenance/rule-skill-anatomy.md
 - `.claude/runtime/core.yaml`
 - `.claude/runtime/commands/cc-propose.yaml`
 
+运行时要求：
+
+- 若存在影响 scope、验收标准、风险或 task 拆分的阻塞性澄清项，必须直接向用户提出编号问题并等待回答，不能只把问题列入 `spec.md`。
+- HARD-GATE 必须让用户显式选择确认、要求修改或阻塞待澄清；仅展示提案摘要不算确认。
+
 ### `cc-apply`
 
 默认读取：

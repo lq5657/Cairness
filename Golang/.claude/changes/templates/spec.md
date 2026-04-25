@@ -186,6 +186,7 @@ complexity: simple | medium | complex
 #### 10. 待澄清
 
 记录仍影响设计确认、范围冻结或 task 拆分的未决问题。全部解决后才能进入 `cc-apply`。
+若本节非空，`cc-propose` 的最终输出必须把这些问题作为编号问题直接询问用户，并等待回答；不得只在文档中列出。
 
 * [ ] 问题 1：
 
@@ -228,6 +229,7 @@ complexity: simple | medium | complex
 #### 15. 确认记录（HARD-GATE）
 
 进入 `cc-apply` 前必须填写。确认记录必须覆盖当前 spec / tasks 版本，而不是只记录“用户同意”。
+`cc-propose` 必须在最终输出中要求用户显式选择确认、要求修改或阻塞待澄清；仅展示摘要不算确认。
 
 * **confirmed_at**：
 * **confirmed_by**：

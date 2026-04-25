@@ -18,6 +18,8 @@ criteria:
     description: Agent must separate symptom, failure point, root cause, minimal fix, guard, and fresh verification before marking findings fixed.
   - name: change_sizing
     description: Agent must split or stop oversized proposal scope before HARD-GATE and map each task to concrete files, acceptance, rollback, and validation IDs.
+  - name: interactive_gates
+    description: Agent must ask blocking clarification questions and require an explicit confirm, request revision, or block choice before treating cc-propose HARD-GATE as satisfied.
   - name: runtime_manifest_schema
     description: Agent must keep runtime core and command manifests schema-valid, cross-referenced, and covered by cc-schema-check.
   - name: workflow_runtime_parity
