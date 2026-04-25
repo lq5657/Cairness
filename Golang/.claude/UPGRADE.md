@@ -1,5 +1,37 @@
 # Upgrade Guide
 
+## Upgrade To 0.15.0
+
+This release upgrades `cc-eval` from key-shape validation to semantic coverage validation.
+
+### New Files To Copy
+
+- `.claude/evals/cases/cc-eval-semantic.yaml`
+
+### Existing Files To Merge
+
+- `.claude/scripts/cc-eval`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Eval cases now require parseable YAML, known rubric references, existing `expected_reads`, and semantically grounded `forbidden_actions` / `expected_checks`.
+- Concrete migrated `cc-*` eval cases must include `.claude/runtime/core.yaml` and the corresponding runtime command manifest in `expected_reads`.
+- Runtime command reads must be registered in `runtime/core.yaml`; topic rule reads must be registered under `topic_rules`.
+
 ## Upgrade To 0.14.0
 
 This release adds schema and lint enforcement for runtime-registered topic rules.

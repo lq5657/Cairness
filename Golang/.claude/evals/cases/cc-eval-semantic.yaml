@@ -1,0 +1,17 @@
+id: cc-eval-semantic
+input: "Maintain eval cases, rubrics, or cc-eval semantic coverage"
+expected_reads:
+  - .claude/scripts/cc-eval
+  - .claude/evals/rubrics/default.yaml
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - accept_missing_expected_read_path
+  - accept_unregistered_topic_rule_read
+  - accept_unknown_rubric_reference
+  - check_only_required_keys
+expected_checks:
+  - validate expected_reads resolve to existing project paths
+  - validate runtime command and topic rule reads are registered
+  - validate forbidden_actions and expected_checks are grounded in expected runtime/rule reads
+  - .claude/scripts/cc-eval .claude/evals
+rubric: default

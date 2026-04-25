@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 - 2026-04-25
+
+- Upgraded `cc-eval` from YAML key checks to semantic eval coverage checks.
+- Added validation for expected read paths, runtime command registration, topic rule registration, rubric references, and grounded forbidden/check expectations.
+- Added eval and documentation coverage for semantic eval drift.
+
 ## 0.14.0 - 2026-04-25
 
 - Added a topic rule frontmatter schema and registered it in Harness config.

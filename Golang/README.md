@@ -158,6 +158,15 @@ docs/maintenance/rule-skill-anatomy.md
 
 `.claude/scripts/cc-schema-check` 会校验每个 `runtime/core.yaml` 中登记的 topic rule：frontmatter 必须符合 schema，并且必须包含 `Skill Anatomy`、触发边界、流程、反合理化、红旗和验证出口。这样 topic rule 不再只是散文规则，而是 Claude 加载后可以直接执行的小型 skill contract。
 
+## Semantic Eval Checks
+
+`.claude/scripts/cc-eval` 不再只检查 eval YAML 是否有必填键。它会解析 case 与 rubric，并校验：
+
+- `expected_reads` 指向真实文件，runtime command 和 topic rule read 必须已注册。
+- concrete `cc-*` case 必须声明读取 `.claude/runtime/core.yaml` 和对应 command manifest。
+- `forbidden_actions` 与 `expected_checks` 必须能在期望读取的 runtime/rule/script 内容中找到语义依据。
+- `rubric` 必须引用已存在的 rubric，criterion 必须有 `name` 和 `description`。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

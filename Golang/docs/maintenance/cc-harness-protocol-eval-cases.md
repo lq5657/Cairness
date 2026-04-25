@@ -261,3 +261,17 @@
 - `cc-lint` 报结构漂移。
 - runtime 注册的 topic rule frontmatter 必须符合 `schemas/topic-rule.schema.json`。
 - topic rule 必须像 compact skill：可判断何时加载、何时拒用、如何执行、如何拒绝常见借口、何时停止以及用什么证据收口。
+
+#### Case 19：eval case 只做 YAML 结构校验
+
+输入：
+
+```text
+新增 eval case，`expected_reads` 指向不存在的文件，或引用未注册 topic rule / unknown rubric，`forbidden_actions` 与 `expected_checks` 也无法在 runtime/rules/scripts 中找到依据。
+```
+
+期望：
+- `cc-eval` 报错。
+- concrete `cc-*` case 必须声明读取 `runtime/core.yaml` 和对应 runtime command manifest。
+- `expected_reads` 中的 runtime command 必须在 `runtime/core.yaml` 注册，topic rule 必须在 `topic_rules` 注册。
+- `forbidden_actions` 与 `expected_checks` 不能只写在 eval case 里，必须能被期望读取的 runtime、rule 或 script 内容语义支撑。
