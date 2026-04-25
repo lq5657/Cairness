@@ -13,6 +13,8 @@
 | `spec.md` 的“待澄清”章节已全部解决 | ✅ / ❌ / ⚠️ / N/A |
 | 用户已确认执行 | ✅ / ❌ / ⚠️ / N/A |
 | HARD-GATE 确认记录完整且覆盖当前 spec / tasks 版本 | ✅ / ❌ / ⚠️ / N/A |
+| HARD-GATE 缺失或过期时，已要求用户选择回到 `cc-propose`、修改 spec/tasks 或阻塞 `cc-apply` | ✅ / ❌ / ⚠️ / N/A |
+| 未把缺失字段列表或“需要确认”提示当作用户确认 | ✅ / ❌ / ⚠️ / N/A |
 | 若 `human_review_required = true`，`human_review_status` 已为 `approved` | ✅ / ❌ / ⚠️ / N/A |
 | `spec.status` 为 `propose` 或 `apply` | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `.claude/harness.config.yaml` 或确认使用默认 Git 策略 | ✅ / ❌ / ⚠️ / N/A |

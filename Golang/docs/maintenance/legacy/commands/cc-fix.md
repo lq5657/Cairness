@@ -48,6 +48,12 @@
 - 每项修复后重新验证，且验证等级不得低于本次 change 已声明的最低等级
 - 默认一次只处理一个 Finding，或一组明确耦合、已说明联动关系的 Findings
 - 若某个 Finding 不清晰、有争议或已因代码变化失效，必须先记录澄清结论或转为 `accepted`，不得机械实现
+- 不清晰、有争议或无法复现的 Finding 必须直接向用户提出编号澄清问题；用户未回答前不得实现
+- 若需要把 Finding 标为 `accepted` 或重新定义修复范围，必须让用户显式选择：
+  1. 按当前 open Finding 修复
+  2. 接受风险并标为 `accepted`
+  3. 更新 / 重写 review 记录后再处理
+- 只列出“可能不适用”“建议 accepted”不算处置选择；用户未选择前不得把 Finding 标为 `fixed` 或 `accepted`
 - 若 Finding 涉及测试分层、最低验证承接、回归策略或替代证据，必须读取 `rules/testing-strategy.md`
 - 若 Finding 属于 migration、回填、兼容窗口、contract 清理或双写风险，必须读取 `rules/database-changes.md`
 - 若 Finding 属于接口契约、字段兼容、消费者迁移或 breaking change，必须读取 `rules/api-compatibility.md`

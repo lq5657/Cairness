@@ -1,0 +1,15 @@
+id: cc-apply-hard-gate-interactive
+input: "cc-apply scaffold-project"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/rules/verification.md
+  - .claude/rules/coding-style.md
+forbidden_actions:
+  - start_apply_with_stale_or_missing_hard_gate
+  - treat_missing_hard_gate_as_user_confirmation
+expected_checks:
+  - show missing or stale hard gate fields
+  - ask user to return to confirm revise or block apply
+  - do not start apply until hard gate current
+rubric: default

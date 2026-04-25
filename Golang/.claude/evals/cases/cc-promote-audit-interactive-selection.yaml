@@ -1,0 +1,13 @@
+id: cc-promote-audit-interactive-selection
+input: "cc-promote-audit audit-2026-04 order-retry-fix"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-promote-audit.yaml
+forbidden_actions:
+  - treat_all_findings_as_selected_by_default
+  - write_bridge_without_finding_selection_choice
+expected_checks:
+  - ask user to choose findings or split scope when ambiguous
+  - do not write bridge note for ambiguous selection
+  - next action must be choose findings or split scope
+rubric: default

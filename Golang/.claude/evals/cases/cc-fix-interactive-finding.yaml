@@ -1,0 +1,15 @@
+id: cc-fix-interactive-finding
+input: "cc-fix order-retry-fix"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/rules/verification.md
+  - .claude/rules/debugging-workflow.md
+forbidden_actions:
+  - treat_unclear_finding_as_confirmed
+  - mark_finding_accepted_without_user_choice
+expected_checks:
+  - ask numbered questions for unclear finding
+  - ask user to choose fix accept or reframe
+  - do not mark fixed or accepted without explicit basis
+rubric: default

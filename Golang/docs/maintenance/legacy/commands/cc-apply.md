@@ -40,6 +40,13 @@
 - `spec.md` 的 HARD-GATE 确认记录完整，且确认内容覆盖当前 spec / tasks 版本
 - `depends_on` 指向的变更已达到允许继续的阶段
 
+若 HARD-GATE 缺失、过期或未覆盖当前 spec / tasks 版本，必须停止并让用户选择：
+1. 回到 `cc-propose` 完成 scope / 风险 / 验证映射确认
+2. 修改 spec / tasks 后重新确认
+3. 阻塞本次 `cc-apply`
+
+只列出缺失字段或提示“需要确认”不算获得确认；用户未选择前不得写业务代码、不得切换 `spec.status = apply`。
+
 ## 执行要求
 
 - 开始执行时将 `spec.md` 状态改为 `apply`

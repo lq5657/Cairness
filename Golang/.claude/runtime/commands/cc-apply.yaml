@@ -26,6 +26,8 @@ forbids:
   - defer_minimum_verification_to_cc_test
   - mark_done_without_evidence
   - auto_push_or_merge
+  - start_apply_with_stale_or_missing_hard_gate
+  - treat_missing_hard_gate_as_user_confirmation
 
 required_reads:
   - .claude/changes/<change-id>/spec.md
@@ -41,6 +43,27 @@ preconditions:
   - branch_matches_change_and_is_not_main
   - save_pre_apply_baseline_before_first_code_edit
   - only_one_task_may_be_in_progress
+
+interaction_contract:
+  mode: interactive_required
+  hard_gate:
+    when: hard_gate_missing_stale_or_does_not_cover_current_revisions
+    presentation:
+      - show_missing_or_stale_hard_gate_fields
+      - ask_user_to_return_to_confirm_revise_or_block_apply
+      - wait_for_user_choice_before_code_edit
+    confirmation_options:
+      - return_to_cc_propose_confirm_scope
+      - revise_spec_or_tasks
+      - block_apply
+    required_confirmations:
+      - confirmed_spec_revision
+      - confirmed_tasks_revision
+      - confirmed_scope
+      - accepted_risks
+    blocking_behavior:
+      - do_not_start_apply_until_hard_gate_current
+      - next_action_must_be_resolve_hard_gate
 
 topic_rules:
   always:
@@ -138,6 +161,7 @@ red_flags:
   - baseline_delta_contains_new_failure
 
 steps:
+  - verify_hard_gate_current_or_present_resolution_choices
   - mark_change_apply
   - select_one_ready_task
   - review_task_goal_scope_acceptance_and_verification
@@ -176,18 +200,23 @@ result_contract:
       - written_artifacts
       - baseline_delta
       - task_evidence
+      - interaction_state
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
       - red_flags
+      - interaction_state
   next_actions:
     - run_cc_review_or_fix_validation
+    - resolve_hard_gate_before_apply
 
 stop_conditions:
   - missing_required_argument
   - hard_gate_not_confirmed
+  - stale_hard_gate_for_current_revisions
+  - user_choice_required_for_missing_hard_gate
   - baseline_capture_failed
   - minimum_verification_missing
   - delta_reports_new_failure

@@ -1,0 +1,13 @@
+id: cc-archive-interactive-knowledge
+input: "cc-archive order-retry-fix"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-archive.yaml
+forbidden_actions:
+  - infer_knowledge_decision_without_user_choice
+  - mark_done_before_knowledge_choice
+expected_checks:
+  - ask user to choose knowledge decision
+  - do not mark done until knowledge decision explicit
+  - next action must be choose knowledge compounding option
+rubric: default

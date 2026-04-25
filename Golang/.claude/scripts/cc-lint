@@ -116,6 +116,61 @@ TOPIC_RULE_REQUIRED_MARKERS = [
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 RESULT_CONTRACT_FIELDS = ["status", "summary", "writes", "evidence", "risks", "next_action"]
+INTERACTION_CONTRACT_MARKERS = {
+    "cc-propose": [
+        "interaction_contract:",
+        "mode: interactive_required",
+        "clarification:",
+        "ask_numbered_questions_with_expected_answer_shape",
+        "wait_for_user_answer_before_freezing_scope",
+        "hard_gate:",
+        "ask_user_to_choose_confirm_revise_or_block",
+        "confirm_scope_and_apply_next",
+        "request_revision",
+        "block_until_clarified",
+        "do_not_enter_apply_without_explicit_user_confirmation",
+    ],
+    "cc-archive": [
+        "interaction_contract:",
+        "selection:",
+        "ask_user_to_choose_knowledge_decision",
+        "no_knowledge_compounding",
+        "create_new_knowledge",
+        "update_existing_knowledge",
+        "do_not_mark_done_until_knowledge_decision_explicit",
+    ],
+    "cc-promote-audit": [
+        "interaction_contract:",
+        "selection:",
+        "ask_user_to_choose_findings_or_split_scope_when_ambiguous",
+        "promote_selected_findings",
+        "split_into_multiple_changes",
+        "block_until_scope_clarified",
+        "do_not_write_bridge_note_for_ambiguous_selection",
+    ],
+    "cc-apply": [
+        "interaction_contract:",
+        "hard_gate:",
+        "show_missing_or_stale_hard_gate_fields",
+        "ask_user_to_return_to_confirm_revise_or_block_apply",
+        "return_to_cc_propose_confirm_scope",
+        "revise_spec_or_tasks",
+        "block_apply",
+        "do_not_start_apply_until_hard_gate_current",
+    ],
+    "cc-fix": [
+        "interaction_contract:",
+        "clarification:",
+        "ask_numbered_questions_for_unclear_finding",
+        "wait_for_user_answer_before_fixing",
+        "confirmation:",
+        "ask_user_to_choose_fix_accept_or_reframe",
+        "fix_open_finding",
+        "mark_finding_accepted",
+        "request_review_update",
+        "do_not_mark_fixed_or_accepted_without_explicit_basis",
+    ],
+}
 
 
 def read(path: Path) -> str:
@@ -472,22 +527,9 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             for key in ("anti_rationalizations:", "red_flags:"):
                 if key not in text:
                     errors.append(f"{path}: missing anti-rationalization field {key.rstrip(':')}")
-        if command == "cc-propose":
-            for key in (
-                "interaction_contract:",
-                "mode: interactive_required",
-                "clarification:",
-                "ask_numbered_questions_with_expected_answer_shape",
-                "wait_for_user_answer_before_freezing_scope",
-                "hard_gate:",
-                "ask_user_to_choose_confirm_revise_or_block",
-                "confirm_scope_and_apply_next",
-                "request_revision",
-                "block_until_clarified",
-                "do_not_enter_apply_without_explicit_user_confirmation",
-            ):
-                if key not in text:
-                    errors.append(f"{path}: missing cc-propose interaction contract field {key.rstrip(':')}")
+        for key in INTERACTION_CONTRACT_MARKERS.get(command, []):
+            if key not in text:
+                errors.append(f"{path}: missing {command} interaction contract field {key.rstrip(':')}")
 
         readset_path = root / "runtime" / "readsets" / f"{command}.yaml"
         if not readset_path.exists():

@@ -72,26 +72,93 @@ RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "n
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
 SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
 SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
-PROPOSE_INTERACTION_PRESENTATION = {
-    "clarification": {
-        "ask_numbered_questions_with_expected_answer_shape",
-        "wait_for_user_answer_before_freezing_scope",
-    },
-    "hard_gate": {
-        "ask_user_to_choose_confirm_revise_or_block",
-    },
+INTERACTION_CONTRACT_COMMANDS = {
+    "cc-propose",
+    "cc-archive",
+    "cc-promote-audit",
+    "cc-apply",
+    "cc-fix",
 }
-PROPOSE_INTERACTION_CONFIRMATION_OPTIONS = {
-    "confirm_scope_and_apply_next",
-    "request_revision",
-    "block_until_clarified",
-}
-PROPOSE_INTERACTION_BLOCKING_BEHAVIOR = {
-    "clarification": {
-        "do_not_present_hard_gate_as_ready_until_blockers_resolved",
+INTERACTION_REQUIREMENTS = {
+    "cc-propose": {
+        ("clarification", "presentation"): {
+            "ask_numbered_questions_with_expected_answer_shape",
+            "wait_for_user_answer_before_freezing_scope",
+        },
+        ("clarification", "blocking_behavior"): {
+            "do_not_present_hard_gate_as_ready_until_blockers_resolved",
+        },
+        ("hard_gate", "presentation"): {
+            "ask_user_to_choose_confirm_revise_or_block",
+        },
+        ("hard_gate", "confirmation_options"): {
+            "confirm_scope_and_apply_next",
+            "request_revision",
+            "block_until_clarified",
+        },
+        ("hard_gate", "blocking_behavior"): {
+            "do_not_enter_apply_without_explicit_user_confirmation",
+        },
     },
-    "hard_gate": {
-        "do_not_enter_apply_without_explicit_user_confirmation",
+    "cc-archive": {
+        ("selection", "presentation"): {
+            "ask_user_to_choose_knowledge_decision",
+        },
+        ("selection", "confirmation_options"): {
+            "no_knowledge_compounding",
+            "create_new_knowledge",
+            "update_existing_knowledge",
+        },
+        ("selection", "blocking_behavior"): {
+            "do_not_mark_done_until_knowledge_decision_explicit",
+        },
+    },
+    "cc-promote-audit": {
+        ("selection", "presentation"): {
+            "ask_user_to_choose_findings_or_split_scope_when_ambiguous",
+        },
+        ("selection", "confirmation_options"): {
+            "promote_selected_findings",
+            "split_into_multiple_changes",
+            "block_until_scope_clarified",
+        },
+        ("selection", "blocking_behavior"): {
+            "do_not_write_bridge_note_for_ambiguous_selection",
+        },
+    },
+    "cc-apply": {
+        ("hard_gate", "presentation"): {
+            "show_missing_or_stale_hard_gate_fields",
+            "ask_user_to_return_to_confirm_revise_or_block_apply",
+        },
+        ("hard_gate", "confirmation_options"): {
+            "return_to_cc_propose_confirm_scope",
+            "revise_spec_or_tasks",
+            "block_apply",
+        },
+        ("hard_gate", "blocking_behavior"): {
+            "do_not_start_apply_until_hard_gate_current",
+        },
+    },
+    "cc-fix": {
+        ("clarification", "presentation"): {
+            "ask_numbered_questions_for_unclear_finding",
+            "wait_for_user_answer_before_fixing",
+        },
+        ("clarification", "blocking_behavior"): {
+            "do_not_implement_unclear_finding",
+        },
+        ("confirmation", "presentation"): {
+            "ask_user_to_choose_fix_accept_or_reframe",
+        },
+        ("confirmation", "confirmation_options"): {
+            "fix_open_finding",
+            "mark_finding_accepted",
+            "request_review_update",
+        },
+        ("confirmation", "blocking_behavior"): {
+            "do_not_mark_fixed_or_accepted_without_explicit_basis",
+        },
     },
 }
 READSET_GENERATOR = ".claude/scripts/cc-readset"
@@ -918,52 +985,37 @@ def validate_result_contract(command: str, manifest: dict[str, Any], path: Path,
         add(issues, "E_SCHEMA149", path, f"{command} result_contract.next_actions must not be empty")
 
 
-def validate_propose_interaction_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
-    if command != "cc-propose":
+def validate_interaction_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
+    if command not in INTERACTION_CONTRACT_COMMANDS:
         return
     contract = manifest.get("interaction_contract")
     if not isinstance(contract, dict):
-        add(issues, "E_SCHEMA164", path, "cc-propose must declare interaction_contract")
+        add(issues, "E_SCHEMA164", path, f"{command} must declare interaction_contract")
         return
     if contract.get("mode") != "interactive_required":
-        add(issues, "E_SCHEMA165", path, "cc-propose interaction_contract.mode must be interactive_required")
+        add(issues, "E_SCHEMA165", path, f"{command} interaction_contract.mode must be interactive_required")
 
-    clarification = contract.get("clarification")
-    if not isinstance(clarification, dict):
-        add(issues, "E_SCHEMA166", path, "cc-propose interaction_contract.clarification must be an object")
-    else:
-        if clarification.get("resolution_required_before_ready") is not True:
+    section_names = {"clarification", "hard_gate", "confirmation", "selection"}
+    if not any(isinstance(contract.get(section), dict) for section in section_names):
+        add(issues, "E_SCHEMA166", path, f"{command} interaction_contract must declare at least one interaction section")
+
+    requirements = INTERACTION_REQUIREMENTS.get(command, {})
+    for (section_name, field), required_values in requirements.items():
+        section = contract.get(section_name)
+        if not isinstance(section, dict):
+            add(issues, "E_SCHEMA167", path, f"{command} interaction_contract.{section_name} must be an object")
+            continue
+        if section_name == "clarification" and section.get("resolution_required_before_ready") is not True:
             add(
                 issues,
-                "E_SCHEMA167",
+                "E_SCHEMA168",
                 path,
-                "cc-propose clarification.resolution_required_before_ready must be true",
+                f"{command} {section_name}.resolution_required_before_ready must be true",
             )
-        presentation = set(string_list(clarification.get("presentation")))
-        missing = sorted(PROPOSE_INTERACTION_PRESENTATION["clarification"] - presentation)
+        actual_values = set(string_list(section.get(field)))
+        missing = sorted(required_values - actual_values)
         if missing:
-            add(issues, "E_SCHEMA168", path, f"cc-propose clarification.presentation missing {missing}")
-        blocking = set(string_list(clarification.get("blocking_behavior")))
-        missing = sorted(PROPOSE_INTERACTION_BLOCKING_BEHAVIOR["clarification"] - blocking)
-        if missing:
-            add(issues, "E_SCHEMA169", path, f"cc-propose clarification.blocking_behavior missing {missing}")
-
-    hard_gate = contract.get("hard_gate")
-    if not isinstance(hard_gate, dict):
-        add(issues, "E_SCHEMA170", path, "cc-propose interaction_contract.hard_gate must be an object")
-        return
-    presentation = set(string_list(hard_gate.get("presentation")))
-    missing = sorted(PROPOSE_INTERACTION_PRESENTATION["hard_gate"] - presentation)
-    if missing:
-        add(issues, "E_SCHEMA171", path, f"cc-propose hard_gate.presentation missing {missing}")
-    options = set(string_list(hard_gate.get("confirmation_options")))
-    missing = sorted(PROPOSE_INTERACTION_CONFIRMATION_OPTIONS - options)
-    if missing:
-        add(issues, "E_SCHEMA172", path, f"cc-propose hard_gate.confirmation_options missing {missing}")
-    blocking = set(string_list(hard_gate.get("blocking_behavior")))
-    missing = sorted(PROPOSE_INTERACTION_BLOCKING_BEHAVIOR["hard_gate"] - blocking)
-    if missing:
-        add(issues, "E_SCHEMA173", path, f"cc-propose hard_gate.blocking_behavior missing {missing}")
+            add(issues, "E_SCHEMA169", path, f"{command} {section_name}.{field} missing {missing}")
 
 
 def validate_runtime_command_references(
@@ -1034,7 +1086,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         validate_runtime_command_references(project_root, core, command, manifest, resolved_path, issues)
         validate_subagent_runtime_contract(command, manifest, resolved_path, issues, registered_roles)
         validate_result_contract(command, manifest, resolved_path, issues)
-        validate_propose_interaction_contract(command, manifest, resolved_path, issues)
+        validate_interaction_contract(command, manifest, resolved_path, issues)
     return checked
 
 

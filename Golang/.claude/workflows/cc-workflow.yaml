@@ -25,8 +25,8 @@ commands:
     inputs: [project_idea]
     outputs: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md, context/dev-map.md, changes/task-board.md]
     writes: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md, context/dev-map.md, changes/task-board.md]
-    validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, memory_policy]
-    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply]
+    validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, memory_policy, blocking_project_decision_user_choice]
+    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply, treat_project_unknowns_as_resolved, mark_project_definition_complete_without_blocking_choices]
     auto_validation: []
 
   cc-preflight:
@@ -61,8 +61,8 @@ commands:
     inputs: []
     outputs: [context/project-context.md, context/dev-map.md]
     writes: [context/project-context.md, context/dev-map.md]
-    validates: [base_context_exists, assumptions_confirmed, evidence_locations, confidence_level, memory_policy]
-    forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply]
+    validates: [base_context_exists, assumptions_confirmed, evidence_locations, confidence_level, memory_policy, blocking_assumption_user_confirmation]
+    forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply, treat_listed_assumptions_as_confirmed, write_unconfirmed_blocking_assumption_as_fact]
     auto_validation: []
 
   cc-explain-system:
@@ -98,8 +98,8 @@ commands:
     inputs: [audit_id, change_id]
     outputs: [audits/<audit-id>/to-change.md, changes/task-board.md]
     writes: [audits/<audit-id>/to-change.md, changes/task-board.md]
-    validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint, task_board_not_spec]
-    forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose]
+    validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint, task_board_not_spec, finding_selection_user_choice]
+    forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose, treat_all_findings_as_selected_by_default, write_bridge_without_finding_selection_choice]
     auto_validation: []
 
   cc-propose:
@@ -123,8 +123,8 @@ commands:
     inputs: [change_id]
     outputs: [business_code_changes, change_docs_update, dev_map_update_if_needed, task_board_update, optional_commits]
     writes: [task_declared_code_files, test_files, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
-    validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync]
-    forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge]
+    validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync, hard_gate_resolution_choice]
+    forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge, start_apply_with_stale_or_missing_hard_gate, treat_missing_hard_gate_as_user_confirmation]
     auto_validation: ["cc-verify --json --output changes/<change-id>/baseline/pre-apply.json --change <change-id>", "cc-delta-check --before <before-report> --after <after-report>", "cc-verify --change <change-id>"]
 
   cc-review:
@@ -149,8 +149,8 @@ commands:
     inputs: [change_id, optional_fix_description]
     outputs: [fixed_code, updated_findings, synced_change_docs, task_board_update]
     writes: [finding_related_code_files, test_files, changes/<change-id>/review.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
-    validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync]
-    forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification]
+    validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync, finding_clarification_or_disposition_choice]
+    forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification, treat_unclear_finding_as_confirmed, mark_finding_accepted_without_user_choice]
     auto_validation: ["cc-verify --change <change-id>"]
 
   cc-test:
@@ -174,6 +174,6 @@ commands:
     inputs: [change_id]
     outputs: [done_status, archival_log, task_board_archive_state, optional_knowledge]
     writes: [changes/<change-id>/spec.md, changes/<change-id>/log.md, changes/task-board.md, knowledge/*]
-    validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence, memory_policy]
-    forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command]
+    validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence, memory_policy, knowledge_decision_user_choice]
+    forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice]
     auto_validation: ["cc-verify --change <change-id>"]

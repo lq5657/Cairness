@@ -26,8 +26,8 @@
 - 输入：`change-id`
 - 输出：`spec.status = done`、归档记录、`changes/task-board.md` 归档状态、必要的知识沉淀
 - 可写文件：当前 change 的 `spec.md`、`log.md`、`changes/task-board.md`，以及确认需要沉淀的 `knowledge/*`
-- 必须校验：`review.md` 结论为 pass / 可归档、无 `open` Finding、无 `blocked` task、无未解释 `gap`、fresh verification evidence 仍有效，且知识沉淀符合 `rules/memory-policy.md`
-- 禁止行为：写业务代码、跳过知识沉淀判断、有阻塞仍归档、让其他命令设置 `done`
+- 必须校验：`review.md` 结论为 pass / 可归档、无 `open` Finding、无 `blocked` task、无未解释 `gap`、fresh verification evidence 仍有效，且知识沉淀符合 `rules/memory-policy.md`，并已获得用户对知识沉淀决策的显式选择
+- 禁止行为：写业务代码、跳过知识沉淀判断、有阻塞仍归档、让其他命令设置 `done`、未让用户选择就推断知识沉淀决策、知识选择缺失仍标 `done`
 
 ## 前提
 
@@ -42,6 +42,11 @@
 - 先读取 `rules/memory-policy.md`，确认本轮哪些信息适合写入 `knowledge/*`，哪些只应保留在 change 日志或 task-board 中
 - 若判断为 `无需沉淀`，也必须显式记录本轮为何不沉淀，而不是直接跳过
 - 若判断为 `新增知识` 或 `更新既有知识`，必须明确建议落点，再执行沉淀
+- 知识沉淀决策必须让用户显式选择：
+  1. 无需沉淀，仅在 `log.md` 记录理由
+  2. 新增知识，确认目标落点
+  3. 更新既有知识，确认目标条目
+- 只列出知识候选、推荐落点或“建议沉淀”不算完成选择；用户未选择前不得把 `spec.status` 设置为 `done`
 - 归档前必须再次确认：当前 `review.md` 结论、Findings 状态和最新验证证据一致
 - 若 `validation.auto_run = true`，归档前必须运行 `.claude/scripts/cc-verify --change <change-id>`；若失败且 `fail_on_error = true`，禁止归档
 - 归档完成后将 `spec.md` 状态改为 `done`
@@ -51,6 +56,7 @@
 ## 失败处理
 
 - 若知识沉淀尚未确认，保持 `status: review`
+- 若用户尚未选择知识沉淀方式，保持 `status: review`，并把下一步写为等待知识沉淀选择
 - 若存在 `blocked` / `open` 问题，禁止进入归档
 - 若验证证据陈旧、缺失或与当前代码不一致，禁止进入归档
 - 若自动 Harness 校验失败，保持 `status: review`，不得写入 `done`

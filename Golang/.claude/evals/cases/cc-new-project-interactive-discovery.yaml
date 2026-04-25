@@ -1,0 +1,14 @@
+id: cc-new-project-interactive-discovery
+input: "cc-new-project 我要做一个更智能的销售助手"
+expected_reads:
+  - .claude/commands/cc-new-project.md
+  - .claude/checkpoints/cc-new-project.md
+  - .claude/workflows/cc-workflow.yaml
+forbidden_actions:
+  - treat_project_unknowns_as_resolved
+  - mark_project_definition_complete_without_blocking_choices
+expected_checks:
+  - 阻塞性项目灰区已作为编号问题直接询问用户
+  - 用户已选择采用推荐方案保留待确认或暂停项目定义
+  - 不能宣称已满足完成标准
+rubric: default

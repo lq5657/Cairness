@@ -20,6 +20,8 @@ forbids:
   - write_formal_change_spec_directly
   - merge_unrelated_findings
   - auto_enter_propose
+  - treat_all_findings_as_selected_by_default
+  - write_bridge_without_finding_selection_choice
 
 required_reads:
   - .claude/audits/<audit-id>/report.md
@@ -34,6 +36,26 @@ preconditions:
   - clarify_this_is_bridge_scope_not_implementation
   - converge_findings_into_one_bounded_change_or_split
 
+interaction_contract:
+  mode: interactive_required
+  selection:
+    when: multiple_findings_or_scope_split_is_ambiguous
+    presentation:
+      - show_candidate_findings_and_split_options
+      - ask_user_to_choose_findings_or_split_scope_when_ambiguous
+      - wait_for_user_choice_before_writing_bridge_note
+    confirmation_options:
+      - promote_selected_findings
+      - split_into_multiple_changes
+      - block_until_scope_clarified
+    required_confirmations:
+      - selected_findings
+      - target_change_scope
+      - out_of_scope_findings
+    blocking_behavior:
+      - do_not_write_bridge_note_for_ambiguous_selection
+      - next_action_must_be_choose_findings_or_split_scope
+
 topic_rules:
   when_verification_level_hint_is_needed:
     - .claude/rules/verification.md
@@ -42,6 +64,7 @@ topic_rules:
 
 steps:
   - select_findings_for_this_change
+  - present_finding_selection_or_split_options_and_wait_for_choice
   - define_in_scope_and_out_of_scope
   - map_findings_to_background_risks_and_tasks
   - propose_validation_level_hint
@@ -70,16 +93,20 @@ result_contract:
       - written_artifacts
       - bridge_note
       - task_board_update
+      - interaction_state
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
+      - interaction_state
   next_actions:
     - run_cc_propose_or_split_scope
+    - choose_findings_or_split_scope
 
 stop_conditions:
   - missing_required_argument
   - audit_report_missing
   - scope_not_converged
   - findings_should_be_split_but_are_still_mixed
+  - finding_selection_choice_missing

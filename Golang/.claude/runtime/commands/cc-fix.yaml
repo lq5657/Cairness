@@ -28,6 +28,8 @@ forbids:
   - bypass_review
   - delete_open_finding_record
   - mark_fixed_without_verification
+  - treat_unclear_finding_as_confirmed
+  - mark_finding_accepted_without_user_choice
 
 required_reads:
   - .claude/changes/<change-id>/review.md
@@ -46,6 +48,37 @@ preconditions:
   - confirm_finding_still_applies_or_record_why_not
   - separate_symptom_failure_point_and_root_cause
   - define_minimal_fix_hypothesis
+
+interaction_contract:
+  mode: interactive_required
+  clarification:
+    when: finding_unclear_disputed_or_no_longer_reproducible
+    presentation:
+      - show_finding_understanding_and_evidence_gap
+      - ask_numbered_questions_for_unclear_finding
+      - wait_for_user_answer_before_fixing
+    blocking_behavior:
+      - do_not_implement_unclear_finding
+      - next_action_must_be_answer_finding_clarification
+    max_questions_per_round: 3
+    resolution_required_before_ready: true
+  confirmation:
+    when: finding_should_be_fixed_accepted_or_reframed
+    presentation:
+      - show_fix_accept_reframe_options
+      - ask_user_to_choose_fix_accept_or_reframe
+      - record_selected_finding_disposition
+    confirmation_options:
+      - fix_open_finding
+      - mark_finding_accepted
+      - request_review_update
+    required_confirmations:
+      - finding_disposition
+      - minimal_fix_scope
+      - accepted_risk_when_applicable
+    blocking_behavior:
+      - do_not_mark_fixed_or_accepted_without_explicit_basis
+      - next_action_must_be_choose_finding_disposition
 
 topic_rules:
   always:
@@ -146,6 +179,7 @@ red_flags:
 steps:
   - load_open_findings
   - reproduce_or_confirm_problem_still_applies
+  - present_unclear_finding_questions_or_disposition_choices
   - localize_failure_point
   - separate_symptom_failure_point_root_cause_and_blast_radius
   - define_minimal_fix_hypothesis
@@ -181,17 +215,22 @@ result_contract:
       - written_artifacts
       - finding_fix_evidence
       - fresh_verification
+      - interaction_state
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
       - red_flags
+      - interaction_state
   next_actions:
     - rerun_cc_review_or_continue_fixes
+    - answer_finding_clarification_or_choose_disposition
 
 stop_conditions:
   - missing_required_argument
   - finding_not_open_and_not_explicitly_reframed
   - minimal_fix_hypothesis_not_clear
+  - unclear_finding_requires_user_answer
+  - finding_disposition_missing
   - verification_failed

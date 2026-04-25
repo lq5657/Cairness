@@ -21,6 +21,8 @@ forbids:
   - skip_knowledge_decision
   - archive_with_open_or_blocked_state
   - set_done_from_other_command
+  - infer_knowledge_decision_without_user_choice
+  - mark_done_before_knowledge_choice
 
 required_reads:
   - .claude/changes/<change-id>/review.md
@@ -39,9 +41,30 @@ preconditions:
   - fresh_verification_evidence_exists
   - knowledge_compounding_decision_is_explicit
 
+interaction_contract:
+  mode: interactive_required
+  selection:
+    when: knowledge_candidates_or_compounding_decision_required
+    presentation:
+      - show_knowledge_candidates_and_recommended_landing
+      - ask_user_to_choose_knowledge_decision
+      - wait_for_user_choice_before_marking_done
+    confirmation_options:
+      - no_knowledge_compounding
+      - create_new_knowledge
+      - update_existing_knowledge
+    required_confirmations:
+      - knowledge_decision
+      - knowledge_destination_when_needed
+      - archive_status
+    blocking_behavior:
+      - do_not_mark_done_until_knowledge_decision_explicit
+      - next_action_must_be_choose_knowledge_compounding_option
+
 steps:
   - classify_knowledge_candidate_as_none_new_or_update
   - if_knowledge_is_needed_select_destination
+  - present_knowledge_decision_options_and_wait_for_choice
   - rerun_pre_archive_validation
   - mark_spec_done
   - sync_log_and_task_board
@@ -71,17 +94,22 @@ result_contract:
       - written_artifacts
       - archive_validation
       - knowledge_decision
+      - interaction_state
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
+      - interaction_state
   next_actions:
     - stop_change_complete
+    - choose_knowledge_compounding_option
 
 stop_conditions:
   - missing_required_argument
   - review_not_passed
   - stale_or_missing_evidence
+  - knowledge_decision_missing
+  - user_choice_required_for_knowledge_compounding
   - pre_archive_validation_failed
   - post_archive_validation_failed
