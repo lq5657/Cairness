@@ -1,0 +1,18 @@
+id: cc-runtime-readset-generator
+input: "Maintain runtime command read sets after changing runtime manifests"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/runtime/readsets/index.yaml
+  - .claude/schemas/runtime-readset.schema.json
+  - .claude/scripts/cc-readset
+forbidden_actions:
+  - hand_edit_generated_readset_without_regeneration
+  - leave_readset_index_stale
+  - collapse_conditional_reads_into_always_reads
+expected_checks:
+  - .claude/scripts/cc-readset --check
+  - generate readsets from runtime command manifests
+  - validate readset index and command files against runtime-readset schema
+  - compare generated readsets with committed files
+rubric: default

@@ -1,0 +1,16 @@
+version: 1
+command: cc-archive
+source_manifest: .claude/runtime/commands/cc-archive.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-archive.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-archive.yaml
+- .claude/changes/<change-id>/review.md
+- .claude/changes/<change-id>/log.md
+- .claude/changes/task-board.md
+- .claude/rules/memory-policy.md
+optional_reads:
+- .claude/knowledge/index.md
+conditional_reads: {}

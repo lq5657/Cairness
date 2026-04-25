@@ -20,8 +20,9 @@ For any `cc-*` request:
 5. If the runtime contract declares `subagents.enabled: true`, read `docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
 6. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
 7. If the runtime contract declares `result_contract`, report the final command result with the required fields: `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
-8. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
-9. Run the deterministic checks declared by `.claude/harness.config.yaml`.
+8. Treat `.claude/runtime/readsets/<command>.yaml` as generated read-scope evidence when maintaining Harness read behavior; do not edit readset files manually.
+9. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
+10. Run the deterministic checks declared by `.claude/harness.config.yaml`.
 
 If a required argument is missing, stop before reading business code or executing the workflow.
 
@@ -76,4 +77,5 @@ Use project scripts instead of re-describing checks in prose:
 .claude/scripts/cc-role-check --command <cc-command> --change <change-id>
 .claude/scripts/cc-schema-check .claude/changes
 .claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-readset --check
 ```

@@ -1,0 +1,14 @@
+version: 1
+generated_by: .claude/scripts/cc-readset
+source_core: .claude/runtime/core.yaml
+commands:
+  cc-preflight: .claude/runtime/readsets/cc-preflight.yaml
+  cc-init: .claude/runtime/readsets/cc-init.yaml
+  cc-inspect-codebase: .claude/runtime/readsets/cc-inspect-codebase.yaml
+  cc-propose: .claude/runtime/readsets/cc-propose.yaml
+  cc-apply: .claude/runtime/readsets/cc-apply.yaml
+  cc-review: .claude/runtime/readsets/cc-review.yaml
+  cc-fix: .claude/runtime/readsets/cc-fix.yaml
+  cc-test: .claude/runtime/readsets/cc-test.yaml
+  cc-archive: .claude/runtime/readsets/cc-archive.yaml
+  cc-promote-audit: .claude/runtime/readsets/cc-promote-audit.yaml

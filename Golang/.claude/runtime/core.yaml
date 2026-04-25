@@ -27,6 +27,11 @@ runtime_commands:
   cc-archive: .claude/runtime/commands/cc-archive.yaml
   cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
 
+runtime_readsets:
+  dir: .claude/runtime/readsets
+  index: .claude/runtime/readsets/index.yaml
+  schema: .claude/schemas/runtime-readset.schema.json
+
 legacy_fallback:
   commands_dir: .claude/commands
   checkpoints_dir: .claude/checkpoints
@@ -42,6 +47,7 @@ scripts:
   delta: .claude/scripts/cc-delta-check
   role: .claude/scripts/cc-role-check
   eval: .claude/scripts/cc-eval
+  readset: .claude/scripts/cc-readset
 
 topic_rules:
   verification: .claude/rules/verification.md

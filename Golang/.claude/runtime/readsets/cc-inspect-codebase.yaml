@@ -1,0 +1,23 @@
+version: 1
+command: cc-inspect-codebase
+source_manifest: .claude/runtime/commands/cc-inspect-codebase.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-inspect-codebase.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-inspect-codebase.yaml
+- .claude/context/project-context.md
+- docs/maintenance/subagent-model.md
+optional_reads: []
+conditional_reads:
+  when_mode_is_architecture:
+  - .claude/rules/coding-style.md
+  when_mode_is_logic:
+  - .claude/rules/testing-strategy.md
+  - .claude/rules/security.md
+  when_mode_is_observability:
+  - .claude/rules/observability.md
+  when_mode_is_test_debt:
+  - .claude/rules/testing-strategy.md
+  - .claude/rules/verification.md

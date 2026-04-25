@@ -23,10 +23,13 @@ runtime manifest 的机器契约是：
 - `.claude/schemas/runtime-core.schema.json`
 - `.claude/schemas/runtime-command.schema.json`
 - `.claude/schemas/topic-rule.schema.json`
+- `.claude/schemas/runtime-readset.schema.json`
 
 `.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用、topic rule skill-like 结构和 subagent contract 基础结构。
 
 每个 migrated command manifest 还必须声明 `result_contract`。该契约要求命令最终输出包含 `status`、`summary`、`writes`、`evidence`、`risks` 和 `next_action`，并把 evidence / risks 回指到 auto validation、写入产物、forbids、red flags 或 stop conditions。
+
+每个 migrated command 的 read set 由 `.claude/scripts/cc-readset` 生成到 `.claude/runtime/readsets/`。生成物不是 authoring source；runtime manifest 才是来源。`cc-readset --check` 和 `cc-schema-check` 会阻止 readset 与 manifest 漂移。
 
 同一个检查还会校验 migrated command 的 workflow/runtime parity：
 
@@ -83,6 +86,8 @@ runtime manifest 的机器契约是：
 
 `.claude/scripts/cc-eval` 会对 eval case 做语义校验：`expected_reads` 必须能解析到真实 runtime/rule/script 文件，runtime command 和 topic rule 读取必须已注册，`forbidden_actions` 与 `expected_checks` 必须能在期望读取内容中找到依据。
 
+`.claude/scripts/cc-readset` 会从 runtime command manifest 生成 always / optional / conditional reads，并在 `cc-verify` 中检查落盘文件是否最新。
+
 ### Human Docs
 
 维护说明统一放在：
@@ -118,6 +123,10 @@ runtime manifest 已经成为 migrated command 的默认执行入口。只靠正
 ### 为什么命令结果也要结构化
 
 如果命令只用自由文本收尾，AI 很容易漏掉实际写入、验证证据、剩余风险或下一步动作。`result_contract` 把 closeout 变成 runtime contract 的一部分，让 migrated commands 在结束时必须说明状态、摘要、写入、证据、风险和 next action。这样用户和后续命令都能稳定消费结果。
+
+### 为什么 read set 要生成
+
+read set 原本散落在 skill、runtime manifest、eval case 和说明文档里，容易在新增 required read、topic rule 或 subagent policy 后漂移。生成 readset 后，runtime manifest 仍是唯一来源，`.claude/runtime/readsets/*.yaml` 只是可检查的派生物。`always_reads` 保持最小默认上下文，`conditional_reads` 保留触发条件，避免把所有 topic rule 默认读入。
 
 ### 为什么 topic rule 也需要 schema/lint
 

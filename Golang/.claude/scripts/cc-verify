@@ -134,11 +134,13 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     if not args.go_only:
         cc_lint = claude_root / "scripts" / "cc-lint"
         cc_sync_check = claude_root / "scripts" / "cc-sync-check"
+        cc_readset = claude_root / "scripts" / "cc-readset"
         cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
         sync_target = change_dir if change_dir and change_dir.exists() else claude_root / "changes"
         results.append(run_step("cc-lint", "harness", [str(cc_lint), str(claude_root)], project_root))
         results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
+        results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
         results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]

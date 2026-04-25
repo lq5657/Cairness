@@ -1,0 +1,34 @@
+version: 1
+command: cc-propose
+source_manifest: .claude/runtime/commands/cc-propose.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-propose.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-propose.yaml
+- .claude/context/project-context.md
+- .claude/context/dev-map.md
+- .claude/changes/task-board.md
+- .claude/rules/verification.md
+- .claude/rules/change-sizing.md
+optional_reads: []
+conditional_reads:
+  when_validation_boundary_is_unclear:
+  - .claude/rules/testing-strategy.md
+  when_change_touches_database:
+  - .claude/rules/database-changes.md
+  when_change_touches_external_contract:
+  - .claude/rules/api-compatibility.md
+  when_change_touches_configuration:
+  - .claude/rules/configuration.md
+  when_change_touches_observability:
+  - .claude/rules/observability.md
+  when_change_touches_release_or_rollback:
+  - .claude/rules/release.md
+  when_change_touches_security_boundary:
+  - .claude/rules/security.md
+  when_change_depends_on_external_or_version_sensitive_technology:
+  - .claude/rules/source-driven-development.md
+  when_change_has_dependency_or_parallelism_constraints:
+  - .claude/rules/git-workflow.md

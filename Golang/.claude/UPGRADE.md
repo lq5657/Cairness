@@ -1,5 +1,49 @@
 # Upgrade Guide
 
+## Upgrade To 0.17.0
+
+This release adds generated runtime readsets for migrated commands.
+
+### New Files To Copy
+
+- `.claude/scripts/cc-readset`
+- `.claude/schemas/runtime-readset.schema.json`
+- `.claude/runtime/readsets/index.yaml`
+- `.claude/runtime/readsets/*.yaml`
+- `.claude/evals/cases/cc-runtime-readset-generator.yaml`
+
+### Existing Files To Merge
+
+- `.claude/runtime/core.yaml`
+- `.claude/schemas/runtime-core.schema.json`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/scripts/cc-verify`
+- `.claude/harness.config.yaml`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/evals/cases/cc-runtime-manifest-schema.yaml`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-readset --write
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Runtime readsets are generated files. Do not hand edit `.claude/runtime/readsets/*.yaml`; update the runtime command manifest and run `cc-readset --write`.
+- `always_reads` remains the minimum default read surface; `conditional_reads` preserves `topic_rules.when_*` boundaries and should not be promoted to default reads.
+- `cc-verify` now runs `cc-readset --check` as a harness gate.
+
 ## Upgrade To 0.16.0
 
 This release adds structured result contracts for migrated runtime commands.

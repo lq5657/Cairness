@@ -1,0 +1,37 @@
+version: 1
+command: cc-apply
+source_manifest: .claude/runtime/commands/cc-apply.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-apply.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-apply.yaml
+- .claude/changes/<change-id>/spec.md
+- .claude/changes/<change-id>/tasks.md
+- .claude/context/dev-map.md
+- .claude/changes/task-board.md
+- .claude/harness.config.yaml
+- .claude/rules/verification.md
+- .claude/rules/coding-style.md
+- docs/maintenance/subagent-model.md
+optional_reads: []
+conditional_reads:
+  when_task_touches_logic_bug_chain_or_data_access:
+  - .claude/rules/testing-strategy.md
+  when_task_touches_database:
+  - .claude/rules/database-changes.md
+  when_task_touches_external_contract:
+  - .claude/rules/api-compatibility.md
+  when_task_touches_configuration:
+  - .claude/rules/configuration.md
+  when_task_touches_observability:
+  - .claude/rules/observability.md
+  when_task_touches_release_or_rollback:
+  - .claude/rules/release.md
+  when_task_touches_security_boundary:
+  - .claude/rules/security.md
+  when_task_depends_on_external_or_version_sensitive_technology:
+  - .claude/rules/source-driven-development.md
+  when_change_has_dependency_or_parallelism_constraints:
+  - .claude/rules/git-workflow.md

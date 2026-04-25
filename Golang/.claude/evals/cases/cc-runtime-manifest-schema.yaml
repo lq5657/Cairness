@@ -3,7 +3,9 @@ input: "Maintain runtime manifests after adding or changing a migrated cc-* comm
 expected_reads:
   - .claude/schemas/runtime-core.schema.json
   - .claude/schemas/runtime-command.schema.json
+  - .claude/schemas/runtime-readset.schema.json
   - .claude/scripts/cc-schema-check
+  - .claude/scripts/cc-readset
   - .claude/runtime/core.yaml
 forbidden_actions:
   - add_runtime_command_without_schema_validation
@@ -12,5 +14,5 @@ forbidden_actions:
 expected_checks:
   - validate runtime/core.yaml against runtime-core schema
   - validate every runtime command manifest against runtime-command schema
-  - check runtime command paths, topic rule registration, subagent contract references, and result contracts
+  - check runtime command paths, topic rule registration, subagent contract references, result contracts, and generated readsets
 rubric: default

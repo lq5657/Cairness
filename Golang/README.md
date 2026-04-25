@@ -66,6 +66,7 @@ fixtures/*
 - `.claude/scripts/cc-verify`
 - `.claude/scripts/cc-delta-check`
 - `.claude/scripts/cc-eval`
+- `.claude/scripts/cc-readset`
 
 ### 3. 人类维护说明
 
@@ -132,9 +133,27 @@ runtime manifest 现在有机器 schema：
 ```text
 .claude/schemas/runtime-core.schema.json
 .claude/schemas/runtime-command.schema.json
+.claude/schemas/runtime-readset.schema.json
 ```
 
 `.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径和 subagent contract 引用。
+
+## Runtime Readsets
+
+每个 migrated command 的最小读取集由 `.claude/scripts/cc-readset` 从 runtime manifest 生成：
+
+```text
+.claude/runtime/readsets/index.yaml
+.claude/runtime/readsets/<command>.yaml
+```
+
+生成结果分三类：
+
+- `always_reads`：执行该命令必读，包括 runtime core、command manifest、required reads、always topic rules 和 subagent policy。
+- `optional_reads`：存在或场景需要时才读。
+- `conditional_reads`：由 `topic_rules.when_*` 派生，不能默认全读。
+
+修改 runtime command 后运行 `.claude/scripts/cc-readset --write` 更新生成文件；`cc-verify` 会执行 `.claude/scripts/cc-readset --check` 拦截 readset 漂移。
 
 ## Structured Command Result
 
@@ -219,6 +238,7 @@ docs/maintenance/rule-skill-anatomy.md
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-readset --check
 .claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
 ```
 

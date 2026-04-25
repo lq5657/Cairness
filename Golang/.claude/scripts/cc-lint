@@ -405,6 +405,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         "workflow_definition:",
         "migrated_commands:",
         "runtime_commands:",
+        "runtime_readsets:",
         "legacy_fallback:",
         "governance:",
         "subagent_policy:",
@@ -468,6 +469,31 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                 if key not in text:
                     errors.append(f"{path}: missing anti-rationalization field {key.rstrip(':')}")
 
+        readset_path = root / "runtime" / "readsets" / f"{command}.yaml"
+        if not readset_path.exists():
+            errors.append(f"{readset_path}: missing generated runtime readset")
+        else:
+            readset_text = read(readset_path)
+            for key in (
+                f"command: {command}",
+                f"source_manifest: .claude/runtime/commands/{command}.yaml",
+                "generated_from:",
+                "always_reads:",
+                "optional_reads:",
+                "conditional_reads:",
+            ):
+                if key not in readset_text:
+                    errors.append(f"{readset_path}: missing readset field {key.rstrip(':')}")
+
+    readset_index = root / "runtime" / "readsets" / "index.yaml"
+    if not readset_index.exists():
+        errors.append(f"{readset_index}: missing generated runtime readset index")
+    else:
+        index_text = read(readset_index)
+        for command in sorted(REQUIRED_RUNTIME_COMMANDS):
+            if f"{command}: .claude/runtime/readsets/{command}.yaml" not in index_text:
+                errors.append(f"{readset_index}: missing readset index entry {command}")
+
 
 def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
     for topic_key, declared in registered_topic_rules(root).items():
@@ -504,8 +530,10 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         "changes/task-board.md",
         "changes/templates/task-board.md",
         "runtime/core.yaml",
+        "runtime/readsets/index.yaml",
         "schemas/runtime-core.schema.json",
         "schemas/runtime-command.schema.json",
+        "schemas/runtime-readset.schema.json",
         "schemas/topic-rule.schema.json",
         "skills/cc-harness/SKILL.md",
         "evals/rubrics/default.yaml",
@@ -530,6 +558,8 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "core_schema:",
         "command_dir:",
         "command_schema:",
+        "readset_dir:",
+        "readset_schema:",
         "topic_rule_schema:",
         "memory:",
         "dev_map:",
@@ -547,6 +577,7 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "schema_command:",
         "role_command:",
         "eval_command:",
+        "readset_command:",
         "baseline_dir:",
         "fixture_dir:",
         "go:",
@@ -557,7 +588,7 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
     for command in AUTO_VALIDATION_COMMANDS:
         if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
             errors.append(f"{path}: validation.run_on missing {command}")
-    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check", "cc-schema-check", "cc-role-check", "cc-eval"):
+    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check", "cc-schema-check", "cc-role-check", "cc-eval", "cc-readset"):
         script_path = root / "scripts" / script
         if not script_path.exists():
             errors.append(f"{script_path}: missing validation script")

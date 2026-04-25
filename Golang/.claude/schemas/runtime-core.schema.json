@@ -10,6 +10,7 @@
     "workflow_definition",
     "migrated_commands",
     "runtime_commands",
+    "runtime_readsets",
     "legacy_fallback",
     "governance",
     "scripts",
@@ -48,6 +49,25 @@
         "pattern": "^\\.claude/runtime/commands/cc-[a-z0-9-]+\\.yaml$"
       }
     },
+    "runtime_readsets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir", "index", "schema"],
+      "properties": {
+        "dir": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/readsets$"
+        },
+        "index": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/readsets/index\\.yaml$"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/runtime-readset\\.schema\\.json$"
+        }
+      }
+    },
     "legacy_fallback": {
       "type": "object",
       "additionalProperties": false,
@@ -83,7 +103,7 @@
     "scripts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["verify", "delta", "role", "eval"],
+      "required": ["verify", "delta", "role", "eval", "readset"],
       "properties": {
         "verify": {
           "type": "string"
@@ -95,6 +115,9 @@
           "type": "string"
         },
         "eval": {
+          "type": "string"
+        },
+        "readset": {
           "type": "string"
         }
       }

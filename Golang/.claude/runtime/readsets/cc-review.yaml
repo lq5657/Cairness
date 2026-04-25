@@ -1,0 +1,37 @@
+version: 1
+command: cc-review
+source_manifest: .claude/runtime/commands/cc-review.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-review.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-review.yaml
+- .claude/changes/<change-id>/spec.md
+- .claude/changes/<change-id>/tasks.md
+- .claude/changes/<change-id>/review.md
+- .claude/changes/task-board.md
+- .claude/rules/verification.md
+- docs/maintenance/subagent-model.md
+optional_reads:
+- .claude/changes/<change-id>/test-spec.md
+- .claude/context/mvp-roadmap.md
+conditional_reads:
+  when_test_boundary_or_substitution_is_in_question:
+  - .claude/rules/testing-strategy.md
+  when_change_touches_database:
+  - .claude/rules/database-changes.md
+  when_change_touches_external_contract:
+  - .claude/rules/api-compatibility.md
+  when_change_touches_configuration:
+  - .claude/rules/configuration.md
+  when_change_touches_observability:
+  - .claude/rules/observability.md
+  when_release_lens_is_triggered:
+  - .claude/rules/release.md
+  when_security_lens_is_triggered:
+  - .claude/rules/security.md
+  when_external_or_version_sensitive_claims_are_in_scope:
+  - .claude/rules/source-driven-development.md
+  when_dependency_or_wave_order_is_in_dispute:
+  - .claude/rules/git-workflow.md

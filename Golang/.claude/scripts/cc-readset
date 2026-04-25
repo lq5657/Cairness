@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""Generate and verify derived runtime read sets for migrated cc-* commands."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+CORE_PATH = ".claude/runtime/core.yaml"
+GENERATOR_PATH = ".claude/scripts/cc-readset"
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def load_yaml(path: Path, issues: list[Issue]) -> Any:
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        issues.append(Issue("E_READSET001", str(path), f"PyYAML is required: {exc}"))
+        return None
+    if not path.exists():
+        issues.append(Issue("E_READSET002", str(path), "missing YAML file"))
+        return None
+    try:
+        return yaml.safe_load(read(path))
+    except Exception as exc:
+        issues.append(Issue("E_READSET003", str(path), f"invalid YAML: {exc}"))
+        return None
+
+
+def dump_yaml(value: Any) -> str:
+    import yaml  # type: ignore
+
+    return yaml.safe_dump(value, allow_unicode=True, sort_keys=False)
+
+
+def project_path(project_root: Path, declared: Any) -> Path | None:
+    if not isinstance(declared, str):
+        return None
+    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+        return project_root / declared
+    return None
+
+
+def string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def ordered_unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            result.append(value)
+            seen.add(value)
+    return result
+
+
+def runtime_readset_config(core: dict[str, Any]) -> dict[str, str]:
+    config = core.get("runtime_readsets") if isinstance(core.get("runtime_readsets"), dict) else {}
+    return {
+        "dir": config.get("dir", ".claude/runtime/readsets"),
+        "index": config.get("index", ".claude/runtime/readsets/index.yaml"),
+        "schema": config.get("schema", ".claude/schemas/runtime-readset.schema.json"),
+    }
+
+
+def command_order(core: dict[str, Any]) -> list[str]:
+    migrated = string_list(core.get("migrated_commands"))
+    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
+    ordered = [command for command in migrated if command in runtime_commands]
+    ordered.extend(sorted(command for command in runtime_commands if command not in ordered))
+    return ordered
+
+
+def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
+    always_topic_rules = string_list(topic_rules.get("always"))
+    conditional_reads: dict[str, list[str]] = {}
+    for condition, rules in topic_rules.items():
+        if condition == "always":
+            continue
+        conditional_reads[condition] = ordered_unique(string_list(rules))
+
+    subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
+    subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
+    always_reads = [
+        CORE_PATH,
+        manifest_path,
+        *string_list(manifest.get("required_reads")),
+        *always_topic_rules,
+    ]
+    if subagent_policy:
+        always_reads.append(subagent_policy)
+
+    return {
+        "version": 1,
+        "command": command,
+        "source_manifest": manifest_path,
+        "generated_from": [
+            CORE_PATH,
+            manifest_path,
+        ],
+        "always_reads": ordered_unique(always_reads),
+        "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),
+        "conditional_reads": conditional_reads,
+    }
+
+
+def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str]]:
+    core_path = project_root / CORE_PATH
+    core = load_yaml(core_path, issues)
+    if not isinstance(core, dict):
+        issues.append(Issue("E_READSET004", str(core_path), "runtime core must be a mapping"))
+        return {}, {}, {}
+
+    config = runtime_readset_config(core)
+    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
+    readsets: dict[str, dict[str, Any]] = {}
+    commands_index: dict[str, str] = {}
+    for command in command_order(core):
+        manifest_path = runtime_commands.get(command)
+        if not isinstance(manifest_path, str):
+            continue
+        resolved = project_path(project_root, manifest_path)
+        if resolved is None:
+            issues.append(Issue("E_READSET005", str(core_path), f"unsupported runtime command path for {command}: {manifest_path}"))
+            continue
+        manifest = load_yaml(resolved, issues)
+        if not isinstance(manifest, dict):
+            issues.append(Issue("E_READSET006", str(resolved), "runtime command manifest must be a mapping"))
+            continue
+        readsets[command] = derive_command_readset(command, manifest_path, manifest)
+        commands_index[command] = f"{config['dir']}/{command}.yaml"
+
+    index = {
+        "version": 1,
+        "generated_by": GENERATOR_PATH,
+        "source_core": CORE_PATH,
+        "commands": commands_index,
+    }
+    return index, readsets, config
+
+
+def generated_files(project_root: Path) -> tuple[dict[str, str], list[Issue]]:
+    issues: list[Issue] = []
+    index, readsets, config = derive_readsets(project_root, issues)
+    files: dict[str, str] = {}
+    if index:
+        files[config["index"]] = dump_yaml(index)
+    for command, readset in readsets.items():
+        files[f"{config['dir']}/{command}.yaml"] = dump_yaml(readset)
+    return files, issues
+
+
+def check(project_root: Path) -> dict[str, Any]:
+    files, issues = generated_files(project_root)
+    expected_paths = set(files)
+    for declared, expected in sorted(files.items()):
+        path = project_root / declared
+        if not path.exists():
+            issues.append(Issue("E_READSET007", str(path), "missing generated readset file; run cc-readset --write"))
+            continue
+        actual = read(path)
+        if actual != expected:
+            issues.append(Issue("E_READSET008", str(path), "committed readset file is stale; run cc-readset --write"))
+
+    core = load_yaml(project_root / CORE_PATH, issues)
+    if isinstance(core, dict):
+        config = runtime_readset_config(core)
+        readset_dir = project_path(project_root, config["dir"])
+        if readset_dir is not None and readset_dir.exists():
+            for path in sorted(readset_dir.glob("*.yaml")):
+                declared = path.relative_to(project_root).as_posix()
+                if declared not in expected_paths:
+                    issues.append(Issue("E_READSET009", str(path), "extra generated readset file"))
+
+    return {
+        "tool": "cc-readset",
+        "mode": "check",
+        "status": "failed" if issues else "passed",
+        "readsets": sorted(files),
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def write_generated(project_root: Path) -> dict[str, Any]:
+    files, issues = generated_files(project_root)
+    for declared, text in sorted(files.items()):
+        write(project_root / declared, text)
+    return {
+        "tool": "cc-readset",
+        "mode": "write",
+        "status": "failed" if issues else "passed",
+        "readsets": sorted(files),
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Generate or verify runtime read set files.")
+    parser.add_argument("--write", action="store_true", help="Write generated readset files to disk.")
+    parser.add_argument("--check", action="store_true", help="Check generated readset files are current.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    report = write_generated(project_root) if args.write else check(project_root)
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print(f"cc-readset: ok ({report['mode']})")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

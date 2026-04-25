@@ -15,6 +15,8 @@ runtime:
   core_schema: ".claude/schemas/runtime-core.schema.json"
   command_dir: ".claude/runtime/commands"
   command_schema: ".claude/schemas/runtime-command.schema.json"
+  readset_dir: ".claude/runtime/readsets"
+  readset_schema: ".claude/schemas/runtime-readset.schema.json"
   topic_rule_schema: ".claude/schemas/topic-rule.schema.json"
   legacy_command_dir: ".claude/commands"
   legacy_checkpoint_dir: ".claude/checkpoints"
@@ -38,6 +40,7 @@ validation:
   schema_command: ".claude/scripts/cc-schema-check"
   role_command: ".claude/scripts/cc-role-check"
   eval_command: ".claude/scripts/cc-eval"
+  readset_command: ".claude/scripts/cc-readset"
   baseline_dir: "changes/<change-id>/baseline"
   fixture_dir: "fixtures"
   require_structured_hard_gate: true

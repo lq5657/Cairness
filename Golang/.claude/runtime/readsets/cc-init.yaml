@@ -1,0 +1,14 @@
+version: 1
+command: cc-init
+source_manifest: .claude/runtime/commands/cc-init.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-init.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/commands/cc-init.yaml
+- .claude/context/project-context.md
+- .claude/context/dev-map.md
+- .claude/rules/memory-policy.md
+optional_reads: []
+conditional_reads: {}

@@ -288,3 +288,16 @@
 - migrated runtime command 必须声明 `result_contract`。
 - `cc-schema-check` 报缺失或结构不一致。
 - 命令收尾必须包含统一字段，并且 evidence / risks 要能追溯到 auto validation、写入产物、forbids、red flags 或 stop conditions。
+
+#### Case 21：runtime readset 生成物漂移
+
+输入：
+
+```text
+修改 `runtime/commands/cc-apply.yaml` 的 `required_reads`、`optional_reads`、`topic_rules` 或 `subagents.policy`，但没有重新生成 `.claude/runtime/readsets/cc-apply.yaml` 和 `index.yaml`。
+```
+
+期望：
+- `.claude/scripts/cc-readset --check` 报错。
+- `cc-schema-check` 报 readset stale。
+- `always_reads`、`optional_reads` 和 `conditional_reads` 必须由 runtime manifest 派生，不能手工改生成物绕过。

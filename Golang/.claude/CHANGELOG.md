@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.0 - 2026-04-25
+
+- Added `cc-readset` to generate runtime readsets from migrated command manifests.
+- Added runtime readset schema, generated readset files, and runtime core registration.
+- Extended `cc-verify`, `cc-schema-check`, and `cc-lint` to reject stale readsets.
+- Added eval and documentation coverage for readset generation drift.
+
 ## 0.16.0 - 2026-04-25
 
 - Added structured `result_contract` declarations to migrated runtime commands.

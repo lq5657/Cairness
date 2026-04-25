@@ -56,6 +56,7 @@ TASK_FIELDS = [
 ]
 RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
+RUNTIME_READSET_SCHEMA = "runtime-readset.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
@@ -69,6 +70,7 @@ TOPIC_RULE_REQUIRED_SECTIONS = [
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "next_action"}
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
+READSET_GENERATOR = ".claude/scripts/cc-readset"
 SUBAGENT_REQUIRED_COMMANDS = {
     "cc-apply",
     "cc-review",
@@ -404,6 +406,22 @@ def parity_list(value: Any, normalizer: Any) -> list[str]:
     return [normalizer(item) for item in value]
 
 
+def string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def ordered_unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            result.append(value)
+            seen.add(value)
+    return result
+
+
 def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict):
         return []
@@ -481,6 +499,124 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
     return [str(workflow_path)]
 
 
+def runtime_readset_config(core: dict[str, Any] | None) -> dict[str, str]:
+    config = core.get("runtime_readsets") if isinstance(core, dict) and isinstance(core.get("runtime_readsets"), dict) else {}
+    return {
+        "dir": config.get("dir", ".claude/runtime/readsets"),
+        "index": config.get("index", ".claude/runtime/readsets/index.yaml"),
+        "schema": config.get("schema", f".claude/schemas/{RUNTIME_READSET_SCHEMA}"),
+    }
+
+
+def command_order(core: dict[str, Any]) -> list[str]:
+    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
+    ordered = [command for command in string_list(core.get("migrated_commands")) if command in runtime_commands]
+    ordered.extend(sorted(command for command in runtime_commands if command not in ordered))
+    return ordered
+
+
+def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
+    conditional_reads: dict[str, list[str]] = {}
+    for condition, rules in topic_rules.items():
+        if condition == "always":
+            continue
+        conditional_reads[condition] = ordered_unique(string_list(rules))
+
+    subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
+    subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
+    always_reads = [
+        ".claude/runtime/core.yaml",
+        manifest_path,
+        *string_list(manifest.get("required_reads")),
+        *string_list(topic_rules.get("always")),
+    ]
+    if subagent_policy:
+        always_reads.append(subagent_policy)
+
+    return {
+        "version": 1,
+        "command": command,
+        "source_manifest": manifest_path,
+        "generated_from": [
+            ".claude/runtime/core.yaml",
+            manifest_path,
+        ],
+        "always_reads": ordered_unique(always_reads),
+        "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),
+        "conditional_reads": conditional_reads,
+    }
+
+
+def derive_readsets(project_root: Path, core: dict[str, Any], issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    config = runtime_readset_config(core)
+    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
+    command_readsets: dict[str, dict[str, Any]] = {}
+    commands_index: dict[str, str] = {}
+    for command in command_order(core):
+        manifest_path = runtime_commands.get(command)
+        if not isinstance(manifest_path, str):
+            continue
+        resolved = project_path(project_root, manifest_path)
+        if resolved is None:
+            continue
+        manifest = load_yaml_file(resolved, issues)
+        if not isinstance(manifest, dict):
+            continue
+        command_readsets[command] = derive_command_readset(command, manifest_path, manifest)
+        commands_index[command] = f"{config['dir']}/{command}.yaml"
+    index = {
+        "version": 1,
+        "generated_by": READSET_GENERATOR,
+        "source_core": ".claude/runtime/core.yaml",
+        "commands": commands_index,
+    }
+    return index, command_readsets
+
+
+def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
+    if not isinstance(core, dict):
+        return []
+    project_root = claude_root.parent
+    config = runtime_readset_config(core)
+    schema_path = project_path(project_root, config["schema"])
+    index_path = project_path(project_root, config["index"])
+    checked: list[str] = []
+    schema = None
+    if schema_path is not None:
+        checked.append(str(schema_path))
+        schema = load_json_file(schema_path, issues)
+
+    expected_index, expected_readsets = derive_readsets(project_root, core, issues)
+    if index_path is not None:
+        checked.append(str(index_path))
+        index = load_yaml_file(index_path, issues)
+        if isinstance(index, dict) and index != expected_index:
+            add(issues, "E_SCHEMA150", index_path, "runtime readset index is stale; run cc-readset --write")
+
+    for command, expected in expected_readsets.items():
+        declared = expected_index.get("commands", {}).get(command)
+        path = project_path(project_root, declared)
+        if path is None:
+            continue
+        checked.append(str(path))
+        actual = load_yaml_file(path, issues)
+        if isinstance(actual, dict):
+            if schema is not None:
+                validate_against_schema(actual, schema, schema, [], path, issues)
+            if actual != expected:
+                add(issues, "E_SCHEMA151", path, f"{command} runtime readset is stale; run cc-readset --write")
+
+    readset_dir = project_path(project_root, config["dir"])
+    expected_paths = {config["index"], *expected_index.get("commands", {}).values()}
+    if readset_dir is not None and readset_dir.exists():
+        for path in sorted(readset_dir.glob("*.yaml")):
+            declared = path.relative_to(project_root).as_posix()
+            if declared not in expected_paths:
+                add(issues, "E_SCHEMA152", path, "extra runtime readset file")
+    return checked
+
+
 def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict) or not isinstance(core.get("topic_rules"), dict):
         return []
@@ -527,7 +663,7 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
 
     for field in ("workflow_definition",):
         require_declared_path(project_root, core_path, core.get(field), field, issues)
-    for section in ("legacy_fallback", "governance", "scripts", "topic_rules"):
+    for section in ("runtime_readsets", "legacy_fallback", "governance", "scripts", "topic_rules"):
         values = core.get(section)
         if isinstance(values, dict):
             for key, declared in values.items():
@@ -714,6 +850,7 @@ def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[
     checked = [str(claude_root / "runtime" / "core.yaml")]
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_workflow_runtime_parity(claude_root, core, issues))
+    checked.extend(validate_runtime_readsets(claude_root, core, issues))
     checked_topic_rules = validate_topic_rules(claude_root, core, issues)
     return checked, checked_topic_rules
 
