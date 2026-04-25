@@ -5,6 +5,43 @@ description: "当变更涉及 HTTP、gRPC、消息体或其他对外接口契约
 
 ### API Compatibility
 
+#### Skill Anatomy
+
+**When To Use**
+- 变更涉及 HTTP、gRPC、protobuf、MQ/event payload、SDK、Webhook 或导入导出格式。
+- request、response、error code、分页、排序、幂等或重试语义发生变化。
+- `cc-review` 需要判断旧调用方、旧消费者或回滚版本是否仍安全。
+
+**When Not To Use**
+- 纯内部函数签名、未暴露结构体或测试 helper 不默认加载本规则。
+- 不用它替代数据库、配置、发布或安全规则；跨领域风险应分别处理。
+- 不用“当前没有外部用户”跳过契约说明，除非 spec 已证明只存在内部调用。
+
+**Process**
+1. 定位所有对外契约和旧调用方/消费者。
+2. 将变更分类为 compatible_addition、compatible_adjustment 或 breaking_change。
+3. 对 breaking change 记录迁移路径、回滚影响和人工审查要求。
+4. 用实现 diff、测试或契约文件验证 spec 中的兼容性结论。
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "只是改字段名，调用方会跟着改。" | 旧调用方和回滚版本不会自动同步。 | 标记 breaking change 并写迁移路径。 |
+| "新增 request 字段默认兼容。" | 默认值、必填性和空值语义可能改变行为。 | 说明默认语义和旧客户端影响。 |
+| "错误码只是文案调整。" | 错误码和重试语义经常被调用方依赖。 | 检查状态码、code、message 和重试行为。 |
+
+**Red Flags**
+- 删除、重命名字段，修改类型、单位、精度或空值语义。
+- 复用 protobuf field number 或改变 enum 含义。
+- 修改 error code、分页排序、幂等或重试语义但未声明影响。
+- MQ/event payload 让旧消费者无法反序列化或安全忽略。
+
+**Verification**
+- `spec.md` 已记录兼容性分类、调用方影响、迁移路径和回滚影响。
+- 契约文件、handler、proto、payload 或 SDK 变更点可定位。
+- `cc-review` 已核对实现与兼容性声明一致。
+
 #### 约束等级
 
 - 🚫 强制 — 违反则停止执行

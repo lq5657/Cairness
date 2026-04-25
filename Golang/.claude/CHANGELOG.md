@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0 - 2026-04-25
+
+- Added a topic rule frontmatter schema and registered it in Harness config.
+- Extended `cc-schema-check` and `cc-lint` to enforce skill-like anatomy for runtime-registered topic rules.
+- Added skill-like structure to coding style, database, API compatibility, configuration, observability, and git workflow rules.
+- Added eval and documentation coverage for topic rule structure drift.
+
 ## 0.13.0 - 2026-04-24
 
 - Added workflow/runtime parity checks for migrated commands.

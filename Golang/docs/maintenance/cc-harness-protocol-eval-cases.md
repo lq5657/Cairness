@@ -247,3 +247,17 @@
 - `cc-schema-check` 报错。
 - migrated command 的 `change_from` / `change_to`、`writes`、`forbids`、`auto_validation` 必须与 workflow 对齐。
 - workflow 可保留 roles、outputs、validates 等全局信息；runtime 可保留 steps、topic rules、subagents 等执行信息。
+
+#### Case 18：topic rule 写散或未按 skill-like 结构维护
+
+输入：
+
+```text
+在 `runtime/core.yaml` 登记新的 topic rule，或修改现有 topic rule，但缺少 `Skill Anatomy`、`When To Use`、`When Not To Use`、`Process`、`Common Rationalizations`、`Red Flags` 或 `Verification`。
+```
+
+期望：
+- `cc-schema-check` 报错。
+- `cc-lint` 报结构漂移。
+- runtime 注册的 topic rule frontmatter 必须符合 `schemas/topic-rule.schema.json`。
+- topic rule 必须像 compact skill：可判断何时加载、何时拒用、如何执行、如何拒绝常见借口、何时停止以及用什么证据收口。

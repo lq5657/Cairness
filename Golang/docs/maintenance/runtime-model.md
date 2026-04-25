@@ -22,8 +22,9 @@ runtime manifest 的机器契约是：
 
 - `.claude/schemas/runtime-core.schema.json`
 - `.claude/schemas/runtime-command.schema.json`
+- `.claude/schemas/topic-rule.schema.json`
 
-`.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用和 subagent contract 基础结构。
+`.claude/scripts/cc-schema-check` 会校验 runtime core、所有 migrated command manifest、topic rule 引用、topic rule skill-like 结构和 subagent contract 基础结构。
 
 同一个检查还会校验 migrated command 的 workflow/runtime parity：
 
@@ -39,6 +40,8 @@ runtime manifest 的机器契约是：
 当命令 manifest 或 topic rule 声明 anti-rationalization / skill-like rule behavior 时，维护者参考：
 
 - `docs/maintenance/rule-skill-anatomy.md`
+
+`runtime/core.yaml` 中登记的 topic rules 必须符合该 anatomy：frontmatter 由 `.claude/schemas/topic-rule.schema.json` 校验，正文必须包含触发条件、拒用边界、流程、反合理化、红旗和验证出口。
 
 当命令涉及外部 API、SDK、CLI、云服务、框架行为或版本敏感判断时，runtime manifest 可加载：
 
@@ -107,6 +110,10 @@ runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验
 ### 为什么 runtime manifest 需要 schema
 
 runtime manifest 已经成为 migrated command 的默认执行入口。只靠正则检查无法稳定发现字段类型错误、额外字段、topic rule 漏注册、command path 漂移或 subagent contract 结构破损。`runtime-core.schema.json` 与 `runtime-command.schema.json` 把这些约束变成可校验契约，`cc-schema-check` 负责把 schema 校验和跨文件引用校验放进常规 `cc-verify`。
+
+### 为什么 topic rule 也需要 schema/lint
+
+topic rule 是 runtime command 的按需执行规则。如果只写成散文，Claude 加载后仍可能不知道何时触发、何时不要使用、先做什么、哪些借口必须拒绝、以及完成前需要什么证据。`topic-rule.schema.json` 约束 frontmatter，`cc-schema-check` 和 `cc-lint` 约束 skill-like anatomy，使 runtime 注册的 rules 更接近可执行的小型 skill contract。
 
 ### 为什么 workflow/runtime parity 只校验关键字段
 

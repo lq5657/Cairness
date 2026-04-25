@@ -147,6 +147,17 @@ runtime manifest 现在有机器 schema：
 
 修改 runtime command 时，必须同步更新 workflow 中对应命令；反过来也一样。
 
+## Topic Rule Schema
+
+runtime 注册的 topic rules 现在也有机器约束：
+
+```text
+.claude/schemas/topic-rule.schema.json
+docs/maintenance/rule-skill-anatomy.md
+```
+
+`.claude/scripts/cc-schema-check` 会校验每个 `runtime/core.yaml` 中登记的 topic rule：frontmatter 必须符合 schema，并且必须包含 `Skill Anatomy`、触发边界、流程、反合理化、红旗和验证出口。这样 topic rule 不再只是散文规则，而是 Claude 加载后可以直接执行的小型 skill contract。
+
 ## 仍保留的 legacy 资产
 
 下面这些文件或目录还在仓库里，但不再是 migrated command 的默认运行时入口：

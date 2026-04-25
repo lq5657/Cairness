@@ -1,5 +1,47 @@
 # Upgrade Guide
 
+## Upgrade To 0.14.0
+
+This release adds schema and lint enforcement for runtime-registered topic rules.
+
+### New Files To Copy
+
+- `.claude/schemas/topic-rule.schema.json`
+- `.claude/evals/cases/cc-topic-rule-schema.yaml`
+
+### Existing Files To Merge
+
+- `.claude/harness.config.yaml`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-lint`
+- `.claude/rules/coding-style.md`
+- `.claude/rules/database-changes.md`
+- `.claude/rules/api-compatibility.md`
+- `.claude/rules/configuration.md`
+- `.claude/rules/observability.md`
+- `.claude/rules/git-workflow.md`
+- `.claude/evals/rubrics/default.yaml`
+- `docs/maintenance/rule-skill-anatomy.md`
+- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `README.md`
+- `docs/maintenance/runtime-model.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+```
+
+### Compatibility Notes
+
+- Every topic rule registered in `.claude/runtime/core.yaml` must include YAML frontmatter with `alwaysApply` and `description`.
+- Registered topic rules must include the skill-like anatomy sections from `docs/maintenance/rule-skill-anatomy.md`.
+- Legacy rule documents that are not registered as topic rules are not forced into this structure.
+
 ## Upgrade To 0.13.0
 
 This release adds workflow/runtime parity checks for migrated commands.

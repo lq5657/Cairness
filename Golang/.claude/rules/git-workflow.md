@@ -5,6 +5,43 @@ description: "Golang Harness 的分支、提交与变更映射规范"
 
 ### Git Workflow
 
+#### Skill Anatomy
+
+**When To Use**
+- 任何命令需要创建、切换、检查分支，或执行 commit、记录 commit、归档合并状态。
+- `cc-apply`、`cc-fix`、`cc-test`、`cc-archive` 需要确认 change-id 与分支、提交和验证证据一致。
+- worktree 中存在无关修改、未跟踪文件或分支命名例外。
+
+**When Not To Use**
+- 不用它决定业务实现范围、验证等级或 review 结论。
+- 不用 commit 成功替代 `cc-verify`、role check、schema check 或 fresh evidence。
+- 不允许用本规则绕过用户明确要求的暂停、人工处理或无关改动保护。
+
+**Process**
+1. 检查当前分支、change-id、dirty worktree 和 `auto_commit` 配置。
+2. 只暂存和提交当前 change 相关文件；发现无关修改先停止或记录人工处理。
+3. commit 前确认当前命令声明的验证已通过或阻塞状态已记录。
+4. 在 change 文档中记录 commit、分支例外、待提交或待合并状态。
+
+**Common Rationalizations**
+
+| Rationalization | Why It Is Invalid | Required Response |
+|-----------------|-------------------|-------------------|
+| "顺手把无关文件一起提交。" | 无关 diff 会破坏 change 可审查性和回滚边界。 | 只提交当前 change 文件，其他修改保持未暂存。 |
+| "验证稍后再跑，先提交。" | commit 会固化未验证状态。 | 先运行声明验证，失败则记录 blocked/partial。 |
+| "当前就在 main 上，改动很小。" | 主分支直接开发绕过 change 分支契约。 | 切到匹配分支或记录人工批准例外。 |
+
+**Red Flags**
+- 默认主分支上直接开发或提交。
+- commit 包含 `.codex`、临时文件、无关业务 diff 或其他 change 的产物。
+- `auto_commit: false` 仍执行自动 commit。
+- `require_clean_worktree_before_commit: true` 但未展示 dirty worktree 摘要。
+
+**Verification**
+- commit 前后的 `git status` 与暂存范围可解释。
+- commit message 使用 `[<change-id>] <中文简述>` 并与 change 元数据一致。
+- change 文档已记录 commit、待提交、分支例外或待合并状态。
+
 #### 1. 分支契约
 
 - 每个 `change-id` 必须绑定一个工作分支。

@@ -56,6 +56,17 @@ TASK_FIELDS = [
 ]
 RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
+TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
+TOPIC_RULE_REQUIRED_SECTIONS = [
+    "#### Skill Anatomy",
+    "**When To Use**",
+    "**When Not To Use**",
+    "**Process**",
+    "**Common Rationalizations**",
+    "**Red Flags**",
+    "**Verification**",
+]
+TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 SUBAGENT_REQUIRED_COMMANDS = {
     "cc-apply",
     "cc-review",
@@ -468,6 +479,39 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
     return [str(workflow_path)]
 
 
+def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
+    if not isinstance(core, dict) or not isinstance(core.get("topic_rules"), dict):
+        return []
+    project_root = claude_root.parent
+    schema_path = claude_root / "schemas" / TOPIC_RULE_SCHEMA
+    schema = load_json_file(schema_path, issues)
+    checked = [str(schema_path)]
+
+    for topic_key, declared_path in sorted(core["topic_rules"].items()):
+        path = project_path(project_root, declared_path)
+        if path is None:
+            continue
+        checked.append(str(path))
+        if not path.exists():
+            continue
+        text = read(path)
+        if schema is not None:
+            validate_against_schema(parse_frontmatter(text), schema, schema, [], path, issues)
+
+        previous_position = -1
+        for marker in TOPIC_RULE_REQUIRED_SECTIONS:
+            position = text.find(marker)
+            if position == -1:
+                add(issues, "E_SCHEMA137", path, f"topic rule {topic_key} missing skill-like section {marker}")
+                continue
+            if position < previous_position:
+                add(issues, "E_SCHEMA138", path, f"topic rule {topic_key} has section out of order: {marker}")
+            previous_position = position
+        if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
+            add(issues, "E_SCHEMA139", path, f"topic rule {topic_key} missing anti-rationalization table")
+    return checked
+
+
 def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, Any] | None:
     project_root = claude_root.parent
     core_path = claude_root / "runtime" / "core.yaml"
@@ -606,12 +650,13 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     return checked
 
 
-def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> list[str]:
+def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[list[str], list[str]]:
     core = validate_runtime_core(claude_root, issues)
     checked = [str(claude_root / "runtime" / "core.yaml")]
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_workflow_runtime_parity(claude_root, core, issues))
-    return checked
+    checked_topic_rules = validate_topic_rules(claude_root, core, issues)
+    return checked, checked_topic_rules
 
 
 def validate_change_id(value: Any) -> bool:
@@ -739,7 +784,7 @@ def default_input() -> Path:
 def build_report(inputs: list[Path]) -> dict[str, Any]:
     issues: list[Issue] = []
     claude_root = Path(__file__).resolve().parent.parent
-    checked_runtime = validate_runtime_manifests(claude_root, issues)
+    checked_runtime, checked_topic_rules = validate_runtime_manifests(claude_root, issues)
     change_dirs = discover_change_dirs(inputs)
     for change_dir in change_dirs:
         mapping_ids = validate_spec(change_dir / "spec.md", issues)
@@ -750,6 +795,7 @@ def build_report(inputs: list[Path]) -> dict[str, Any]:
         "tool": "cc-schema-check",
         "status": "failed" if issues else "passed",
         "checked_runtime": checked_runtime,
+        "checked_topic_rules": checked_topic_rules,
         "checked_changes": [str(path) for path in change_dirs],
         "issues": [issue.__dict__ for issue in issues],
     }

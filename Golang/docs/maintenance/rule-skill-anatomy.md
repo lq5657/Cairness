@@ -37,4 +37,8 @@ Use this table for rules or commands with high shortcut risk:
 
 Runtime manifests decide when a command reads a topic rule. This anatomy decides how the rule should be written once loaded.
 
-`cc-lint` should enforce the presence of this document as a maintenance asset, but it does not parse every rule section yet.
+For rules registered in `.claude/runtime/core.yaml`, this shape is enforced by:
+
+- `.claude/schemas/topic-rule.schema.json` for frontmatter.
+- `.claude/scripts/cc-schema-check` for frontmatter schema, required sections, section order, and the anti-rationalization table.
+- `.claude/scripts/cc-lint` for fast structure drift checks during Harness verification.

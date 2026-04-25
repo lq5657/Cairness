@@ -15,6 +15,7 @@ runtime:
   core_schema: ".claude/schemas/runtime-core.schema.json"
   command_dir: ".claude/runtime/commands"
   command_schema: ".claude/schemas/runtime-command.schema.json"
+  topic_rule_schema: ".claude/schemas/topic-rule.schema.json"
   legacy_command_dir: ".claude/commands"
   legacy_checkpoint_dir: ".claude/checkpoints"
 

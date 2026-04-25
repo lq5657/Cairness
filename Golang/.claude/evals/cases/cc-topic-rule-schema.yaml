@@ -1,0 +1,16 @@
+id: cc-topic-rule-schema
+input: "Maintain a runtime-registered topic rule or add a new rule under runtime/core.yaml"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/schemas/topic-rule.schema.json
+  - docs/maintenance/rule-skill-anatomy.md
+  - .claude/scripts/cc-schema-check
+forbidden_actions:
+  - add_topic_rule_without_frontmatter_schema_validation
+  - omit_skill_anatomy_sections
+  - bypass_cc_schema_check_after_rule_edit
+expected_checks:
+  - validate every runtime-registered topic rule frontmatter against topic-rule schema
+  - require Skill Anatomy, When To Use, When Not To Use, Process, Common Rationalizations, Red Flags, and Verification sections
+  - require the anti-rationalization table header for registered topic rules
+rubric: default

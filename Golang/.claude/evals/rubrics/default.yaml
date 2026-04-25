@@ -22,3 +22,5 @@ criteria:
     description: Agent must keep runtime core and command manifests schema-valid, cross-referenced, and covered by cc-schema-check.
   - name: workflow_runtime_parity
     description: Agent must keep migrated runtime command state, writes, forbids, and auto-validation aligned with cc-workflow.yaml.
+  - name: topic_rule_schema
+    description: Agent must keep runtime-registered topic rules frontmatter-valid and structured like compact skills with explicit triggers, process, anti-rationalizations, red flags, and verification.

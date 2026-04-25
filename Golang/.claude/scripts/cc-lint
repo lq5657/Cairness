@@ -105,10 +105,46 @@ TOPIC_RULE_KEYS = {
     "source_driven_development",
     "git_workflow",
 }
+TOPIC_RULE_REQUIRED_MARKERS = [
+    "#### Skill Anatomy",
+    "**When To Use**",
+    "**When Not To Use**",
+    "**Process**",
+    "**Common Rationalizations**",
+    "**Red Flags**",
+    "**Verification**",
+]
+TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def project_path(root: Path, declared: str) -> Path | None:
+    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+        return root.parent / declared
+    return None
+
+
+def registered_topic_rules(root: Path) -> dict[str, str]:
+    path = root / "runtime" / "core.yaml"
+    if not path.exists():
+        return {}
+    rules: dict[str, str] = {}
+    in_section = False
+    for line in read(path).splitlines():
+        if line.startswith("topic_rules:"):
+            in_section = True
+            continue
+        if in_section and line and not line.startswith(" "):
+            break
+        if not in_section:
+            continue
+        match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s+(.+?)\s*$", line)
+        if match:
+            rules[match.group(1)] = match.group(2).strip().strip('"').strip("'")
+    return rules
 
 
 def parse_meta(text: str) -> dict[str, str]:
@@ -418,6 +454,34 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                     errors.append(f"{path}: missing anti-rationalization field {key.rstrip(':')}")
 
 
+def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
+    for topic_key, declared in registered_topic_rules(root).items():
+        path = project_path(root, declared)
+        if path is None:
+            errors.append(f"{root / 'runtime' / 'core.yaml'}: topic rule {topic_key} has unsupported path {declared}")
+            continue
+        if not path.exists():
+            errors.append(f"{path}: missing topic rule {topic_key}")
+            continue
+        text = read(path)
+        if not text.startswith("---\n"):
+            errors.append(f"{path}: topic rule {topic_key} missing YAML frontmatter")
+        for key in ("alwaysApply:", "description:"):
+            if key not in text:
+                errors.append(f"{path}: topic rule {topic_key} missing frontmatter key {key.rstrip(':')}")
+        previous_position = -1
+        for marker in TOPIC_RULE_REQUIRED_MARKERS:
+            position = text.find(marker)
+            if position == -1:
+                errors.append(f"{path}: topic rule {topic_key} missing skill-like section {marker}")
+                continue
+            if position < previous_position:
+                errors.append(f"{path}: topic rule {topic_key} has section out of order {marker}")
+            previous_position = position
+        if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
+            errors.append(f"{path}: topic rule {topic_key} missing anti-rationalization table")
+
+
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
     required = [
         "context/dev-map.md",
@@ -427,6 +491,7 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         "runtime/core.yaml",
         "schemas/runtime-core.schema.json",
         "schemas/runtime-command.schema.json",
+        "schemas/topic-rule.schema.json",
         "skills/cc-harness/SKILL.md",
         "evals/rubrics/default.yaml",
     ]
@@ -450,6 +515,7 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "core_schema:",
         "command_dir:",
         "command_schema:",
+        "topic_rule_schema:",
         "memory:",
         "dev_map:",
         "task_board:",
@@ -537,6 +603,7 @@ def main(argv: list[str]) -> int:
         if item.name == ".claude" or (item / "harness.config.yaml").exists():
             lint_workflow_definition(item, errors)
             lint_runtime(item, errors)
+            lint_topic_rule_shape(item, errors)
             lint_governance_assets(item, errors)
             lint_harness_config(item, errors)
             lint_docs_layout(item.parent, errors)
