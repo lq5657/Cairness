@@ -60,11 +60,13 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "runtime" / "core.yaml", "file"),
         (claude_root / "runtime" / "protocol.yaml", "file"),
         (claude_root / "runtime" / "languages" / "golang.yaml", "file"),
+        (claude_root / "runtime" / "technology" / "golang.yaml", "file"),
         (claude_root / "workflows" / "cc-workflow.yaml", "file"),
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
         (claude_root / "schemas" / "command-protocol.schema.json", "file"),
         (claude_root / "schemas" / "language-profile.schema.json", "file"),
+        (claude_root / "schemas" / "technology-decision-catalog.schema.json", "file"),
         (claude_root / "schemas" / "command-event.schema.json", "file"),
         (claude_root / "evals" / "behavior", "dir"),
         (claude_root / "UPGRADE.md", "file"),
@@ -106,6 +108,9 @@ def check_language_profile(project_root: Path, claude_root: Path, issues: list[I
     default_fixture = string_at(profile, ["fixtures", "default"])
     if default_fixture:
         require_path(project_root / default_fixture / "go.mod", "file", issues, "E_DOCTOR007")
+    catalog = string_at(profile, ["technology_decisions", "catalog"])
+    if catalog:
+        require_path(project_root / catalog, "file", issues, "E_DOCTOR011")
 
 
 def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
@@ -119,6 +124,10 @@ def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Is
             value = rendering.get(key)
             if isinstance(value, str):
                 require_path(project_root / value, "file", issues, "E_DOCTOR008")
+    technology_decisions = protocol.get("technology_decisions") if isinstance(protocol.get("technology_decisions"), dict) else {}
+    catalog_schema = technology_decisions.get("catalog_schema")
+    if isinstance(catalog_schema, str):
+        require_path(project_root / catalog_schema, "file", issues, "E_DOCTOR008")
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     profile = language_profile.get("default")
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}

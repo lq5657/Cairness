@@ -83,6 +83,12 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     ]
     for path in creation_templates:
         require(path, "file", issues, "E_UPGRADE006")
+    technology_assets = [
+        claude_root / "runtime" / "technology" / "golang.yaml",
+        claude_root / "schemas" / "technology-decision-catalog.schema.json",
+    ]
+    for path in technology_assets:
+        require(path, "file", issues, "E_UPGRADE006")
     protected_state = [
         project_root / ".cc" / "context" / "project-context.md",
         project_root / ".cc" / "context" / "dev-map.md",

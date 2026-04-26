@@ -6,6 +6,7 @@ command_flow:
   - resolve_command
   - validate_inputs
   - resolve_paths
+  - resolve_language_profile
   - load_runtime_readset
   - execute_runtime_contract
   - validate_result_contract
@@ -102,8 +103,46 @@ lifecycle_events:
   schema: .claude/schemas/command-event.schema.json
   template: .claude/templates/changes/events.jsonl
 
+technology_decisions:
+  catalog_schema: .claude/schemas/technology-decision-catalog.schema.json
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  selection_rules:
+    - load_catalog_from_language_profile
+    - ask_only_decisions_triggered_by_project_or_change_context
+    - offer_recommendation_with_alternatives_and_tradeoffs
+    - require_user_confirmation_for_blocking_p0_decisions
+    - record_unresolved_decisions_as_pending_not_final
+  project_outputs:
+    - .cc/context/project-definition.md
+    - .cc/context/architecture-outline.md
+    - .cc/context/project-context.md
+    - .cc/context/dev-map.md
+  change_outputs:
+    - .cc/changes/<change-id>/spec.md
+    - .cc/changes/<change-id>/log.md
+  blocking_error: user_confirmation_required
+
 language_profile:
   default: golang
   schema: .claude/schemas/language-profile.schema.json
+  resolution:
+    order:
+      - project_state
+      - repository_detection
+      - user_confirmation
+      - default_if_single_profile
+    project_state_paths:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+    new_project_requires_confirmation: true
+    ambiguous_error: user_confirmation_required
+    unsupported_error: unsupported_command
+    selection_outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
   profiles:
     golang: .claude/runtime/languages/golang.yaml

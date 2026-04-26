@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/technology-decision-catalog.schema.json",
+  "title": "Harness Technology Decision Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "language", "summary", "decision_policy", "decision_groups"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applies_to_commands", "confirmation_required_levels", "default_behavior"],
+      "properties": {
+        "applies_to_commands": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^cc-[a-z0-9]+(-[a-z0-9]+)*$"
+          }
+        },
+        "confirmation_required_levels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["P0", "P1", "P2"]
+          }
+        },
+        "default_behavior": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/snakeId"
+          }
+        }
+      }
+    },
+    "decision_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/decisionGroup"
+      }
+    }
+  },
+  "$defs": {
+    "snakeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^\\.(claude|cc)/.+$"
+    },
+    "decisionGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "level",
+        "scope",
+        "applies_when",
+        "question",
+        "default_recommendation",
+        "requires_user_confirmation",
+        "outputs",
+        "options"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/snakeId"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["project", "change", "both"]
+        },
+        "applies_when": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/snakeId"
+          }
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_recommendation": {
+          "$ref": "#/$defs/snakeId"
+        },
+        "requires_user_confirmation": {
+          "type": "boolean"
+        },
+        "outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/path"
+          }
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/decisionOption"
+          }
+        }
+      }
+    },
+    "decisionOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "recommended_when", "tradeoffs"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/snakeId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recommended_when": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/snakeId"
+          }
+        },
+        "tradeoffs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reject_when": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/snakeId"
+          }
+        }
+      }
+    }
+  }
+}

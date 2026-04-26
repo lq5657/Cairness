@@ -4,7 +4,7 @@
   "title": "Harness Language Profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "language", "project_detection", "verification", "fixtures"],
+  "required": ["version", "language", "project_detection", "verification", "fixtures", "technology_decisions"],
   "properties": {
     "version": {
       "type": "integer",
@@ -23,12 +23,45 @@
           "type": "string",
           "minLength": 1
         },
+        "module_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "source_globs": {
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "string",
             "minLength": 1
+          }
+        },
+        "lockfiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "module_file": {
+              "$ref": "#/$defs/confidenceLevel"
+            },
+            "source_globs": {
+              "$ref": "#/$defs/confidenceLevel"
+            },
+            "lockfiles": {
+              "$ref": "#/$defs/confidenceLevel"
+            }
           }
         }
       }
@@ -50,9 +83,24 @@
           "minLength": 1
         }
       }
+    },
+    "technology_decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog"],
+      "properties": {
+        "catalog": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/technology/[a-z0-9_-]+\\.yaml$"
+        }
+      }
     }
   },
   "$defs": {
+    "confidenceLevel": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
     "verificationCapability": {
       "type": "object",
       "additionalProperties": false,
@@ -77,4 +125,3 @@
     }
   }
 }
-

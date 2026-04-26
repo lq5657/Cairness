@@ -1,0 +1,800 @@
+version: 1
+language: golang
+summary: Go backend technology decision catalog for project-level and change-level clarification.
+
+decision_policy:
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  confirmation_required_levels:
+    - P0
+  default_behavior:
+    - offer_recommendation_with_alternatives
+    - explain_adoption_and_rejection_reasons
+    - record_unresolved_choices_as_pending
+    - never_write_recommendation_as_user_decision_without_confirmation
+
+decision_groups:
+  - id: runtime_shape
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - runtime_shape_not_selected
+    question: 选择 Go 后台服务的运行形态
+    default_recommendation: http_api
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: http_api
+        label: HTTP API
+        recommended_when:
+          - browser_or_external_client_calls_service
+          - want_simple_public_contract
+        tradeoffs:
+          - 最通用，便于调试和接入网关
+          - 需要明确路由、中间件、错误响应和版本策略
+      - id: grpc_service
+        label: gRPC service
+        recommended_when:
+          - internal_service_to_service_calls
+          - want_strong_typed_contract
+        tradeoffs:
+          - 契约强，适合内部服务间调用
+          - 浏览器直连和人工调试成本更高
+      - id: worker
+        label: Worker / consumer
+        recommended_when:
+          - primary_flow_is_async_processing
+          - no_direct_user_request_path
+        tradeoffs:
+          - 适合异步任务、消费队列和批处理
+          - 需要额外确认重试、幂等、死信和观测方案
+      - id: cli
+        label: CLI
+        recommended_when:
+          - operator_runs_local_or_batch_command
+          - no_server_runtime_needed
+        tradeoffs:
+          - 启动简单，部署轻
+          - 不适合作为长期在线接口服务
+
+  - id: http_framework
+    level: P0
+    scope: project
+    applies_when:
+      - new_http_service
+      - http_entrypoint_not_selected
+    question: 选择 Go HTTP 框架或 Router
+    default_recommendation: net_http_chi
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: net_http_chi
+        label: net/http + chi
+        recommended_when:
+          - prefer_standard_library_alignment
+          - want_lightweight_router
+        tradeoffs:
+          - 贴近标准库，框架绑定低，中间件生态够用
+          - 大型团队需要自行约定 response、validator 和 middleware 组织方式
+      - id: gin
+        label: Gin
+        recommended_when:
+          - team_already_uses_gin
+          - want_batteries_included_http_framework
+        tradeoffs:
+          - 生态成熟，资料多，上手快
+          - 框架约定更强，handler 与 framework context 更容易绑定
+      - id: echo
+        label: Echo
+        recommended_when:
+          - team_prefers_integrated_http_framework
+          - want_builtin_middleware_set
+        tradeoffs:
+          - 功能集成度高
+          - 需要接受框架 API 绑定和升级节奏
+      - id: standard_library
+        label: net/http only
+        recommended_when:
+          - very_small_service
+          - want_zero_router_dependency
+        tradeoffs:
+          - 依赖最少
+          - 路由参数、中间件组合和分组能力需要自己补齐
+
+  - id: api_protocol
+    level: P0
+    scope: both
+    applies_when:
+      - external_contract_exists
+      - api_protocol_not_selected
+    question: 选择对外或服务间 API 协议
+    default_recommendation: rest_json
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: rest_json
+        label: REST JSON
+        recommended_when:
+          - public_or_browser_clients
+          - want_simple_debugging
+        tradeoffs:
+          - 接入简单，工具链成熟
+          - 强类型契约和兼容性治理需要额外约定
+      - id: grpc
+        label: gRPC
+        recommended_when:
+          - internal_services
+          - contract_first_required
+        tradeoffs:
+          - 强契约，代码生成稳定
+          - 浏览器、网关和调试链路更复杂
+      - id: connect
+        label: Connect
+        recommended_when:
+          - want_protobuf_contract_with_http_friendly_runtime
+          - mixed_browser_and_service_clients
+        tradeoffs:
+          - 兼顾 protobuf 和 HTTP 体验
+          - 团队需要接受相对更具体的工具链
+      - id: websocket_or_sse
+        label: WebSocket / SSE
+        recommended_when:
+          - realtime_push_required
+          - long_lived_streaming_required
+        tradeoffs:
+          - 适合实时推送和流式交互
+          - 连接治理、重连、鉴权和压测要求更高
+
+  - id: project_structure
+    level: P0
+    scope: project
+    applies_when:
+      - greenfield_project
+      - module_boundary_not_selected
+    question: 选择项目结构和模块边界风格
+    default_recommendation: simple_layered
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: simple_layered
+        label: 简单分层
+        recommended_when:
+          - mvp_or_small_team
+          - domain_complexity_low_to_medium
+        tradeoffs:
+          - 易读、易落地，适合 MVP 起步
+          - 领域复杂后需要逐步拆清边界
+      - id: modular_monolith
+        label: Modular monolith
+        recommended_when:
+          - multiple_domains_but_single_deploy
+          - want_clear_module_boundaries
+        tradeoffs:
+          - 保持单体部署同时约束模块边界
+          - 初期目录和接口约定更多
+      - id: clean_architecture
+        label: Clean Architecture
+        recommended_when:
+          - long_lived_complex_domain
+          - strong_boundary_and_testability_required
+        tradeoffs:
+          - 边界清晰、可测试性强
+          - 小项目容易抽象过度
+      - id: vertical_slice
+        label: Vertical slice
+        recommended_when:
+          - feature_teams_work_independently
+          - flows_are_more_important_than_shared_layers
+        tradeoffs:
+          - 变更聚合度高
+          - 共享领域模型和横切能力需要额外治理
+
+  - id: database
+    level: P0
+    scope: both
+    applies_when:
+      - persistence_required
+      - database_not_selected
+    question: 选择持久化数据库
+    default_recommendation: postgresql
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: postgresql
+        label: PostgreSQL
+        recommended_when:
+          - relational_data
+          - want_strong_default_database
+        tradeoffs:
+          - 能力均衡，事务、索引和 JSON 能力强
+          - 运维和连接池需要明确
+      - id: mysql
+        label: MySQL
+        recommended_when:
+          - team_or_platform_standard_is_mysql
+          - existing_mysql_infrastructure
+        tradeoffs:
+          - 生态成熟，平台常见
+          - JSON、复杂查询和 migration 细节需按版本确认
+      - id: sqlite
+        label: SQLite
+        recommended_when:
+          - embedded_or_single_node_app
+          - low_write_concurrency
+        tradeoffs:
+          - 部署简单
+          - 不适合高并发多实例写入场景
+      - id: no_database
+        label: 暂不使用数据库
+        recommended_when:
+          - stateless_service
+          - data_owned_by_external_system
+        tradeoffs:
+          - MVP 轻量
+          - 后续引入持久化时需要补数据模型和迁移策略
+
+  - id: data_access
+    level: P0
+    scope: both
+    applies_when:
+      - relational_database_selected
+      - data_access_not_selected
+    question: 选择数据访问方式
+    default_recommendation: sqlc
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: sqlc
+        label: database/sql + sqlc
+        recommended_when:
+          - want_sql_control_and_type_safety
+          - schema_queries_are_explicit
+        tradeoffs:
+          - SQL 清晰、类型安全、运行时魔法少
+          - 动态查询和复杂条件组合需要额外设计
+      - id: gorm
+        label: GORM
+        recommended_when:
+          - team_already_uses_gorm
+          - prefer_orm_productivity
+        tradeoffs:
+          - 开发快，生态成熟
+          - 隐式查询和 hook 容易带来调试成本
+      - id: sqlx
+        label: sqlx
+        recommended_when:
+          - want_lightweight_sql_helpers
+          - no_codegen_preference
+        tradeoffs:
+          - 比 database/sql 方便，控制感仍较强
+          - 类型安全弱于 sqlc
+      - id: ent
+        label: ent
+        recommended_when:
+          - graph_like_domain_model
+          - want_schema_as_code
+        tradeoffs:
+          - schema 和查询 API 统一
+          - 工具链和生成代码引入更重
+
+  - id: migration_tool
+    level: P0
+    scope: both
+    applies_when:
+      - database_schema_evolves
+      - migration_tool_not_selected
+    question: 选择数据库 migration 工具
+    default_recommendation: golang_migrate
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: golang_migrate
+        label: golang-migrate
+        recommended_when:
+          - want_plain_sql_migrations
+          - need_common_go_ecosystem_tool
+        tradeoffs:
+          - 简单直接，SQL 可审查
+          - 高级 schema diff 需要其他工具辅助
+      - id: goose
+        label: goose
+        recommended_when:
+          - want_simple_go_friendly_migration
+          - prefer_sql_or_go_migrations
+        tradeoffs:
+          - 使用简单
+          - 团队需统一 SQL migration 与 Go migration 的边界
+      - id: atlas
+        label: Atlas
+        recommended_when:
+          - want_schema_management_and_diff
+          - database_governance_is_important
+        tradeoffs:
+          - 能力强，适合更完整的 schema 治理
+          - 工具链更重，学习和 CI 接入成本更高
+
+  - id: authn
+    level: P0
+    scope: both
+    applies_when:
+      - user_or_service_identity_required
+      - authentication_not_selected
+    question: 选择认证方式
+    default_recommendation: jwt
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: jwt
+        label: JWT
+        recommended_when:
+          - stateless_api
+          - token_issued_by_existing_identity_provider
+        tradeoffs:
+          - 服务端无状态，网关和微服务常见
+          - 撤销、刷新和密钥轮换要明确
+      - id: session
+        label: Session
+        recommended_when:
+          - browser_app
+          - server_side_session_control_required
+        tradeoffs:
+          - 撤销和服务端控制更直接
+          - 需要 session 存储和 CSRF 策略
+      - id: oidc
+        label: OIDC
+        recommended_when:
+          - enterprise_sso
+          - external_identity_provider_required
+        tradeoffs:
+          - 标准化，适合企业身份体系
+          - 集成和本地调试复杂度更高
+      - id: api_key
+        label: API Key
+        recommended_when:
+          - machine_to_machine_simple_auth
+          - low_identity_complexity
+        tradeoffs:
+          - 简单易接入
+          - 轮换、泄漏检测和权限粒度要额外治理
+
+  - id: authorization
+    level: P0
+    scope: both
+    applies_when:
+      - authorization_required
+      - permission_model_not_selected
+    question: 选择权限模型
+    default_recommendation: rbac
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: rbac
+        label: RBAC
+        recommended_when:
+          - role_based_operations
+          - permission_matrix_is_manageable
+        tradeoffs:
+          - 易理解，适合后台系统
+          - 资源级细粒度规则会膨胀
+      - id: abac
+        label: ABAC
+        recommended_when:
+          - policies_depend_on_attributes
+          - fine_grained_contextual_authorization
+        tradeoffs:
+          - 表达能力强
+          - 策略测试和解释成本更高
+      - id: owner_based
+        label: Owner-based
+        recommended_when:
+          - users_only_access_own_resources
+          - early_mvp_needs_simple_rule
+        tradeoffs:
+          - MVP 简单
+          - 后续多角色、多组织场景需要升级模型
+
+  - id: async_messaging
+    level: P0
+    scope: both
+    applies_when:
+      - async_processing_required
+      - messaging_not_selected
+    question: 选择异步任务或消息中间件
+    default_recommendation: no_mq_until_needed
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: no_mq_until_needed
+        label: 暂不引入 MQ
+        recommended_when:
+          - mvp_can_run_synchronously
+          - async_requirement_not_proven
+        tradeoffs:
+          - 降低复杂度，避免过早引入运维面
+          - 后续削峰、重试和解耦需求出现时需要补架构
+      - id: goroutine_worker
+        label: 本地 goroutine worker
+        recommended_when:
+          - single_instance_or_best_effort_jobs
+          - task_can_be_lost_or_retried_by_caller
+        tradeoffs:
+          - 简单轻量
+          - 不适合可靠队列、跨实例消费和持久化任务
+      - id: redis_stream
+        label: Redis Stream
+        recommended_when:
+          - redis_already_exists
+          - lightweight_queue_needed
+        tradeoffs:
+          - 接入成本较低
+          - 复杂消费治理弱于专用 MQ
+      - id: nats
+        label: NATS
+        recommended_when:
+          - low_latency_messaging
+          - cloud_native_eventing
+        tradeoffs:
+          - 轻量高性能
+          - 团队需要熟悉 JetStream、持久化和运维模型
+      - id: rabbitmq
+        label: RabbitMQ
+        recommended_when:
+          - routing_patterns_and_ack_semantics_needed
+          - ops_platform_already_supports_rabbitmq
+        tradeoffs:
+          - 语义成熟，适合任务队列
+          - 运维和拓扑治理需要规范
+      - id: kafka
+        label: Kafka
+        recommended_when:
+          - high_throughput_event_log
+          - replay_and_stream_processing_needed
+        tradeoffs:
+          - 吞吐和回放能力强
+          - 对 MVP 来说通常偏重，运维成本高
+
+  - id: cache
+    level: P1
+    scope: both
+    applies_when:
+      - caching_requirement_exists
+      - cache_not_selected
+    question: 选择缓存方案
+    default_recommendation: no_cache_until_needed
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: no_cache_until_needed
+        label: 暂不引入缓存
+        recommended_when:
+          - no_measured_performance_pressure
+          - data_freshness_is_important
+        tradeoffs:
+          - 保持一致性简单
+          - 性能压力出现后再补缓存策略
+      - id: in_memory_cache
+        label: In-memory cache
+        recommended_when:
+          - single_instance
+          - small_hot_data_set
+        tradeoffs:
+          - 简单快速
+          - 多实例一致性和失效传播困难
+      - id: redis
+        label: Redis
+        recommended_when:
+          - shared_cache_needed
+          - redis_is_already_available
+        tradeoffs:
+          - 跨实例共享成熟
+          - 需要明确 TTL、击穿、穿透和降级策略
+
+  - id: configuration
+    level: P1
+    scope: project
+    applies_when:
+      - multiple_environments
+      - configuration_strategy_not_selected
+    question: 选择配置和密钥管理方式
+    default_recommendation: env_with_secret_manager
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/project-context.md
+    options:
+      - id: env_with_secret_manager
+        label: 环境变量 + Secret Manager
+        recommended_when:
+          - container_or_cloud_deployment
+          - secrets_must_not_live_in_repo
+        tradeoffs:
+          - 部署平台友好，密钥边界清晰
+          - 本地开发需要样例和校验工具
+      - id: config_file
+        label: 配置文件
+        recommended_when:
+          - self_hosted_or_static_deployment
+          - operators_manage_files_directly
+        tradeoffs:
+          - 本地可读，运维直观
+          - 敏感信息和环境差异需要严格治理
+      - id: viper
+        label: Viper
+        recommended_when:
+          - need_multiple_config_sources
+          - team_accepts_viper_conventions
+        tradeoffs:
+          - 支持多来源配置
+          - 隐式覆盖和默认值容易让配置来源变模糊
+
+  - id: logging
+    level: P1
+    scope: project
+    applies_when:
+      - backend_service
+      - logging_not_selected
+    question: 选择日志库和日志输出策略
+    default_recommendation: slog
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/project-context.md
+    options:
+      - id: slog
+        label: log/slog
+        recommended_when:
+          - go_standard_library_preferred
+          - structured_logging_needed
+        tradeoffs:
+          - 标准库方案，长期维护成本低
+          - 生态扩展和性能调优不如部分专用库丰富
+      - id: zap
+        label: zap
+        recommended_when:
+          - high_performance_logging_required
+          - team_already_uses_zap
+        tradeoffs:
+          - 性能强，生态成熟
+          - API 和配置比 slog 更重
+      - id: zerolog
+        label: zerolog
+        recommended_when:
+          - low_allocation_json_logging
+          - team_prefers_chained_api
+        tradeoffs:
+          - 性能好，JSON 友好
+          - 链式 API 有团队偏好成本
+
+  - id: observability
+    level: P1
+    scope: both
+    applies_when:
+      - production_service
+      - observability_not_selected
+    question: 选择 Metrics / Tracing / Health 观测方案
+    default_recommendation: prometheus_and_opentelemetry_when_needed
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: prometheus_and_opentelemetry_when_needed
+        label: Prometheus + OpenTelemetry（按需）
+        recommended_when:
+          - production_service
+          - need_standard_metrics_and_traces
+        tradeoffs:
+          - 标准生态，便于平台接入
+          - MVP 阶段可先保留 health 和关键日志，再逐步补指标
+      - id: platform_collector_only
+        label: 平台采集
+        recommended_when:
+          - deployment_platform_already_collects_logs_metrics
+          - team_wants_minimal_app_instrumentation
+        tradeoffs:
+          - 应用侧代码少
+          - 业务级指标和链路追踪可能不足
+      - id: no_observability_initially
+        label: 首期仅 health + logs
+        recommended_when:
+          - internal_low_risk_mvp
+          - no_production_slo_yet
+        tradeoffs:
+          - 最轻量
+          - 上线后排障和容量判断能力弱
+
+  - id: validation
+    level: P1
+    scope: both
+    applies_when:
+      - request_input_validation_needed
+      - validator_not_selected
+    question: 选择请求参数校验方式
+    default_recommendation: explicit_validation
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: explicit_validation
+        label: 手写显式校验
+        recommended_when:
+          - validation_rules_are_business_specific
+          - want_clear_error_mapping
+        tradeoffs:
+          - 可读、可控，便于业务错误语义
+          - 字段多时样板代码更多
+      - id: go_playground_validator
+        label: go-playground/validator
+        recommended_when:
+          - tag_based_validation_is_acceptable
+          - many_struct_field_rules
+        tradeoffs:
+          - 常见且方便
+          - 复杂跨字段规则和错误映射需要额外封装
+      - id: ozzo_validation
+        label: ozzo-validation
+        recommended_when:
+          - want_code_based_validation_rules
+          - prefer_no_struct_tags
+        tradeoffs:
+          - 规则表达清晰
+          - 团队需要熟悉额外库
+
+  - id: testing
+    level: P1
+    scope: project
+    applies_when:
+      - test_baseline_needed
+      - testing_tooling_not_selected
+    question: 选择测试工具基线
+    default_recommendation: standard_testing_with_testify_when_helpful
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/project-context.md
+    options:
+      - id: standard_testing_with_testify_when_helpful
+        label: testing + Testify（按需）
+        recommended_when:
+          - go_standard_testing_preferred
+          - want_readable_assertions
+        tradeoffs:
+          - 贴近 Go 默认测试体验
+          - Mock 方案仍需按边界另选
+      - id: gomock
+        label: GoMock
+        recommended_when:
+          - interface_heavy_boundaries
+          - generated_mocks_are_accepted
+        tradeoffs:
+          - Mock 能力成熟
+          - 生成代码和接口设计会影响维护成本
+      - id: testcontainers
+        label: testcontainers-go
+        recommended_when:
+          - integration_tests_need_real_dependencies
+          - ci_can_run_containers
+        tradeoffs:
+          - 集成证据更真实
+          - CI 时间、镜像和环境稳定性要治理
+
+  - id: dependency_injection
+    level: P1
+    scope: project
+    applies_when:
+      - many_components
+      - dependency_wiring_strategy_not_selected
+    question: 选择依赖装配方式
+    default_recommendation: manual_constructors
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: manual_constructors
+        label: 手写 constructors
+        recommended_when:
+          - mvp_or_moderate_component_count
+          - want_explicit_dependencies
+        tradeoffs:
+          - 清晰、无额外工具
+          - 组件很多时样板代码增加
+      - id: wire
+        label: Google Wire
+        recommended_when:
+          - compile_time_di_wanted
+          - team_accepts_codegen
+        tradeoffs:
+          - 编译期装配，运行时透明
+          - 需要生成步骤和 provider 约定
+      - id: fx
+        label: Uber Fx
+        recommended_when:
+          - large_service_with_lifecycle_hooks
+          - team_accepts_runtime_di_framework
+        tradeoffs:
+          - 生命周期和模块化能力强
+          - 运行时 DI 抽象成本更高
+
+  - id: middleware_stack
+    level: P1
+    scope: both
+    applies_when:
+      - http_service
+      - middleware_stack_not_selected
+    question: 选择 HTTP middleware 栈
+    default_recommendation: minimal_http_middleware_stack
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: minimal_http_middleware_stack
+        label: recovery + request_id + access_log + timeout
+        recommended_when:
+          - generic_http_backend
+          - no_browser_or_auth_requirement_yet
+        tradeoffs:
+          - 提供最小可运维能力
+          - CORS、auth、rate limit、metrics 需按场景追加确认
+      - id: browser_api_stack
+        label: minimal + CORS + auth
+        recommended_when:
+          - browser_clients_call_api
+          - authentication_required
+        tradeoffs:
+          - 覆盖浏览器 API 常见需求
+          - CORS 域名、cookie/token 和 CSRF 策略必须明确
+      - id: public_api_stack
+        label: minimal + auth + rate_limit + body_limit + metrics
+        recommended_when:
+          - public_internet_api
+          - abuse_or_capacity_risk_exists
+        tradeoffs:
+          - 生产防护更完整
+          - 限流维度、错误响应和监控阈值需要设计

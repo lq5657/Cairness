@@ -19,6 +19,7 @@
 .claude/runtime/core.yaml
 .claude/runtime/protocol.yaml
 .claude/runtime/languages/golang.yaml
+.claude/runtime/technology/golang.yaml
 .claude/runtime/commands/<command>.yaml
 ```
 
@@ -187,6 +188,10 @@ runtime manifest 现在有机器 schema：
 协议层约束 command resolution、input validation、path role resolution、error taxonomy 和 result rendering；语言 profile 只承载 Go module detection、fixture 和 Go verification commands。`.claude/scripts/cc-schema-check` 会校验协议结构、错误引用、path role 引用和默认语言 profile。
 
 `cc-verify` 的 Go 检查命令来自 `.claude/runtime/languages/golang.yaml`，`harness.config.yaml` 只决定是否启用 test / vet / lint。这样后续接入其他语言时可以替换 language profile，而不复制 change lifecycle。
+
+语言 profile 还可以声明技术选型目录，例如 Go 当前使用 `.claude/runtime/technology/golang.yaml`。通用协议只约束“何时澄清、如何展示推荐/备选/取舍、P0 是否需要用户确认”，具体选项由语言 catalog 提供，后续扩展 Python、Node 或 Java 时新增对应 language profile 和 technology catalog。
+
+多语言支持由 `language_profile.resolution` 解析：存量项目优先读取 `.cc` 中已确认的主语言，其次按各 language profile 的仓库标识探测；多语言或无法判断时要求用户确认。新项目没有代码事实时必须由用户选择或确认主语言，不能用默认 profile 静默决定。
 
 ## Doctor Check
 

@@ -36,7 +36,11 @@ runtime manifest 的机器契约是：
 
 `.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/golang.yaml` 只承载 Go-specific project detection、verification commands 和 fixture path。
 
-语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 从 profile 读取 Go verification commands；`harness.config.yaml` 只保留是否启用 test / vet / lint 的策略开关。
+语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 从 profile 读取 Go verification commands；`harness.config.yaml` 只保留是否启用 test / vet / lint 的策略开关。语言 profile 还声明 repository detection metadata 和 technology decision catalog，用于把通用澄清协议和语言专属选项拆开。
+
+`protocol.yaml` 中的 `language_profile.resolution` 定义语言解析顺序：先读 `.cc` 项目状态，再按 language profile 的仓库标识探测，无法唯一确定时要求用户确认。新项目没有代码事实时必须由用户确认主语言 / 技术生态；`language_profile.default` 只是打包默认值，不能静默代替用户选择。
+
+技术选型目录由 `.claude/schemas/technology-decision-catalog.schema.json` 校验。当前 Go catalog 位于 `.claude/runtime/technology/golang.yaml`，覆盖运行形态、HTTP 框架、API 协议、项目结构、数据库、数据访问、migration、认证鉴权、异步消息、缓存、配置、日志、观测、校验、测试、依赖装配和 HTTP middleware。未来其他语言只需要新增对应 language profile 和 technology catalog，不需要复制 command lifecycle。
 
 protocol 还声明 lifecycle event log 的位置、schema 和模板。事件日志位于 `.cc/changes/<change-id>/events.jsonl`，由 `.claude/scripts/cc-event-check` 校验。当前事件日志是渐进式能力：已有 event log 必须合法，历史 change 不强制立即补齐。
 

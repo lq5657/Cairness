@@ -16,6 +16,8 @@
 - Added `cc-upgrade-check` for upgrade boundary checks and JSON upgrade reports.
 - Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
 - Added creation templates for long-lived `.cc` state documents: `project-context.md` and `knowledge/index.md`.
+- Added a language-extensible technology decision catalog for Go backend project choices.
+- Added language profile resolution rules so new projects require user-confirmed language selection before loading a technology catalog.
 
 ## 0.20.0 - 2026-04-25
 

@@ -5,11 +5,13 @@ generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
+- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-preflight.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
+- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-preflight.yaml
 - .claude/harness.config.yaml
 - .claude/workflows/cc-workflow.yaml

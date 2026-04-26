@@ -5,11 +5,13 @@ generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
+- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-propose.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
+- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-propose.yaml
 - .cc/context/project-context.md
 - .cc/context/dev-map.md

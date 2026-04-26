@@ -108,10 +108,12 @@
   - 用户看见什么、系统返回什么
 
 - 技术方向
+  - 主语言 / language profile
   - 运行形态
   - 主要模块边界
   - 数据对象或状态对象
   - 技术栈建议或待确认技术点
+  - 当前语言 profile 的 technology decision catalog 中被上下文触发的 P0 决策；具体选项由语言 catalog 提供，命令本身不硬编码某种语言或框架
 
 - 启动路径
   - MVP 分期
@@ -125,18 +127,22 @@
    - 明确目标、目标用户、典型场景、成功标准
 3. 做实现偏好讨论：
    - 明确核心能力、灰区决策、范围边界、技术偏好
-4. 若技术方向明显影响范围、成本或架构，做受控 Research
-5. 形成 MVP 路线图：
+4. 在进入技术选型前解析 language profile：
+   - 新项目缺少代码事实时必须让用户选择或确认主语言 / 技术生态
+   - 若当前 harness 只安装一个 language profile，也必须说明可用范围并让用户确认或保留待确认
+   - 用户确认后再加载对应 technology decision catalog
+5. 若技术方向明显影响范围、成本或架构，做受控 Research
+6. 形成 MVP 路线图：
    - 明确 Phase 0 / Phase 1 / Phase 2 的目标
-6. 提炼首批推荐 change backlog
-7. 对项目定义与路线图做计划质量检查：
+7. 提炼首批推荐 change backlog
+8. 对项目定义与路线图做计划质量检查：
    - 阶段目标是否清晰
    - MVP 是否收敛
    - 首批 change 是否能落入现有 change 生命周期
    - 是否存在未冻结而会阻塞 `cc-propose` 的关键灰区
-8. 更新 `.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选摘要
-9. 输出项目级文档
-10. 停止，并建议下一步进入 `cc-propose <首批change>`
+9. 更新 `.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选摘要
+10. 输出项目级文档
+11. 停止，并建议下一步进入 `cc-propose <首批change>`
 
 ## Discovery 与 Discuss 要求
 
@@ -144,13 +150,19 @@
 - 第一轮问题优先围绕目标、用户、场景、成功标准，而不是框架选型
 - 对“更智能 / 更好用 / 更灵活 / 更高效”等抽象词，必须继续具体化
 - 当目标和边界逐渐稳定后，再讨论技术方向、模块和数据对象
+- 技术方向讨论前必须先解析 language profile；新项目没有仓库证据时，主语言 / 技术生态是用户确认项
 - 若用户无法做决定，应主动提供候选方案和推荐理由，而不是只反问
 - 每轮讨论后应输出“当前已明确 / 仍待确认”，避免灰区决策遗失在对话中
+- 技术选型问题必须来自当前语言 profile 声明的 technology decision catalog；命令只执行通用澄清协议，不直接维护具体语言选项
+- 不得把 catalog 的默认推荐写成用户最终选择；P0 选型必须有用户确认，或在项目文档中保持 `待确认`
+- P1 选型只在当前项目或首批 change 明确触发时提问，否则可记录为“暂不涉及”
 
 ## 交互输出要求
 
 - 若项目目标、目标用户、成功标准、MVP 边界、关键技术方向或首批 change backlog 仍有阻塞性灰区，必须直接向用户提出编号问题并等待回答。
 - 阻塞性问题必须给出期望回答形态；当存在可行选项时，必须给出候选方案、推荐项和取舍理由。
+- 若语言无法从项目状态或仓库事实确定，必须先提出 language profile 选择问题。用户未确认语言时，不得加载某个语言 catalog 并继续冻结技术选型。
+- 技术选型问题必须同时展示：推荐方案、备选方案、推荐理由、放弃理由、确认选项。用户未确认时，写入待确认事项，不能推进为已冻结架构。
 - 只列出“仍待确认”不等于完成项目定义；若未获得回答，只能保留项目级草稿，不能宣称已满足完成标准。
 - 若用户暂时无法决定，必须让用户显式选择“采用推荐方案 / 保留为待确认 / 暂停项目定义”，而不是由命令自行把推荐方案写成最终决定。
 - 最终输出若仍有阻塞性灰区，下一步必须是回答项目定义问题，而不是进入 `cc-propose` 或生成正式 change。
@@ -176,18 +188,20 @@ Research 只用于：
 1. 已明确项目目标、目标用户、典型场景和成功标准
 2. 已明确 MVP 范围和“本次不做”
 3. 已收敛关键实现偏好或明确待确认灰区
-4. 已给出技术方向、模块草图或待确认实现点
-5. 已形成至少一版 MVP 路线图
-6. 已给出首批推荐 change backlog
-7. 已验证首批推荐 change 能自然桥接到 `cc-propose`
-8. 已同步 `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要
-9. 已输出项目级文档，而不是直接进入 change 文档
+4. 已确认主语言 / language profile，或明确记录为阻塞性待确认
+5. 已给出技术方向、模块草图或待确认实现点
+6. 已形成至少一版 MVP 路线图
+7. 已给出首批推荐 change backlog
+8. 已验证首批推荐 change 能自然桥接到 `cc-propose`
+9. 已同步 `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要
+10. 已输出项目级文档，而不是直接进入 change 文档
 
 ## 失败处理
 
 若以下情况出现，必须停止并说明：
 - 用户目标仍停留在过于抽象的想法层，无法定义项目边界
 - 项目成功标准不清晰，无法冻结 MVP
+- 新项目主语言 / language profile 未确认，且用户不选择保留为待确认
 - 技术方向将显著影响范围，但用户和当前证据都不足以收敛
 - 当前结果仍不足以支撑后续 `cc-propose`
 
@@ -206,3 +220,5 @@ Research 只用于：
 - `.claude/templates/context/project-definition.md`
 - `.claude/templates/context/mvp-roadmap.md`
 - `.claude/templates/context/architecture-outline.md`
+- 当前 language profile 声明的 technology decision catalog
+- `.claude/docs/maintenance/technology-decision-model.md`

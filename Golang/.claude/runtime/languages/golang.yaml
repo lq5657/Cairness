@@ -3,8 +3,16 @@ language: golang
 
 project_detection:
   module_file: go.mod
+  module_files:
+    - go.mod
   source_globs:
     - "**/*.go"
+  lockfiles:
+    - go.sum
+  confidence:
+    module_file: high
+    source_globs: medium
+    lockfiles: medium
 
 verification:
   unit:
@@ -29,3 +37,5 @@ verification:
 fixtures:
   default: .claude/fixtures/go-http-user-service
 
+technology_decisions:
+  catalog: .claude/runtime/technology/golang.yaml

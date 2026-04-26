@@ -13,6 +13,7 @@
     "input_contracts",
     "error_taxonomy",
     "result_rendering",
+    "technology_decisions",
     "language_profile"
   ],
   "properties": {
@@ -100,10 +101,64 @@
         }
       }
     },
+    "technology_decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_schema",
+        "applies_to_commands",
+        "selection_rules",
+        "project_outputs",
+        "change_outputs",
+        "blocking_error"
+      ],
+      "properties": {
+        "catalog_schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/technology-decision-catalog\\.schema\\.json$"
+        },
+        "applies_to_commands": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^cc-[a-z0-9]+(-[a-z0-9]+)*$"
+          }
+        },
+        "selection_rules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/snakeId"
+          }
+        },
+        "project_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/statePath"
+          }
+        },
+        "change_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/statePath"
+          }
+        },
+        "blocking_error": {
+          "$ref": "#/$defs/snakeId"
+        }
+      }
+    },
     "language_profile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default", "schema", "profiles"],
+      "required": ["default", "schema", "resolution", "profiles"],
       "properties": {
         "default": {
           "$ref": "#/$defs/snakeId"
@@ -111,6 +166,54 @@
         "schema": {
           "type": "string",
           "pattern": "^\\.claude/schemas/language-profile\\.schema\\.json$"
+        },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "order",
+            "project_state_paths",
+            "new_project_requires_confirmation",
+            "ambiguous_error",
+            "unsupported_error",
+            "selection_outputs"
+          ],
+          "properties": {
+            "order": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["project_state", "repository_detection", "user_confirmation", "default_if_single_profile"]
+              }
+            },
+            "project_state_paths": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/statePath"
+              }
+            },
+            "new_project_requires_confirmation": {
+              "type": "boolean"
+            },
+            "ambiguous_error": {
+              "$ref": "#/$defs/snakeId"
+            },
+            "unsupported_error": {
+              "$ref": "#/$defs/snakeId"
+            },
+            "selection_outputs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/statePath"
+              }
+            }
+          }
         },
         "profiles": {
           "type": "object",
@@ -145,6 +248,10 @@
           "enum": ["file", "dir"]
         }
       }
+    },
+    "statePath": {
+      "type": "string",
+      "pattern": "^\\.cc/.+$"
     },
     "inputContract": {
       "type": "object",

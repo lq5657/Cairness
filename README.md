@@ -16,6 +16,7 @@ Code Spec. 目前主维护资产是 `Golang/` 下这套面向 Claude Code 的 Sp
 - `Golang/.claude/runtime/core.yaml`
 - `Golang/.claude/runtime/protocol.yaml`
 - `Golang/.claude/runtime/languages/golang.yaml`
+- `Golang/.claude/runtime/technology/golang.yaml`
 - `Golang/.claude/runtime/commands/<command>.yaml`
 
 ### 脚本和 CI 真源

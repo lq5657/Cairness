@@ -58,6 +58,7 @@ RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
 RUNTIME_READSET_SCHEMA = "runtime-readset.schema.json"
 COMMAND_PROTOCOL_SCHEMA = "command-protocol.schema.json"
+TECHNOLOGY_DECISION_CATALOG_SCHEMA = "technology-decision-catalog.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
@@ -654,9 +655,25 @@ def runtime_protocol_config(core: dict[str, Any] | None) -> dict[str, str]:
     }
 
 
-def runtime_protocol_reads(core: dict[str, Any] | None) -> list[str]:
+def technology_catalog_from_language_profile(project_root: Path, declared_profile: str, issues: list[Issue]) -> str:
+    profile_path = project_path(project_root, declared_profile)
+    if profile_path is None:
+        return ""
+    profile = load_yaml_file(profile_path, issues)
+    if not isinstance(profile, dict):
+        return ""
+    technology_decisions = profile.get("technology_decisions") if isinstance(profile.get("technology_decisions"), dict) else {}
+    catalog = technology_decisions.get("catalog")
+    return catalog if isinstance(catalog, str) else ""
+
+
+def runtime_protocol_reads(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     config = runtime_protocol_config(core)
-    return ordered_unique([config["protocol"], config["default_language_profile"]])
+    catalog = technology_catalog_from_language_profile(project_root, config["default_language_profile"], issues)
+    reads = [config["protocol"], config["default_language_profile"]]
+    if catalog:
+        reads.append(catalog)
+    return ordered_unique(reads)
 
 
 def command_order(core: dict[str, Any]) -> list[str]:
@@ -666,7 +683,14 @@ def command_order(core: dict[str, Any]) -> list[str]:
     return ordered
 
 
-def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any], core: dict[str, Any] | None = None) -> dict[str, Any]:
+def derive_command_readset(
+    project_root: Path,
+    command: str,
+    manifest_path: str,
+    manifest: dict[str, Any],
+    core: dict[str, Any] | None,
+    issues: list[Issue],
+) -> dict[str, Any]:
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     conditional_reads: dict[str, list[str]] = {}
     for condition, rules in topic_rules.items():
@@ -676,9 +700,10 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
+    protocol_reads = runtime_protocol_reads(project_root, core, issues)
     always_reads = [
         ".claude/runtime/core.yaml",
-        *runtime_protocol_reads(core),
+        *protocol_reads,
         manifest_path,
         *string_list(manifest.get("required_reads")),
         *string_list(topic_rules.get("always")),
@@ -692,7 +717,7 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
         "source_manifest": manifest_path,
         "generated_from": [
             ".claude/runtime/core.yaml",
-            *runtime_protocol_reads(core),
+            *protocol_reads,
             manifest_path,
         ],
         "always_reads": ordered_unique(always_reads),
@@ -716,7 +741,7 @@ def derive_readsets(project_root: Path, core: dict[str, Any], issues: list[Issue
         manifest = load_yaml_file(resolved, issues)
         if not isinstance(manifest, dict):
             continue
-        command_readsets[command] = derive_command_readset(command, manifest_path, manifest, core)
+        command_readsets[command] = derive_command_readset(project_root, command, manifest_path, manifest, core, issues)
         commands_index[command] = f"{config['dir']}/{command}.yaml"
     index = {
         "version": 1,
@@ -770,6 +795,77 @@ def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, is
     return checked
 
 
+def validate_technology_catalog_shape(catalog: dict[str, Any], catalog_path: Path, issues: list[Issue]) -> None:
+    policy = catalog.get("decision_policy") if isinstance(catalog.get("decision_policy"), dict) else {}
+    confirmation_levels = set(string_list(policy.get("confirmation_required_levels")))
+    seen_groups: set[str] = set()
+    for group in catalog.get("decision_groups", []) if isinstance(catalog.get("decision_groups"), list) else []:
+        if not isinstance(group, dict):
+            continue
+        group_id = group.get("id")
+        if isinstance(group_id, str):
+            if group_id in seen_groups:
+                add(issues, "E_SCHEMA175", catalog_path, f"duplicate technology decision group {group_id}")
+            seen_groups.add(group_id)
+        options = group.get("options") if isinstance(group.get("options"), list) else []
+        option_ids: set[str] = set()
+        for option in options:
+            if not isinstance(option, dict) or not isinstance(option.get("id"), str):
+                continue
+            option_id = option["id"]
+            if option_id in option_ids:
+                add(issues, "E_SCHEMA180", catalog_path, f"decision group {group_id} has duplicate option {option_id}")
+            option_ids.add(option_id)
+        default = group.get("default_recommendation")
+        if isinstance(default, str) and default not in option_ids:
+            add(issues, "E_SCHEMA176", catalog_path, f"decision group {group_id} default_recommendation {default} is not an option")
+        level = group.get("level")
+        if isinstance(level, str) and level in confirmation_levels and group.get("requires_user_confirmation") is not True:
+            add(issues, "E_SCHEMA177", catalog_path, f"decision group {group_id} level {level} must require user confirmation")
+
+
+def validate_language_profile_and_technology_catalog(
+    project_root: Path,
+    profile_path: Path,
+    language_profile_schema: dict[str, Any] | None,
+    catalog_schema: dict[str, Any] | None,
+    checked: list[str],
+    issues: list[Issue],
+) -> None:
+    if str(profile_path) not in checked:
+        checked.append(str(profile_path))
+    language = load_yaml_file(profile_path, issues)
+    if not isinstance(language, dict):
+        return
+    if language_profile_schema is not None:
+        validate_against_schema(language, language_profile_schema, language_profile_schema, [], profile_path, issues)
+    for field in ("version", "language", "project_detection", "verification", "fixtures", "technology_decisions"):
+        if field not in language:
+            add(issues, "E_SCHEMA170", profile_path, f"language profile missing {field}")
+    project_detection = language.get("project_detection") if isinstance(language.get("project_detection"), dict) else {}
+    module_file = project_detection.get("module_file")
+    module_files = project_detection.get("module_files")
+    if isinstance(module_file, str) and isinstance(module_files, list) and module_file not in string_list(module_files):
+        add(issues, "E_SCHEMA181", profile_path, f"project_detection.module_file {module_file} must be listed in module_files")
+
+    technology_decisions = language.get("technology_decisions") if isinstance(language.get("technology_decisions"), dict) else {}
+    declared_catalog = technology_decisions.get("catalog")
+    require_declared_path(project_root, profile_path, declared_catalog, "technology_decisions.catalog", issues)
+    catalog_path = project_path(project_root, declared_catalog)
+    if catalog_path is None:
+        return
+    if str(catalog_path) not in checked:
+        checked.append(str(catalog_path))
+    catalog = load_yaml_file(catalog_path, issues)
+    if not isinstance(catalog, dict):
+        return
+    if catalog_schema is not None:
+        validate_against_schema(catalog, catalog_schema, catalog_schema, [], catalog_path, issues)
+    if isinstance(language.get("language"), str) and catalog.get("language") != language.get("language"):
+        add(issues, "E_SCHEMA178", catalog_path, f"catalog language {catalog.get('language')} does not match profile language {language.get('language')}")
+    validate_technology_catalog_shape(catalog, catalog_path, issues)
+
+
 def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     project_root = claude_root.parent
     config = runtime_protocol_config(core)
@@ -790,6 +886,8 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
             validate_against_schema(protocol, schema, schema, [], protocol_path, issues)
     language_profile_schema: dict[str, Any] | None = None
     language_profile_schema_path: Path | None = None
+    catalog_schema: dict[str, Any] | None = None
+    catalog_schema_path: Path | None = None
     if isinstance(protocol, dict):
         declared_language_schema = (
             protocol.get("language_profile", {}).get("schema")
@@ -800,16 +898,15 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
         if language_profile_schema_path is not None:
             checked.append(str(language_profile_schema_path))
             language_profile_schema = load_json_file(language_profile_schema_path, issues)
-
-    if language_path is not None:
-        checked.append(str(language_path))
-        language = load_yaml_file(language_path, issues)
-        if isinstance(language, dict):
-            if language_profile_schema is not None:
-                validate_against_schema(language, language_profile_schema, language_profile_schema, [], language_path, issues)
-            for field in ("version", "language", "project_detection", "verification", "fixtures"):
-                if field not in language:
-                    add(issues, "E_SCHEMA170", language_path, f"language profile missing {field}")
+        declared_catalog_schema = (
+            protocol.get("technology_decisions", {}).get("catalog_schema")
+            if isinstance(protocol.get("technology_decisions"), dict)
+            else None
+        )
+        catalog_schema_path = project_path(project_root, declared_catalog_schema)
+        if catalog_schema_path is not None:
+            checked.append(str(catalog_schema_path))
+            catalog_schema = load_json_file(catalog_schema_path, issues)
 
     if not isinstance(protocol, dict) or protocol_path is None:
         return checked
@@ -836,8 +933,19 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
     for field in ("schema", "template"):
         require_declared_path(project_root, protocol_path, lifecycle_events.get(field), f"lifecycle_events.{field}", issues)
 
+    technology_decisions = protocol.get("technology_decisions") if isinstance(protocol.get("technology_decisions"), dict) else {}
+    require_declared_path(project_root, protocol_path, technology_decisions.get("catalog_schema"), "technology_decisions.catalog_schema", issues)
+    blocking_error = technology_decisions.get("blocking_error")
+    if isinstance(blocking_error, str) and blocking_error not in error_taxonomy:
+        add(issues, "E_SCHEMA179", protocol_path, f"technology_decisions.blocking_error references unknown error {blocking_error}")
+
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     require_declared_path(project_root, protocol_path, language_profile.get("schema"), "language_profile.schema", issues)
+    resolution = language_profile.get("resolution") if isinstance(language_profile.get("resolution"), dict) else {}
+    for error_field in ("ambiguous_error", "unsupported_error"):
+        error_code = resolution.get(error_field)
+        if isinstance(error_code, str) and error_code not in error_taxonomy:
+            add(issues, "E_SCHEMA182", protocol_path, f"language_profile.resolution.{error_field} references unknown error {error_code}")
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     default_profile = language_profile.get("default")
     if isinstance(default_profile, str) and default_profile not in profiles:
@@ -845,8 +953,8 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
     for profile_name, declared in profiles.items():
         require_declared_path(project_root, protocol_path, declared, f"language_profile.profiles.{profile_name}", issues)
         profile_path = project_path(project_root, declared)
-        if profile_path is not None and str(profile_path) not in checked:
-            checked.append(str(profile_path))
+        if profile_path is not None:
+            validate_language_profile_and_technology_catalog(project_root, profile_path, language_profile_schema, catalog_schema, checked, issues)
     if language_path is not None and profiles and str(language_path) not in {
         str(project_path(project_root, value)) for value in profiles.values() if isinstance(value, str)
     }:

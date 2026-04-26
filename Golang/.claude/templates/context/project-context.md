@@ -39,6 +39,8 @@ alwaysApply: true
 
 * 模式: 已有项目 / 新项目
 * 当前阶段: 调研中 / 初始化完成 / 已接入规范
+* 主语言 / language profile: （如 `golang`；待确认时写 `待确认`）
+* 语言识别依据: （如 `go.mod` + `**/*.go`；用户确认 / 仓库推断 / 待确认）
 * 应用名: （待填充）
 * 简介: （一句话描述）
 * 运行形态: HTTP API / gRPC / Worker / CLI / 混合
