@@ -193,6 +193,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Provide an existing change_id or create the proposal before running change-scoped checks.",
             "doc_ref": ".cc/changes/task-board.md",
         }
+    if name == "changed-only":
+        return {
+            "cause": "No changed Harness or change files were detected.",
+            "fix_hint": "Run the default full check when you need a complete verification pass.",
+            "doc_ref": ".claude/scripts/cc-verify",
+        }
     if name == "go checks" and "explicit fixture" in stderr:
         return {
             "cause": "The explicit fixture path does not resolve to a Go module.",
