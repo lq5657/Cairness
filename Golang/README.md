@@ -58,7 +58,7 @@
 .cc/changes/*
 .cc/audits/*
 .cc/knowledge/*
-fixtures/*
+.claude/fixtures/*
 ```
 
 关键脚本：
@@ -260,7 +260,7 @@ runtime 注册的 topic rules 现在也有机器约束：
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
 .claude/scripts/cc-readset --check
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ## 运行时行为

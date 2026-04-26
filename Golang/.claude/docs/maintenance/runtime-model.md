@@ -82,7 +82,7 @@ runtime manifest 的机器契约是：
 - `.claude/schemas/*.json`
 - `.claude/scripts/*`
 - `.claude/evals/*`
-- `fixtures/*`
+- `.claude/fixtures/*`
 
 `.claude/scripts/cc-eval` 会对 eval case 做语义校验：`expected_reads` 必须能解析到真实 runtime/rule/script 文件，runtime command 和 runtime topic rule 读取必须已注册；维护类 eval 可读取允许的治理规则如 `role-contracts.md`。`forbidden_actions` 与 `expected_checks` 必须能在期望读取内容中找到依据。
 

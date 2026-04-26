@@ -94,7 +94,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -139,7 +139,7 @@ Run from the Golang project root:
 .claude/scripts/cc-readset --write
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -184,7 +184,7 @@ Run from the Golang project root:
 .claude/scripts/cc-readset --write
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -220,7 +220,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -252,7 +252,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -294,7 +294,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -327,7 +327,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -364,7 +364,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -400,7 +400,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -436,7 +436,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -472,7 +472,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -514,7 +514,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -553,7 +553,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -591,7 +591,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes
@@ -622,7 +622,7 @@ This release expands runtime-first coverage to `cc-preflight` and `cc-promote-au
 
 If the target project wants fixture-based Harness regression checks, also copy:
 
-- `fixtures/go-http-user-service/`
+- `.claude/fixtures/go-http-user-service/`
 
 ### Existing Files To Merge
 
@@ -642,7 +642,7 @@ Run from the Golang project root:
 ```bash
 .claude/scripts/cc-verify --harness-only --verbose
 .claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
 ```
 
 ### Compatibility Notes

@@ -47,7 +47,7 @@ validation:
   eval_command: ".claude/scripts/cc-eval"
   readset_command: ".claude/scripts/cc-readset"
   baseline_dir: ".cc/changes/<change-id>/baseline"
-  fixture_dir: "fixtures"
+  fixture_dir: ".claude/fixtures"
   require_structured_hard_gate: true
   require_traceability_check: true
   go:
