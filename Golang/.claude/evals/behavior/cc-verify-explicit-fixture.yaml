@@ -8,6 +8,5 @@ command:
 expect_exit_code: 1
 expect_output_contains:
   - "explicit fixture fixtures/go-http-user-service is invalid"
-  - "cause: The explicit fixture path does not resolve to a Go module."
-  - "fix_hint: Use a fixture path containing go.mod"
-
+  - "cause: The explicit fixture path does not resolve to a supported language profile."
+  - "fix_hint: Use a fixture path containing repository markers declared by an installed language profile."

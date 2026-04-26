@@ -185,9 +185,9 @@ runtime manifest 现在有机器 schema：
 .claude/runtime/languages/golang.yaml
 ```
 
-协议层约束 command resolution、input validation、path role resolution、error taxonomy 和 result rendering；语言 profile 只承载 Go module detection、fixture 和 Go verification commands。`.claude/scripts/cc-schema-check` 会校验协议结构、错误引用、path role 引用和默认语言 profile。
+协议层约束 command resolution、input validation、path role resolution、error taxonomy 和 result rendering；语言 profile 只承载对应语言的 repository detection、fixture 和 verification commands。`.claude/scripts/cc-schema-check` 会校验协议结构、错误引用、path role 引用和 bundled default language profile。
 
-`cc-verify` 的 Go 检查命令来自 `.claude/runtime/languages/golang.yaml`，`harness.config.yaml` 只决定是否启用 test / vet / lint。这样后续接入其他语言时可以替换 language profile，而不复制 change lifecycle。
+`cc-verify` 会先解析 active language profile，再从对应 profile 读取 project verification commands。`harness.config.yaml` 的 `validation.verification.capabilities` 用于 capability 级开关，`validation.go.*` 只保留为 Go 兼容配置。这样后续接入其他语言时可以新增 language profile，而不复制 change lifecycle。
 
 语言 profile 还可以声明技术选型目录，例如 Go 当前使用 `.claude/runtime/technology/golang.yaml`。通用协议只约束“何时澄清、如何展示推荐/备选/取舍、P0 是否需要用户确认”，具体选项由语言 catalog 提供，后续扩展 Python、Node 或 Java 时新增对应 language profile 和 technology catalog。
 

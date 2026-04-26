@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upgrade safety checks for Golang Harness projects."""
+"""Upgrade safety checks for Harness projects."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from harness_runtime import load_runtime_protocol, protocol_language_assets
 
 
 @dataclass
@@ -83,12 +85,14 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     ]
     for path in creation_templates:
         require(path, "file", issues, "E_UPGRADE006")
+    _, protocol, _ = load_runtime_protocol(project_root)
     technology_assets = [
-        claude_root / "runtime" / "technology" / "golang.yaml",
-        claude_root / "schemas" / "technology-decision-catalog.schema.json",
+        (claude_root / "runtime" / "technology", "dir"),
+        (claude_root / "schemas" / "technology-decision-catalog.schema.json", "file"),
+        *[(project_root / declared, "file") for declared in protocol_language_assets(project_root, protocol)],
     ]
-    for path in technology_assets:
-        require(path, "file", issues, "E_UPGRADE006")
+    for path, kind in technology_assets:
+        require(path, kind, issues, "E_UPGRADE006")
     protected_state = [
         project_root / ".cc" / "context" / "project-context.md",
         project_root / ".cc" / "context" / "dev-map.md",

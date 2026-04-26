@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from harness_runtime import load_runtime_protocol, protocol_language_assets
+
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SLASH_COMMAND_RE = re.compile(
@@ -489,13 +491,17 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         if re.search(expected_mapping, core_text, re.M) is None:
             errors.append(f"{core_path}: runtime_commands missing {command}")
 
-    for required_path in (
+    project_root = root.parent
+    _, protocol, _ = load_runtime_protocol(project_root)
+    required_paths = [
         root / "runtime" / "protocol.yaml",
-        root / "runtime" / "languages" / "golang.yaml",
         root / "schemas" / "command-protocol.schema.json",
-    ):
+    ]
+    required_paths.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
+    for required_path in required_paths:
         if not required_path.exists():
             errors.append(f"{required_path}: missing agent command protocol asset")
+    for command in sorted(REQUIRED_RUNTIME_COMMANDS):
         path = runtime_dir / f"{command}.yaml"
         if not path.exists():
             errors.append(f"{path}: missing migrated runtime command")
@@ -600,17 +606,19 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
 
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
+    project_root = root.parent
+    _, protocol, _ = load_runtime_protocol(project_root)
     required = [
-        root.parent / ".cc" / "context" / "project-context.md",
-        root.parent / ".cc" / "context" / "dev-map.md",
-        root.parent / ".cc" / "changes" / "task-board.md",
-        root.parent / ".cc" / "knowledge" / "index.md",
+        project_root / ".cc" / "context" / "project-context.md",
+        project_root / ".cc" / "context" / "dev-map.md",
+        project_root / ".cc" / "changes" / "task-board.md",
+        project_root / ".cc" / "knowledge" / "index.md",
         root / "templates" / "context" / "project-context.md",
         root / "templates" / "context" / "dev-map.md",
         root / "templates" / "changes" / "task-board.md",
         root / "templates" / "knowledge" / "index.md",
         root / "runtime" / "core.yaml",
-        root / "runtime" / "technology" / "golang.yaml",
+        root / "runtime" / "technology",
         root / "runtime" / "readsets" / "index.yaml",
         root / "schemas" / "runtime-core.schema.json",
         root / "schemas" / "runtime-command.schema.json",
@@ -620,6 +628,7 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         root / "skills" / "cc-harness" / "SKILL.md",
         root / "evals" / "rubrics" / "default.yaml",
     ]
+    required.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
     for path in required:
         if not path.exists():
             errors.append(f"{path}: missing governance asset")
@@ -665,6 +674,7 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         "readset_command:",
         "baseline_dir:",
         "fixture_dir:",
+        "verification:",
         "go:",
         "run_on:",
     ):

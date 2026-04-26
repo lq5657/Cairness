@@ -34,9 +34,9 @@ runtime manifest 的机器契约是：
 
 每个 migrated command 的 read set 由 `.claude/scripts/cc-readset` 生成到 `.claude/runtime/readsets/`。生成物不是 authoring source；runtime manifest 才是来源。`cc-readset --check` 和 `cc-schema-check` 会阻止 readset 与 manifest 漂移。
 
-`.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/golang.yaml` 只承载 Go-specific project detection、verification commands 和 fixture path。
+`.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/<language>.yaml` 只承载对应语言的 project detection、verification commands 和 fixture path。
 
-语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 从 profile 读取 Go verification commands；`harness.config.yaml` 只保留是否启用 test / vet / lint 的策略开关。语言 profile 还声明 repository detection metadata 和 technology decision catalog，用于把通用澄清协议和语言专属选项拆开。
+语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 会先解析 active profile，再从该 profile 读取 verification commands；`harness.config.yaml` 的 `validation.verification.capabilities` 负责 capability 级启停，Go 的 `validation.go.*` 只是兼容旧配置的 fallback。语言 profile 还声明 repository detection metadata 和 technology decision catalog，用于把通用澄清协议和语言专属选项拆开。
 
 `protocol.yaml` 中的 `language_profile.resolution` 定义语言解析顺序：先读 `.cc` 项目状态，再按 language profile 的仓库标识探测，无法唯一确定时要求用户确认。新项目没有代码事实时必须由用户确认主语言 / 技术生态；`language_profile.default` 只是打包默认值，不能静默代替用户选择。
 
@@ -152,7 +152,7 @@ runtime manifest 已经成为 migrated command 的默认执行入口。只靠正
 
 ### 为什么需要 Agent command protocol
 
-Harness 的用户入口仍然是 Claude Code 中的 `cc-*`，不应该要求用户记一个独立 dispatcher CLI。但命令解析、输入校验、路径角色和错误格式不能散落在每个 command manifest、skill 文案和脚本里。`protocol.yaml` 把这些 Agent-facing 约束集中起来，`command-protocol.schema.json` 和 `cc-schema-check` 负责防止协议漂移，语言 profile 则把 Go-specific 检测和验证能力与通用 lifecycle 分离。
+Harness 的用户入口仍然是 Claude Code 中的 `cc-*`，不应该要求用户记一个独立 dispatcher CLI。但命令解析、输入校验、路径角色和错误格式不能散落在每个 command manifest、skill 文案和脚本里。`protocol.yaml` 把这些 Agent-facing 约束集中起来，`command-protocol.schema.json` 和 `cc-schema-check` 负责防止协议漂移，语言 profile 则把 language-specific 检测和验证能力与通用 lifecycle 分离。
 
 ### 为什么命令结果也要结构化
 

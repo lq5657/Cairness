@@ -1,11 +1,11 @@
 ---
 name: cc-harness
-description: Execute and maintain the cc_spec Golang Harness inside Claude Code. Use when the user mentions any cc-* workflow such as cc-new-project, cc-preflight, cc-init, cc-enrich-context, cc-explain-system, cc-inspect-codebase, cc-promote-audit, cc-propose, cc-apply, cc-review, cc-fix, cc-test, cc-archive, or asks to change this Harness.
+description: Execute and maintain the cc_spec Harness package inside Claude Code. Use when the user mentions any cc-* workflow such as cc-new-project, cc-preflight, cc-init, cc-enrich-context, cc-explain-system, cc-inspect-codebase, cc-promote-audit, cc-propose, cc-apply, cc-review, cc-fix, cc-test, cc-archive, or asks to change this Harness.
 ---
 
 # cc-harness
 
-Use this skill as the Claude Code entry point for the Golang Harness.
+Use this skill as the Claude Code entry point for the Harness package.
 
 ## Runtime Flow
 
@@ -13,7 +13,7 @@ For any `cc-*` request:
 
 1. Match the command literally. Do not reinterpret a known `cc-*` command as another workflow.
 2. Read `.claude/runtime/core.yaml`.
-3. Read `.claude/runtime/protocol.yaml` and the default language profile declared by runtime core.
+3. Read `.claude/runtime/protocol.yaml`, then resolve the active language profile before loading profile-specific verification commands or technology catalogs.
 4. Resolve the command, validate required inputs, and resolve path roles before reading business code or writing artifacts.
 5. If `.claude/runtime/commands/<command>.yaml` exists, use it as the runtime contract and do not load legacy command/checkpoint docs by default.
 6. If no runtime contract exists, read `.claude/workflows/cc-workflow.yaml` plus the specific legacy docs:

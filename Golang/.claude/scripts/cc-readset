@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import protocol_language_assets
+
 
 CORE_PATH = ".claude/runtime/core.yaml"
 GENERATOR_PATH = ".claude/scripts/cc-readset"
@@ -108,10 +110,11 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
 
 def runtime_protocol_reads(project_root: Path, core: dict[str, Any], issues: list[Issue]) -> list[str]:
     config = runtime_protocol_config(core)
-    catalog = technology_catalog_from_language_profile(project_root, config["default_language_profile"], issues)
-    reads = [config["protocol"], config["default_language_profile"]]
-    if catalog:
-        reads.append(catalog)
+    reads = [config["protocol"]]
+    protocol_path = project_path(project_root, config["protocol"])
+    protocol = load_yaml(protocol_path, issues) if protocol_path is not None else None
+    if isinstance(protocol, dict):
+        reads.extend(protocol_language_assets(project_root, protocol))
     return ordered_unique(reads)
 
 

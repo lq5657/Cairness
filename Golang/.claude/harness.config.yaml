@@ -50,6 +50,11 @@ validation:
   fixture_dir: ".claude/fixtures"
   require_structured_hard_gate: true
   require_traceability_check: true
+  verification:
+    capabilities:
+      unit: true
+      static: true
+      lint: false
   go:
     test: true
     vet: true

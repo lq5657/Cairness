@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Doctor-style adoption readiness checks for Golang Harness projects."""
+"""Doctor-style adoption readiness checks for Harness projects."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from harness_runtime import project_path, resolve_language_profile
 
 
 @dataclass
@@ -59,8 +61,6 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
     required = [
         (claude_root / "runtime" / "core.yaml", "file"),
         (claude_root / "runtime" / "protocol.yaml", "file"),
-        (claude_root / "runtime" / "languages" / "golang.yaml", "file"),
-        (claude_root / "runtime" / "technology" / "golang.yaml", "file"),
         (claude_root / "workflows" / "cc-workflow.yaml", "file"),
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
@@ -97,20 +97,35 @@ def check_scripts_executable(claude_root: Path, issues: list[Issue]) -> None:
             issues.append(Issue("E_DOCTOR005", str(script), "script must be executable"))
 
 
-def check_language_profile(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
-    profile_path = claude_root / "runtime" / "languages" / "golang.yaml"
-    profile = load_yaml(profile_path, issues)
-    if not isinstance(profile, dict):
-        return
-    module_file = string_at(profile, ["project_detection", "module_file"])
-    if module_file != "go.mod":
-        issues.append(Issue("E_DOCTOR006", str(profile_path), "golang profile must detect go.mod"))
-    default_fixture = string_at(profile, ["fixtures", "default"])
-    if default_fixture:
-        require_path(project_root / default_fixture / "go.mod", "file", issues, "E_DOCTOR007")
-    catalog = string_at(profile, ["technology_decisions", "catalog"])
-    if catalog:
-        require_path(project_root / catalog, "file", issues, "E_DOCTOR011")
+def check_language_profiles(project_root: Path, protocol_path: Path, protocol: dict[str, Any], issues: list[Issue]) -> None:
+    language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
+    profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
+    for profile_name, declared in sorted(profiles.items()):
+        profile_path = project_path(project_root, declared)
+        if profile_path is None:
+            issues.append(Issue("E_DOCTOR006", str(protocol_path), f"language profile {profile_name} has unsupported path {declared}"))
+            continue
+        require_path(profile_path, "file", issues, "E_DOCTOR006")
+        profile = load_yaml(profile_path, issues)
+        if not isinstance(profile, dict):
+            continue
+        default_fixture = string_at(profile, ["fixtures", "default"])
+        if default_fixture:
+            fixture_root = project_root / default_fixture
+            require_path(fixture_root, "dir", issues, "E_DOCTOR007")
+            if fixture_root.exists():
+                resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False)
+                if resolution.profile_name != profile_name:
+                    issues.append(
+                        Issue(
+                            "E_DOCTOR012",
+                            str(fixture_root),
+                            f"default fixture {default_fixture} resolves to {resolution.profile_name or resolution.status}, expected {profile_name}",
+                        )
+                    )
+        catalog = string_at(profile, ["technology_decisions", "catalog"])
+        if catalog:
+            require_path(project_root / catalog, "file", issues, "E_DOCTOR011")
 
 
 def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
@@ -133,6 +148,7 @@ def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Is
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     if not isinstance(profile, str) or profile not in profiles:
         issues.append(Issue("E_DOCTOR009", str(protocol_path), "default language profile must be declared"))
+    check_language_profiles(project_root, protocol_path, protocol, issues)
 
 
 def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
@@ -143,9 +159,13 @@ def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
     text = read(workflow_path)
     for match in re.finditer(r"--fixture\s+([^\s]+)", text):
         fixture = match.group(1).strip()
-        go_mod = project_root / fixture / "go.mod"
-        if not go_mod.exists():
-            issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not contain go.mod"))
+        fixture_root = project_root / fixture
+        if not fixture_root.exists():
+            issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not exist"))
+            continue
+        resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False)
+        if resolution.status != "resolved":
+            issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not resolve to a declared language profile"))
 
 
 def build_report() -> dict[str, Any]:
@@ -154,7 +174,6 @@ def build_report() -> dict[str, Any]:
     issues: list[Issue] = []
     check_required_layout(project_root, claude_root, issues)
     check_scripts_executable(claude_root, issues)
-    check_language_profile(project_root, claude_root, issues)
     check_protocol_assets(project_root, claude_root, issues)
     check_ci_fixture_paths(project_root, issues)
     return {

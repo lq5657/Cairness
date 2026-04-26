@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import protocol_language_assets
+
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
@@ -669,10 +671,11 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
 
 def runtime_protocol_reads(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     config = runtime_protocol_config(core)
-    catalog = technology_catalog_from_language_profile(project_root, config["default_language_profile"], issues)
-    reads = [config["protocol"], config["default_language_profile"]]
-    if catalog:
-        reads.append(catalog)
+    reads = [config["protocol"]]
+    protocol_path = project_path(project_root, config["protocol"])
+    protocol = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
+    if isinstance(protocol, dict):
+        reads.extend(protocol_language_assets(project_root, protocol))
     return ordered_unique(reads)
 
 
