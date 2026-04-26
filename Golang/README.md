@@ -114,6 +114,8 @@ AI/用户在具体项目实践中生成或持续更新的状态统一放到：
 
 `.claude/` 可随框架升级整体替换；`.cc/` 是项目状态，升级框架时不得覆盖。
 
+长期项目状态文档也必须有对应 creation template：`.cc/context/project-context.md` 对应 `.claude/templates/context/project-context.md`，`.cc/context/dev-map.md` 对应 `.claude/templates/context/dev-map.md`，`.cc/changes/task-board.md` 对应 `.claude/templates/changes/task-board.md`，`.cc/knowledge/index.md` 对应 `.claude/templates/knowledge/index.md`。模板只用于首次创建；文档一旦落到 `.cc/`，后续升级只能做最小结构迁移，不能用新模板全文覆盖。
+
 ## Subagent 启用范围
 
 当前已为以下命令声明 bounded subagent contract：

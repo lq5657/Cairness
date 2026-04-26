@@ -15,6 +15,7 @@
 - Added `language-profile.schema.json` and moved `cc-verify` Go command selection to the Go language profile.
 - Added `cc-upgrade-check` for upgrade boundary checks and JSON upgrade reports.
 - Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
+- Added creation templates for long-lived `.cc` state documents: `project-context.md` and `knowledge/index.md`.
 
 ## 0.20.0 - 2026-04-25
 

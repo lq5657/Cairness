@@ -34,8 +34,8 @@
 | 生命周期状态机存在 | `legacy-compatible` 要求 `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | 命令契约矩阵存在 | `legacy-compatible` 要求 `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | 角色与记忆规则存在 | `.claude/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
-| knowledge 存在 | `.cc/knowledge/index.md` 存在 | [ ] |
-| context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/system-overview.md`、`.claude/templates/context/dev-map.md` 存在 | [ ] |
+| knowledge 状态与模板存在 | `.cc/knowledge/index.md` 与 `.claude/templates/knowledge/index.md` 存在 | [ ] |
+| context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
 | commands 完整 | `legacy-compatible` 要求未迁移命令，如 `cc-enrich-context`、`cc-explain-system`、`cc-new-project` 的 command 文件齐全 | [ ] |
 | checkpoints 完整 | `legacy-compatible` 要求未迁移命令对应的 `checkpoints/*.md` 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/templates/changes/` 存在 | [ ] |

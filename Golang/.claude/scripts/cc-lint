@@ -601,10 +601,14 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
     required = [
+        root.parent / ".cc" / "context" / "project-context.md",
         root.parent / ".cc" / "context" / "dev-map.md",
         root.parent / ".cc" / "changes" / "task-board.md",
+        root.parent / ".cc" / "knowledge" / "index.md",
+        root / "templates" / "context" / "project-context.md",
         root / "templates" / "context" / "dev-map.md",
         root / "templates" / "changes" / "task-board.md",
+        root / "templates" / "knowledge" / "index.md",
         root / "runtime" / "core.yaml",
         root / "runtime" / "readsets" / "index.yaml",
         root / "schemas" / "runtime-core.schema.json",

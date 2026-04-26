@@ -75,6 +75,14 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     ]
     for path in framework_assets:
         require(path, "dir", issues, "E_UPGRADE006")
+    creation_templates = [
+        claude_root / "templates" / "context" / "project-context.md",
+        claude_root / "templates" / "context" / "dev-map.md",
+        claude_root / "templates" / "changes" / "task-board.md",
+        claude_root / "templates" / "knowledge" / "index.md",
+    ]
+    for path in creation_templates:
+        require(path, "file", issues, "E_UPGRADE006")
     protected_state = [
         project_root / ".cc" / "context" / "project-context.md",
         project_root / ".cc" / "context" / "dev-map.md",
