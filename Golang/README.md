@@ -75,6 +75,7 @@
 - `.claude/scripts/cc-readset`
 - `.claude/scripts/cc-doctor-check`
 - `.claude/scripts/cc-event-check`
+- `.claude/scripts/cc-behavior-check`
 
 ### 3. 人类维护说明
 
@@ -251,6 +252,10 @@ runtime 注册的 topic rules 现在也有机器约束：
 - concrete `cc-*` case 必须声明读取 `.claude/runtime/core.yaml` 和对应 command manifest。
 - `forbidden_actions` 与 `expected_checks` 必须能在期望读取的 runtime/rule/script 内容中找到语义依据。
 - `rubric` 必须引用已存在的 rubric，criterion 必须有 `name` 和 `description`。
+
+## Behavior Replay Checks
+
+`.claude/scripts/cc-behavior-check` 会回放 `.claude/evals/behavior/*.yaml` 中声明的轻量行为用例，校验命令退出码和关键输出。`cc-verify --harness-only` 会自动执行该检查；回放中的子命令通过 `CC_BEHAVIOR_REPLAY=1` 避免递归触发 behavior replay。
 
 ## 仍保留的 legacy 资产
 

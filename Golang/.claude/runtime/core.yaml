@@ -55,6 +55,7 @@ scripts:
   readset: .claude/scripts/cc-readset
   doctor: .claude/scripts/cc-doctor-check
   event: .claude/scripts/cc-event-check
+  behavior: .claude/scripts/cc-behavior-check
 
 topic_rules:
   verification: .claude/rules/verification.md

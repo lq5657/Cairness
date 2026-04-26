@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Replay lightweight Harness behavior eval cases."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def load_yaml(path: Path, issues: list[Issue]) -> Any:
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        issues.append(Issue("E_BEHAVIOR001", str(path), f"PyYAML is required: {exc}"))
+        return None
+    try:
+        return yaml.safe_load(read(path))
+    except Exception as exc:
+        issues.append(Issue("E_BEHAVIOR002", str(path), f"invalid YAML: {exc}"))
+        return None
+
+
+def discover_cases(project_root: Path, inputs: list[Path]) -> list[Path]:
+    if inputs:
+        candidates = inputs
+    else:
+        candidates = [project_root / ".claude" / "evals" / "behavior"]
+    cases: set[Path] = set()
+    for item in candidates:
+        if item.is_file() and item.suffix in {".yaml", ".yml"}:
+            cases.add(item)
+        elif item.is_dir():
+            cases.update(sorted(item.glob("*.yaml")))
+            cases.update(sorted(item.glob("*.yml")))
+    return sorted(cases)
+
+
+def validate_case_shape(path: Path, case: Any, issues: list[Issue]) -> dict[str, Any] | None:
+    if not isinstance(case, dict):
+        issues.append(Issue("E_BEHAVIOR003", str(path), "case root must be a mapping"))
+        return None
+    required = {"id", "command", "expect_exit_code", "expect_output_contains"}
+    missing = sorted(required - set(case))
+    if missing:
+        issues.append(Issue("E_BEHAVIOR004", str(path), f"missing {missing}"))
+        return None
+    command = case.get("command")
+    if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+        issues.append(Issue("E_BEHAVIOR005", str(path), "command must be a non-empty string list"))
+        return None
+    if not isinstance(case.get("expect_exit_code"), int):
+        issues.append(Issue("E_BEHAVIOR006", str(path), "expect_exit_code must be an integer"))
+        return None
+    expected_output = case.get("expect_output_contains")
+    if not isinstance(expected_output, list) or not expected_output or not all(isinstance(item, str) and item for item in expected_output):
+        issues.append(Issue("E_BEHAVIOR007", str(path), "expect_output_contains must be a non-empty string list"))
+        return None
+    return case
+
+
+def run_case(path: Path, case: dict[str, Any], project_root: Path, issues: list[Issue]) -> None:
+    env = os.environ.copy()
+    env["CC_BEHAVIOR_REPLAY"] = "1"
+    completed = subprocess.run(
+        case["command"],
+        cwd=str(project_root),
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
+    expected_exit = case["expect_exit_code"]
+    if completed.returncode != expected_exit:
+        issues.append(
+            Issue(
+                "E_BEHAVIOR008",
+                str(path),
+                f"expected exit {expected_exit}, got {completed.returncode}",
+            )
+        )
+    combined = completed.stdout + "\n" + completed.stderr
+    for expected in case["expect_output_contains"]:
+        if expected not in combined:
+            issues.append(Issue("E_BEHAVIOR009", str(path), f"missing expected output {expected!r}"))
+
+
+def build_report(inputs: list[Path]) -> dict[str, Any]:
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    issues: list[Issue] = []
+    cases = discover_cases(project_root, inputs)
+    for path in cases:
+        case = validate_case_shape(path, load_yaml(path, issues), issues)
+        if case is not None:
+            run_case(path, case, project_root, issues)
+    return {
+        "tool": "cc-behavior-check",
+        "status": "failed" if issues else "passed",
+        "checked_cases": [str(path) for path in cases],
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    json_output = "--json" in argv
+    paths = [Path(arg) for arg in argv if arg != "--json"]
+    report = build_report(paths)
+    if json_output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-behavior-check: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
+

@@ -10,6 +10,7 @@
 - Added `cc-doctor-check` and wired it into `cc-verify --harness-only` as a doctor-style adoption readiness gate.
 - Added optional lifecycle event log infrastructure with `command-event.schema.json`, `events.jsonl` template, and `cc-event-check`.
 - Added subagent output evidence quality gates requiring concrete evidence, explicit risks, and no freeform-only subagent results.
+- Added `cc-behavior-check` and behavior replay cases for command-level regression checks.
 - Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
 
 ## 0.20.0 - 2026-04-25

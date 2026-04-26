@@ -468,6 +468,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         "scripts:",
         "doctor:",
         "event:",
+        "behavior:",
         "topic_rules:",
     ):
         if key not in core_text:
