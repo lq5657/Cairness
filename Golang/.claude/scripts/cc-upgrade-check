@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Upgrade safety checks for Golang Harness projects."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
+    issues.append(Issue(code=code, path=str(path), message=message))
+
+
+def require(path: Path, kind: str, issues: list[Issue], code: str = "E_UPGRADE001") -> None:
+    if kind == "file" and not path.is_file():
+        add(issues, code, path, "missing file")
+    if kind == "dir" and not path.is_dir():
+        add(issues, code, path, "missing directory")
+
+
+def check_version_docs(claude_root: Path, issues: list[Issue]) -> dict[str, str]:
+    version_path = claude_root / "VERSION"
+    changelog_path = claude_root / "CHANGELOG.md"
+    upgrade_path = claude_root / "UPGRADE.md"
+    require(version_path, "file", issues)
+    require(changelog_path, "file", issues)
+    require(upgrade_path, "file", issues)
+    version = read(version_path).strip() if version_path.exists() else ""
+    if version and upgrade_path.exists() and f"Upgrade To {version}" not in read(upgrade_path):
+        add(issues, "E_UPGRADE002", upgrade_path, f"missing upgrade section for current version {version}")
+    if version and changelog_path.exists() and version not in read(changelog_path):
+        add(issues, "E_UPGRADE003", changelog_path, f"missing changelog entry for current version {version}")
+    return {"version": version}
+
+
+def check_state_separation(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    for state_dir in ("context", "changes", "knowledge"):
+        require(project_root / ".cc" / state_dir, "dir", issues, "E_UPGRADE004")
+    legacy_state_paths = [
+        claude_root / "context",
+        claude_root / "changes" / "task-board.md",
+        claude_root / "audits",
+        claude_root / "knowledge",
+    ]
+    for path in legacy_state_paths:
+        if path.exists():
+            add(issues, "E_UPGRADE005", path, "project state must live under .cc, not .claude")
+
+
+def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    framework_assets = [
+        claude_root / "runtime",
+        claude_root / "rules",
+        claude_root / "schemas",
+        claude_root / "scripts",
+        claude_root / "workflows",
+        claude_root / "templates",
+        claude_root / "docs",
+    ]
+    for path in framework_assets:
+        require(path, "dir", issues, "E_UPGRADE006")
+    protected_state = [
+        project_root / ".cc" / "context" / "project-context.md",
+        project_root / ".cc" / "context" / "dev-map.md",
+        project_root / ".cc" / "changes" / "task-board.md",
+        project_root / ".cc" / "knowledge" / "index.md",
+    ]
+    for path in protected_state:
+        require(path, "file", issues, "E_UPGRADE007")
+
+
+def build_report() -> dict[str, Any]:
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    issues: list[Issue] = []
+    metadata = check_version_docs(claude_root, issues)
+    check_state_separation(project_root, claude_root, issues)
+    check_upgrade_boundaries(project_root, claude_root, issues)
+    return {
+        "tool": "cc-upgrade-check",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "failed" if issues else "passed",
+        "project_root": str(project_root),
+        "version": metadata.get("version", ""),
+        "protected_state_root": str(project_root / ".cc"),
+        "replaceable_framework_root": str(claude_root),
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Check Harness upgrade safety boundaries.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--output", help="Write JSON report to this file.")
+    args = parser.parse_args(argv)
+
+    report = build_report()
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.json and not args.output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-upgrade-check: ok")
+        if args.output:
+            print(f"report: {args.output}")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -169,6 +169,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Fix the regressed behavior or update the behavior case only when the contract intentionally changed.",
             "doc_ref": ".claude/evals/behavior",
         }
+    if name == "cc-upgrade-check":
+        return {
+            "cause": "Harness upgrade safety boundary check failed.",
+            "fix_hint": "Keep project state under .cc, framework assets under .claude, and update VERSION/CHANGELOG/UPGRADE together.",
+            "doc_ref": ".claude/UPGRADE.md",
+        }
     if name == "cc-schema-check":
         return {
             "cause": "Runtime, protocol, topic rule, or change document schema validation failed.",
@@ -333,6 +339,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_doctor_check = claude_root / "scripts" / "cc-doctor-check"
         cc_event_check = claude_root / "scripts" / "cc-event-check"
         cc_behavior_check = claude_root / "scripts" / "cc-behavior-check"
+        cc_upgrade_check = claude_root / "scripts" / "cc-upgrade-check"
         cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
@@ -353,6 +360,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
                 if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
                     results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
+                results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
         else:
             lint_targets = [str(claude_root)]
@@ -365,6 +373,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root))
             if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
                 results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
+            results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
             results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]

@@ -76,6 +76,7 @@
 - `.claude/scripts/cc-doctor-check`
 - `.claude/scripts/cc-event-check`
 - `.claude/scripts/cc-behavior-check`
+- `.claude/scripts/cc-upgrade-check`
 
 常用验证：
 
@@ -265,6 +266,10 @@ runtime 注册的 topic rules 现在也有机器约束：
 ## Behavior Replay Checks
 
 `.claude/scripts/cc-behavior-check` 会回放 `.claude/evals/behavior/*.yaml` 中声明的轻量行为用例，校验命令退出码和关键输出。`cc-verify --harness-only` 会自动执行该检查；回放中的子命令通过 `CC_BEHAVIOR_REPLAY=1` 避免递归触发 behavior replay。
+
+## Upgrade Safety
+
+`.claude/scripts/cc-upgrade-check` 检查 `.claude/` 可替换框架资产与 `.cc/` 项目状态的边界，确认 `VERSION`、`CHANGELOG.md`、`UPGRADE.md` 同步，并可通过 `--output <path>` 生成 JSON upgrade report。`cc-verify --harness-only` 会自动执行该检查。
 
 ## 仍保留的 legacy 资产
 

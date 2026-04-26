@@ -13,6 +13,7 @@
 - Added `cc-behavior-check` and behavior replay cases for command-level regression checks.
 - Added `cc-verify --changed-only` for smaller local deterministic check sets based on Git changes.
 - Added `language-profile.schema.json` and moved `cc-verify` Go command selection to the Go language profile.
+- Added `cc-upgrade-check` for upgrade boundary checks and JSON upgrade reports.
 - Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
 
 ## 0.20.0 - 2026-04-25
