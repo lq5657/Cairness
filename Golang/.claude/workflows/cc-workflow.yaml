@@ -7,8 +7,8 @@ version: 1
 workflow_id: golang-harness-cc-workflow
 
 sources:
-  runtime_core: runtime/core.yaml
-  maintenance_guide: ../docs/maintenance/runtime-model.md
+  runtime_core: .claude/runtime/core.yaml
+  maintenance_guide: .claude/docs/maintenance/runtime-model.md
 
 states:
   change: [propose, apply, review, done]
@@ -23,8 +23,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: [project_idea]
-    outputs: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md, context/dev-map.md, changes/task-board.md]
-    writes: [context/project-definition.md, context/mvp-roadmap.md, context/architecture-outline.md, context/dev-map.md, changes/task-board.md]
+    outputs: [.cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
+    writes: [.cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, memory_policy, blocking_project_decision_user_choice]
     forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply, treat_project_unknowns_as_resolved, mark_project_definition_complete_without_blocking_choices]
     auto_validation: []
@@ -47,8 +47,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: []
-    outputs: [context/project-context.md, context/dev-map.md]
-    writes: [context/project-context.md, context/dev-map.md]
+    outputs: [.cc/context/project-context.md, .cc/context/dev-map.md]
+    writes: [.cc/context/project-context.md, .cc/context/dev-map.md]
     validates: [claude_scaffold_exists, entrypoints_confirmed, unknowns_recorded, memory_policy]
     forbids: [create_scaffold_assets, create_change_or_audit, deep_code_review, expand_into_enrich_explain_or_inspect, record_assumptions_as_facts]
     auto_validation: []
@@ -59,8 +59,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: []
-    outputs: [context/project-context.md, context/dev-map.md]
-    writes: [context/project-context.md, context/dev-map.md]
+    outputs: [.cc/context/project-context.md, .cc/context/dev-map.md]
+    writes: [.cc/context/project-context.md, .cc/context/dev-map.md]
     validates: [base_context_exists, assumptions_confirmed, evidence_locations, confidence_level, memory_policy, blocking_assumption_user_confirmation]
     forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply, treat_listed_assumptions_as_confirmed, write_unconfirmed_blocking_assumption_as_fact]
     auto_validation: []
@@ -71,8 +71,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: [optional_scope]
-    outputs: [context/system-overview.md]
-    writes: [context/system-overview.md]
+    outputs: [.cc/context/system-overview.md]
+    writes: [.cc/context/system-overview.md]
     validates: [code_evidence, config_evidence, flow_evidence, bounded_scope]
     forbids: [finding_output, change_creation, audit_creation, business_code_write, preference_as_fact]
     auto_validation: []
@@ -84,8 +84,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: [mode, optional_scope]
-    outputs: [audits/<audit-id>/report.md]
-    writes: [audits/<audit-id>/report.md]
+    outputs: [.cc/audits/<audit-id>/report.md]
+    writes: [.cc/audits/<audit-id>/report.md]
     validates: [valid_mode, bounded_scope, evidence_per_finding]
     forbids: [auto_fix, create_change_docs, review_existing_change_implementation, unsupported_findings, enter_promote_audit_automatically]
     auto_validation: []
@@ -96,8 +96,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: [audit_id, change_id]
-    outputs: [audits/<audit-id>/to-change.md, changes/task-board.md]
-    writes: [audits/<audit-id>/to-change.md, changes/task-board.md]
+    outputs: [.cc/audits/<audit-id>/to-change.md, .cc/changes/task-board.md]
+    writes: [.cc/audits/<audit-id>/to-change.md, .cc/changes/task-board.md]
     validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint, task_board_not_spec, finding_selection_user_choice]
     forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose, treat_all_findings_as_selected_by_default, write_bridge_without_finding_selection_choice]
     auto_validation: []
@@ -108,8 +108,8 @@ commands:
     change_from: [none, propose]
     change_to: propose
     inputs: [requirement_description]
-    outputs: [changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/task-board.md]
-    writes: [changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/task-board.md]
+    outputs: [.cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md]
+    writes: [.cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md]
     validates: [hard_gate, validation_matrix, dependencies, scope_freeze, task_traceability, task_board_sync, clarification_interaction, hard_gate_user_choice]
     forbids: [write_business_code, enter_apply_without_hard_gate, skip_scope_freeze, skip_validation_mapping, create_oversized_or_mixed_scope_change, treat_listed_clarifications_as_resolved, present_hard_gate_without_user_choice]
     auto_validation: ["cc-verify --harness-only --change <change-id>"]
@@ -122,10 +122,10 @@ commands:
     change_to: review
     inputs: [change_id]
     outputs: [business_code_changes, change_docs_update, dev_map_update_if_needed, task_board_update, optional_commits]
-    writes: [task_declared_code_files, test_files, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/log.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
+    writes: [task_declared_code_files, test_files, .cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/log.md, .cc/changes/<change-id>/test-spec.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync, hard_gate_resolution_choice]
     forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge, start_apply_with_stale_or_missing_hard_gate, treat_missing_hard_gate_as_user_confirmation]
-    auto_validation: ["cc-verify --json --output changes/<change-id>/baseline/pre-apply.json --change <change-id>", "cc-delta-check --before <before-report> --after <after-report>", "cc-verify --change <change-id>"]
+    auto_validation: ["cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>", "cc-delta-check --before <before-report> --after <after-report>", "cc-verify --change <change-id>"]
 
   cc-review:
     category: change
@@ -134,8 +134,8 @@ commands:
     change_from: [review]
     change_to: review
     inputs: [change_id]
-    outputs: [changes/<change-id>/review.md, changes/task-board.md]
-    writes: [changes/<change-id>/review.md, changes/<change-id>/log.md, changes/task-board.md]
+    outputs: [.cc/changes/<change-id>/review.md, .cc/changes/task-board.md]
+    writes: [.cc/changes/<change-id>/review.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md]
     validates: [task_coverage, verification_evidence, finding_status, evidence_matrix, role_contracts]
     forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record]
     auto_validation: ["cc-role-check --command cc-review --change <change-id>", "cc-verify --harness-only --change <change-id>"]
@@ -148,7 +148,7 @@ commands:
     change_to: review
     inputs: [change_id, optional_fix_description]
     outputs: [fixed_code, updated_findings, synced_change_docs, task_board_update]
-    writes: [finding_related_code_files, test_files, changes/<change-id>/review.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/<change-id>/tasks.md, changes/<change-id>/test-spec.md, context/dev-map.md, changes/task-board.md]
+    writes: [finding_related_code_files, test_files, .cc/changes/<change-id>/review.md, .cc/changes/<change-id>/log.md, .cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/test-spec.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync, finding_clarification_or_disposition_choice]
     forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification, treat_unclear_finding_as_confirmed, mark_finding_accepted_without_user_choice]
     auto_validation: ["cc-verify --change <change-id>"]
@@ -160,8 +160,8 @@ commands:
     change_from: [apply, review]
     change_to: unchanged
     inputs: [change_id, optional_mode]
-    outputs: [changes/<change-id>/test-spec.md, tests_or_evidence, updated_mapping_status, task_board_update]
-    writes: [test_files, changes/<change-id>/test-spec.md, changes/<change-id>/log.md, changes/<change-id>/spec.md, changes/task-board.md]
+    outputs: [.cc/changes/<change-id>/test-spec.md, tests_or_evidence, updated_mapping_status, task_board_update]
+    writes: [test_files, .cc/changes/<change-id>/test-spec.md, .cc/changes/<change-id>/log.md, .cc/changes/<change-id>/spec.md, .cc/changes/task-board.md]
     validates: [valid_mode, recovery_blocker_record, fresh_evidence, mapping_closure, task_board_sync]
     forbids: [use_cc_test_as_default_apply_minimum_verification, fabricate_red_green, mark_mapping_closed_without_evidence]
     auto_validation: ["cc-verify --change <change-id>"]
@@ -173,7 +173,7 @@ commands:
     change_to: done
     inputs: [change_id]
     outputs: [done_status, archival_log, task_board_archive_state, optional_knowledge]
-    writes: [changes/<change-id>/spec.md, changes/<change-id>/log.md, changes/task-board.md, knowledge/*]
+    writes: [.cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md, .cc/knowledge/*]
     validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence, memory_policy, knowledge_decision_user_choice]
     forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice]
     auto_validation: ["cc-verify --change <change-id>"]

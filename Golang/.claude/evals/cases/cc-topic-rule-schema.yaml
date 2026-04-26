@@ -3,7 +3,7 @@ input: "Maintain a runtime-registered topic rule or add a new rule under runtime
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/schemas/topic-rule.schema.json
-  - docs/maintenance/rule-skill-anatomy.md
+  - .claude/docs/maintenance/rule-skill-anatomy.md
   - .claude/scripts/cc-schema-check
 forbidden_actions:
   - add_topic_rule_without_frontmatter_schema_validation

@@ -2,7 +2,7 @@
 
 ## 用途
 
-`cc-enrich-context` 用于在已有 `project-context.md` 基础上补充更完整的项目事实画像，并更新 `context/dev-map.md` 的开发导航。
+`cc-enrich-context` 用于在已有 `project-context.md` 基础上补充更完整的项目事实画像，并更新 `.cc/context/dev-map.md` 的开发导航。
 它承接 `cc-init` 之后尚未确认、但后续命令会受益的高解释成本事实。
 
 它的目标不是做项目体检或输出 Findings，而是在“基础事实层”之上补齐“补充事实层”，例如：
@@ -46,13 +46,13 @@
 ## 输出
 
 产出：
-- 增量更新 `context/project-context.md` 中的“补充事实层”内容
-- 增量更新 `context/dev-map.md` 中的模块边界、关键链路、验证入口和易错边界
+- 增量更新 `.cc/context/project-context.md` 中的“补充事实层”内容
+- 增量更新 `.cc/context/dev-map.md` 中的模块边界、关键链路、验证入口和易错边界
 
 不产出：
-- `changes/<change-id>/`
-- `audits/<audit-id>/`
-- `context/system-overview.md`
+- `.cc/changes/<change-id>/`
+- `.cc/audits/<audit-id>/`
+- `.cc/context/system-overview.md`
 - 业务代码修改
 
 ## 命令契约
@@ -60,15 +60,15 @@
 以 `rules/command-contracts.md` 中 `cc-enrich-context` 行为准：
 - 状态机定位：项目事实补充命令，不创建也不改变 change 状态
 - 输入：无
-- 输出：`context/project-context.md` 的补充事实层、`context/dev-map.md` 的开发导航
-- 可写文件：仅 `context/project-context.md`、`context/dev-map.md`
+- 输出：`.cc/context/project-context.md` 的补充事实层、`.cc/context/dev-map.md` 的开发导航
+- 可写文件：仅 `.cc/context/project-context.md`、`.cc/context/dev-map.md`
 - 必须校验：基础事实层已存在、关键假设已确认或降级为待确认、证据位置和信心等级清楚，且长期记忆写入符合 `rules/memory-policy.md`
 - 禁止行为：输出 Findings、创建 change 或 audit、把假设写成事实、自动转入 `cc-inspect-codebase` / `cc-propose` / `cc-apply`
 
 ## 必守边界
 
 - 只补充项目事实，不创建脚手架资产
-- 只回写 `context/project-context.md` 和 `context/dev-map.md`
+- 只回写 `.cc/context/project-context.md` 和 `.cc/context/dev-map.md`
 - 不得把 `cc-enrich-context` 扩展为 `cc-inspect-codebase`、`cc-review` 或 `cc-explain-system`
 - 允许读取更多入口和样本代码，但仍以“确认事实”为目标，不输出问题审查结论
 - 允许提出“基于证据的待确认假设”，但不得把假设直接写成事实
@@ -106,7 +106,7 @@
 ## 允许读取的范围
 
 允许读取：
-- `context/project-context.md`
+- `.cc/context/project-context.md`
 - 根目录和关键子目录结构
 - 多个启动、配置、日志、依赖注入入口文件
 - 关键测试样本
@@ -119,7 +119,7 @@
 
 ## 默认执行流程
 
-1. 确认 `.claude/` 脚手架与 `context/project-context.md` 存在
+1. 确认 `.claude/` 脚手架与 `.cc/context/project-context.md` 存在
 2. 读取当前 `project-context.md`，识别其中的“待确认事项”和薄弱区域
 3. 优先围绕关键链路、外部依赖边界、脆弱区域做定向补充读取；再按需补充分层、日志、配置、测试、可观测性
 4. 形成“待确认假设清单”，注明主要证据位置、信心等级与潜在影响
@@ -145,7 +145,7 @@
 
 若以下情况出现，必须停止并说明：
 - `.claude/` 脚手架缺失
-- `context/project-context.md` 不存在
+- `.cc/context/project-context.md` 不存在
 - 基础事实层明显缺失，无法可靠开展补充
 - 项目结构不足以支撑上下文补充
 - 关键链路证据不足，无法可靠判断
@@ -166,6 +166,6 @@
 ## 需要加载的附加文件
 
 - `checkpoints/cc-enrich-context.md`
-- `context/project-context.md`
-- `context/dev-map.md`
+- `.cc/context/project-context.md`
+- `.cc/context/dev-map.md`
 - `rules/memory-policy.md`

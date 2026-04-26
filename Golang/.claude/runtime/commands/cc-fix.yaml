@@ -15,13 +15,13 @@ state:
 writes:
   - finding_related_code_files
   - test_files
-  - .claude/changes/<change-id>/review.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/context/dev-map.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/review.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/context/dev-map.md
+  - .cc/changes/task-board.md
 
 forbids:
   - handle_unrecorded_scope
@@ -32,15 +32,15 @@ forbids:
   - mark_finding_accepted_without_user_choice
 
 required_reads:
-  - .claude/changes/<change-id>/review.md
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/review.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/task-board.md
 
 optional_reads:
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/context/dev-map.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/context/dev-map.md
 
 preconditions:
   - select_open_findings_only_by_default
@@ -105,7 +105,7 @@ topic_rules:
 
 subagents:
   enabled: true
-  policy: docs/maintenance/subagent-model.md
+  policy: .claude/docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
   write_scope_policy: parent_writes_subset

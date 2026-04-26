@@ -133,7 +133,7 @@
         },
         "policy": {
           "type": "string",
-          "pattern": "^docs/maintenance/subagent-model\\.md$"
+          "pattern": "^\\.claude/docs/maintenance/subagent-model\\.md$"
         },
         "merge_owner": {
           "type": "string",

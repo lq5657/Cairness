@@ -11,9 +11,9 @@ state:
   change_to: review
 
 writes:
-  - .claude/changes/<change-id>/review.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/review.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/task-board.md
 
 forbids:
   - direct_code_change
@@ -22,14 +22,14 @@ forbids:
   - delete_audit_record
 
 required_reads:
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/changes/<change-id>/review.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/changes/<change-id>/review.md
+  - .cc/changes/task-board.md
 
 optional_reads:
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/context/mvp-roadmap.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/context/mvp-roadmap.md
 
 preconditions:
   - spec_status_is_review
@@ -61,7 +61,7 @@ topic_rules:
 
 subagents:
   enabled: true
-  policy: docs/maintenance/subagent-model.md
+  policy: .claude/docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
   write_scope_policy: parent_writes_subset

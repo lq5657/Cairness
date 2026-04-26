@@ -11,7 +11,7 @@
 - 未迁移命令才回退到 `workflows/cc-workflow.yaml`、`commands/<command>.md` 与 `checkpoints/<command>.md`
 - 命令执行中若涉及专题风险，再增量读取相关 `rules/*.md`
 - 若命中了专题规则，必须在当轮执行摘要中显式说明“本轮实际读取了哪些规则、为何读取”；若未命中，也应明确写“未触发额外专题规则”
-- `docs/examples/`、`docs/adoption/`、`docs/maintenance/` 不属于启动路径
+- `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 不属于启动路径
 
 当前已迁移到 runtime-first 的命令：
 - `cc-preflight`
@@ -27,7 +27,7 @@
 
 #### 核心总原则
 
-- `No Spec, No Code`：没有 `changes/<change-id>/spec.md`，禁止进入实现
+- `No Spec, No Code`：没有 `.cc/changes/<change-id>/spec.md`，禁止进入实现
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
 - `变更即记录`：改代码时必须同步更新 change 文档
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
@@ -35,21 +35,23 @@
 - migrated command 优先遵守对应 `runtime/commands/<command>.yaml`；其状态、可写文件和自动校验仍以 `workflows/cc-workflow.yaml` 为脚本与 CI 真源
 - non-migrated command 继续遵守 `commands/<command>.md`、`checkpoints/<command>.md` 与相关 legacy rules
 - 调用 reviewer、子角色或写长期记忆时，遵守 `rules/memory-policy.md`；legacy reviewer 边界仍可参考 `rules/role-contracts.md`
-- 当 runtime manifest 声明 `subagents.enabled: true` 时，必须同时遵守 `docs/maintenance/subagent-model.md`；主流程仍负责最终 merge、落盘、状态迁移和校验。
-- 项目长期导航优先写 `context/dev-map.md`，change 状态摘要优先写 `changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
+- 当 runtime manifest 声明 `subagents.enabled: true` 时，必须同时遵守 `.claude/docs/maintenance/subagent-model.md`；主流程仍负责最终 merge、落盘、状态迁移和校验。
+- 项目长期导航优先写 `.cc/context/dev-map.md`，change 状态摘要优先写 `.cc/changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
 - `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
 - 启动阶段只做会话态检查，不做项目识别，不做代码审查
 - 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
 
 #### 脚手架边界
 
-- `.claude/` 是 harness 根目录
-- `runtime/`、`workflows/`、`schemas/`、`scripts/`、`changes/`、`audits/`、`context/` 属于运行时与校验资产
-- `docs/examples/`、`docs/adoption/`、`docs/maintenance/` 属于人类维护说明，不属于默认运行时路径
+- `.claude/` 是可升级 harness 根目录，只放框架、规则、脚本、schema、runtime、模板和维护说明
+- `.cc/` 是项目状态根目录，只放由 AI/用户在项目实践中生成或持续更新的 context、changes、audits 和 knowledge
+- `.claude/runtime/`、`.claude/workflows/`、`.claude/schemas/`、`.claude/scripts/` 属于运行时与校验资产
+- `.claude/templates/` 属于可升级模板资产，不是项目真实状态
+- `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 属于人类维护说明，不属于默认运行时路径
 - 启动阶段和 `cc-init` 都不得自行补齐脚手架目录
-- 不得因为缺少样例或模板而创建 `changes/examples/`、`changes/templates/`
+- 不得因为缺少样例或模板而创建 `.claude/docs/examples/changes/`、`.claude/templates/changes/`
 - 若脚手架缺失，应明确提示维护者安装，不得自行 `mkdir -p`
-- 本框架所有相对路径，默认相对于 `.claude/` 解释
+- 本框架所有配置、workflow 和 runtime manifest 中的相对路径，默认相对于项目根目录解释
 
 #### 命令字面量优先
 
@@ -84,14 +86,14 @@
 每次会话开始时，只允许做以下动作：
 
 1. 获取当前分支名
-2. 检查 `.claude/changes/` 下是否存在进行中的 change（排除 `templates/`、`examples/`）
+2. 检查 `.cc/changes/` 下是否存在进行中的 change（排除 `templates/`、`examples/`）
 3. 读取进行中的 change 最小元信息：`change-id`、`status`、`depends_on`（如有）
 4. 输出会话状态摘要
 5. 展示可复制的 `cc-xxx` 命令入口
 
 **启动阶段禁止：**
 - 全量读取 `rules/`
-- 全量读取 `knowledge/`
+- 全量读取 `.cc/knowledge/`
 - 扫描业务代码目录
 - 读取源代码、测试代码、配置正文、README 正文
 - 推断项目类型、系统架构、依赖栈、模块边界
@@ -151,7 +153,7 @@
 每个变更必须使用固定目录结构：
 
 ```text
-changes/<change-id>/
+.cc/changes/<change-id>/
 ├── spec.md
 ├── tasks.md
 ├── log.md
@@ -159,7 +161,7 @@ changes/<change-id>/
 └── review.md         # cc-review 后生成
 ```
 
-`docs/examples/changes/` 仅用于演示完整流程，不视为进行中的真实变更。
+`.claude/docs/examples/changes/` 仅用于演示完整流程，不视为进行中的真实变更。
 
 #### 生命周期状态
 
@@ -204,8 +206,8 @@ changes/<change-id>/
   - `rules/command-contracts.md`
   - `rules/lifecycle-state-machine.md`
   - `rules/role-contracts.md`
-  - 已迁移命令对应的 `docs/maintenance/legacy/commands/<command>.md`
-  - 已迁移命令对应的 `docs/maintenance/legacy/checkpoints/<command>.md`
+  - 已迁移命令对应的 `.claude/docs/maintenance/legacy/commands/<command>.md`
+  - 已迁移命令对应的 `.claude/docs/maintenance/legacy/checkpoints/<command>.md`
 
 专题规则按需增量加载：
 - 数据库变更 -> `rules/database-changes.md`
@@ -223,15 +225,15 @@ changes/<change-id>/
 
 ### 文档职责
 
-- `context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
-- `context/dev-map.md`：开发导航图，记录模块边界、关键链路、验证入口和易错边界
-- `context/project-definition.md`：新项目的目标、用户、核心能力、MVP 范围与首批 change backlog
-- `context/mvp-roadmap.md`：新项目的阶段划分、MVP 路线图与推荐 change 顺序
-- `context/architecture-outline.md`：新项目的运行形态、模块边界、关键对象与技术方向草图
-- `context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
+- `.cc/context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
+- `.cc/context/dev-map.md`：开发导航图，记录模块边界、关键链路、验证入口和易错边界
+- `.cc/context/project-definition.md`：新项目的目标、用户、核心能力、MVP 范围与首批 change backlog
+- `.cc/context/mvp-roadmap.md`：新项目的阶段划分、MVP 路线图与推荐 change 顺序
+- `.cc/context/architecture-outline.md`：新项目的运行形态、模块边界、关键对象与技术方向草图
+- `.cc/context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
 - `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
 - `tasks.md`：原子化任务拆分、依赖关系、验收标准
 - `log.md`：执行日志、技术决策、踩坑与冲突处理
 - `test-spec.md`：测试范围、优先级、验证计划
 - `review.md`：两阶段审查结果、问题列表、结论
-- `changes/task-board.md`：change 状态摘要、backlog 候选、阻塞项和下一命令，不替代单个 change 文档
+- `.cc/changes/task-board.md`：change 状态摘要、backlog 候选、阻塞项和下一命令，不替代单个 change 文档

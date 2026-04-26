@@ -179,18 +179,13 @@ ANTI_RATIONALIZATION_COMMANDS = {
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/rules/role-contracts.md"
 FINAL_ARTIFACT_WRITE_PREFIXES = (
-    ".claude/changes/",
-    "changes/",
-    ".claude/audits/",
-    "audits/",
-    ".claude/context/",
-    "context/",
+    ".cc/changes/",
+    ".cc/audits/",
+    ".cc/context/",
 )
 FINAL_ARTIFACT_WRITE_NAMES = {
-    ".claude/changes/task-board.md",
-    "changes/task-board.md",
-    ".claude/context/dev-map.md",
-    "context/dev-map.md",
+    ".cc/changes/task-board.md",
+    ".cc/context/dev-map.md",
 }
 
 
@@ -475,7 +470,7 @@ def project_path(project_root: Path, declared: Any) -> Path | None:
         return None
     if "<" in declared or "*" in declared:
         return None
-    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
         return project_root / declared
     return None
 
@@ -1217,9 +1212,9 @@ def discover_change_dirs(inputs: list[Path]) -> list[Path]:
 
 def default_input() -> Path:
     cwd = Path.cwd()
-    if (cwd / ".claude" / "changes").exists():
-        return cwd / ".claude" / "changes"
-    return Path(__file__).resolve().parent.parent / "changes"
+    if (cwd / ".cc" / "changes").exists():
+        return cwd / ".cc" / "changes"
+    return Path(__file__).resolve().parent.parent.parent / ".cc" / "changes"
 
 
 def build_report(inputs: list[Path]) -> dict[str, Any]:

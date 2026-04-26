@@ -6,7 +6,7 @@ expected_reads:
   - .claude/runtime/commands/cc-fix.yaml
   - .claude/scripts/cc-schema-check
   - .claude/rules/role-contracts.md
-  - docs/maintenance/subagent-model.md
+  - .claude/docs/maintenance/subagent-model.md
 forbidden_actions:
   - allow_unregistered_subagent_role
   - allow_subagent_write_scope_outside_parent

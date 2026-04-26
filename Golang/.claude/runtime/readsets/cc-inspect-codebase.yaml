@@ -7,8 +7,8 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
-- .claude/context/project-context.md
-- docs/maintenance/subagent-model.md
+- .cc/context/project-context.md
+- .claude/docs/maintenance/subagent-model.md
 optional_reads: []
 conditional_reads:
   when_mode_is_architecture:

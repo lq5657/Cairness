@@ -7,8 +7,8 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-promote-audit.yaml
-- .claude/audits/<audit-id>/report.md
-- .claude/changes/task-board.md
+- .cc/audits/<audit-id>/report.md
+- .cc/changes/task-board.md
 optional_reads:
 - .claude/runtime/commands/cc-propose.yaml
 conditional_reads:

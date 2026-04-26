@@ -39,8 +39,8 @@
 - `pm-orchestrator`：维护项目级流程状态、task-board 和推荐下一步。
 - `requirement-analyst`：澄清项目目标、用户、场景、成功标准和 MVP 边界。
 - `solution-designer`：形成技术方向、模块草图、MVP 路线图和首批 change backlog。
-- `context-curator`：同步 `context/dev-map.md` 的规划级模块导航。
-- `backlog-curator`：同步 `changes/task-board.md` 的 backlog 候选。
+- `context-curator`：同步 `.cc/context/dev-map.md` 的规划级模块导航。
+- `backlog-curator`：同步 `.cc/changes/task-board.md` 的 backlog 候选。
 - `gatekeeper`：检查项目定义是否足以自然桥接到 `cc-propose`。
 
 展示 checkpoint 表时：
@@ -51,18 +51,18 @@
 ## 输出
 
 产出：
-- `context/project-definition.md`
-- `context/mvp-roadmap.md`
-- `context/architecture-outline.md`
-- `context/dev-map.md` 的规划级模块导航
-- `changes/task-board.md` 的 backlog 候选摘要
+- `.cc/context/project-definition.md`
+- `.cc/context/mvp-roadmap.md`
+- `.cc/context/architecture-outline.md`
+- `.cc/context/dev-map.md` 的规划级模块导航
+- `.cc/changes/task-board.md` 的 backlog 候选摘要
 
 可选补充：
 - 在项目定义中附带首批推荐 change backlog
 
 不产出：
-- `changes/<change-id>/spec.md`
-- `changes/<change-id>/tasks.md`
+- `.cc/changes/<change-id>/spec.md`
+- `.cc/changes/<change-id>/tasks.md`
 - 业务代码改动
 
 ## 命令契约
@@ -70,15 +70,15 @@
 以 `rules/command-contracts.md` 中 `cc-new-project` 行为准：
 - 状态机定位：项目级定义命令，不创建正式 change 状态
 - 输入：项目想法
-- 输出：`context/project-definition.md`、`context/mvp-roadmap.md`、`context/architecture-outline.md`、`context/dev-map.md`、`changes/task-board.md`
-- 可写文件：上述项目级 context 文档、`context/dev-map.md`、`changes/task-board.md`
+- 输出：`.cc/context/project-definition.md`、`.cc/context/mvp-roadmap.md`、`.cc/context/architecture-outline.md`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`
+- 可写文件：上述项目级 context 文档、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`
 - 必须校验：项目目标、目标用户、MVP 范围、本次不做、首批 change backlog 能自然桥接到 `cc-propose`，且长期记忆写入符合 `rules/memory-policy.md`
-- 禁止行为：写业务代码、创建 `changes/<change-id>/`、自动进入 `cc-propose` 或 `cc-apply`、把项目级灰区伪装成已冻结 change
+- 禁止行为：写业务代码、创建 `.cc/changes/<change-id>/`、自动进入 `cc-propose` 或 `cc-apply`、把项目级灰区伪装成已冻结 change
 
 ## 必守边界
 
 - `cc-new-project` 只做项目级定义和分期规划，不直接进入编码
-- 不得把项目级产物错误落到 `changes/<change-id>/`
+- 不得把项目级产物错误落到 `.cc/changes/<change-id>/`
 - 不得把 `cc-new-project` 退化成“建议先执行 `cc-init`”
 - 不得在项目定义尚未稳定时直接生成 `cc-apply` 所需的实现任务
 - 可以给出首批推荐 change，但不得自动进入 `cc-propose` 或 `cc-apply`
@@ -134,7 +134,7 @@
    - MVP 是否收敛
    - 首批 change 是否能落入现有 change 生命周期
    - 是否存在未冻结而会阻塞 `cc-propose` 的关键灰区
-8. 更新 `context/dev-map.md` 的规划级模块导航和 `changes/task-board.md` 的 backlog 候选摘要
+8. 更新 `.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选摘要
 9. 输出项目级文档
 10. 停止，并建议下一步进入 `cc-propose <首批change>`
 
@@ -180,7 +180,7 @@ Research 只用于：
 5. 已形成至少一版 MVP 路线图
 6. 已给出首批推荐 change backlog
 7. 已验证首批推荐 change 能自然桥接到 `cc-propose`
-8. 已同步 `context/dev-map.md` 和 `changes/task-board.md` 的项目级摘要
+8. 已同步 `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要
 9. 已输出项目级文档，而不是直接进入 change 文档
 
 ## 失败处理
@@ -196,13 +196,13 @@ Research 只用于：
 ## 执行后建议
 
 执行完成后，下一步通常是：
-- 若还需继续明确某个阶段或能力：继续补充 `context/*.md`
+- 若还需继续明确某个阶段或能力：继续补充 `.cc/context/*.md`
 - 若项目定义已足够清晰：针对首批推荐 change 执行 `cc-propose <change描述>`
 - 若已有存量代码需先理解：执行 `cc-init` / `cc-enrich-context`
 
 ## 需要加载的附加文件
 
 - `checkpoints/cc-new-project.md`
-- `context/templates/project-definition.md`
-- `context/templates/mvp-roadmap.md`
-- `context/templates/architecture-outline.md`
+- `.claude/templates/context/project-definition.md`
+- `.claude/templates/context/mvp-roadmap.md`
+- `.claude/templates/context/architecture-outline.md`

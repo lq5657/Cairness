@@ -44,11 +44,11 @@
 ## 输出
 
 产出：
-- `context/system-overview.md`
+- `.cc/context/system-overview.md`
 
 不产出：
-- `audits/<audit-id>/report.md`
-- `changes/<change-id>/spec.md`
+- `.cc/audits/<audit-id>/report.md`
+- `.cc/changes/<change-id>/spec.md`
 - 业务代码修改
 
 ## 命令契约
@@ -56,8 +56,8 @@
 以 `rules/command-contracts.md` 中 `cc-explain-system` 行为准：
 - 状态机定位：系统讲解命令，不创建也不改变 change 状态
 - 输入：可选 `scope`
-- 输出：`context/system-overview.md`
-- 可写文件：仅 `context/system-overview.md`
+- 输出：`.cc/context/system-overview.md`
+- 可写文件：仅 `.cc/context/system-overview.md`
 - 必须校验：scope 可控，关键结论具备目录、代码、配置或调用链证据
 - 禁止行为：输出审查 Findings、创建 change 或 audit、写业务代码、把个人偏好写成系统事实
 
@@ -100,8 +100,8 @@
 ## 允许读取的范围
 
 允许读取：
-- `context/project-context.md`
-- `context/dev-map.md`
+- `.cc/context/project-context.md`
+- `.cc/context/dev-map.md`
 - 与当前 scope 相关的目录结构、入口文件、关键调用链代码
 - 配置、日志、测试、可观测性相关入口
 - 关键领域模型、关键流程样本
@@ -115,10 +115,10 @@
 
 1. 确认 `project-context.md` 存在；若明显过薄，可先建议执行 `cc-enrich-context`
 2. 确认 `scope`；若缺省则按全仓
-3. 读取 `context/dev-map.md` 与当前 `scope` 相关的结构、入口和关键链路
+3. 读取 `.cc/context/dev-map.md` 与当前 `scope` 相关的结构、入口和关键链路
 4. 用“系统理解”视角整理结构、链路、数据流、领域模型、技术机制、难点、运维与治理视角
 5. 对明确不具备的能力写“当前不具备”，对证据不足项写“待确认”
-6. 输出到 `context/system-overview.md`
+6. 输出到 `.cc/context/system-overview.md`
 7. 结束，不自动进入 `cc-inspect-codebase` 或 `cc-propose`
 
 ## 证据要求
@@ -147,6 +147,6 @@
 ## 需要加载的附加文件
 
 - `checkpoints/cc-explain-system.md`
-- `context/project-context.md`
-- `context/dev-map.md`
-- `context/templates/system-overview.md`
+- `.cc/context/project-context.md`
+- `.cc/context/dev-map.md`
+- `.claude/templates/context/system-overview.md`

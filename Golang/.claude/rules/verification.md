@@ -78,7 +78,7 @@ description: "Golang Harness 的验证等级与证据规范"
 ```
 
 - 若脚本缺失或当前环境无法执行，必须记录为 `blocked` / `partial` 或 preflight 问题；不得静默跳过。
-- `cc-apply` 必须将开发前后验证报告写入 `changes/<change-id>/baseline/`，并用 `cc-delta-check` 区分历史已有失败与本次新增失败；存在 `new-failure` 时不得将 task 标记为 `done`。
+- `cc-apply` 必须将开发前后验证报告写入 `.cc/changes/<change-id>/baseline/`，并用 `cc-delta-check` 区分历史已有失败与本次新增失败；存在 `new-failure` 时不得将 task 标记为 `done`。
 
 #### 2. 验证等级
 

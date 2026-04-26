@@ -11,11 +11,11 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 | 层级 | 文件 | 内容 | 主要写入命令 |
 |------|------|------|--------------|
-| 项目事实 | `context/project-context.md` | 项目身份、入口、基础结构、待确认事项 | `cc-init`、`cc-enrich-context` |
-| 开发导航 | `context/dev-map.md` | 模块边界、关键链路、验证入口、易错边界 | `cc-new-project`、`cc-init`、`cc-enrich-context`、必要时 `cc-apply` / `cc-fix` |
-| 工作看板 | `changes/task-board.md` | change 状态摘要、backlog 候选、阻塞项、下一命令 | `cc-new-project`、`cc-promote-audit`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive` |
-| 变更真相 | `changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
-| 复利知识 | `knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
+| 项目事实 | `.cc/context/project-context.md` | 项目身份、入口、基础结构、待确认事项 | `cc-init`、`cc-enrich-context` |
+| 开发导航 | `.cc/context/dev-map.md` | 模块边界、关键链路、验证入口、易错边界 | `cc-new-project`、`cc-init`、`cc-enrich-context`、必要时 `cc-apply` / `cc-fix` |
+| 工作看板 | `.cc/changes/task-board.md` | change 状态摘要、backlog 候选、阻塞项、下一命令 | `cc-new-project`、`cc-promote-audit`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive` |
+| 变更真相 | `.cc/changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
+| 复利知识 | `.cc/knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
 
 #### 2. 写入准入
 
@@ -27,8 +27,8 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 #### 3. 更新优先级
 
-- 先更新离事实最近的文件：单次变更事实写 `changes/<change-id>/*`，项目事实写 `context/*`。
-- 只有跨 change 可复用的信息才写入 `knowledge/*`。
+- 先更新离事实最近的文件：单次变更事实写 `.cc/changes/<change-id>/*`，项目事实写 `.cc/context/*`。
+- 只有跨 change 可复用的信息才写入 `.cc/knowledge/*`。
 - `task-board.md` 只写摘要、状态和导航，不复制 spec/tasks/review 正文。
 - `dev-map.md` 只写稳定导航，不记录每次实现的细碎过程。
 

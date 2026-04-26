@@ -39,8 +39,8 @@
 - `.claude/rules/command-contracts.md`
 - `.claude/rules/lifecycle-state-machine.md`
 - `.claude/rules/role-contracts.md`
-- `docs/maintenance/legacy/commands/<command>.md`
-- `docs/maintenance/legacy/checkpoints/<command>.md`
+- `.claude/docs/maintenance/legacy/commands/<command>.md`
+- `.claude/docs/maintenance/legacy/checkpoints/<command>.md`
 
 除非正在维护 Harness，或 runtime manifest 本身不够表达当前问题。
 
@@ -54,6 +54,10 @@
 .claude/schemas/*.json
 .claude/scripts/*
 .claude/evals/*
+.cc/context/*
+.cc/changes/*
+.cc/audits/*
+.cc/knowledge/*
 fixtures/*
 ```
 
@@ -73,16 +77,29 @@ fixtures/*
 维护和示例文档统一放到：
 
 ```text
-docs/examples/*
-docs/adoption/*
-docs/maintenance/*
+.claude/docs/examples/*
+.claude/docs/adoption/*
+.claude/docs/maintenance/*
 ```
 
 其中：
 
-- `docs/examples/`：端到端样例和 audit/context 样例
-- `docs/adoption/`：试点和接入前自检
-- `docs/maintenance/`：runtime 模型、subagent 模型、rule skill anatomy、评测用例说明、reviewer 口径、维护笔记
+- `.claude/docs/examples/`：端到端样例和 audit/context 样例
+- `.claude/docs/adoption/`：试点和接入前自检
+- `.claude/docs/maintenance/`：runtime 模型、subagent 模型、rule skill anatomy、评测用例说明、reviewer 口径、维护笔记
+
+### 4. 项目生成状态
+
+AI/用户在具体项目实践中生成或持续更新的状态统一放到：
+
+```text
+.cc/context/*
+.cc/changes/*
+.cc/audits/*
+.cc/knowledge/*
+```
+
+`.claude/` 可随框架升级整体替换；`.cc/` 是项目状态，升级框架时不得覆盖。
 
 ## Subagent 启用范围
 
@@ -94,7 +111,7 @@ docs/maintenance/*
 - `cc-fix`：root-cause 复核、scoped fix worker、test verifier 协作，主流程更新 Finding 状态
 - `cc-apply`：单 task 内可用 scoped worker / verifier / context-curator，主流程保持 one-task-in-progress
 
-统一协议见 `docs/maintenance/subagent-model.md`。子 agent 输出只是证据输入，不替代主流程的状态迁移、最终写入和自动校验。
+统一协议见 `.claude/docs/maintenance/subagent-model.md`。子 agent 输出只是证据输入，不替代主流程的状态迁移、最终写入和自动校验。
 
 `.claude/scripts/cc-schema-check` 会对这些 contract 做深度校验：role 必须在 `role-contracts.md` 登记，scoped writes 必须是父命令 `writes` 子集，多个 scoped writer 不能写同一目标，最终产物只能由 `main_flow` 写入。
 
@@ -189,7 +206,7 @@ runtime 注册的 topic rules 现在也有机器约束：
 
 ```text
 .claude/schemas/topic-rule.schema.json
-docs/maintenance/rule-skill-anatomy.md
+.claude/docs/maintenance/rule-skill-anatomy.md
 ```
 
 `.claude/scripts/cc-schema-check` 会校验每个 `runtime/core.yaml` 中登记的 topic rule：frontmatter 必须符合 schema，并且必须包含 `Skill Anatomy`、触发边界、流程、反合理化、红旗和验证出口。这样 topic rule 不再只是散文规则，而是 Claude 加载后可以直接执行的小型 skill contract。
@@ -216,7 +233,7 @@ docs/maintenance/rule-skill-anatomy.md
 其中：
 
 - 未迁移命令的 fallback 仍保留在 `.claude/commands/*` 与 `.claude/checkpoints/*`
-- 已迁移命令的 legacy 参考文档已迁到 `docs/maintenance/legacy/`
+- 已迁移命令的 legacy 参考文档已迁到 `.claude/docs/maintenance/legacy/`
 
 原因很直接：项目定义、context enrichment 和 explain 类命令还没全部迁进 runtime manifest。当前策略是：
 
@@ -229,11 +246,11 @@ docs/maintenance/rule-skill-anatomy.md
 
 1. `.claude/runtime/core.yaml`
 2. `.claude/workflows/cc-workflow.yaml`
-3. `docs/maintenance/runtime-model.md`
-4. `docs/maintenance/subagent-model.md`
-5. `docs/maintenance/rule-skill-anatomy.md`
-6. `docs/examples/changes/`
-7. `docs/adoption/integration-preflight-checklist.md`
+3. `.claude/docs/maintenance/runtime-model.md`
+4. `.claude/docs/maintenance/subagent-model.md`
+5. `.claude/docs/maintenance/rule-skill-anatomy.md`
+6. `.claude/docs/examples/changes/`
+7. `.claude/docs/adoption/integration-preflight-checklist.md`
 
 ## 常用验证
 
@@ -333,17 +350,15 @@ docs/maintenance/rule-skill-anatomy.md
 
 ## 文档迁移
 
-本次已迁出的内容：
+当前目录边界：
 
-- `.claude/changes/examples/*` -> `docs/examples/changes/*`
-- `.claude/audits/examples/*` -> `docs/examples/audits/*`
-- `.claude/context/examples/*` -> `docs/examples/context/*`
-- `.claude/knowledge/pilot-checklist.md` -> `docs/adoption/pilot-checklist.md`
-- `.claude/knowledge/integration-preflight-checklist.md` -> `docs/adoption/integration-preflight-checklist.md`
-- `.claude/knowledge/common-integration-pitfalls.md` -> `docs/maintenance/common-integration-pitfalls.md`
-- `.claude/agents/*` -> `docs/maintenance/reviewers/*`
-- `.claude/skills/cc-harness/references/*` -> `docs/maintenance/skill-references/*`
-- 已迁移命令的 legacy command/checkpoint -> `docs/maintenance/legacy/*`
+- 框架维护文档：`.claude/docs/*`
+- 框架模板：`.claude/templates/*`
+- 项目 context：`.cc/context/*`
+- 项目 change：`.cc/changes/*`
+- 项目 audit：`.cc/audits/*`
+- 项目 knowledge：`.cc/knowledge/*`
+- 已迁移命令的 legacy command/checkpoint 参考：`.claude/docs/maintenance/legacy/*`
 
 ## 后续建议
 

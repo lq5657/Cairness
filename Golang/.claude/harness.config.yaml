@@ -1,5 +1,10 @@
 # Golang Harness runtime policy.
-# Relative paths are interpreted from `.claude/`.
+# Relative paths are interpreted from the project root.
+
+paths:
+  framework_root: ".claude"
+  state_root: ".cc"
+  framework_docs_root: ".claude/docs"
 
 git:
   auto_commit: true
@@ -22,15 +27,15 @@ runtime:
   legacy_checkpoint_dir: ".claude/checkpoints"
 
 memory:
-  project_context: ".claude/context/project-context.md"
-  dev_map: ".claude/context/dev-map.md"
-  task_board: ".claude/changes/task-board.md"
+  project_context: ".cc/context/project-context.md"
+  dev_map: ".cc/context/dev-map.md"
+  task_board: ".cc/changes/task-board.md"
   policy: ".claude/rules/memory-policy.md"
 
 docs:
-  examples_dir: "docs/examples"
-  adoption_dir: "docs/adoption"
-  maintenance_dir: "docs/maintenance"
+  examples_dir: ".claude/docs/examples"
+  adoption_dir: ".claude/docs/adoption"
+  maintenance_dir: ".claude/docs/maintenance"
 
 validation:
   auto_run: true
@@ -41,7 +46,7 @@ validation:
   role_command: ".claude/scripts/cc-role-check"
   eval_command: ".claude/scripts/cc-eval"
   readset_command: ".claude/scripts/cc-readset"
-  baseline_dir: "changes/<change-id>/baseline"
+  baseline_dir: ".cc/changes/<change-id>/baseline"
   fixture_dir: "fixtures"
   require_structured_hard_gate: true
   require_traceability_check: true

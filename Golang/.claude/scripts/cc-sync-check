@@ -126,7 +126,12 @@ def check_change(change_dir: Path, errors: list[str]) -> None:
 
 def main(argv: list[str]) -> int:
     root = Path.cwd()
-    inputs = [Path(arg) for arg in argv] if argv else [root / "Golang" / ".claude" / "changes"]
+    if argv:
+        inputs = [Path(arg) for arg in argv]
+    elif (root / ".cc" / "changes").exists():
+        inputs = [root / ".cc" / "changes"]
+    else:
+        inputs = [root / "Golang" / ".cc" / "changes"]
     errors: list[str] = []
     for change_dir in discover_change_dirs(inputs):
         check_change(change_dir, errors)

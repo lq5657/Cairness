@@ -7,9 +7,9 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-propose.yaml
-- .claude/context/project-context.md
-- .claude/context/dev-map.md
-- .claude/changes/task-board.md
+- .cc/context/project-context.md
+- .cc/context/dev-map.md
+- .cc/changes/task-board.md
 - .claude/rules/verification.md
 - .claude/rules/change-sizing.md
 optional_reads: []

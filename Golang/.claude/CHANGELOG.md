@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.0 - 2026-04-25
+
+- Split upgradeable framework assets from project-generated state: `.claude/` remains the framework root, while `.cc/` stores project context, changes, audits, and knowledge.
+- Moved framework maintenance docs under `.claude/docs/` and reusable templates under `.claude/templates/`.
+- Updated runtime manifests, workflow write scopes, config, scripts, schemas, evals, and docs to use `.cc` for project state paths.
+- Adjusted verification, schema, lint, readset, role, sync, and eval scripts so default checks target `.cc/changes` and accept `.cc` project paths.
+
 ## 0.19.0 - 2026-04-25
 
 - Added structured `output_contract` declarations to subagent-enabled runtime commands.

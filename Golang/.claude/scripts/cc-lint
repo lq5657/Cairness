@@ -178,7 +178,7 @@ def read(path: Path) -> str:
 
 
 def project_path(root: Path, declared: str) -> Path | None:
-    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
         return root.parent / declared
     return None
 
@@ -511,7 +511,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             for key in (
                 "subagents:",
                 "enabled: true",
-                "policy: docs/maintenance/subagent-model.md",
+                "policy: .claude/docs/maintenance/subagent-model.md",
                 "merge_owner: main_flow",
                 "final_writes_by: main_flow",
                 "write_scope_policy: parent_writes_subset",
@@ -587,21 +587,20 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
     required = [
-        "context/dev-map.md",
-        "context/templates/dev-map.md",
-        "changes/task-board.md",
-        "changes/templates/task-board.md",
-        "runtime/core.yaml",
-        "runtime/readsets/index.yaml",
-        "schemas/runtime-core.schema.json",
-        "schemas/runtime-command.schema.json",
-        "schemas/runtime-readset.schema.json",
-        "schemas/topic-rule.schema.json",
-        "skills/cc-harness/SKILL.md",
-        "evals/rubrics/default.yaml",
+        root.parent / ".cc" / "context" / "dev-map.md",
+        root.parent / ".cc" / "changes" / "task-board.md",
+        root / "templates" / "context" / "dev-map.md",
+        root / "templates" / "changes" / "task-board.md",
+        root / "runtime" / "core.yaml",
+        root / "runtime" / "readsets" / "index.yaml",
+        root / "schemas" / "runtime-core.schema.json",
+        root / "schemas" / "runtime-command.schema.json",
+        root / "schemas" / "runtime-readset.schema.json",
+        root / "schemas" / "topic-rule.schema.json",
+        root / "skills" / "cc-harness" / "SKILL.md",
+        root / "evals" / "rubrics" / "default.yaml",
     ]
-    for relative in required:
-        path = root / relative
+    for path in required:
         if not path.exists():
             errors.append(f"{path}: missing governance asset")
 
@@ -613,6 +612,10 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
         return
     text = read(path)
     for key in (
+        "paths:",
+        "framework_root:",
+        "state_root:",
+        "framework_docs_root:",
         "workflow:",
         "definition:",
         "runtime:",
@@ -661,14 +664,14 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
 def lint_docs_layout(project_root: Path, errors: list[str]) -> None:
     required = [
         project_root / "README.md",
-        project_root / "docs" / "examples",
-        project_root / "docs" / "adoption",
-        project_root / "docs" / "maintenance",
-        project_root / "docs" / "adoption" / "pilot-checklist.md",
-        project_root / "docs" / "adoption" / "integration-preflight-checklist.md",
-        project_root / "docs" / "maintenance" / "runtime-model.md",
-        project_root / "docs" / "maintenance" / "subagent-model.md",
-        project_root / "docs" / "maintenance" / "rule-skill-anatomy.md",
+        project_root / ".claude" / "docs" / "examples",
+        project_root / ".claude" / "docs" / "adoption",
+        project_root / ".claude" / "docs" / "maintenance",
+        project_root / ".claude" / "docs" / "adoption" / "pilot-checklist.md",
+        project_root / ".claude" / "docs" / "adoption" / "integration-preflight-checklist.md",
+        project_root / ".claude" / "docs" / "maintenance" / "runtime-model.md",
+        project_root / ".claude" / "docs" / "maintenance" / "subagent-model.md",
+        project_root / ".claude" / "docs" / "maintenance" / "rule-skill-anatomy.md",
     ]
     for path in required:
         if not path.exists():
@@ -695,9 +698,18 @@ def discover_change_dirs(inputs: list[Path]) -> list[Path]:
     return sorted(dirs)
 
 
+def default_inputs(root: Path) -> list[Path]:
+    project_root = root if (root / ".claude" / "harness.config.yaml").exists() else root / "Golang"
+    inputs = [project_root / ".claude"]
+    changes_root = project_root / ".cc" / "changes"
+    if changes_root.exists():
+        inputs.append(changes_root)
+    return inputs
+
+
 def main(argv: list[str]) -> int:
     root = Path.cwd()
-    inputs = [Path(arg) for arg in argv] if argv else [root / "Golang" / ".claude"]
+    inputs = [Path(arg) for arg in argv] if argv else default_inputs(root)
     errors: list[str] = []
 
     for item in inputs:

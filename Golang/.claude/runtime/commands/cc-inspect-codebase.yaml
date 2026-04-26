@@ -13,7 +13,7 @@ state:
   change_to: unchanged
 
 writes:
-  - .claude/audits/<audit-id>/report.md
+  - .cc/audits/<audit-id>/report.md
 
 forbids:
   - auto_fix
@@ -23,7 +23,7 @@ forbids:
   - enter_promote_audit_automatically
 
 required_reads:
-  - .claude/context/project-context.md
+  - .cc/context/project-context.md
 
 preconditions:
   - explicit_cc_inspect_codebase_command_received
@@ -46,7 +46,7 @@ topic_rules:
 
 subagents:
   enabled: true
-  policy: docs/maintenance/subagent-model.md
+  policy: .claude/docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
   write_scope_policy: parent_writes_subset

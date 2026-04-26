@@ -7,15 +7,15 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-review.yaml
-- .claude/changes/<change-id>/spec.md
-- .claude/changes/<change-id>/tasks.md
-- .claude/changes/<change-id>/review.md
-- .claude/changes/task-board.md
+- .cc/changes/<change-id>/spec.md
+- .cc/changes/<change-id>/tasks.md
+- .cc/changes/<change-id>/review.md
+- .cc/changes/task-board.md
 - .claude/rules/verification.md
-- docs/maintenance/subagent-model.md
+- .claude/docs/maintenance/subagent-model.md
 optional_reads:
-- .claude/changes/<change-id>/test-spec.md
-- .claude/context/mvp-roadmap.md
+- .cc/changes/<change-id>/test-spec.md
+- .cc/context/mvp-roadmap.md
 conditional_reads:
   when_test_boundary_or_substitution_is_in_question:
   - .claude/rules/testing-strategy.md

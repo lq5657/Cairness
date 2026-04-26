@@ -6,7 +6,7 @@ expected_reads:
   - .claude/runtime/commands/cc-apply.yaml
   - .claude/schemas/runtime-command.schema.json
   - .claude/scripts/cc-schema-check
-  - docs/maintenance/subagent-model.md
+  - .claude/docs/maintenance/subagent-model.md
 forbidden_actions:
   - accept_freeform_subagent_output
   - omit_subagent_output_evidence

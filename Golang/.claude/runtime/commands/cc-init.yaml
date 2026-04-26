@@ -10,8 +10,8 @@ state:
   change_to: unchanged
 
 writes:
-  - .claude/context/project-context.md
-  - .claude/context/dev-map.md
+  - .cc/context/project-context.md
+  - .cc/context/dev-map.md
 
 forbids:
   - create_scaffold_assets
@@ -21,8 +21,8 @@ forbids:
   - record_assumptions_as_facts
 
 required_reads:
-  - .claude/context/project-context.md
-  - .claude/context/dev-map.md
+  - .cc/context/project-context.md
+  - .cc/context/dev-map.md
   - .claude/rules/memory-policy.md
 
 preconditions:

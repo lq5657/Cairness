@@ -14,12 +14,12 @@ state:
 writes:
   - task_declared_code_files
   - test_files
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/context/dev-map.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/context/dev-map.md
+  - .cc/changes/task-board.md
 
 forbids:
   - out_of_scope_change
@@ -30,10 +30,10 @@ forbids:
   - treat_missing_hard_gate_as_user_confirmation
 
 required_reads:
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/context/dev-map.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/context/dev-map.md
+  - .cc/changes/task-board.md
   - .claude/harness.config.yaml
 
 preconditions:
@@ -90,7 +90,7 @@ topic_rules:
 
 subagents:
   enabled: true
-  policy: docs/maintenance/subagent-model.md
+  policy: .claude/docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
   write_scope_policy: parent_writes_subset
@@ -175,7 +175,7 @@ steps:
   - promote_change_to_review
 
 auto_validation:
-  - .claude/scripts/cc-verify --json --output .claude/changes/<change-id>/baseline/pre-apply.json --change <change-id>
+  - .claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>
 

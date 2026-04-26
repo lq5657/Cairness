@@ -56,7 +56,7 @@ def dump_yaml(value: Any) -> str:
 def project_path(project_root: Path, declared: Any) -> Path | None:
     if not isinstance(declared, str):
         return None
-    if declared.startswith(".claude/") or declared.startswith("docs/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
         return project_root / declared
     return None
 

@@ -7,8 +7,8 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-init.yaml
-- .claude/context/project-context.md
-- .claude/context/dev-map.md
+- .cc/context/project-context.md
+- .cc/context/dev-map.md
 - .claude/rules/memory-policy.md
 optional_reads: []
 conditional_reads: {}

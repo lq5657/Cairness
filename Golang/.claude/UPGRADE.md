@@ -1,5 +1,67 @@
 # Upgrade Guide
 
+## Upgrade To 0.20.0
+
+This release separates upgradeable Harness assets from project-generated state.
+
+### New Directories To Preserve
+
+- `.cc/context/`
+- `.cc/changes/`
+- `.cc/audits/`
+- `.cc/knowledge/`
+
+### Existing Files To Move
+
+- `.claude/context/project-context.md` -> `.cc/context/project-context.md`
+- `.claude/context/dev-map.md` -> `.cc/context/dev-map.md`
+- `.claude/changes/task-board.md` -> `.cc/changes/task-board.md`
+- `.claude/knowledge/index.md` -> `.cc/knowledge/index.md`
+- `docs/*` -> `.claude/docs/*`
+- `.claude/context/templates/*` -> `.claude/templates/context/*`
+- `.claude/changes/templates/*` -> `.claude/templates/changes/*`
+- `.claude/audits/templates/*` -> `.claude/templates/audits/*`
+
+### Existing Files To Merge
+
+- `.claude/CLAUDE.md`
+- `.claude/CHANGELOG.md`
+- `.claude/UPGRADE.md`
+- `.claude/VERSION`
+- `.claude/harness.config.yaml`
+- `.claude/workflows/cc-workflow.yaml`
+- `.claude/runtime/core.yaml`
+- `.claude/runtime/commands/*.yaml`
+- `.claude/runtime/readsets/*.yaml`
+- `.claude/schemas/runtime-command.schema.json`
+- `.claude/scripts/cc-lint`
+- `.claude/scripts/cc-schema-check`
+- `.claude/scripts/cc-readset`
+- `.claude/scripts/cc-eval`
+- `.claude/scripts/cc-role-check`
+- `.claude/scripts/cc-sync-check`
+- `.claude/scripts/cc-verify`
+- `.claude/skills/cc-harness/SKILL.md`
+- `.claude/rules/*.md`
+- `.claude/evals/cases/*.yaml`
+- `README.md`
+
+### Post-Upgrade Checks
+
+Run from the Golang project root:
+
+```bash
+.claude/scripts/cc-readset --write
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-eval .claude/evals
+```
+
+### Compatibility Notes
+
+- `.claude/` is now replaceable framework content; do not store project state under it.
+- `.cc/` is project state; do not overwrite it when upgrading Harness.
+- Config, workflow, runtime manifests, and scripts interpret framework and state paths from the project root.
+
 ## Upgrade To 0.19.0
 
 This release adds structured output contracts for subagent results.
@@ -21,9 +83,9 @@ This release adds structured output contracts for subagent results.
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/evals/rubrics/default.yaml`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
-- `docs/maintenance/subagent-model.md`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/subagent-model.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 
 ### Post-Upgrade Checks
 
@@ -65,9 +127,9 @@ This release deepens runtime subagent contract validation.
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/evals/rubrics/default.yaml`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
-- `docs/maintenance/subagent-model.md`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/subagent-model.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 
 ### Post-Upgrade Checks
 
@@ -110,9 +172,9 @@ This release adds generated runtime readsets for migrated commands.
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/evals/cases/cc-runtime-manifest-schema.yaml`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -147,9 +209,9 @@ This release adds structured result contracts for migrated runtime commands.
 - `.claude/scripts/cc-lint`
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -179,9 +241,9 @@ This release upgrades `cc-eval` from key-shape validation to semantic coverage v
 
 - `.claude/scripts/cc-eval`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -220,10 +282,10 @@ This release adds schema and lint enforcement for runtime-registered topic rules
 - `.claude/rules/observability.md`
 - `.claude/rules/git-workflow.md`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/rule-skill-anatomy.md`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/rule-skill-anatomy.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -238,7 +300,7 @@ Run from the Golang project root:
 ### Compatibility Notes
 
 - Every topic rule registered in `.claude/runtime/core.yaml` must include YAML frontmatter with `alwaysApply` and `description`.
-- Registered topic rules must include the skill-like anatomy sections from `docs/maintenance/rule-skill-anatomy.md`.
+- Registered topic rules must include the skill-like anatomy sections from `.claude/docs/maintenance/rule-skill-anatomy.md`.
 - Legacy rule documents that are not registered as topic rules are not forced into this structure.
 
 ## Upgrade To 0.13.0
@@ -254,9 +316,9 @@ This release adds workflow/runtime parity checks for migrated commands.
 - `.claude/workflows/cc-workflow.yaml`
 - `.claude/scripts/cc-schema-check`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -291,9 +353,9 @@ This release adds schema validation for runtime manifests.
 - `.claude/scripts/cc-lint`
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -327,9 +389,9 @@ This release adds a change sizing policy for `cc-propose` so broad requests are 
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/scripts/cc-lint`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -363,9 +425,9 @@ This release adds a source-backed debugging workflow for `cc-fix` and recovery-s
 - `.claude/runtime/commands/cc-test.yaml`
 - `.claude/scripts/cc-lint`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 ### Post-Upgrade Checks
 
@@ -425,7 +487,7 @@ This release introduces skill-like topic rule anatomy and negative eval coverage
 
 ### New Files To Copy
 
-- `docs/maintenance/rule-skill-anatomy.md`
+- `.claude/docs/maintenance/rule-skill-anatomy.md`
 - `.claude/evals/cases/cc-negative-skip-verification.yaml`
 - `.claude/evals/cases/cc-negative-review-pass.yaml`
 - `.claude/evals/cases/cc-negative-test-supplement-gap.yaml`
@@ -441,8 +503,8 @@ This release introduces skill-like topic rule anatomy and negative eval coverage
 - `.claude/runtime/commands/cc-test.yaml`
 - `.claude/scripts/cc-lint`
 - `.claude/evals/rubrics/default.yaml`
-- `docs/maintenance/runtime-model.md`
-- `docs/maintenance/cc-harness-protocol-eval-cases.md`
+- `.claude/docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/cc-harness-protocol-eval-cases.md`
 - `README.md`
 
 ### Post-Upgrade Checks
@@ -467,7 +529,7 @@ This release adds bounded subagent contracts for the five highest-value commands
 
 ### New Files To Copy
 
-- `docs/maintenance/subagent-model.md`
+- `.claude/docs/maintenance/subagent-model.md`
 - `.claude/evals/cases/cc-subagent-contracts.yaml`
 
 ### Existing Files To Merge
@@ -481,7 +543,7 @@ This release adds bounded subagent contracts for the five highest-value commands
 - `.claude/rules/role-contracts.md`
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/scripts/cc-lint`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/maintenance/runtime-model.md`
 - `README.md`
 
 ### Post-Upgrade Checks
@@ -517,8 +579,8 @@ This release expands runtime-first coverage to `cc-init` and `cc-inspect-codebas
 - `.claude/scripts/cc-lint`
 - `.claude/evals/cases/cc-init-runtime.yaml`
 - `.claude/evals/cases/cc-inspect-codebase-runtime.yaml`
-- `docs/adoption/integration-preflight-checklist.md`
-- `docs/maintenance/runtime-model.md`
+- `.claude/docs/adoption/integration-preflight-checklist.md`
+- `.claude/docs/maintenance/runtime-model.md`
 
 Preserve project-local context files and command docs while merging the new runtime paths.
 
@@ -553,9 +615,9 @@ This release expands runtime-first coverage to `cc-preflight` and `cc-promote-au
 - `.claude/runtime/commands/cc-test.yaml`
 - `.claude/runtime/commands/cc-archive.yaml`
 - `.claude/runtime/commands/cc-promote-audit.yaml`
-- `docs/examples/`
-- `docs/adoption/`
-- `docs/maintenance/`
+- `.claude/docs/examples/`
+- `.claude/docs/adoption/`
+- `.claude/docs/maintenance/`
 - `.claude/skills/cc-harness/`
 
 If the target project wants fixture-based Harness regression checks, also copy:

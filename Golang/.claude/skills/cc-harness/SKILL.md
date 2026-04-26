@@ -17,7 +17,7 @@ For any `cc-*` request:
 4. If no runtime contract exists, read `.claude/workflows/cc-workflow.yaml` plus the specific legacy docs:
    - `.claude/commands/<command>.md`
    - `.claude/checkpoints/<command>.md`
-5. If the runtime contract declares `subagents.enabled: true`, read `docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
+5. If the runtime contract declares `subagents.enabled: true`, read `.claude/docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
 6. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
 7. If the runtime contract declares `result_contract`, report the final command result with the required fields: `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
 8. Treat `.claude/runtime/readsets/<command>.yaml` as generated read-scope evidence when maintaining Harness read behavior; do not edit readset files manually.
@@ -52,8 +52,8 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - `.claude/rules/command-contracts.md`
 - `.claude/rules/lifecycle-state-machine.md`
 - `.claude/rules/role-contracts.md`
-- `docs/maintenance/legacy/commands/<command>.md`
-- `docs/maintenance/legacy/checkpoints/<command>.md`
+- `.claude/docs/maintenance/legacy/commands/<command>.md`
+- `.claude/docs/maintenance/legacy/checkpoints/<command>.md`
 
 ## Guardrails
 
@@ -66,7 +66,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Treat `anti_rationalizations` and `red_flags` as stop-or-correct signals, not advisory prose.
 - Treat `result_contract` as the command closeout shape; do not replace evidence, risks, or next action with a freeform summary.
 - Do not create, modify, archive, or mark complete a change without fresh verification evidence.
-- Do not use `changes/task-board.md` or `context/dev-map.md` as a substitute for `spec.md`, `tasks.md`, `review.md`, or `test-spec.md`.
+- Do not use `.cc/changes/task-board.md` or `.cc/context/dev-map.md` as a substitute for `spec.md`, `tasks.md`, `review.md`, or `test-spec.md`.
 
 ## Deterministic Checks
 
@@ -77,7 +77,7 @@ Use project scripts instead of re-describing checks in prose:
 .claude/scripts/cc-verify --change <change-id>
 .claude/scripts/cc-verify --fixture <fixture-path>
 .claude/scripts/cc-role-check --command <cc-command> --change <change-id>
-.claude/scripts/cc-schema-check .claude/changes
+.claude/scripts/cc-schema-check .cc/changes
 .claude/scripts/cc-eval .claude/evals
 .claude/scripts/cc-readset --check
 ```

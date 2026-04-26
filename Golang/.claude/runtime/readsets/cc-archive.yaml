@@ -7,10 +7,10 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-archive.yaml
-- .claude/changes/<change-id>/review.md
-- .claude/changes/<change-id>/log.md
-- .claude/changes/task-board.md
+- .cc/changes/<change-id>/review.md
+- .cc/changes/<change-id>/log.md
+- .cc/changes/task-board.md
 - .claude/rules/memory-policy.md
 optional_reads:
-- .claude/knowledge/index.md
+- .cc/knowledge/index.md
 conditional_reads: {}

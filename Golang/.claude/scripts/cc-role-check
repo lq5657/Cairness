@@ -109,13 +109,17 @@ def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], boo
 
 
 def concretize_pattern(pattern: str) -> str:
-    if pattern.startswith(".claude/"):
+    if pattern.startswith(".claude/") or pattern.startswith(".cc/"):
         return pattern
-    claude_relative_prefixes = (
+    state_relative_prefixes = (
         "changes/",
         "context/",
         "audits/",
         "knowledge/",
+    )
+    if pattern.startswith(state_relative_prefixes):
+        return f".cc/{pattern}"
+    claude_relative_prefixes = (
         "rules/",
         "schemas/",
         "scripts/",

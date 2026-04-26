@@ -15,10 +15,10 @@ state:
 
 writes:
   - test_files
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/task-board.md
 
 forbids:
   - use_cc_test_as_default_apply_minimum_verification
@@ -26,15 +26,15 @@ forbids:
   - mark_mapping_closed_without_evidence
 
 required_reads:
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/tasks.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  - .cc/changes/task-board.md
   - .claude/rules/testing-strategy.md
   - .claude/rules/verification.md
 
 optional_reads:
-  - .claude/changes/<change-id>/test-spec.md
-  - .claude/changes/<change-id>/log.md
+  - .cc/changes/<change-id>/test-spec.md
+  - .cc/changes/<change-id>/log.md
 
 preconditions:
   - spec_status_is_apply_or_review
@@ -66,7 +66,7 @@ topic_rules:
 
 subagents:
   enabled: true
-  policy: docs/maintenance/subagent-model.md
+  policy: .claude/docs/maintenance/subagent-model.md
   merge_owner: main_flow
   final_writes_by: main_flow
   write_scope_policy: parent_writes_subset

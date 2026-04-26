@@ -7,15 +7,15 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-test.yaml
-- .claude/changes/<change-id>/spec.md
-- .claude/changes/<change-id>/tasks.md
-- .claude/changes/task-board.md
+- .cc/changes/<change-id>/spec.md
+- .cc/changes/<change-id>/tasks.md
+- .cc/changes/task-board.md
 - .claude/rules/testing-strategy.md
 - .claude/rules/verification.md
-- docs/maintenance/subagent-model.md
+- .claude/docs/maintenance/subagent-model.md
 optional_reads:
-- .claude/changes/<change-id>/test-spec.md
-- .claude/changes/<change-id>/log.md
+- .cc/changes/<change-id>/test-spec.md
+- .cc/changes/<change-id>/log.md
 conditional_reads:
   when_change_touches_database:
   - .claude/rules/database-changes.md

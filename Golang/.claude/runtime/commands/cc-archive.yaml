@@ -11,10 +11,10 @@ state:
   change_to: done
 
 writes:
-  - .claude/changes/<change-id>/spec.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/task-board.md
-  - .claude/knowledge/*
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/task-board.md
+  - .cc/knowledge/*
 
 forbids:
   - business_code_write
@@ -25,13 +25,13 @@ forbids:
   - mark_done_before_knowledge_choice
 
 required_reads:
-  - .claude/changes/<change-id>/review.md
-  - .claude/changes/<change-id>/log.md
-  - .claude/changes/task-board.md
+  - .cc/changes/<change-id>/review.md
+  - .cc/changes/<change-id>/log.md
+  - .cc/changes/task-board.md
   - .claude/rules/memory-policy.md
 
 optional_reads:
-  - .claude/knowledge/index.md
+  - .cc/knowledge/index.md
 
 preconditions:
   - review_exists_and_allows_archive

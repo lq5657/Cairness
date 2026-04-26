@@ -8,7 +8,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| `context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| `.cc/context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次是“系统讲解”，不是“项目体检” | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次不是 `cc-propose`、`cc-apply` 或 `cc-review` | ✅ / ❌ / ⚠️ / N/A |
 | 已明确 `scope`，或已接受默认全仓 | ✅ / ❌ / ⚠️ / N/A |
@@ -17,7 +17,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已读取 `context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `.cc/context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已围绕当前 `scope` 读取关键结构、入口和链路证据 | ✅ / ❌ / ⚠️ / N/A |
 | 已输出架构、数据流、技术机制、难点和阅读路径中的必要内容 | ✅ / ❌ / ⚠️ / N/A |
 | 关键图示使用 Mermaid 或 ASCII 文本图表达 | ✅ / ❌ / ⚠️ / N/A |
@@ -29,7 +29,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已输出 `context/system-overview.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已输出 `.cc/context/system-overview.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已给出推荐阅读路径或后续理解顺序 | ✅ / ❌ / ⚠️ / N/A |
 | 已明确仍待确认的关键系统认知缺口 | ✅ / ❌ / ⚠️ / N/A |
 | 对不具备项、待确认项和已确认项的边界表达清晰 | ✅ / ❌ / ⚠️ / N/A |

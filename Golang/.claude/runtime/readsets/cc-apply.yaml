@@ -7,14 +7,14 @@ generated_from:
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/commands/cc-apply.yaml
-- .claude/changes/<change-id>/spec.md
-- .claude/changes/<change-id>/tasks.md
-- .claude/context/dev-map.md
-- .claude/changes/task-board.md
+- .cc/changes/<change-id>/spec.md
+- .cc/changes/<change-id>/tasks.md
+- .cc/context/dev-map.md
+- .cc/changes/task-board.md
 - .claude/harness.config.yaml
 - .claude/rules/verification.md
 - .claude/rules/coding-style.md
-- docs/maintenance/subagent-model.md
+- .claude/docs/maintenance/subagent-model.md
 optional_reads: []
 conditional_reads:
   when_task_touches_logic_bug_chain_or_data_access:

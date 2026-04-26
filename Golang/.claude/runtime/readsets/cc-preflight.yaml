@@ -9,8 +9,8 @@ always_reads:
 - .claude/runtime/commands/cc-preflight.yaml
 - .claude/harness.config.yaml
 - .claude/workflows/cc-workflow.yaml
-- docs/adoption/integration-preflight-checklist.md
-- .claude/context/dev-map.md
-- .claude/changes/task-board.md
+- .claude/docs/adoption/integration-preflight-checklist.md
+- .cc/context/dev-map.md
+- .cc/changes/task-board.md
 optional_reads: []
 conditional_reads: {}
