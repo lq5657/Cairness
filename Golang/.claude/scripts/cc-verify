@@ -26,6 +26,66 @@ def command_text(command: list[str]) -> str:
     return " ".join(command)
 
 
+def git_changed_paths(project_root: Path) -> list[Path]:
+    repo_root = project_root.parent
+    commands = [
+        ["git", "diff", "--name-only", "HEAD"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
+    ]
+    paths: set[Path] = set()
+    for command in commands:
+        completed = subprocess.run(command, cwd=str(repo_root), text=True, capture_output=True, check=False)
+        if completed.returncode != 0:
+            continue
+        for line in completed.stdout.splitlines():
+            if not line.strip():
+                continue
+            paths.add((repo_root / line.strip()).resolve())
+    return sorted(paths)
+
+
+def is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def changed_change_dirs(paths: list[Path], project_root: Path) -> list[Path]:
+    changes_root = project_root / ".cc" / "changes"
+    dirs: set[Path] = set()
+    for path in paths:
+        if not is_relative_to(path, changes_root):
+            continue
+        relative = path.resolve().relative_to(changes_root.resolve())
+        if relative.parts and relative.parts[0] != "task-board.md":
+            candidate = changes_root / relative.parts[0]
+            if candidate.exists():
+                dirs.add(candidate)
+    return sorted(dirs)
+
+
+def has_harness_changes(paths: list[Path], project_root: Path) -> bool:
+    repo_root = project_root.parent
+    watched_roots = [
+        project_root / ".claude",
+        project_root / "README.md",
+        repo_root / "README.md",
+        repo_root / ".github",
+    ]
+    return any(any(is_relative_to(path, root) if root.is_dir() else path.resolve() == root.resolve() for root in watched_roots) for path in paths)
+
+
+def has_go_changes(paths: list[Path], project_root: Path) -> bool:
+    for path in paths:
+        if not is_relative_to(path, project_root):
+            continue
+        if path.name == "go.mod" or path.name == "go.sum" or path.suffix == ".go":
+            return True
+    return False
+
+
 def fingerprints(stdout: str, stderr: str) -> list[str]:
     lines: list[str] = []
     for line in (stdout + "\n" + stderr).splitlines():
@@ -217,6 +277,9 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     config_path = claude_root / "harness.config.yaml"
     config_text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
     change_dir = changes_root / args.change if args.change else None
+    changed_paths = git_changed_paths(project_root) if args.changed_only else []
+    changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
+    harness_changed = has_harness_changes(changed_paths, project_root) if args.changed_only else False
 
     results: list[dict[str, object]] = []
     if args.change and change_dir and not change_dir.exists():
@@ -245,24 +308,46 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
-        lint_targets = [str(claude_root)]
-        if sync_target.exists():
-            lint_targets.append(str(sync_target))
-        results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
-        results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
-        results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
-        results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
-        results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root))
-        if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
-            results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
-        results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+        if args.changed_only:
+            if not harness_changed and not changed_dirs:
+                results.append(skipped_step("changed-only", "harness", "no changed Harness or change files detected"))
+            lint_targets = [str(claude_root)] if harness_changed else []
+            lint_targets.extend(str(path) for path in changed_dirs)
+            if lint_targets:
+                results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
+            if changed_dirs:
+                changed_dir_args = [str(path) for path in changed_dirs]
+                results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), *changed_dir_args], project_root))
+                results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root))
+                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root))
+            if harness_changed:
+                results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
+                results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
+                if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
+                    results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
+                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+        else:
+            lint_targets = [str(claude_root)]
+            if sync_target.exists():
+                lint_targets.append(str(sync_target))
+            results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
+            results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
+            results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
+            results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
+            results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root))
+            if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
+                results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
+            results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]
             if args.change:
                 command.extend(["--change", args.change])
             results.append(run_step("cc-role-check", "harness", command, project_root))
 
-    if not args.harness_only:
+    run_go_checks = not args.harness_only
+    if args.changed_only and not args.fixture and not args.go_only and not has_go_changes(changed_paths, project_root):
+        run_go_checks = False
+    if run_go_checks:
         go_mod = go_project_root / "go.mod"
         if not go_mod.exists():
             if args.fixture:
@@ -297,7 +382,8 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         "change_id": args.change or "",
         "fixture": args.fixture or "",
         "command": args.command or "",
-        "mode": "harness-only" if args.harness_only else "go-only" if args.go_only else "full",
+        "mode": "changed-only" if args.changed_only else "harness-only" if args.harness_only else "go-only" if args.go_only else "full",
+        "changed_files": [str(path) for path in changed_paths],
         "status": "failed" if failed else "passed",
         "results": results,
     }
@@ -338,6 +424,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--change", help="Limit sync checks and report metadata to one change-id.")
     parser.add_argument("--fixture", help="Run Go checks from a fixture path relative to the project root.")
     parser.add_argument("--command", help="Run role/write-scope checks for a cc-* command.")
+    parser.add_argument("--changed-only", action="store_true", help="Run the smallest deterministic check set for changed files.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--output", help="Write JSON report to this file.")
     parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")

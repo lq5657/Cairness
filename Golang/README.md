@@ -77,6 +77,13 @@
 - `.claude/scripts/cc-event-check`
 - `.claude/scripts/cc-behavior-check`
 
+常用验证：
+
+```bash
+.claude/scripts/cc-verify --harness-only --verbose
+.claude/scripts/cc-verify --changed-only --verbose
+```
+
 ### 3. 人类维护说明
 
 维护和示例文档统一放到：
