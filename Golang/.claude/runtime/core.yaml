@@ -32,6 +32,11 @@ runtime_readsets:
   index: .claude/runtime/readsets/index.yaml
   schema: .claude/schemas/runtime-readset.schema.json
 
+runtime_protocol:
+  protocol: .claude/runtime/protocol.yaml
+  schema: .claude/schemas/command-protocol.schema.json
+  default_language_profile: .claude/runtime/languages/golang.yaml
+
 legacy_fallback:
   commands_dir: .claude/commands
   checkpoints_dir: .claude/checkpoints

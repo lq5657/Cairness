@@ -1,0 +1,104 @@
+version: 1
+protocol_id: agent-command-protocol
+summary: Standard command resolution, input validation, path resolution, and error reporting for cc-* agent workflows.
+
+command_flow:
+  - resolve_command
+  - validate_inputs
+  - resolve_paths
+  - load_runtime_readset
+  - execute_runtime_contract
+  - validate_result_contract
+
+path_roles:
+  framework_root:
+    path: .claude
+    kind: dir
+  state_root:
+    path: .cc
+    kind: dir
+  project_context:
+    path: .cc/context/project-context.md
+    kind: file
+  dev_map:
+    path: .cc/context/dev-map.md
+    kind: file
+  task_board:
+    path: .cc/changes/task-board.md
+    kind: file
+  change_dir:
+    path: .cc/changes/<change-id>
+    kind: dir
+  audit_dir:
+    path: .cc/audits/<audit-id>
+    kind: dir
+  knowledge_root:
+    path: .cc/knowledge
+    kind: dir
+
+input_contracts:
+  change_id:
+    type: string
+    pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+    resolves_to: change_dir
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  audit_id:
+    type: string
+    pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+    resolves_to: audit_dir
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  optional_scope:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+  optional_mode:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+
+error_taxonomy:
+  missing_required_input:
+    status: blocked
+    blocking: true
+  invalid_input:
+    status: blocked
+    blocking: true
+  unresolved_path:
+    status: blocked
+    blocking: true
+  missing_required_artifact:
+    status: blocked
+    blocking: true
+  invalid_state:
+    status: blocked
+    blocking: true
+  readset_drift:
+    status: blocked
+    blocking: true
+  workflow_runtime_drift:
+    status: blocked
+    blocking: true
+  validation_failed:
+    status: blocked
+    blocking: true
+  user_confirmation_required:
+    status: blocked
+    blocking: true
+  unsupported_command:
+    status: blocked
+    blocking: true
+  legacy_fallback_required:
+    status: partial
+    blocking: false
+
+result_rendering:
+  success_template: .claude/templates/results/command-result.md
+  error_template: .claude/templates/results/command-error.md
+
+language_profile:
+  default: golang
+  profiles:
+    golang: .claude/runtime/languages/golang.yaml
+

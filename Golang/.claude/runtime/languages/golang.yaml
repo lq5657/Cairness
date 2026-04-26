@@ -1,0 +1,31 @@
+version: 1
+language: golang
+
+project_detection:
+  module_file: go.mod
+  source_globs:
+    - "**/*.go"
+
+verification:
+  unit:
+    command:
+      - go
+      - test
+      - ./...
+    evidence: unit
+  static:
+    command:
+      - go
+      - vet
+      - ./...
+    evidence: build
+  lint:
+    command:
+      - golangci-lint
+      - run
+    evidence: build
+    optional: true
+
+fixtures:
+  default: .claude/fixtures/go-http-user-service
+

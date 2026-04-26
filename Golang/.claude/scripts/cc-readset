@@ -86,6 +86,19 @@ def runtime_readset_config(core: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def runtime_protocol_config(core: dict[str, Any]) -> dict[str, str]:
+    config = core.get("runtime_protocol") if isinstance(core.get("runtime_protocol"), dict) else {}
+    return {
+        "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
+        "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
+    }
+
+
+def runtime_protocol_reads(core: dict[str, Any]) -> list[str]:
+    config = runtime_protocol_config(core)
+    return ordered_unique([config["protocol"], config["default_language_profile"]])
+
+
 def command_order(core: dict[str, Any]) -> list[str]:
     migrated = string_list(core.get("migrated_commands"))
     runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
@@ -94,7 +107,7 @@ def command_order(core: dict[str, Any]) -> list[str]:
     return ordered
 
 
-def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any]) -> dict[str, Any]:
+def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any], core: dict[str, Any]) -> dict[str, Any]:
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     always_topic_rules = string_list(topic_rules.get("always"))
     conditional_reads: dict[str, list[str]] = {}
@@ -107,6 +120,7 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
     always_reads = [
         CORE_PATH,
+        *runtime_protocol_reads(core),
         manifest_path,
         *string_list(manifest.get("required_reads")),
         *always_topic_rules,
@@ -120,6 +134,7 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
         "source_manifest": manifest_path,
         "generated_from": [
             CORE_PATH,
+            *runtime_protocol_reads(core),
             manifest_path,
         ],
         "always_reads": ordered_unique(always_reads),
@@ -151,7 +166,7 @@ def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, 
         if not isinstance(manifest, dict):
             issues.append(Issue("E_READSET006", str(resolved), "runtime command manifest must be a mapping"))
             continue
-        readsets[command] = derive_command_readset(command, manifest_path, manifest)
+        readsets[command] = derive_command_readset(command, manifest_path, manifest, core)
         commands_index[command] = f"{config['dir']}/{command}.yaml"
 
     index = {

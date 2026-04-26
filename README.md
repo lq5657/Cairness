@@ -14,6 +14,8 @@ Code Spec. 目前主维护资产是 `Golang/` 下这套面向 Claude Code 的 Sp
 
 - `Golang/.claude/skills/cc-harness/SKILL.md`
 - `Golang/.claude/runtime/core.yaml`
+- `Golang/.claude/runtime/protocol.yaml`
+- `Golang/.claude/runtime/languages/golang.yaml`
 - `Golang/.claude/runtime/commands/<command>.yaml`
 
 ### 脚本和 CI 真源
@@ -23,13 +25,13 @@ Code Spec. 目前主维护资产是 `Golang/` 下这套面向 Claude Code 的 Sp
 - `Golang/.claude/schemas/*.json`
 - `Golang/.claude/scripts/*`
 - `Golang/.claude/evals/*`
-- `Golang/fixtures/*`
+- `Golang/.claude/fixtures/*`
 
 ### 人类维护说明
 
 - `Golang/README.md`
-- `Golang/docs/examples/*`
-- `Golang/docs/adoption/*`
-- `Golang/docs/maintenance/*`
+- `Golang/.claude/docs/examples/*`
+- `Golang/.claude/docs/adoption/*`
+- `Golang/.claude/docs/maintenance/*`
 
 详见 [Golang/README.md](Golang/README.md)。

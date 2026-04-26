@@ -461,6 +461,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         "migrated_commands:",
         "runtime_commands:",
         "runtime_readsets:",
+        "runtime_protocol:",
         "legacy_fallback:",
         "governance:",
         "subagent_policy:",
@@ -483,6 +484,14 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         expected_mapping = rf"^\s+{re.escape(command)}:\s*\.claude/runtime/commands/{re.escape(command)}\.yaml\s*$"
         if re.search(expected_mapping, core_text, re.M) is None:
             errors.append(f"{core_path}: runtime_commands missing {command}")
+
+    for required_path in (
+        root / "runtime" / "protocol.yaml",
+        root / "runtime" / "languages" / "golang.yaml",
+        root / "schemas" / "command-protocol.schema.json",
+    ):
+        if not required_path.exists():
+            errors.append(f"{required_path}: missing agent command protocol asset")
         path = runtime_dir / f"{command}.yaml"
         if not path.exists():
             errors.append(f"{path}: missing migrated runtime command")

@@ -11,6 +11,7 @@
     "migrated_commands",
     "runtime_commands",
     "runtime_readsets",
+    "runtime_protocol",
     "legacy_fallback",
     "governance",
     "scripts",
@@ -65,6 +66,25 @@
         "schema": {
           "type": "string",
           "pattern": "^\\.claude/schemas/runtime-readset\\.schema\\.json$"
+        }
+      }
+    },
+    "runtime_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "schema", "default_language_profile"],
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/protocol\\.yaml$"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/command-protocol\\.schema\\.json$"
+        },
+        "default_language_profile": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/languages/[a-z0-9_-]+\\.yaml$"
         }
       }
     },

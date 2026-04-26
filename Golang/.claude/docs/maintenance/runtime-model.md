@@ -16,11 +16,14 @@
 
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/runtime/core.yaml`
+- `.claude/runtime/protocol.yaml`
+- `.claude/runtime/languages/golang.yaml`
 - `.claude/runtime/commands/<command>.yaml`
 
 runtime manifest 的机器契约是：
 
 - `.claude/schemas/runtime-core.schema.json`
+- `.claude/schemas/command-protocol.schema.json`
 - `.claude/schemas/runtime-command.schema.json`
 - `.claude/schemas/topic-rule.schema.json`
 - `.claude/schemas/runtime-readset.schema.json`
@@ -30,6 +33,8 @@ runtime manifest 的机器契约是：
 每个 migrated command manifest 还必须声明 `result_contract`。该契约要求命令最终输出包含 `status`、`summary`、`writes`、`evidence`、`risks` 和 `next_action`，并把 evidence / risks 回指到 auto validation、写入产物、forbids、red flags 或 stop conditions。
 
 每个 migrated command 的 read set 由 `.claude/scripts/cc-readset` 生成到 `.claude/runtime/readsets/`。生成物不是 authoring source；runtime manifest 才是来源。`cc-readset --check` 和 `cc-schema-check` 会阻止 readset 与 manifest 漂移。
+
+`.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/golang.yaml` 只承载 Go-specific project detection、verification commands 和 fixture path。
 
 同一个检查还会校验 migrated command 的 workflow/runtime parity：
 
@@ -130,6 +135,10 @@ runtime manifest 是给 Claude 的轻量执行面，不替代 workflow 的校验
 ### 为什么 runtime manifest 需要 schema
 
 runtime manifest 已经成为 migrated command 的默认执行入口。只靠正则检查无法稳定发现字段类型错误、额外字段、topic rule 漏注册、command path 漂移或 subagent contract 结构破损。`runtime-core.schema.json` 与 `runtime-command.schema.json` 把这些约束变成可校验契约，`cc-schema-check` 负责把 schema 校验和跨文件引用校验放进常规 `cc-verify`。
+
+### 为什么需要 Agent command protocol
+
+Harness 的用户入口仍然是 Claude Code 中的 `cc-*`，不应该要求用户记一个独立 dispatcher CLI。但命令解析、输入校验、路径角色和错误格式不能散落在每个 command manifest、skill 文案和脚本里。`protocol.yaml` 把这些 Agent-facing 约束集中起来，`command-protocol.schema.json` 和 `cc-schema-check` 负责防止协议漂移，语言 profile 则把 Go-specific 检测和验证能力与通用 lifecycle 分离。
 
 ### 为什么命令结果也要结构化
 

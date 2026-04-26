@@ -106,6 +106,22 @@ def skipped_step(name: str, kind: str, reason: str) -> dict[str, object]:
     }
 
 
+def failed_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, object]:
+    return {
+        "name": name,
+        "kind": kind,
+        "command": [],
+        "cwd": str(cwd),
+        "status": "failed",
+        "exit_code": 1,
+        "duration_ms": 0,
+        "stdout": "",
+        "stderr": reason,
+        "fingerprints": [reason],
+        "warnings": [],
+    }
+
+
 def build_report(args: argparse.Namespace) -> dict[str, object]:
     claude_root = Path(__file__).resolve().parent.parent
     project_root = claude_root.parent
@@ -155,7 +171,17 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     if not args.harness_only:
         go_mod = go_project_root / "go.mod"
         if not go_mod.exists():
-            results.append(skipped_step("go checks", "go", f"{go_mod} not found"))
+            if args.fixture:
+                results.append(
+                    failed_step(
+                        "go checks",
+                        "go",
+                        f"explicit fixture {args.fixture} is invalid: {go_mod} not found",
+                        go_project_root,
+                    )
+                )
+            else:
+                results.append(skipped_step("go checks", "go", f"{go_mod} not found"))
         else:
             if bool_from_config(config_text, "test", True):
                 results.append(run_step("go test", "go", ["go", "test", "./..."], go_project_root))

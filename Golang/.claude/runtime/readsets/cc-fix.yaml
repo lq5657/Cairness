@@ -3,9 +3,13 @@ command: cc-fix
 source_manifest: .claude/runtime/commands/cc-fix.yaml
 generated_from:
 - .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/languages/golang.yaml
 - .claude/runtime/commands/cc-fix.yaml
 always_reads:
 - .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/languages/golang.yaml
 - .claude/runtime/commands/cc-fix.yaml
 - .cc/changes/<change-id>/review.md
 - .cc/changes/<change-id>/spec.md

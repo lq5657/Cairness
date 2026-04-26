@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added an Agent-native command protocol at `.claude/runtime/protocol.yaml` to standardize command resolution, input validation, path roles, error taxonomy, and result rendering without adding a user-facing CLI.
+- Added a Go language profile at `.claude/runtime/languages/golang.yaml` for Go module detection, verification commands, and default fixture metadata.
+- Added protocol schema validation and readset integration so migrated commands include protocol/profile reads and `cc-schema-check` rejects protocol drift.
+- Changed explicit `cc-verify --fixture <path>` Go module misses from skipped to failed so invalid fixture paths cannot silently pass.
+- Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
+
 ## 0.20.0 - 2026-04-25
 
 - Split upgradeable framework assets from project-generated state: `.claude/` remains the framework root, while `.cc/` stores project context, changes, audits, and knowledge.

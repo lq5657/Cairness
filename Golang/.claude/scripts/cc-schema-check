@@ -57,6 +57,7 @@ TASK_FIELDS = [
 RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
 RUNTIME_READSET_SCHEMA = "runtime-readset.schema.json"
+COMMAND_PROTOCOL_SCHEMA = "command-protocol.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
@@ -638,6 +639,20 @@ def runtime_readset_config(core: dict[str, Any] | None) -> dict[str, str]:
     }
 
 
+def runtime_protocol_config(core: dict[str, Any] | None) -> dict[str, str]:
+    config = core.get("runtime_protocol") if isinstance(core, dict) and isinstance(core.get("runtime_protocol"), dict) else {}
+    return {
+        "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
+        "schema": config.get("schema", f".claude/schemas/{COMMAND_PROTOCOL_SCHEMA}"),
+        "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
+    }
+
+
+def runtime_protocol_reads(core: dict[str, Any] | None) -> list[str]:
+    config = runtime_protocol_config(core)
+    return ordered_unique([config["protocol"], config["default_language_profile"]])
+
+
 def command_order(core: dict[str, Any]) -> list[str]:
     runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
     ordered = [command for command in string_list(core.get("migrated_commands")) if command in runtime_commands]
@@ -645,7 +660,7 @@ def command_order(core: dict[str, Any]) -> list[str]:
     return ordered
 
 
-def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any]) -> dict[str, Any]:
+def derive_command_readset(command: str, manifest_path: str, manifest: dict[str, Any], core: dict[str, Any] | None = None) -> dict[str, Any]:
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     conditional_reads: dict[str, list[str]] = {}
     for condition, rules in topic_rules.items():
@@ -657,6 +672,7 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
     always_reads = [
         ".claude/runtime/core.yaml",
+        *runtime_protocol_reads(core),
         manifest_path,
         *string_list(manifest.get("required_reads")),
         *string_list(topic_rules.get("always")),
@@ -670,6 +686,7 @@ def derive_command_readset(command: str, manifest_path: str, manifest: dict[str,
         "source_manifest": manifest_path,
         "generated_from": [
             ".claude/runtime/core.yaml",
+            *runtime_protocol_reads(core),
             manifest_path,
         ],
         "always_reads": ordered_unique(always_reads),
@@ -693,7 +710,7 @@ def derive_readsets(project_root: Path, core: dict[str, Any], issues: list[Issue
         manifest = load_yaml_file(resolved, issues)
         if not isinstance(manifest, dict):
             continue
-        command_readsets[command] = derive_command_readset(command, manifest_path, manifest)
+        command_readsets[command] = derive_command_readset(command, manifest_path, manifest, core)
         commands_index[command] = f"{config['dir']}/{command}.yaml"
     index = {
         "version": 1,
@@ -747,6 +764,70 @@ def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, is
     return checked
 
 
+def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
+    project_root = claude_root.parent
+    config = runtime_protocol_config(core)
+    protocol_path = project_path(project_root, config["protocol"])
+    schema_path = project_path(project_root, config["schema"])
+    language_path = project_path(project_root, config["default_language_profile"])
+    checked: list[str] = []
+
+    protocol: dict[str, Any] | None = None
+    schema: dict[str, Any] | None = None
+    if schema_path is not None:
+        checked.append(str(schema_path))
+        schema = load_json_file(schema_path, issues)
+    if protocol_path is not None:
+        checked.append(str(protocol_path))
+        protocol = load_yaml_file(protocol_path, issues)
+        if isinstance(protocol, dict) and schema is not None:
+            validate_against_schema(protocol, schema, schema, [], protocol_path, issues)
+    if language_path is not None:
+        checked.append(str(language_path))
+        language = load_yaml_file(language_path, issues)
+        if isinstance(language, dict):
+            for field in ("version", "language", "project_detection", "verification", "fixtures"):
+                if field not in language:
+                    add(issues, "E_SCHEMA170", language_path, f"language profile missing {field}")
+
+    if not isinstance(protocol, dict) or protocol_path is None:
+        return checked
+
+    path_roles = protocol.get("path_roles") if isinstance(protocol.get("path_roles"), dict) else {}
+    error_taxonomy = protocol.get("error_taxonomy") if isinstance(protocol.get("error_taxonomy"), dict) else {}
+    input_contracts = protocol.get("input_contracts") if isinstance(protocol.get("input_contracts"), dict) else {}
+    for name, contract in input_contracts.items():
+        if not isinstance(contract, dict):
+            continue
+        resolves_to = contract.get("resolves_to")
+        if isinstance(resolves_to, str) and resolves_to not in path_roles:
+            add(issues, "E_SCHEMA171", protocol_path, f"input_contracts.{name}.resolves_to references unknown path role {resolves_to}")
+        for error_field in ("missing_error", "invalid_error"):
+            error_code = contract.get(error_field)
+            if isinstance(error_code, str) and error_code != "none" and error_code not in error_taxonomy:
+                add(issues, "E_SCHEMA172", protocol_path, f"input_contracts.{name}.{error_field} references unknown error {error_code}")
+
+    rendering = protocol.get("result_rendering") if isinstance(protocol.get("result_rendering"), dict) else {}
+    for field in ("success_template", "error_template"):
+        require_declared_path(project_root, protocol_path, rendering.get(field), f"result_rendering.{field}", issues)
+
+    language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
+    profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
+    default_profile = language_profile.get("default")
+    if isinstance(default_profile, str) and default_profile not in profiles:
+        add(issues, "E_SCHEMA173", protocol_path, f"language_profile.default {default_profile} is not declared in profiles")
+    for profile_name, declared in profiles.items():
+        require_declared_path(project_root, protocol_path, declared, f"language_profile.profiles.{profile_name}", issues)
+        profile_path = project_path(project_root, declared)
+        if profile_path is not None and str(profile_path) not in checked:
+            checked.append(str(profile_path))
+    if language_path is not None and profiles and str(language_path) not in {
+        str(project_path(project_root, value)) for value in profiles.values() if isinstance(value, str)
+    }:
+        add(issues, "E_SCHEMA174", protocol_path, "runtime_protocol.default_language_profile must be declared in protocol language_profile.profiles")
+    return checked
+
+
 def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict) or not isinstance(core.get("topic_rules"), dict):
         return []
@@ -793,7 +874,7 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
 
     for field in ("workflow_definition",):
         require_declared_path(project_root, core_path, core.get(field), field, issues)
-    for section in ("runtime_readsets", "legacy_fallback", "governance", "scripts", "topic_rules"):
+    for section in ("runtime_readsets", "runtime_protocol", "legacy_fallback", "governance", "scripts", "topic_rules"):
         values = core.get(section)
         if isinstance(values, dict):
             for key, declared in values.items():
@@ -1088,6 +1169,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
 def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[list[str], list[str]]:
     core = validate_runtime_core(claude_root, issues)
     checked = [str(claude_root / "runtime" / "core.yaml")]
+    checked.extend(validate_agent_command_protocol(claude_root, core, issues))
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_workflow_runtime_parity(claude_root, core, issues))
     checked.extend(validate_runtime_readsets(claude_root, core, issues))

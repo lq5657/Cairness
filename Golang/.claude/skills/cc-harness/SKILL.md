@@ -13,16 +13,18 @@ For any `cc-*` request:
 
 1. Match the command literally. Do not reinterpret a known `cc-*` command as another workflow.
 2. Read `.claude/runtime/core.yaml`.
-3. If `.claude/runtime/commands/<command>.yaml` exists, use it as the runtime contract and do not load legacy command/checkpoint docs by default.
-4. If no runtime contract exists, read `.claude/workflows/cc-workflow.yaml` plus the specific legacy docs:
+3. Read `.claude/runtime/protocol.yaml` and the default language profile declared by runtime core.
+4. Resolve the command, validate required inputs, and resolve path roles before reading business code or writing artifacts.
+5. If `.claude/runtime/commands/<command>.yaml` exists, use it as the runtime contract and do not load legacy command/checkpoint docs by default.
+6. If no runtime contract exists, read `.claude/workflows/cc-workflow.yaml` plus the specific legacy docs:
    - `.claude/commands/<command>.md`
    - `.claude/checkpoints/<command>.md`
-5. If the runtime contract declares `subagents.enabled: true`, read `.claude/docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
-6. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
-7. If the runtime contract declares `result_contract`, report the final command result with the required fields: `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
-8. Treat `.claude/runtime/readsets/<command>.yaml` as generated read-scope evidence when maintaining Harness read behavior; do not edit readset files manually.
-9. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
-10. Run the deterministic checks declared by `.claude/harness.config.yaml`.
+7. If the runtime contract declares `subagents.enabled: true`, read `.claude/docs/maintenance/subagent-model.md` and keep the main flow responsible for merge, final writes, and validation.
+8. If the runtime contract declares `anti_rationalizations` or `red_flags`, actively reject those shortcuts before finalizing the command.
+9. If the runtime contract declares `result_contract`, report the final command result with the required fields: `status`, `summary`, `writes`, `evidence`, `risks`, and `next_action`.
+10. Treat `.claude/runtime/readsets/<command>.yaml` as generated read-scope evidence when maintaining Harness read behavior; do not edit readset files manually.
+11. Load only the topic rules named by the runtime contract or required by the active task. For proposal sizing and task splitting, load `.claude/rules/change-sizing.md`; for external or version-sensitive technical claims, load `.claude/rules/source-driven-development.md`.
+12. Run the deterministic checks declared by `.claude/harness.config.yaml`.
 
 If a required argument is missing, stop before reading business code or executing the workflow.
 
@@ -58,6 +60,8 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 ## Guardrails
 
 - Keep `cc-*` as the user-facing command spelling; do not rewrite it as slash commands.
+- Treat `.claude/runtime/protocol.yaml` as the Agent-native command protocol; do not introduce a user-facing dispatcher CLI.
+- Validate inputs and path roles through the protocol before command execution.
 - Treat `.claude/runtime/commands/<command>.yaml` as the highest-priority runtime source for migrated commands.
 - Treat `.claude/workflows/cc-workflow.yaml` as the script and CI truth for state, writes, and auto-validation.
 - Treat subagent output as evidence input. The parent command remains responsible for state, final artifacts, and deterministic checks.

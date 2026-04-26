@@ -17,6 +17,8 @@
 ```text
 .claude/skills/cc-harness/SKILL.md
 .claude/runtime/core.yaml
+.claude/runtime/protocol.yaml
+.claude/runtime/languages/golang.yaml
 .claude/runtime/commands/<command>.yaml
 ```
 
@@ -153,11 +155,23 @@ runtime manifest 现在有机器 schema：
 
 ```text
 .claude/schemas/runtime-core.schema.json
+.claude/schemas/command-protocol.schema.json
 .claude/schemas/runtime-command.schema.json
 .claude/schemas/runtime-readset.schema.json
 ```
 
 `.claude/scripts/cc-schema-check` 会校验 `.claude/runtime/core.yaml` 和全部 `.claude/runtime/commands/*.yaml`，包括字段类型、额外字段、topic rule 注册、runtime command 路径、subagent contract 深度边界、subagent output contract 和 result contract。
+
+## Agent Command Protocol
+
+`cc-*` 仍是 Claude Code 中的用户入口，不引入独立 dispatcher CLI。统一入口能力由运行时协议提供：
+
+```text
+.claude/runtime/protocol.yaml
+.claude/runtime/languages/golang.yaml
+```
+
+协议层约束 command resolution、input validation、path role resolution、error taxonomy 和 result rendering；语言 profile 只承载 Go module detection、fixture 和 Go verification commands。`.claude/scripts/cc-schema-check` 会校验协议结构、错误引用、path role 引用和默认语言 profile。
 
 ## Runtime Readsets
 
@@ -245,12 +259,15 @@ runtime 注册的 topic rules 现在也有机器约束：
 优先阅读：
 
 1. `.claude/runtime/core.yaml`
-2. `.claude/workflows/cc-workflow.yaml`
-3. `.claude/docs/maintenance/runtime-model.md`
-4. `.claude/docs/maintenance/subagent-model.md`
-5. `.claude/docs/maintenance/rule-skill-anatomy.md`
-6. `.claude/docs/examples/changes/`
-7. `.claude/docs/adoption/integration-preflight-checklist.md`
+2. `.claude/runtime/protocol.yaml`
+3. `.claude/runtime/languages/golang.yaml`
+4. `.claude/workflows/cc-workflow.yaml`
+5. `.claude/docs/maintenance/runtime-model.md`
+6. `.claude/docs/maintenance/subagent-model.md`
+7. `.claude/docs/maintenance/harness-optimization-roadmap.md`
+8. `.claude/docs/maintenance/rule-skill-anatomy.md`
+9. `.claude/docs/examples/changes/`
+10. `.claude/docs/adoption/integration-preflight-checklist.md`
 
 ## 常用验证
 
