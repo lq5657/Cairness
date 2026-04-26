@@ -328,15 +328,16 @@ def canonical_language_name(raw: str, known_profiles: set[str]) -> str:
     value = value.split("；", 1)[0].split(";", 1)[0].strip()
     if value in PENDING_LANGUAGE_VALUES:
         return ""
-    normalized = re.sub(r"[^a-z0-9_-]+", "", value.lower())
+    normalized = value.lower()
     if not normalized or normalized in PENDING_LANGUAGE_VALUES:
         return ""
-    alias = LANGUAGE_ALIASES.get(normalized, normalized)
-    if alias in known_profiles:
+    if not re.fullmatch(r"[a-z][a-z0-9_-]*", normalized):
+        return ""
+    alias = LANGUAGE_ALIASES.get(normalized)
+    if alias and alias in known_profiles:
         return alias
-    for name in known_profiles:
-        if name in normalized:
-            return name
+    if normalized in known_profiles:
+        return normalized
     return ""
 
 

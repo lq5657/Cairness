@@ -13,7 +13,6 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from pathlib import PurePosixPath
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 
@@ -122,9 +121,16 @@ def has_profile_changes(paths: list[Path], project_root: Path, profile: Language
             continue
         if relative.name in module_names or relative.name in lockfile_names:
             return True
-        relative_posix = relative.as_posix()
-        if any(PurePosixPath(relative_posix).match(pattern) for pattern in glob_patterns):
+        if any(path_matches_profile_glob(relative, pattern) for pattern in glob_patterns):
             return True
+    return False
+
+
+def path_matches_profile_glob(relative: Path, pattern: str) -> bool:
+    if relative.match(pattern):
+        return True
+    if pattern.startswith("**/") and relative.match(pattern[3:]):
+        return True
     return False
 
 
