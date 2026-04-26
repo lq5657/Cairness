@@ -73,6 +73,12 @@ RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "n
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
 SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
 SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
+SUBAGENT_QUALITY_REQUIRED = {
+    "min_evidence_items": 1,
+    "min_risk_items": 1,
+    "require_concrete_references": True,
+    "allow_freeform": False,
+}
 INTERACTION_CONTRACT_COMMANDS = {
     "cc-propose",
     "cc-archive",
@@ -966,6 +972,13 @@ def validate_subagent_runtime_contract(
                     path,
                     f"subagent {name} output_contract.required_fields must be {sorted(SUBAGENT_OUTPUT_REQUIRED_FIELDS)}",
                 )
+            evidence_quality = output_contract.get("evidence_quality")
+            if not isinstance(evidence_quality, dict):
+                add(issues, "E_SCHEMA175", path, f"subagent {name} output_contract must declare evidence_quality")
+            else:
+                for key, expected in SUBAGENT_QUALITY_REQUIRED.items():
+                    if evidence_quality.get(key) != expected:
+                        add(issues, "E_SCHEMA176", path, f"subagent {name} evidence_quality.{key} must be {expected!r}")
         writes = agent.get("writes")
         if mode in READ_ONLY_SUBAGENT_MODES and isinstance(writes, list) and writes:
             add(issues, "E_SCHEMA124", path, f"subagent {name} mode {mode} must not declare writes")

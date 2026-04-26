@@ -363,7 +363,7 @@
     "subagentOutputContract": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["format", "required_fields"],
+      "required": ["format", "required_fields", "evidence_quality"],
       "properties": {
         "format": {
           "const": "structured_subagent_result"
@@ -376,6 +376,30 @@
             "type": "string",
             "enum": ["summary", "scope", "writes", "evidence", "risks", "merge_notes"]
           }
+        },
+        "evidence_quality": {
+          "$ref": "#/$defs/subagentEvidenceQuality"
+        }
+      }
+    },
+    "subagentEvidenceQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_evidence_items", "min_risk_items", "require_concrete_references", "allow_freeform"],
+      "properties": {
+        "min_evidence_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_risk_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "require_concrete_references": {
+          "const": true
+        },
+        "allow_freeform": {
+          "const": false
         }
       }
     }

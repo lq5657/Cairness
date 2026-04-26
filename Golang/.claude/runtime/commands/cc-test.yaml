@@ -88,6 +88,11 @@ subagents:
           - evidence
           - risks
           - merge_notes
+        evidence_quality:
+          min_evidence_items: 1
+          min_risk_items: 1
+          require_concrete_references: true
+          allow_freeform: false
   merge_requirements:
     - main_flow_updates_test_spec_and_mapping
     - red_green_or_exception_must_be_recorded

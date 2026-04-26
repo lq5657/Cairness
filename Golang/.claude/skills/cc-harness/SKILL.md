@@ -67,6 +67,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Treat subagent output as evidence input. The parent command remains responsible for state, final artifacts, and deterministic checks.
 - Respect `subagents.write_scope_policy` and `subagents.parallel_policy`: scoped subagent writes must stay inside parent `writes`, and parallel scoped writers must have disjoint write targets.
 - Require subagent results to follow `output_contract` before parent merge: `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`.
+- Enforce subagent `evidence_quality`: evidence and risks must be concrete enough for parent merge, not freeform-only prose.
 - Treat `anti_rationalizations` and `red_flags` as stop-or-correct signals, not advisory prose.
 - Treat `result_contract` as the command closeout shape; do not replace evidence, risks, or next action with a freeform summary.
 - When writing lifecycle state changes for a change that has `events.jsonl`, append a valid command event matching `.claude/schemas/command-event.schema.json`.

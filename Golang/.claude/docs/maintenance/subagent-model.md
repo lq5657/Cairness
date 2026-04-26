@@ -22,6 +22,7 @@ Subagents provide bounded evidence, review fragments, verification notes, or sco
 - Runtime manifests must declare `write_scope_policy: parent_writes_subset`.
 - Runtime manifests must declare `parallel_policy: read_only_parallel_only` for read-only subagent sets, or `parallel_policy: disjoint_writes_only` when any scoped writer exists.
 - Runtime manifests must declare each subagent `output_contract` as `structured_subagent_result`.
+- Runtime manifests must declare `output_contract.evidence_quality` with concrete evidence and risk minimums.
 - Read-only subagents must not edit files.
 - Worker subagents may write only when the task or finding declares a concrete, disjoint write set.
 - Scoped writers may not write final command artifacts such as `review.md`, `test-spec.md`, audit reports, `task-board.md`, or `dev-map.md`; the main flow owns those writes.
@@ -103,6 +104,12 @@ Subagent output must not be freeform prose. Every subagent result must provide t
 
 The main flow must reject freeform subagent output, omitted evidence, or output that cannot explain scope and risks. For read-only agents, `writes` must explicitly say read-only or empty. For scoped writers, `writes` must match the declared scoped write targets.
 
+Every subagent result must satisfy the runtime `evidence_quality` declaration:
+
+- `evidence` must contain at least one concrete file, command, artifact, or observed result.
+- `risks` must contain at least one explicit residual risk or `none` with rationale.
+- Evidence must be traceable; freeform-only summaries are not acceptable evidence.
+
 ## Deterministic Enforcement
 
 `.claude/scripts/cc-schema-check` validates the runtime subagent contract:
@@ -115,3 +122,4 @@ The main flow must reject freeform subagent output, omitted evidence, or output 
 - merge requirements record main-flow ownership and disjoint parallel write handling where needed
 - output contracts use `structured_subagent_result`
 - output required fields include `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`
+- output evidence quality requires concrete references and rejects freeform-only results

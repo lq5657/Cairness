@@ -112,6 +112,11 @@ subagents:
           - evidence
           - risks
           - merge_notes
+        evidence_quality:
+          min_evidence_items: 1
+          min_risk_items: 1
+          require_concrete_references: true
+          allow_freeform: false
     - name: test-verifier
       role: test-verifier
       mode: scoped_write
@@ -128,6 +133,11 @@ subagents:
           - evidence
           - risks
           - merge_notes
+        evidence_quality:
+          min_evidence_items: 1
+          min_risk_items: 1
+          require_concrete_references: true
+          allow_freeform: false
     - name: context-curator
       role: context-curator
       mode: proposal_only
@@ -143,6 +153,11 @@ subagents:
           - evidence
           - risks
           - merge_notes
+        evidence_quality:
+          min_evidence_items: 1
+          min_risk_items: 1
+          require_concrete_references: true
+          allow_freeform: false
   merge_requirements:
     - main_flow_keeps_one_task_in_progress
     - main_flow_records_baseline_delta_and_task_evidence

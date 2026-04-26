@@ -529,6 +529,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                 "parallel_policy:",
                 "agents:",
                 "output_contract:",
+                "evidence_quality:",
                 "format: structured_subagent_result",
                 "merge_requirements:",
             ):
