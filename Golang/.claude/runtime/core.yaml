@@ -53,6 +53,7 @@ scripts:
   role: .claude/scripts/cc-role-check
   eval: .claude/scripts/cc-eval
   readset: .claude/scripts/cc-readset
+  doctor: .claude/scripts/cc-doctor-check
 
 topic_rules:
   verification: .claude/rules/verification.md

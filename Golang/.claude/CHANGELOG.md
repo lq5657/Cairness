@@ -7,6 +7,7 @@
 - Added protocol schema validation and readset integration so migrated commands include protocol/profile reads and `cc-schema-check` rejects protocol drift.
 - Changed explicit `cc-verify --fixture <path>` Go module misses from skipped to failed so invalid fixture paths cannot silently pass.
 - Added structured `cc-verify` diagnoses with cause, fix hint, and doc reference for failed or skipped steps.
+- Added `cc-doctor-check` and wired it into `cc-verify --harness-only` as a doctor-style adoption readiness gate.
 - Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
 
 ## 0.20.0 - 2026-04-25
