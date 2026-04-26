@@ -15,7 +15,7 @@ from typing import Any
 CASE_REQUIRED_KEYS = {"id", "input", "expected_reads", "forbidden_actions", "expected_checks", "rubric"}
 RUBRIC_REQUIRED_KEYS = {"id", "criteria"}
 COMMAND_RE = re.compile(r"\bcc-[a-z0-9-]+\b")
-PATH_RE = re.compile(r"(?:(?:\.claude|\.cc|fixtures)/[A-Za-z0-9_./<>*-]+|README\.md)")
+PATH_RE = re.compile(r"(?:(?:\.claude|\.cc)/[A-Za-z0-9_./<>*-]+|README\.md)")
 SCRIPT_COMMAND_RE = re.compile(r"^(\.claude/scripts/[A-Za-z0-9_-]+)\b")
 GOVERNANCE_RULE_READS = {
     ".claude/rules/role-contracts.md",
@@ -131,7 +131,7 @@ def project_path(project_root: Path, declared: str) -> Path | None:
         return None
     if declared == "README.md":
         return project_root / declared
-    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/"):
         return project_root / declared
     return None
 

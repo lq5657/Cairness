@@ -470,7 +470,7 @@ def project_path(project_root: Path, declared: Any) -> Path | None:
         return None
     if "<" in declared or "*" in declared:
         return None
-    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/"):
         return project_root / declared
     return None
 

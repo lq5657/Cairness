@@ -178,7 +178,7 @@ def read(path: Path) -> str:
 
 
 def project_path(root: Path, declared: str) -> Path | None:
-    if declared.startswith(".claude/") or declared.startswith(".cc/") or declared.startswith("fixtures/"):
+    if declared.startswith(".claude/") or declared.startswith(".cc/"):
         return root.parent / declared
     return None
 
