@@ -64,6 +64,7 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
         (claude_root / "schemas" / "command-protocol.schema.json", "file"),
+        (claude_root / "schemas" / "language-profile.schema.json", "file"),
         (claude_root / "schemas" / "command-event.schema.json", "file"),
         (claude_root / "evals" / "behavior", "dir"),
         (claude_root / "templates" / "changes" / "events.jsonl", "file"),

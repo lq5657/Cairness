@@ -22,6 +22,33 @@ def bool_from_config(text: str, key: str, default: bool) -> bool:
     return match.group(1) == "true"
 
 
+def load_yaml_mapping(path: Path) -> dict[str, object]:
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        return {}
+    if not path.exists():
+        return {}
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def profile_command(profile: dict[str, object], capability: str, fallback: list[str]) -> list[str]:
+    verification = profile.get("verification")
+    if not isinstance(verification, dict):
+        return fallback
+    entry = verification.get(capability)
+    if not isinstance(entry, dict):
+        return fallback
+    command = entry.get("command")
+    if isinstance(command, list) and command and all(isinstance(item, str) and item for item in command):
+        return [str(item) for item in command]
+    return fallback
+
+
 def command_text(command: list[str]) -> str:
     return " ".join(command)
 
@@ -276,6 +303,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     go_project_root = (project_root / args.fixture).resolve() if args.fixture else project_root
     config_path = claude_root / "harness.config.yaml"
     config_text = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+    language_profile = load_yaml_mapping(claude_root / "runtime" / "languages" / "golang.yaml")
     change_dir = changes_root / args.change if args.change else None
     changed_paths = git_changed_paths(project_root) if args.changed_only else []
     changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
@@ -363,12 +391,13 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(skipped_step("go checks", "go", f"{go_mod} not found"))
         else:
             if bool_from_config(config_text, "test", True):
-                results.append(run_step("go test", "go", ["go", "test", "./..."], go_project_root))
+                results.append(run_step("go test", "go", profile_command(language_profile, "unit", ["go", "test", "./..."]), go_project_root))
             if bool_from_config(config_text, "vet", True):
-                results.append(run_step("go vet", "go", ["go", "vet", "./..."], go_project_root))
+                results.append(run_step("go vet", "go", profile_command(language_profile, "static", ["go", "vet", "./..."]), go_project_root))
             if bool_from_config(config_text, "golangci_lint", False):
-                if shutil.which("golangci-lint"):
-                    results.append(run_step("golangci-lint", "go", ["golangci-lint", "run"], go_project_root))
+                lint_command = profile_command(language_profile, "lint", ["golangci-lint", "run"])
+                if shutil.which(lint_command[0]):
+                    results.append(run_step("golangci-lint", "go", lint_command, go_project_root))
                 else:
                     results.append(skipped_step("golangci-lint", "go", "golangci-lint not found"))
 

@@ -36,6 +36,8 @@ runtime manifest 的机器契约是：
 
 `.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/golang.yaml` 只承载 Go-specific project detection、verification commands 和 fixture path。
 
+语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 从 profile 读取 Go verification commands；`harness.config.yaml` 只保留是否启用 test / vet / lint 的策略开关。
+
 protocol 还声明 lifecycle event log 的位置、schema 和模板。事件日志位于 `.cc/changes/<change-id>/events.jsonl`，由 `.claude/scripts/cc-event-check` 校验。当前事件日志是渐进式能力：已有 event log 必须合法，历史 change 不强制立即补齐。
 
 同一个检查还会校验 migrated command 的 workflow/runtime parity：
@@ -161,6 +163,10 @@ read set 原本散落在 skill、runtime manifest、eval case 和说明文档里
 ### 为什么 eval 需要行为回放
 
 静态 eval 能发现文档和 manifest 漂移，但无法证明关键命令行为真的保持不变。Behavior replay 用小型命令场景覆盖高价值协议语义，尤其是负例和 stop condition。它不替代语义 eval，而是补足“真实命令必须这样退出、这样报告”的回归面。
+
+### 为什么语言能力要 profile 化
+
+Lifecycle command 不应为每种语言复制一套。`cc-propose`、`cc-apply`、`cc-review` 等语义应尽量语言无关；Go module detection、test/vet/lint 命令和 fixture 路径放在 language profile。这样未来增加 Python、Node 或 Java 时，优先新增 profile 和少量验证适配，而不是分叉整个 Harness。
 
 ### 为什么 topic rule 也需要 schema/lint
 

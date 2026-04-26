@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/language-profile.schema.json",
+  "title": "Harness Language Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "language", "project_detection", "verification", "fixtures"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "project_detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module_file", "source_globs"],
+      "properties": {
+        "module_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_globs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/verificationCapability"
+      }
+    },
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default"],
+      "properties": {
+        "default": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "verificationCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "evidence"],
+      "properties": {
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
+

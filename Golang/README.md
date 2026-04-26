@@ -183,6 +183,8 @@ runtime manifest 现在有机器 schema：
 
 协议层约束 command resolution、input validation、path role resolution、error taxonomy 和 result rendering；语言 profile 只承载 Go module detection、fixture 和 Go verification commands。`.claude/scripts/cc-schema-check` 会校验协议结构、错误引用、path role 引用和默认语言 profile。
 
+`cc-verify` 的 Go 检查命令来自 `.claude/runtime/languages/golang.yaml`，`harness.config.yaml` 只决定是否启用 test / vet / lint。这样后续接入其他语言时可以替换 language profile，而不复制 change lifecycle。
+
 ## Doctor Check
 
 `.claude/scripts/cc-doctor-check` 是接入 readiness gate，不是用户命令入口。它检查 Harness scaffold、脚本可执行权限、protocol/result templates、Go language profile 默认 fixture，以及 GitHub Actions 中的 fixture 参数。`cc-verify --harness-only` 会自动执行该检查。

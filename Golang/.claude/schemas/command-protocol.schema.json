@@ -103,10 +103,14 @@
     "language_profile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default", "profiles"],
+      "required": ["default", "schema", "profiles"],
       "properties": {
         "default": {
           "$ref": "#/$defs/snakeId"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/language-profile\\.schema\\.json$"
         },
         "profiles": {
           "type": "object",

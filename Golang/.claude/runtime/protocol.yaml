@@ -104,5 +104,6 @@ lifecycle_events:
 
 language_profile:
   default: golang
+  schema: .claude/schemas/language-profile.schema.json
   profiles:
     golang: .claude/runtime/languages/golang.yaml
