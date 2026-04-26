@@ -43,6 +43,70 @@ def warnings(stdout: str, stderr: str) -> list[str]:
     return sorted(set(warning_lines))
 
 
+def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
+    if status == "passed":
+        return {}
+    if name == "cc-lint":
+        return {
+            "cause": "Harness lint found command, rule, or document shape drift.",
+            "fix_hint": "Fix the reported lint target before rerunning cc-verify.",
+            "doc_ref": ".claude/scripts/cc-lint",
+        }
+    if name == "cc-sync-check":
+        return {
+            "cause": "Change documents are out of sync.",
+            "fix_hint": "Align spec, tasks, review, test evidence, and validation mapping references.",
+            "doc_ref": ".claude/scripts/cc-sync-check",
+        }
+    if name == "cc-readset":
+        return {
+            "cause": "Generated runtime readsets are stale or inconsistent.",
+            "fix_hint": "Run .claude/scripts/cc-readset --write, review the diff, then rerun cc-verify.",
+            "doc_ref": ".claude/runtime/readsets/index.yaml",
+        }
+    if name == "cc-schema-check":
+        return {
+            "cause": "Runtime, protocol, topic rule, or change document schema validation failed.",
+            "fix_hint": "Fix the reported schema issue; do not bypass schema drift with manual readset edits.",
+            "doc_ref": ".claude/scripts/cc-schema-check",
+        }
+    if name == "cc-role-check":
+        return {
+            "cause": "Command write scope or role contract validation failed.",
+            "fix_hint": "Align the command writes with workflow/runtime contracts and registered roles.",
+            "doc_ref": ".claude/rules/role-contracts.md",
+        }
+    if name == "change-dir":
+        return {
+            "cause": "The requested change directory does not exist.",
+            "fix_hint": "Provide an existing change_id or create the proposal before running change-scoped checks.",
+            "doc_ref": ".cc/changes/task-board.md",
+        }
+    if name == "go checks" and "explicit fixture" in stderr:
+        return {
+            "cause": "The explicit fixture path does not resolve to a Go module.",
+            "fix_hint": "Use a fixture path containing go.mod, such as .claude/fixtures/go-http-user-service.",
+            "doc_ref": ".claude/runtime/languages/golang.yaml",
+        }
+    if name in {"go test", "go vet", "golangci-lint"}:
+        return {
+            "cause": f"{name} failed for the selected Go project.",
+            "fix_hint": "Inspect the command output, fix the Go failure, then rerun cc-verify.",
+            "doc_ref": ".claude/runtime/languages/golang.yaml",
+        }
+    if status == "skipped":
+        return {
+            "cause": "This check was skipped because its entrypoint was not found or disabled.",
+            "fix_hint": "Confirm the skip is intentional; explicit fixture paths should point to a real go.mod.",
+            "doc_ref": ".claude/harness.config.yaml",
+        }
+    return {
+        "cause": "Verification step failed.",
+        "fix_hint": "Inspect stdout, stderr, and fingerprints for the failing command.",
+        "doc_ref": ".claude/scripts/cc-verify",
+    }
+
+
 def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, object]:
     started = time.time()
     try:
@@ -59,7 +123,7 @@ def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, o
         )
         duration_ms = int((time.time() - started) * 1000)
         status = "passed" if completed.returncode == 0 else "failed"
-        return {
+        result = {
             "name": name,
             "kind": kind,
             "command": command,
@@ -72,6 +136,8 @@ def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, o
             "fingerprints": fingerprints(completed.stdout, completed.stderr) if completed.returncode else [],
             "warnings": warnings(completed.stdout, completed.stderr),
         }
+        result["diagnosis"] = diagnosis_for(name, status, completed.stderr)
+        return result
     except FileNotFoundError as exc:
         duration_ms = int((time.time() - started) * 1000)
         message = str(exc)
@@ -87,6 +153,7 @@ def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, o
             "stderr": message,
             "fingerprints": [message],
             "warnings": [],
+            "diagnosis": diagnosis_for(name, "failed", message),
         }
 
 
@@ -103,6 +170,7 @@ def skipped_step(name: str, kind: str, reason: str) -> dict[str, object]:
         "stderr": reason,
         "fingerprints": [],
         "warnings": [],
+        "diagnosis": diagnosis_for(name, "skipped", reason),
     }
 
 
@@ -119,6 +187,7 @@ def failed_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, objec
         "stderr": reason,
         "fingerprints": [reason],
         "warnings": [],
+        "diagnosis": diagnosis_for(name, "failed", reason),
     }
 
 
@@ -223,6 +292,17 @@ def print_text(report: dict[str, object], verbose: bool) -> None:
                 print(stdout)
             if stderr:
                 print(stderr, file=sys.stderr)
+            diagnosis = result.get("diagnosis")
+            if isinstance(diagnosis, dict) and diagnosis:
+                cause = diagnosis.get("cause", "")
+                fix_hint = diagnosis.get("fix_hint", "")
+                doc_ref = diagnosis.get("doc_ref", "")
+                if cause:
+                    print(f"cause: {cause}")
+                if fix_hint:
+                    print(f"fix_hint: {fix_hint}")
+                if doc_ref:
+                    print(f"doc_ref: {doc_ref}")
 
 
 def main(argv: list[str]) -> int:
