@@ -23,4 +23,4 @@ jobs:
       - name: Verify Fixture
         run: |
           cd Golang
-          .claude/scripts/cc-verify --fixture fixtures/go-http-user-service --verbose
+          .claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
