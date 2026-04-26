@@ -123,7 +123,7 @@
     "scripts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["verify", "delta", "role", "eval", "readset", "doctor"],
+      "required": ["verify", "delta", "role", "eval", "readset", "doctor", "event"],
       "properties": {
         "verify": {
           "type": "string"
@@ -141,6 +141,9 @@
           "type": "string"
         },
         "doctor": {
+          "type": "string"
+        },
+        "event": {
           "type": "string"
         }
       }

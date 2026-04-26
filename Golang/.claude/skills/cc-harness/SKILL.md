@@ -69,6 +69,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Require subagent results to follow `output_contract` before parent merge: `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`.
 - Treat `anti_rationalizations` and `red_flags` as stop-or-correct signals, not advisory prose.
 - Treat `result_contract` as the command closeout shape; do not replace evidence, risks, or next action with a freeform summary.
+- When writing lifecycle state changes for a change that has `events.jsonl`, append a valid command event matching `.claude/schemas/command-event.schema.json`.
 - Do not create, modify, archive, or mark complete a change without fresh verification evidence.
 - Do not use `.cc/changes/task-board.md` or `.cc/context/dev-map.md` as a substitute for `spec.md`, `tasks.md`, `review.md`, or `test-spec.md`.
 

@@ -811,6 +811,10 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
     for field in ("success_template", "error_template"):
         require_declared_path(project_root, protocol_path, rendering.get(field), f"result_rendering.{field}", issues)
 
+    lifecycle_events = protocol.get("lifecycle_events") if isinstance(protocol.get("lifecycle_events"), dict) else {}
+    for field in ("schema", "template"):
+        require_declared_path(project_root, protocol_path, lifecycle_events.get(field), f"lifecycle_events.{field}", issues)
+
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     default_profile = language_profile.get("default")

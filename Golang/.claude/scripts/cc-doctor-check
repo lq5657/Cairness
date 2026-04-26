@@ -64,6 +64,8 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
         (claude_root / "schemas" / "command-protocol.schema.json", "file"),
+        (claude_root / "schemas" / "command-event.schema.json", "file"),
+        (claude_root / "templates" / "changes" / "events.jsonl", "file"),
         (claude_root / "templates" / "results" / "command-result.md", "file"),
         (claude_root / "templates" / "results" / "command-error.md", "file"),
         (project_root / ".cc" / "context" / "dev-map.md", "file"),
@@ -159,4 +161,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

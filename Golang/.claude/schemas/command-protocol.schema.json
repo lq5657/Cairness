@@ -81,6 +81,25 @@
         }
       }
     },
+    "lifecycle_events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_event_log", "schema", "template"],
+      "properties": {
+        "change_event_log": {
+          "type": "string",
+          "pattern": "^\\.cc/changes/<change-id>/events\\.jsonl$"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/command-event\\.schema\\.json$"
+        },
+        "template": {
+          "type": "string",
+          "pattern": "^\\.claude/templates/changes/events\\.jsonl$"
+        }
+      }
+    },
     "language_profile": {
       "type": "object",
       "additionalProperties": false,
@@ -172,4 +191,3 @@
     }
   }
 }
-

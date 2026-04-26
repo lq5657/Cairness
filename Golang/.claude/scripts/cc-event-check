@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Validate optional Harness lifecycle event logs."""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+VALID_FROM = {"none", "propose", "apply", "review", "done", "unchanged"}
+VALID_TO = {"unchanged", "propose", "apply", "review", "done"}
+COMMAND_TO = {
+    "cc-propose": "propose",
+    "cc-apply": "review",
+    "cc-review": "review",
+    "cc-fix": "review",
+    "cc-test": "unchanged",
+    "cc-archive": "done",
+    "cc-promote-audit": "unchanged",
+}
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
+    issues.append(Issue(code=code, path=str(path), message=message))
+
+
+def discover_event_logs(project_root: Path, inputs: list[Path]) -> list[Path]:
+    logs: set[Path] = set()
+    search_inputs = inputs or [project_root / ".cc" / "changes"]
+    for item in search_inputs:
+        if item.is_file() and item.name == "events.jsonl":
+            logs.add(item)
+        elif item.is_dir():
+            logs.update(path for path in item.rglob("events.jsonl") if ".claude" not in path.parts)
+    return sorted(logs)
+
+
+def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues: list[Issue]) -> None:
+    if not isinstance(event, dict):
+        add(issues, "E_EVENT001", path, f"line {line_no}: event must be an object")
+        return
+    required = {"schema_version", "event_id", "occurred_at", "command", "change_id", "actor", "transition", "summary", "evidence"}
+    missing = sorted(required - set(event))
+    if missing:
+        add(issues, "E_EVENT002", path, f"line {line_no}: missing {missing}")
+    if event.get("schema_version") != 1:
+        add(issues, "E_EVENT003", path, f"line {line_no}: schema_version must be 1")
+    if not isinstance(event.get("event_id"), str) or not CHANGE_ID_RE.match(event.get("event_id", "")):
+        add(issues, "E_EVENT004", path, f"line {line_no}: invalid event_id")
+    command = event.get("command")
+    if not isinstance(command, str) or not COMMAND_RE.match(command):
+        add(issues, "E_EVENT005", path, f"line {line_no}: invalid command")
+    if event.get("change_id") != change_id:
+        add(issues, "E_EVENT006", path, f"line {line_no}: change_id must match directory {change_id}")
+    for field in ("occurred_at", "actor", "summary"):
+        if not isinstance(event.get(field), str) or not event.get(field):
+            add(issues, "E_EVENT007", path, f"line {line_no}: {field} must be a non-empty string")
+    transition = event.get("transition")
+    if not isinstance(transition, dict):
+        add(issues, "E_EVENT008", path, f"line {line_no}: transition must be an object")
+    else:
+        from_state = transition.get("from")
+        to_state = transition.get("to")
+        if from_state not in VALID_FROM:
+            add(issues, "E_EVENT009", path, f"line {line_no}: invalid transition.from {from_state}")
+        if to_state not in VALID_TO:
+            add(issues, "E_EVENT010", path, f"line {line_no}: invalid transition.to {to_state}")
+        expected_to = COMMAND_TO.get(command)
+        if expected_to and to_state != expected_to:
+            add(issues, "E_EVENT011", path, f"line {line_no}: {command} must transition to {expected_to}")
+    evidence = event.get("evidence")
+    if not isinstance(evidence, list) or not evidence or not all(isinstance(item, str) and item for item in evidence):
+        add(issues, "E_EVENT012", path, f"line {line_no}: evidence must be a non-empty string list")
+
+
+def validate_log(path: Path, issues: list[Issue]) -> None:
+    change_id = path.parent.name
+    if not CHANGE_ID_RE.match(change_id):
+        add(issues, "E_EVENT013", path, f"invalid change directory name {change_id}")
+    previous_ids: set[str] = set()
+    for idx, raw_line in enumerate(read(path).splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError as exc:
+            add(issues, "E_EVENT014", path, f"line {idx}: invalid JSON: {exc}")
+            continue
+        event_id = event.get("event_id") if isinstance(event, dict) else None
+        if isinstance(event_id, str):
+            if event_id in previous_ids:
+                add(issues, "E_EVENT015", path, f"line {idx}: duplicate event_id {event_id}")
+            previous_ids.add(event_id)
+        validate_event(path, idx, event, change_id, issues)
+
+
+def build_report(inputs: list[Path]) -> dict[str, Any]:
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    issues: list[Issue] = []
+    logs = discover_event_logs(project_root, inputs)
+    for log in logs:
+        validate_log(log, issues)
+    return {
+        "tool": "cc-event-check",
+        "status": "failed" if issues else "passed",
+        "checked_event_logs": [str(path) for path in logs],
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    json_output = "--json" in argv
+    paths = [Path(arg) for arg in argv if arg != "--json"]
+    report = build_report(paths)
+    if json_output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-event-check: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
+

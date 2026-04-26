@@ -1,0 +1,2 @@
+{"schema_version":1,"event_id":"<event-id>","occurred_at":"<iso8601>","command":"cc-propose","change_id":"<change-id>","actor":"<agent-or-user>","transition":{"from":"none","to":"propose"},"summary":"<summary>","evidence":["<artifact-or-command>"]}
+

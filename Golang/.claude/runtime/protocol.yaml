@@ -97,8 +97,12 @@ result_rendering:
   success_template: .claude/templates/results/command-result.md
   error_template: .claude/templates/results/command-error.md
 
+lifecycle_events:
+  change_event_log: .cc/changes/<change-id>/events.jsonl
+  schema: .claude/schemas/command-event.schema.json
+  template: .claude/templates/changes/events.jsonl
+
 language_profile:
   default: golang
   profiles:
     golang: .claude/runtime/languages/golang.yaml
-

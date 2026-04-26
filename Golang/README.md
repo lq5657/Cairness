@@ -74,6 +74,7 @@
 - `.claude/scripts/cc-eval`
 - `.claude/scripts/cc-readset`
 - `.claude/scripts/cc-doctor-check`
+- `.claude/scripts/cc-event-check`
 
 ### 3. 人类维护说明
 
@@ -177,6 +178,18 @@ runtime manifest 现在有机器 schema：
 ## Doctor Check
 
 `.claude/scripts/cc-doctor-check` 是接入 readiness gate，不是用户命令入口。它检查 Harness scaffold、脚本可执行权限、protocol/result templates、Go language profile 默认 fixture，以及 GitHub Actions 中的 fixture 参数。`cc-verify --harness-only` 会自动执行该检查。
+
+## Lifecycle Events
+
+Harness 现在提供事件日志基础设施：
+
+```text
+.claude/schemas/command-event.schema.json
+.claude/templates/changes/events.jsonl
+.claude/scripts/cc-event-check
+```
+
+`events.jsonl` 是可选的机器事件日志，用于把 change 状态迁移从纯文档记录逐步升级为可校验事件。`cc-verify --harness-only` 会校验已存在的 `.cc/changes/<change-id>/events.jsonl`，但不会要求历史 change 立即补齐事件日志。
 
 ## Runtime Readsets
 
