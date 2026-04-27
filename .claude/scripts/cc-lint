@@ -1,0 +1,776 @@
+#!/usr/bin/env python3
+"""Lightweight lint checks for cc_spec Harness assets and change documents."""
+
+from __future__ import annotations
+
+import os
+import re
+import sys
+from pathlib import Path
+
+from harness_runtime import load_runtime_protocol, protocol_language_assets
+
+
+CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SLASH_COMMAND_RE = re.compile(
+    r"(?<![A-Za-z0-9_.<>-])/(propose|apply|review|test|fix|archive|init|new-project|inspect-codebase|preflight|enrich-context|explain-system)\b"
+)
+VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
+VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
+VALID_REVIEW_STATUS = {
+    "stage1_status": {"pass", "fail", "partial"},
+    "stage2_status": {"pass", "fail", "skipped", "partial"},
+    "final_status": {"pass", "fail", "partial"},
+}
+VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
+VALID_TEST_MODE = {"supplement", "recovery"}
+AUTO_VALIDATION_COMMANDS = ["propose", "apply", "fix", "test", "review", "archive"]
+EVIDENCE_BY_LEVEL = {
+    "L1": {"build", "doc-check"},
+    "L2": {"package", "unit"},
+    "L3": {"chain"},
+    "L4": {"integration", "manual"},
+    "L5": {"migration-safety", "release-safety"},
+}
+HARD_GATE_FIELDS = [
+    "confirmed_at",
+    "confirmed_by",
+    "confirmed_spec_revision",
+    "confirmed_tasks_revision",
+    "confirmed_scope",
+    "accepted_risks",
+    "human_review_required",
+    "human_review_status",
+]
+TASK_FIELDS = [
+    "**目标**",
+    "**涉及文件**",
+    "**验收标准**",
+    "**验证步骤**",
+    "**测试要求**",
+    "**回退方式**",
+    "**完成后状态**",
+    "**Baseline / Delta",
+]
+WORKFLOW_REQUIRED_COMMAND_KEYS = [
+    "category",
+    "roles",
+    "change_from",
+    "change_to",
+    "inputs",
+    "outputs",
+    "writes",
+    "validates",
+    "forbids",
+    "auto_validation",
+]
+WORKFLOW_SPECIAL_FROM_STATES = {"none"}
+WORKFLOW_SPECIAL_TO_STATES = {"unchanged"}
+REQUIRED_RUNTIME_COMMANDS = {
+    "cc-preflight",
+    "cc-init",
+    "cc-inspect-codebase",
+    "cc-propose",
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+    "cc-archive",
+    "cc-promote-audit",
+}
+SUBAGENT_ENABLED_COMMANDS = {
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+    "cc-inspect-codebase",
+}
+ANTI_RATIONALIZATION_COMMANDS = {
+    "cc-propose",
+    "cc-apply",
+    "cc-review",
+    "cc-fix",
+    "cc-test",
+}
+TOPIC_RULE_KEYS = {
+    "verification",
+    "testing_strategy",
+    "change_sizing",
+    "coding_style",
+    "debugging_workflow",
+    "database_changes",
+    "api_compatibility",
+    "configuration",
+    "observability",
+    "release",
+    "security",
+    "source_driven_development",
+    "git_workflow",
+}
+TOPIC_RULE_REQUIRED_MARKERS = [
+    "#### Skill Anatomy",
+    "**When To Use**",
+    "**When Not To Use**",
+    "**Process**",
+    "**Common Rationalizations**",
+    "**Red Flags**",
+    "**Verification**",
+]
+TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
+RESULT_CONTRACT_FIELDS = ["status", "summary", "writes", "evidence", "risks", "next_action"]
+INTERACTION_CONTRACT_MARKERS = {
+    "cc-propose": [
+        "interaction_contract:",
+        "mode: interactive_required",
+        "clarification:",
+        "ask_numbered_questions_with_expected_answer_shape",
+        "wait_for_user_answer_before_freezing_scope",
+        "hard_gate:",
+        "ask_user_to_choose_confirm_revise_or_block",
+        "confirm_scope_and_apply_next",
+        "request_revision",
+        "block_until_clarified",
+        "do_not_enter_apply_without_explicit_user_confirmation",
+    ],
+    "cc-archive": [
+        "interaction_contract:",
+        "selection:",
+        "ask_user_to_choose_knowledge_decision",
+        "no_knowledge_compounding",
+        "create_new_knowledge",
+        "update_existing_knowledge",
+        "do_not_mark_done_until_knowledge_decision_explicit",
+    ],
+    "cc-promote-audit": [
+        "interaction_contract:",
+        "selection:",
+        "ask_user_to_choose_findings_or_split_scope_when_ambiguous",
+        "promote_selected_findings",
+        "split_into_multiple_changes",
+        "block_until_scope_clarified",
+        "do_not_write_bridge_note_for_ambiguous_selection",
+    ],
+    "cc-apply": [
+        "interaction_contract:",
+        "hard_gate:",
+        "show_missing_or_stale_hard_gate_fields",
+        "ask_user_to_return_to_confirm_revise_or_block_apply",
+        "return_to_cc_propose_confirm_scope",
+        "revise_spec_or_tasks",
+        "block_apply",
+        "do_not_start_apply_until_hard_gate_current",
+    ],
+    "cc-fix": [
+        "interaction_contract:",
+        "clarification:",
+        "ask_numbered_questions_for_unclear_finding",
+        "wait_for_user_answer_before_fixing",
+        "confirmation:",
+        "ask_user_to_choose_fix_accept_or_reframe",
+        "fix_open_finding",
+        "mark_finding_accepted",
+        "request_review_update",
+        "do_not_mark_fixed_or_accepted_without_explicit_basis",
+    ],
+}
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def project_path(root: Path, declared: str) -> Path | None:
+    if declared.startswith(".claude/") or declared.startswith(".cc/"):
+        return root.parent / declared
+    return None
+
+
+def registered_topic_rules(root: Path) -> dict[str, str]:
+    path = root / "runtime" / "core.yaml"
+    if not path.exists():
+        return {}
+    rules: dict[str, str] = {}
+    in_section = False
+    for line in read(path).splitlines():
+        if line.startswith("topic_rules:"):
+            in_section = True
+            continue
+        if in_section and line and not line.startswith(" "):
+            break
+        if not in_section:
+            continue
+        match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s+(.+?)\s*$", line)
+        if match:
+            rules[match.group(1)] = match.group(2).strip().strip('"').strip("'")
+    return rules
+
+
+def parse_meta(text: str) -> dict[str, str]:
+    meta: dict[str, str] = {}
+    frontmatter = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    if frontmatter:
+        lines = frontmatter.group(1).splitlines()
+    else:
+        match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
+        lines = match.group(1).splitlines() if match else text.splitlines()[:20]
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        meta[key.strip()] = value.strip().split("#", 1)[0].strip().strip('"').strip("'")
+    return meta
+
+
+def table_rows(text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or "---" in stripped:
+            continue
+        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
+        rows.append(cells)
+    return rows
+
+
+def parse_inline_list(raw: str) -> list[str]:
+    value = raw.strip()
+    if value == "[]":
+        return []
+    if not value.startswith("[") or not value.endswith("]"):
+        return []
+    body = value[1:-1].strip()
+    if not body:
+        return []
+    return [item.strip().strip('"').strip("'") for item in body.split(",")]
+
+
+def parse_key_value(block: str, key: str) -> str | None:
+    match = re.search(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$", block, re.M)
+    return match.group(1).strip() if match else None
+
+
+def parse_state_list(text: str, key: str) -> list[str]:
+    value = parse_key_value(text, key)
+    return parse_inline_list(value) if value is not None else []
+
+
+def parse_workflow_commands(text: str) -> dict[str, str]:
+    match = re.search(r"^commands:\s*\n(?P<body>.*)\Z", text, re.S | re.M)
+    if not match:
+        return {}
+    body = match.group("body")
+    matches = list(re.finditer(r"^  (cc-[a-z0-9-]+):\s*$", body, re.M))
+    blocks: dict[str, str] = {}
+    for idx, item in enumerate(matches):
+        start = item.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
+        blocks[item.group(1)] = body[start:end]
+    return blocks
+
+
+def validation_rows(text: str) -> list[list[str]]:
+    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
+
+
+def task_sections(text: str) -> list[str]:
+    matches = list(re.finditer(r"^#### Task [0-9]+:", text, re.M))
+    sections: list[str] = []
+    for idx, match in enumerate(matches):
+        start = match.start()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        sections.append(text[start:end])
+    return sections
+
+
+def finding_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    section = match.group(1)
+    rows = []
+    for row in table_rows(section):
+        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}:
+            rows.append(row)
+    return rows
+
+
+def line_allowed_for_slash(path: Path, line: str) -> bool:
+    return path.name == "common-integration-pitfalls.md" and "文档示例混用了" in line
+
+
+def lint_slash_commands(path: Path, errors: list[str]) -> None:
+    if path.suffix != ".md":
+        return
+    for lineno, line in enumerate(read(path).splitlines(), 1):
+        if SLASH_COMMAND_RE.search(line) and not line_allowed_for_slash(path, line):
+            errors.append(f"{path}:{lineno}: use cc-* command literal instead of slash command")
+
+
+def lint_spec(change_dir: Path, errors: list[str]) -> set[str]:
+    path = change_dir / "spec.md"
+    text = read(path)
+    meta = parse_meta(text)
+    cid = meta.get("change_id", "")
+    if not CHANGE_ID_RE.match(cid):
+        errors.append(f"{path}: invalid or missing change_id")
+    if meta.get("status") not in VALID_CHANGE_STATUS:
+        errors.append(f"{path}: invalid or missing status")
+    for required in ("depends_on", "parallel_safe", "branch", "created", "updated", "complexity"):
+        if required not in meta:
+            errors.append(f"{path}: missing metadata field {required}")
+
+    ids: set[str] = set()
+    for row in validation_rows(text):
+        if len(row) < 7:
+            errors.append(f"{path}: validation row {row[0]} has fewer than 7 columns")
+            continue
+        vid, level, evidence, status = row[0], row[2], row[3], row[6]
+        ids.add(vid)
+        if level not in EVIDENCE_BY_LEVEL:
+            errors.append(f"{path}: {vid} has invalid level {level}")
+        elif evidence not in EVIDENCE_BY_LEVEL[level]:
+            errors.append(f"{path}: {vid} evidence {evidence} does not match {level}")
+        if status not in VALID_MAPPING_STATUS:
+            errors.append(f"{path}: {vid} has invalid closure status {status}")
+
+    for field in HARD_GATE_FIELDS:
+        if f"**{field}**" not in text:
+            errors.append(f"{path}: HARD-GATE missing {field}")
+    return ids
+
+
+def lint_tasks(change_dir: Path, mapping_ids: set[str], errors: list[str]) -> None:
+    path = change_dir / "tasks.md"
+    text = read(path)
+    meta = parse_meta(text)
+    if not CHANGE_ID_RE.match(meta.get("change_id", "")):
+        errors.append(f"{path}: invalid or missing change_id")
+    sections = task_sections(text)
+    if not sections:
+        errors.append(f"{path}: no task sections found")
+    for section in sections:
+        title = section.splitlines()[0].strip()
+        for field in TASK_FIELDS:
+            if field not in section:
+                errors.append(f"{path}: {title} missing {field}")
+        match = re.search(r"\*\*完成后状态\*\*\s*:\s*`?([a-z_]+)`?", section)
+        if match and match.group(1) not in VALID_TASK_STATUS:
+            errors.append(f"{path}: {title} has invalid task status {match.group(1)}")
+    for vid in mapping_ids:
+        if vid not in text:
+            errors.append(f"{path}: mapping {vid} from spec.md is not referenced")
+
+
+def lint_review(change_dir: Path, errors: list[str]) -> None:
+    path = change_dir / "review.md"
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    for key, allowed in VALID_REVIEW_STATUS.items():
+        if meta.get(key) not in allowed:
+            errors.append(f"{path}: invalid or missing {key}")
+    rows = finding_rows(text)
+    for row in rows:
+        status = row[4].strip("` ")
+        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+            errors.append(f"{path}: finding has invalid status {status}")
+
+
+def lint_test_spec(change_dir: Path, errors: list[str]) -> None:
+    path = change_dir / "test-spec.md"
+    if not path.exists():
+        return
+    text = read(path)
+    meta = parse_meta(text)
+    if meta and meta.get("status") not in VALID_CHANGE_STATUS:
+        errors.append(f"{path}: invalid status")
+    if "`cc-test` 模式" not in text and "cc-test` 模式" not in text:
+        errors.append(f"{path}: missing cc-test mode row")
+    for row in table_rows(text):
+        if len(row) >= 2 and row[0].replace("`", "") == "cc-test 模式":
+            mode = row[1].strip("` ")
+            if mode not in VALID_TEST_MODE:
+                errors.append(f"{path}: invalid cc-test mode {mode}")
+            break
+
+
+def lint_workflow_definition(root: Path, errors: list[str]) -> None:
+    path = root / "workflows" / "cc-workflow.yaml"
+    if not path.exists():
+        errors.append(f"{path}: missing workflow definition")
+        return
+    text = read(path)
+
+    expected_states = {
+        "change": list(VALID_CHANGE_STATUS),
+        "task": list(VALID_TASK_STATUS),
+        "finding": ["open", "fixed", "accepted"],
+        "validation_mapping": list(VALID_MAPPING_STATUS),
+    }
+    for key, expected in expected_states.items():
+        actual = parse_state_list(text, key)
+        if set(actual) != set(expected):
+            errors.append(f"{path}: states.{key} must be {sorted(expected)}")
+
+    workflow_blocks = parse_workflow_commands(text)
+    if not workflow_blocks:
+        errors.append(f"{path}: missing commands section")
+        return
+
+    for command, block in sorted(workflow_blocks.items()):
+        for key in WORKFLOW_REQUIRED_COMMAND_KEYS:
+            if re.search(rf"^\s{{4}}{re.escape(key)}:", block, re.M) is None:
+                errors.append(f"{path}: {command} missing {key}")
+
+        roles_value = parse_key_value(block, "roles")
+        if roles_value is not None and not parse_inline_list(roles_value):
+            errors.append(f"{path}: {command} roles must not be empty")
+        subagents_value = parse_key_value(block, "subagents")
+        if command in SUBAGENT_ENABLED_COMMANDS and not parse_inline_list(subagents_value or ""):
+            errors.append(f"{path}: {command} subagents must not be empty")
+
+        change_from_value = parse_key_value(block, "change_from")
+        if change_from_value is None:
+            continue
+        change_from = set(parse_inline_list(change_from_value))
+        invalid_from = change_from - VALID_CHANGE_STATUS - WORKFLOW_SPECIAL_FROM_STATES
+        if invalid_from:
+            errors.append(f"{path}: {command} has invalid change_from {sorted(invalid_from)}")
+
+        change_to = parse_key_value(block, "change_to")
+        if change_to is None:
+            continue
+        change_to = change_to.strip('"').strip("'")
+        if change_to not in VALID_CHANGE_STATUS and change_to not in WORKFLOW_SPECIAL_TO_STATES:
+            errors.append(f"{path}: {command} has invalid change_to {change_to}")
+        if change_to == "done" and command != "cc-archive":
+            errors.append(f"{path}: only cc-archive may set change_to done")
+
+    archive_to = parse_key_value(workflow_blocks.get("cc-archive", ""), "change_to")
+    if archive_to and archive_to.strip('"').strip("'") != "done":
+        errors.append(f"{path}: cc-archive must set change_to done")
+
+
+def lint_runtime(root: Path, errors: list[str]) -> None:
+    core_path = root / "runtime" / "core.yaml"
+    if not core_path.exists():
+        errors.append(f"{core_path}: missing runtime core")
+        return
+    core_text = read(core_path)
+    for key in (
+        "workflow_definition:",
+        "migrated_commands:",
+        "runtime_commands:",
+        "runtime_readsets:",
+        "runtime_protocol:",
+        "legacy_fallback:",
+        "governance:",
+        "subagent_policy:",
+        "scripts:",
+        "doctor:",
+        "event:",
+        "behavior:",
+        "upgrade:",
+        "topic_rules:",
+    ):
+        if key not in core_text:
+            errors.append(f"{core_path}: missing {key.rstrip(':')}")
+    for topic_key in TOPIC_RULE_KEYS:
+        if re.search(rf"^\s{{2}}{re.escape(topic_key)}:", core_text, re.M) is None:
+            errors.append(f"{core_path}: missing topic rule {topic_key}")
+
+    runtime_dir = root / "runtime" / "commands"
+    if not runtime_dir.exists():
+        errors.append(f"{runtime_dir}: missing runtime command directory")
+        return
+    for command in sorted(REQUIRED_RUNTIME_COMMANDS):
+        if re.search(rf"^\s+-\s+{re.escape(command)}\s*$", core_text, re.M) is None:
+            errors.append(f"{core_path}: migrated_commands missing {command}")
+        expected_mapping = rf"^\s+{re.escape(command)}:\s*\.claude/runtime/commands/{re.escape(command)}\.yaml\s*$"
+        if re.search(expected_mapping, core_text, re.M) is None:
+            errors.append(f"{core_path}: runtime_commands missing {command}")
+
+    project_root = root.parent
+    _, protocol, _ = load_runtime_protocol(project_root)
+    required_paths = [
+        root / "runtime" / "protocol.yaml",
+        root / "schemas" / "command-protocol.schema.json",
+    ]
+    required_paths.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
+    for required_path in required_paths:
+        if not required_path.exists():
+            errors.append(f"{required_path}: missing agent command protocol asset")
+    for command in sorted(REQUIRED_RUNTIME_COMMANDS):
+        path = runtime_dir / f"{command}.yaml"
+        if not path.exists():
+            errors.append(f"{path}: missing migrated runtime command")
+            continue
+        text = read(path)
+        if re.search(rf"^command:\s*{re.escape(command)}\s*$", text, re.M) is None:
+            errors.append(f"{path}: command field must match filename")
+        for key in ("inputs:", "state:", "writes:", "preconditions:", "steps:", "auto_validation:", "result_contract:"):
+            if key not in text:
+                errors.append(f"{path}: missing {key.rstrip(':')}")
+        for key in (
+            "format: structured_command_result",
+            "required_fields:",
+            "status_values:",
+            "writes: manifest_writes",
+            "evidence:",
+            "risks:",
+            "next_actions:",
+        ):
+            if key not in text:
+                errors.append(f"{path}: missing result contract field {key.rstrip(':')}")
+        for field in RESULT_CONTRACT_FIELDS:
+            if re.search(rf"^\s+-\s+{re.escape(field)}\s*$", text, re.M) is None:
+                errors.append(f"{path}: result_contract.required_fields missing {field}")
+        if command in SUBAGENT_ENABLED_COMMANDS:
+            for key in (
+                "subagents:",
+                "enabled: true",
+                "policy: .claude/docs/maintenance/subagent-model.md",
+                "merge_owner: main_flow",
+                "final_writes_by: main_flow",
+                "write_scope_policy: parent_writes_subset",
+                "parallel_policy:",
+                "agents:",
+                "output_contract:",
+                "evidence_quality:",
+                "format: structured_subagent_result",
+                "merge_requirements:",
+            ):
+                if key not in text:
+                    errors.append(f"{path}: missing subagent contract field {key.rstrip(':')}")
+        if command in ANTI_RATIONALIZATION_COMMANDS:
+            for key in ("anti_rationalizations:", "red_flags:"):
+                if key not in text:
+                    errors.append(f"{path}: missing anti-rationalization field {key.rstrip(':')}")
+        for key in INTERACTION_CONTRACT_MARKERS.get(command, []):
+            if key not in text:
+                errors.append(f"{path}: missing {command} interaction contract field {key.rstrip(':')}")
+
+        readset_path = root / "runtime" / "readsets" / f"{command}.yaml"
+        if not readset_path.exists():
+            errors.append(f"{readset_path}: missing generated runtime readset")
+        else:
+            readset_text = read(readset_path)
+            for key in (
+                f"command: {command}",
+                f"source_manifest: .claude/runtime/commands/{command}.yaml",
+                "generated_from:",
+                "always_reads:",
+                "optional_reads:",
+                "conditional_reads:",
+            ):
+                if key not in readset_text:
+                    errors.append(f"{readset_path}: missing readset field {key.rstrip(':')}")
+
+    readset_index = root / "runtime" / "readsets" / "index.yaml"
+    if not readset_index.exists():
+        errors.append(f"{readset_index}: missing generated runtime readset index")
+    else:
+        index_text = read(readset_index)
+        for command in sorted(REQUIRED_RUNTIME_COMMANDS):
+            if f"{command}: .claude/runtime/readsets/{command}.yaml" not in index_text:
+                errors.append(f"{readset_index}: missing readset index entry {command}")
+
+
+def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
+    for topic_key, declared in registered_topic_rules(root).items():
+        path = project_path(root, declared)
+        if path is None:
+            errors.append(f"{root / 'runtime' / 'core.yaml'}: topic rule {topic_key} has unsupported path {declared}")
+            continue
+        if not path.exists():
+            errors.append(f"{path}: missing topic rule {topic_key}")
+            continue
+        text = read(path)
+        if not text.startswith("---\n"):
+            errors.append(f"{path}: topic rule {topic_key} missing YAML frontmatter")
+        for key in ("alwaysApply:", "description:"):
+            if key not in text:
+                errors.append(f"{path}: topic rule {topic_key} missing frontmatter key {key.rstrip(':')}")
+        previous_position = -1
+        for marker in TOPIC_RULE_REQUIRED_MARKERS:
+            position = text.find(marker)
+            if position == -1:
+                errors.append(f"{path}: topic rule {topic_key} missing skill-like section {marker}")
+                continue
+            if position < previous_position:
+                errors.append(f"{path}: topic rule {topic_key} has section out of order {marker}")
+            previous_position = position
+        if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
+            errors.append(f"{path}: topic rule {topic_key} missing anti-rationalization table")
+
+
+def lint_governance_assets(root: Path, errors: list[str]) -> None:
+    project_root = root.parent
+    _, protocol, _ = load_runtime_protocol(project_root)
+    required = [
+        project_root / ".cc" / "context" / "project-context.md",
+        project_root / ".cc" / "context" / "dev-map.md",
+        project_root / ".cc" / "changes" / "task-board.md",
+        project_root / ".cc" / "knowledge" / "index.md",
+        root / "templates" / "context" / "project-context.md",
+        root / "templates" / "context" / "dev-map.md",
+        root / "templates" / "changes" / "task-board.md",
+        root / "templates" / "knowledge" / "index.md",
+        root / "runtime" / "core.yaml",
+        root / "runtime" / "technology",
+        root / "runtime" / "readsets" / "index.yaml",
+        root / "schemas" / "runtime-core.schema.json",
+        root / "schemas" / "runtime-command.schema.json",
+        root / "schemas" / "runtime-readset.schema.json",
+        root / "schemas" / "technology-decision-catalog.schema.json",
+        root / "schemas" / "topic-rule.schema.json",
+        root / "skills" / "cc-harness" / "SKILL.md",
+        root / "evals" / "rubrics" / "default.yaml",
+    ]
+    required.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
+    for path in required:
+        if not path.exists():
+            errors.append(f"{path}: missing governance asset")
+
+
+def lint_harness_config(root: Path, errors: list[str]) -> None:
+    path = root / "harness.config.yaml"
+    if not path.exists():
+        errors.append(f"{path}: missing harness config")
+        return
+    text = read(path)
+    for key in (
+        "paths:",
+        "framework_root:",
+        "state_root:",
+        "framework_docs_root:",
+        "workflow:",
+        "definition:",
+        "runtime:",
+        "core:",
+        "core_schema:",
+        "command_dir:",
+        "command_schema:",
+        "readset_dir:",
+        "readset_schema:",
+        "topic_rule_schema:",
+        "memory:",
+        "dev_map:",
+        "task_board:",
+        "policy:",
+        "docs:",
+        "examples_dir:",
+        "adoption_dir:",
+        "maintenance_dir:",
+        "validation:",
+        "auto_run:",
+        "fail_on_error:",
+        "verify_command:",
+        "delta_command:",
+        "schema_command:",
+        "role_command:",
+        "eval_command:",
+        "readset_command:",
+        "baseline_dir:",
+        "fixture_dir:",
+        "verification:",
+        "go:",
+        "run_on:",
+    ):
+        if key not in text:
+            errors.append(f"{path}: missing {key.rstrip(':')}")
+    for command in AUTO_VALIDATION_COMMANDS:
+        if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
+            errors.append(f"{path}: validation.run_on missing {command}")
+    for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check", "cc-schema-check", "cc-role-check", "cc-eval", "cc-readset"):
+        script_path = root / "scripts" / script
+        if not script_path.exists():
+            errors.append(f"{script_path}: missing validation script")
+        elif not os.access(script_path, os.X_OK):
+            errors.append(f"{script_path}: validation script is not executable")
+
+
+def lint_docs_layout(project_root: Path, errors: list[str]) -> None:
+    required = [
+        project_root / "README.md",
+        project_root / ".claude" / "docs" / "examples",
+        project_root / ".claude" / "docs" / "adoption",
+        project_root / ".claude" / "docs" / "maintenance",
+        project_root / ".claude" / "docs" / "adoption" / "pilot-checklist.md",
+        project_root / ".claude" / "docs" / "adoption" / "integration-preflight-checklist.md",
+        project_root / ".claude" / "docs" / "maintenance" / "runtime-model.md",
+        project_root / ".claude" / "docs" / "maintenance" / "subagent-model.md",
+        project_root / ".claude" / "docs" / "maintenance" / "rule-skill-anatomy.md",
+    ]
+    for path in required:
+        if not path.exists():
+            errors.append(f"{path}: missing documentation asset")
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if item.is_file():
+            parent = item.parent
+            if (parent / "spec.md").exists() and (parent / "tasks.md").exists():
+                dirs.add(parent)
+            continue
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        for spec in item.rglob("spec.md"):
+            if "templates" in spec.parts:
+                continue
+            parent = spec.parent
+            if (parent / "tasks.md").exists():
+                dirs.add(parent)
+    return sorted(dirs)
+
+
+def default_inputs(root: Path) -> list[Path]:
+    project_root = root
+    inputs = [project_root / ".claude"]
+    changes_root = project_root / ".cc" / "changes"
+    if changes_root.exists():
+        inputs.append(changes_root)
+    return inputs
+
+
+def main(argv: list[str]) -> int:
+    root = Path.cwd()
+    inputs = [Path(arg) for arg in argv] if argv else default_inputs(root)
+    errors: list[str] = []
+
+    for item in inputs:
+        if item.is_file():
+            lint_slash_commands(item, errors)
+            continue
+
+        for md in item.rglob("*.md"):
+            lint_slash_commands(md, errors)
+
+        if item.name == ".claude" or (item / "harness.config.yaml").exists():
+            lint_workflow_definition(item, errors)
+            lint_runtime(item, errors)
+            lint_topic_rule_shape(item, errors)
+            lint_governance_assets(item, errors)
+            lint_harness_config(item, errors)
+            lint_docs_layout(item.parent, errors)
+
+    for change_dir in discover_change_dirs(inputs):
+        mapping_ids = lint_spec(change_dir, errors)
+        lint_tasks(change_dir, mapping_ids, errors)
+        lint_review(change_dir, errors)
+        lint_test_spec(change_dir, errors)
+
+    if errors:
+        for error in errors:
+            print(error, file=sys.stderr)
+        return 1
+    print("cc-lint: ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

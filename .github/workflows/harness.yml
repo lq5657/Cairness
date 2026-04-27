@@ -13,14 +13,8 @@ jobs:
         with:
           go-version: "1.21"
       - name: Verify Harness
-        run: |
-          cd Golang
-          .claude/scripts/cc-verify --harness-only --verbose
+        run: .claude/scripts/cc-verify --harness-only --verbose
       - name: Validate Evals
-        run: |
-          cd Golang
-          .claude/scripts/cc-eval .claude/evals
+        run: .claude/scripts/cc-eval .claude/evals
       - name: Verify Fixture
-        run: |
-          cd Golang
-          .claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
+        run: .claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose

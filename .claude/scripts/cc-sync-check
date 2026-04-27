@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Cross-document sync checks for cc_spec Harness change documents."""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+VALID_CLOSED = {"apply-covered", "test-covered"}
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def parse_meta(text: str) -> dict[str, str]:
+    meta: dict[str, str] = {}
+    frontmatter = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    if frontmatter:
+        lines = frontmatter.group(1).splitlines()
+    else:
+        match = re.search(r"```(?:text)?\n(.*?)\n```", text, re.S)
+        if not match:
+            return meta
+        lines = match.group(1).splitlines()
+    for line in lines:
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        meta[key.strip()] = value.strip().split("#", 1)[0].strip().strip('"').strip("'")
+    return meta
+
+
+def table_rows(text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or "---" in stripped:
+            continue
+        rows.append([cell.strip().strip("`") for cell in stripped.strip("|").split("|")])
+    return rows
+
+
+def validation_rows(text: str) -> list[list[str]]:
+    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
+
+
+def finding_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    section = match.group(1)
+    return [
+        row for row in table_rows(section)
+        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}
+    ]
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        if item.is_dir():
+            for spec in item.rglob("spec.md"):
+                if "templates" in spec.parts:
+                    continue
+                parent = spec.parent
+                if (parent / "tasks.md").exists():
+                    dirs.add(parent)
+    return sorted(dirs)
+
+
+def check_change(change_dir: Path, errors: list[str]) -> None:
+    spec_path = change_dir / "spec.md"
+    tasks_path = change_dir / "tasks.md"
+    spec = read(spec_path)
+    tasks = read(tasks_path)
+    review_path = change_dir / "review.md"
+    test_path = change_dir / "test-spec.md"
+    review = read(review_path) if review_path.exists() else ""
+    test_spec = read(test_path) if test_path.exists() else ""
+    combined_evidence = "\n".join([tasks, review, test_spec, read(change_dir / "log.md") if (change_dir / "log.md").exists() else ""])
+
+    mapping_status: dict[str, str] = {}
+    for row in validation_rows(spec):
+        if len(row) < 7:
+            continue
+        vid, status = row[0], row[6]
+        mapping_status[vid] = status
+        if status in VALID_CLOSED and vid not in combined_evidence:
+            errors.append(f"{spec_path}: {vid} is {status} but no supporting reference found")
+        if status == "gap" and "剩余风险" not in combined_evidence:
+            errors.append(f"{spec_path}: {vid} is gap but remaining risk is not documented")
+
+    for vid in mapping_status:
+        if vid not in tasks:
+            errors.append(f"{tasks_path}: missing validation mapping {vid}")
+        if review and vid not in review:
+            errors.append(f"{review_path}: missing validation mapping review for {vid}")
+
+    if review:
+        meta = parse_meta(review)
+        final_status = meta.get("final_status")
+        open_rows = [row for row in finding_rows(review) if len(row) >= 5 and row[4].strip("` ") == "open"]
+        if final_status == "pass" and open_rows:
+            errors.append(f"{review_path}: final_status pass with open findings")
+        for row in finding_rows(review):
+            if len(row) >= 5 and row[4].strip("` ") == "accepted":
+                reason_text = " ".join(row[:4])
+                if len(reason_text.strip()) < 20:
+                    errors.append(f"{review_path}: accepted finding lacks reason")
+
+    spec_meta = parse_meta(spec)
+    if spec_meta.get("status") == "done":
+        if not review:
+            errors.append(f"{spec_path}: status done without review.md")
+        elif parse_meta(review).get("final_status") != "pass":
+            errors.append(f"{spec_path}: status done without passing review")
+        if any(status == "gap" for status in mapping_status.values()):
+            errors.append(f"{spec_path}: status done with gap validation mapping")
+
+
+def main(argv: list[str]) -> int:
+    root = Path.cwd()
+    if argv:
+        inputs = [Path(arg) for arg in argv]
+    else:
+        inputs = [root / ".cc" / "changes"]
+    errors: list[str] = []
+    for change_dir in discover_change_dirs(inputs):
+        check_change(change_dir, errors)
+    if errors:
+        for error in errors:
+            print(error, file=sys.stderr)
+        return 1
+    print("cc-sync-check: ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

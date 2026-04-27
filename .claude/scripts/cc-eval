@@ -1,0 +1,388 @@
+#!/usr/bin/env python3
+"""Validate eval case structure and semantic grounding for the cc_spec Harness."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+
+CASE_REQUIRED_KEYS = {"id", "input", "expected_reads", "forbidden_actions", "expected_checks", "rubric"}
+RUBRIC_REQUIRED_KEYS = {"id", "criteria"}
+COMMAND_RE = re.compile(r"\bcc-[a-z0-9-]+\b")
+PATH_RE = re.compile(r"(?:(?:\.claude|\.cc)/[A-Za-z0-9_./<>*-]+|README\.md)")
+SCRIPT_COMMAND_RE = re.compile(r"^(\.claude/scripts/[A-Za-z0-9_-]+)\b")
+GOVERNANCE_RULE_READS = {
+    ".claude/rules/role-contracts.md",
+}
+GENERIC_TOKENS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "be",
+    "before",
+    "between",
+    "both",
+    "by",
+    "cc",
+    "each",
+    "edit",
+    "every",
+    "for",
+    "from",
+    "in",
+    "is",
+    "it",
+    "of",
+    "or",
+    "the",
+    "to",
+    "with",
+    "without",
+}
+INTENT_TOKENS = {
+    "add",
+    "archive",
+    "auto",
+    "bypass",
+    "change",
+    "check",
+    "checks",
+    "close",
+    "compare",
+    "create",
+    "defer",
+    "delete",
+    "enter",
+    "expand",
+    "leave",
+    "let",
+    "mark",
+    "modify",
+    "omit",
+    "record",
+    "require",
+    "requires",
+    "run",
+    "skip",
+    "stale",
+    "update",
+    "updating",
+    "use",
+    "validate",
+    "verify",
+    "write",
+}
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def load_yaml(path: Path, issues: list[Issue]) -> dict[str, Any] | None:
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        issues.append(Issue("E_EVAL006", str(path), f"PyYAML is required to parse eval YAML: {exc}"))
+        return None
+    try:
+        loaded = yaml.safe_load(read(path))
+    except Exception as exc:
+        issues.append(Issue("E_EVAL007", str(path), f"invalid YAML: {exc}"))
+        return None
+    if not isinstance(loaded, dict):
+        issues.append(Issue("E_EVAL008", str(path), "YAML root must be a mapping"))
+        return None
+    return loaded
+
+
+def keys_in_yamlish(text: str) -> set[str]:
+    keys: set[str] = set()
+    for line in text.splitlines():
+        match = re.match(r"^([A-Za-z0-9_-]+):", line)
+        if match:
+            keys.add(match.group(1))
+    return keys
+
+
+def check_file(path: Path, required: set[str], issues: list[Issue]) -> None:
+    text = read(path)
+    keys = keys_in_yamlish(text)
+    for key in sorted(required - keys):
+        issues.append(Issue("E_EVAL001", str(path), f"missing key {key}"))
+
+
+def project_path(project_root: Path, declared: str) -> Path | None:
+    if "<" in declared or "*" in declared:
+        return None
+    if declared == "README.md":
+        return project_root / declared
+    if declared.startswith(".claude/") or declared.startswith(".cc/"):
+        return project_root / declared
+    return None
+
+
+def normalize(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+
+
+def semantic_tokens(value: str) -> list[str]:
+    tokens: list[str] = []
+    for token in re.split(r"[^A-Za-z0-9]+", value.lower()):
+        if len(token) < 3:
+            continue
+        if token in GENERIC_TOKENS or token in INTENT_TOKENS:
+            continue
+        tokens.append(token)
+    return sorted(set(tokens))
+
+
+def text_corpus(paths: list[Path]) -> str:
+    parts: list[str] = []
+    for path in paths:
+        if path.exists() and path.is_file():
+            parts.append(read(path))
+    return normalize("\n".join(parts))
+
+
+def is_grounded(value: str, corpus: str) -> bool:
+    marker = normalize(value)
+    if marker and marker in corpus:
+        return True
+    tokens = semantic_tokens(value)
+    if not tokens:
+        return True
+    matched = [token for token in tokens if token in corpus]
+    required = max(2, (len(tokens) + 1) // 2)
+    return len(matched) >= min(required, len(tokens))
+
+
+def concrete_command(case: dict[str, Any]) -> str | None:
+    value = case.get("input")
+    if not isinstance(value, str):
+        return None
+    match = COMMAND_RE.search(value)
+    return match.group(0) if match else None
+
+
+def list_field(case: dict[str, Any], path: Path, key: str, issues: list[Issue]) -> list[str]:
+    value = case.get(key)
+    if not isinstance(value, list) or not value:
+        issues.append(Issue("E_EVAL009", str(path), f"{key} must be a non-empty list"))
+        return []
+    result: list[str] = []
+    for idx, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            issues.append(Issue("E_EVAL010", str(path), f"{key}[{idx}] must be a non-empty string"))
+            continue
+        result.append(item)
+    return result
+
+
+def load_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, Any]:
+    path = claude_root / "runtime" / "core.yaml"
+    loaded = load_yaml(path, issues)
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def command_manifest_path(project_root: Path, core: dict[str, Any], command: str) -> Path | None:
+    runtime_commands = core.get("runtime_commands")
+    if not isinstance(runtime_commands, dict):
+        return None
+    declared = runtime_commands.get(command)
+    if not isinstance(declared, str):
+        return None
+    return project_path(project_root, declared)
+
+
+def validate_rubric(path: Path, rubric: dict[str, Any], issues: list[Issue]) -> str | None:
+    check_file(path, RUBRIC_REQUIRED_KEYS, issues)
+    rubric_id = rubric.get("id")
+    if not isinstance(rubric_id, str) or not rubric_id:
+        issues.append(Issue("E_EVAL011", str(path), "rubric id must be a non-empty string"))
+        return None
+    criteria = rubric.get("criteria")
+    if not isinstance(criteria, list) or not criteria:
+        issues.append(Issue("E_EVAL012", str(path), "criteria must be a non-empty list"))
+        return rubric_id
+    names: set[str] = set()
+    for idx, criterion in enumerate(criteria):
+        if not isinstance(criterion, dict):
+            issues.append(Issue("E_EVAL013", str(path), f"criteria[{idx}] must be a mapping"))
+            continue
+        name = criterion.get("name")
+        description = criterion.get("description")
+        if not isinstance(name, str) or not name:
+            issues.append(Issue("E_EVAL014", str(path), f"criteria[{idx}].name must be a non-empty string"))
+        elif name in names:
+            issues.append(Issue("E_EVAL015", str(path), f"duplicate criterion {name}"))
+        else:
+            names.add(name)
+        if not isinstance(description, str) or not description:
+            issues.append(Issue("E_EVAL016", str(path), f"criteria[{idx}].description must be a non-empty string"))
+    return rubric_id
+
+
+def validate_case_semantics(
+    path: Path,
+    case: dict[str, Any],
+    project_root: Path,
+    core: dict[str, Any],
+    rubric_ids: set[str],
+    issues: list[Issue],
+) -> None:
+    check_file(path, CASE_REQUIRED_KEYS, issues)
+    case_id = case.get("id")
+    if not isinstance(case_id, str) or not case_id:
+        issues.append(Issue("E_EVAL017", str(path), "id must be a non-empty string"))
+    elif case_id != path.stem:
+        issues.append(Issue("E_EVAL018", str(path), f"id must match filename stem {path.stem}"))
+    if not isinstance(case.get("input"), str) or not case.get("input"):
+        issues.append(Issue("E_EVAL019", str(path), "input must be a non-empty string"))
+    rubric = case.get("rubric")
+    if not isinstance(rubric, str) or not rubric:
+        issues.append(Issue("E_EVAL020", str(path), "rubric must be a non-empty string"))
+    elif rubric not in rubric_ids:
+        issues.append(Issue("E_EVAL021", str(path), f"rubric {rubric} does not exist"))
+
+    expected_reads = list_field(case, path, "expected_reads", issues)
+    forbidden_actions = list_field(case, path, "forbidden_actions", issues)
+    expected_checks = list_field(case, path, "expected_checks", issues)
+
+    registered_runtime_commands = {
+        value for value in core.get("runtime_commands", {}).values() if isinstance(value, str)
+    } if isinstance(core.get("runtime_commands"), dict) else set()
+    registered_topic_rules = {
+        value for value in core.get("topic_rules", {}).values() if isinstance(value, str)
+    } if isinstance(core.get("topic_rules"), dict) else set()
+
+    read_set = set(expected_reads)
+    corpus_paths: list[Path] = []
+    for item in expected_reads:
+        resolved = project_path(project_root, item)
+        if resolved is None:
+            issues.append(Issue("E_EVAL022", str(path), f"expected_reads entry is not a supported project path: {item}"))
+            continue
+        if not resolved.exists():
+            issues.append(Issue("E_EVAL023", str(path), f"expected_reads path does not exist: {item}"))
+            continue
+        corpus_paths.append(resolved)
+        if item.startswith(".claude/runtime/commands/") and item not in registered_runtime_commands:
+            issues.append(Issue("E_EVAL024", str(path), f"runtime command read is not registered in runtime/core.yaml: {item}"))
+        if item.startswith(".claude/rules/") and item not in registered_topic_rules and item not in GOVERNANCE_RULE_READS:
+            issues.append(Issue("E_EVAL025", str(path), f"topic rule read is not registered in runtime/core.yaml: {item}"))
+
+    command = concrete_command(case)
+    if command:
+        manifest = command_manifest_path(project_root, core, command)
+        if manifest is not None:
+            declared = f".claude/runtime/commands/{command}.yaml"
+            if ".claude/runtime/core.yaml" not in read_set:
+                issues.append(Issue("E_EVAL026", str(path), f"{command} eval must include .claude/runtime/core.yaml in expected_reads"))
+            if declared not in read_set:
+                issues.append(Issue("E_EVAL027", str(path), f"{command} eval must include {declared} in expected_reads"))
+            if manifest.exists() and manifest not in corpus_paths:
+                corpus_paths.append(manifest)
+
+    corpus = text_corpus(corpus_paths)
+    for action in forbidden_actions:
+        if not is_grounded(action, corpus):
+            issues.append(Issue("E_EVAL028", str(path), f"forbidden action is not grounded in expected runtime/rule reads: {action}"))
+
+    for check in expected_checks:
+        script_match = SCRIPT_COMMAND_RE.match(check)
+        if script_match:
+            script_path = project_path(project_root, script_match.group(1))
+            if script_path is None or not script_path.exists():
+                issues.append(Issue("E_EVAL029", str(path), f"expected check references missing script: {script_match.group(1)}"))
+            continue
+        for raw_path in PATH_RE.findall(check):
+            if "<" in raw_path or "*" in raw_path:
+                continue
+            resolved = project_path(project_root, raw_path)
+            if resolved is not None and not resolved.exists():
+                issues.append(Issue("E_EVAL030", str(path), f"expected check references missing path: {raw_path}"))
+        if not is_grounded(check, corpus):
+            issues.append(Issue("E_EVAL031", str(path), f"expected check is not grounded in expected runtime/rule reads: {check}"))
+
+
+def build_report(root: Path) -> dict[str, Any]:
+    issues: list[Issue] = []
+    claude_root = root.parent
+    project_root = claude_root.parent
+    core = load_runtime_core(claude_root, issues)
+    cases_dir = root / "cases"
+    rubrics_dir = root / "rubrics"
+    if not cases_dir.exists():
+        issues.append(Issue("E_EVAL002", str(cases_dir), "missing cases directory"))
+        cases = []
+    else:
+        cases = sorted(cases_dir.glob("*.yaml"))
+        if not cases:
+            issues.append(Issue("E_EVAL003", str(cases_dir), "no eval cases found"))
+
+    rubric_ids: set[str] = set()
+    if not rubrics_dir.exists():
+        issues.append(Issue("E_EVAL004", str(rubrics_dir), "missing rubrics directory"))
+        rubrics = []
+    else:
+        rubrics = sorted(rubrics_dir.glob("*.yaml"))
+        if not rubrics:
+            issues.append(Issue("E_EVAL005", str(rubrics_dir), "no rubrics found"))
+        for path in rubrics:
+            rubric = load_yaml(path, issues)
+            if rubric is None:
+                continue
+            rubric_id = validate_rubric(path, rubric, issues)
+            if rubric_id:
+                rubric_ids.add(rubric_id)
+
+    for path in cases:
+        case = load_yaml(path, issues)
+        if case is None:
+            continue
+        validate_case_semantics(path, case, project_root, core, rubric_ids, issues)
+
+    return {
+        "tool": "cc-eval",
+        "status": "failed" if issues else "passed",
+        "mode": "semantic",
+        "cases": [str(path) for path in cases],
+        "rubrics": [str(path) for path in rubrics],
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Validate cc_spec Harness eval case structure and semantic grounding.")
+    parser.add_argument("root", nargs="?", default=".claude/evals", help="Eval root containing cases/ and rubrics/.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    report = build_report(Path(args.root))
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-eval: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

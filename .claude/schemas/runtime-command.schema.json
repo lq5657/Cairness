@@ -1,0 +1,407 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/runtime-command.schema.json",
+  "title": "cc_spec Harness Runtime Command Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "summary",
+    "inputs",
+    "state",
+    "writes",
+    "forbids",
+    "required_reads",
+    "preconditions",
+    "steps",
+    "auto_validation",
+    "result_contract",
+    "stop_conditions"
+  ],
+  "properties": {
+    "command": {
+      "$ref": "#/$defs/ccCommand"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "properties": {
+        "required": {
+          "$ref": "#/$defs/inputList"
+        },
+        "optional": {
+          "$ref": "#/$defs/inputList"
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_from", "change_to"],
+      "properties": {
+        "change_from": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["none", "propose", "apply", "review", "done"]
+          }
+        },
+        "change_to": {
+          "type": "string",
+          "enum": ["unchanged", "propose", "apply", "review", "done"]
+        }
+      }
+    },
+    "writes": {
+      "$ref": "#/$defs/stringList"
+    },
+    "forbids": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "required_reads": {
+      "$ref": "#/$defs/stringList"
+    },
+    "optional_reads": {
+      "$ref": "#/$defs/stringList"
+    },
+    "preconditions": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "topic_rules": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^(always|when_[a-z0-9_]+)$"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "pattern": "^\\.claude/rules/.+\\.md$"
+        }
+      }
+    },
+    "interaction_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "minProperties": 2,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["interactive_required"]
+        },
+        "clarification": {
+          "$ref": "#/$defs/interactionClarification"
+        },
+        "hard_gate": {
+          "$ref": "#/$defs/interactionDecision"
+        },
+        "confirmation": {
+          "$ref": "#/$defs/interactionDecision"
+        },
+        "selection": {
+          "$ref": "#/$defs/interactionDecision"
+        }
+      }
+    },
+    "subagents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "policy",
+        "merge_owner",
+        "final_writes_by",
+        "write_scope_policy",
+        "parallel_policy",
+        "agents",
+        "merge_requirements"
+      ],
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "policy": {
+          "type": "string",
+          "pattern": "^\\.claude/docs/maintenance/subagent-model\\.md$"
+        },
+        "merge_owner": {
+          "type": "string",
+          "enum": ["main_flow"]
+        },
+        "final_writes_by": {
+          "type": "string",
+          "enum": ["main_flow"]
+        },
+        "write_scope_policy": {
+          "type": "string",
+          "enum": ["parent_writes_subset"]
+        },
+        "parallel_policy": {
+          "type": "string",
+          "enum": ["disjoint_writes_only", "read_only_parallel_only"]
+        },
+        "agents": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "role", "mode", "trigger", "writes", "output", "output_contract"],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/hyphenId"
+              },
+              "role": {
+                "$ref": "#/$defs/hyphenId"
+              },
+              "mode": {
+                "type": "string",
+                "enum": ["read_only", "scoped_write", "proposal_only"]
+              },
+              "trigger": {
+                "$ref": "#/$defs/snakeId"
+              },
+              "writes": {
+                "$ref": "#/$defs/stringList"
+              },
+              "output": {
+                "$ref": "#/$defs/snakeId"
+              },
+              "output_contract": {
+                "$ref": "#/$defs/subagentOutputContract"
+              }
+            }
+          }
+        },
+        "merge_requirements": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "anti_rationalizations": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "red_flags": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "steps": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
+    "auto_validation": {
+      "$ref": "#/$defs/stringList"
+    },
+    "result_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "required_fields",
+        "status_values",
+        "writes",
+        "evidence",
+        "risks",
+        "next_actions"
+      ],
+      "properties": {
+        "format": {
+          "const": "structured_command_result"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["status", "summary", "writes", "evidence", "risks", "next_action"]
+          }
+        },
+        "status_values": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["passed", "blocked", "partial"]
+          }
+        },
+        "writes": {
+          "type": "string",
+          "enum": ["manifest_writes"]
+        },
+        "evidence": {
+          "$ref": "#/$defs/resultSection"
+        },
+        "risks": {
+          "$ref": "#/$defs/resultSection"
+        },
+        "next_actions": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "stop_conditions": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    }
+  },
+  "$defs": {
+    "ccCommand": {
+      "type": "string",
+      "pattern": "^cc-[a-z0-9-]+$"
+    },
+    "snakeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "hyphenId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "inputList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/snakeId"
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonEmptySnakeList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/snakeId"
+      }
+    },
+    "resultSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "sources"],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "sources": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "interactionClarification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "when",
+        "presentation",
+        "blocking_behavior",
+        "max_questions_per_round",
+        "resolution_required_before_ready"
+      ],
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/snakeId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "blocking_behavior": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "max_questions_per_round": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resolution_required_before_ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "interactionDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "when",
+        "presentation",
+        "confirmation_options",
+        "required_confirmations",
+        "blocking_behavior"
+      ],
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/snakeId"
+        },
+        "presentation": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "confirmation_options": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "required_confirmations": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "blocking_behavior": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "subagentOutputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "required_fields", "evidence_quality"],
+      "properties": {
+        "format": {
+          "const": "structured_subagent_result"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["summary", "scope", "writes", "evidence", "risks", "merge_notes"]
+          }
+        },
+        "evidence_quality": {
+          "$ref": "#/$defs/subagentEvidenceQuality"
+        }
+      }
+    },
+    "subagentEvidenceQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_evidence_items", "min_risk_items", "require_concrete_references", "allow_freeform"],
+      "properties": {
+        "min_evidence_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_risk_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "require_concrete_references": {
+          "const": true
+        },
+        "allow_freeform": {
+          "const": false
+        }
+      }
+    }
+  }
+}

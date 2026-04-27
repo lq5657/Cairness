@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/test-spec.schema.json",
+  "title": "cc_spec Harness Test Spec",
+  "type": "object",
+  "required": ["change_id", "status", "mode", "mapping_results"],
+  "properties": {
+    "change_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["propose", "apply", "review", "done"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["supplement", "recovery"]
+    },
+    "mapping_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^V[0-9]+$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "apply-covered", "test-covered", "gap"]
+          }
+        }
+      }
+    }
+  }
+}

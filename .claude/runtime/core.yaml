@@ -1,0 +1,82 @@
+version: 1
+runtime_id: cc-spec-harness-runtime
+
+workflow_definition: .claude/workflows/cc-workflow.yaml
+
+migrated_commands:
+  - cc-preflight
+  - cc-init
+  - cc-inspect-codebase
+  - cc-propose
+  - cc-apply
+  - cc-review
+  - cc-fix
+  - cc-test
+  - cc-archive
+  - cc-promote-audit
+
+runtime_commands:
+  cc-preflight: .claude/runtime/commands/cc-preflight.yaml
+  cc-init: .claude/runtime/commands/cc-init.yaml
+  cc-inspect-codebase: .claude/runtime/commands/cc-inspect-codebase.yaml
+  cc-propose: .claude/runtime/commands/cc-propose.yaml
+  cc-apply: .claude/runtime/commands/cc-apply.yaml
+  cc-review: .claude/runtime/commands/cc-review.yaml
+  cc-fix: .claude/runtime/commands/cc-fix.yaml
+  cc-test: .claude/runtime/commands/cc-test.yaml
+  cc-archive: .claude/runtime/commands/cc-archive.yaml
+  cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
+
+runtime_readsets:
+  dir: .claude/runtime/readsets
+  index: .claude/runtime/readsets/index.yaml
+  schema: .claude/schemas/runtime-readset.schema.json
+
+runtime_protocol:
+  protocol: .claude/runtime/protocol.yaml
+  schema: .claude/schemas/command-protocol.schema.json
+  default_language_profile: .claude/runtime/languages/golang.yaml
+
+legacy_fallback:
+  commands_dir: .claude/commands
+  checkpoints_dir: .claude/checkpoints
+
+governance:
+  task_board: .cc/changes/task-board.md
+  dev_map: .cc/context/dev-map.md
+  memory_policy: .claude/rules/memory-policy.md
+  subagent_policy: .claude/docs/maintenance/subagent-model.md
+
+scripts:
+  verify: .claude/scripts/cc-verify
+  delta: .claude/scripts/cc-delta-check
+  role: .claude/scripts/cc-role-check
+  eval: .claude/scripts/cc-eval
+  readset: .claude/scripts/cc-readset
+  doctor: .claude/scripts/cc-doctor-check
+  event: .claude/scripts/cc-event-check
+  behavior: .claude/scripts/cc-behavior-check
+  upgrade: .claude/scripts/cc-upgrade-check
+
+topic_rules:
+  verification: .claude/rules/verification.md
+  testing_strategy: .claude/rules/testing-strategy.md
+  change_sizing: .claude/rules/change-sizing.md
+  coding_style: .claude/rules/coding-style.md
+  debugging_workflow: .claude/rules/debugging-workflow.md
+  database_changes: .claude/rules/database-changes.md
+  api_compatibility: .claude/rules/api-compatibility.md
+  configuration: .claude/rules/configuration.md
+  observability: .claude/rules/observability.md
+  release: .claude/rules/release.md
+  security: .claude/rules/security.md
+  source_driven_development: .claude/rules/source-driven-development.md
+  git_workflow: .claude/rules/git-workflow.md
+
+default_runtime_rules:
+  - keep_cc_literals
+  - runtime_first_for_migrated_commands
+  - do_not_load_legacy_docs_for_migrated_commands_without_need
+  - task_board_and_dev_map_are_governance_assets_not_primary_specs
+  - main_flow_owns_subagent_merge_and_final_writes
+  - reject_declared_anti_rationalizations_and_red_flags

@@ -1,4 +1,0 @@
-interface:
-  display_name: "cc Harness"
-  short_description: "Run cc_spec Golang Harness workflows in Claude Code."
-  default_prompt: "Use cc-harness for a cc-* workflow."

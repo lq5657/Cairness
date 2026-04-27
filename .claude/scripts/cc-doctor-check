@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Doctor-style adoption readiness checks for Harness projects."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from harness_runtime import project_path, resolve_language_profile
+
+
+@dataclass
+class Issue:
+    code: str
+    path: str
+    message: str
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def load_yaml(path: Path, issues: list[Issue]) -> Any:
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        issues.append(Issue("E_DOCTOR001", str(path), f"PyYAML is required: {exc}"))
+        return None
+    if not path.exists():
+        issues.append(Issue("E_DOCTOR002", str(path), "missing YAML file"))
+        return None
+    try:
+        return yaml.safe_load(read(path))
+    except Exception as exc:
+        issues.append(Issue("E_DOCTOR003", str(path), f"invalid YAML: {exc}"))
+        return None
+
+
+def require_path(path: Path, kind: str, issues: list[Issue], code: str = "E_DOCTOR004") -> None:
+    if kind == "dir" and not path.is_dir():
+        issues.append(Issue(code, str(path), "missing directory"))
+    if kind == "file" and not path.is_file():
+        issues.append(Issue(code, str(path), "missing file"))
+
+
+def string_at(data: Any, path: list[str]) -> str:
+    current = data
+    for part in path:
+        if not isinstance(current, dict):
+            return ""
+        current = current.get(part)
+    return current if isinstance(current, str) else ""
+
+
+def git_repo_root(project_root: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "-C", str(project_root), "rev-parse", "--show-toplevel"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode == 0 and completed.stdout.strip():
+        return Path(completed.stdout.strip()).resolve()
+    return project_root.resolve()
+
+
+def check_required_layout(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    required = [
+        (claude_root / "runtime" / "core.yaml", "file"),
+        (claude_root / "runtime" / "protocol.yaml", "file"),
+        (claude_root / "workflows" / "cc-workflow.yaml", "file"),
+        (claude_root / "harness.config.yaml", "file"),
+        (claude_root / "schemas" / "runtime-core.schema.json", "file"),
+        (claude_root / "schemas" / "command-protocol.schema.json", "file"),
+        (claude_root / "schemas" / "language-profile.schema.json", "file"),
+        (claude_root / "schemas" / "technology-decision-catalog.schema.json", "file"),
+        (claude_root / "schemas" / "command-event.schema.json", "file"),
+        (claude_root / "evals" / "behavior", "dir"),
+        (claude_root / "UPGRADE.md", "file"),
+        (claude_root / "VERSION", "file"),
+        (claude_root / "templates" / "context" / "project-context.md", "file"),
+        (claude_root / "templates" / "context" / "dev-map.md", "file"),
+        (claude_root / "templates" / "changes" / "events.jsonl", "file"),
+        (claude_root / "templates" / "changes" / "task-board.md", "file"),
+        (claude_root / "templates" / "knowledge" / "index.md", "file"),
+        (claude_root / "templates" / "results" / "command-result.md", "file"),
+        (claude_root / "templates" / "results" / "command-error.md", "file"),
+        (project_root / ".cc" / "context" / "project-context.md", "file"),
+        (project_root / ".cc" / "context" / "dev-map.md", "file"),
+        (project_root / ".cc" / "changes" / "task-board.md", "file"),
+        (project_root / ".cc" / "knowledge" / "index.md", "file"),
+    ]
+    for path, kind in required:
+        require_path(path, kind, issues)
+
+
+def check_scripts_executable(claude_root: Path, issues: list[Issue]) -> None:
+    scripts_dir = claude_root / "scripts"
+    require_path(scripts_dir, "dir", issues)
+    if not scripts_dir.exists():
+        return
+    for script in sorted(scripts_dir.glob("cc-*")):
+        if script.is_file() and not os.access(script, os.X_OK):
+            issues.append(Issue("E_DOCTOR005", str(script), "script must be executable"))
+
+
+def check_language_profiles(project_root: Path, protocol_path: Path, protocol: dict[str, Any], issues: list[Issue]) -> None:
+    language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
+    profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
+    for profile_name, declared in sorted(profiles.items()):
+        profile_path = project_path(project_root, declared)
+        if profile_path is None:
+            issues.append(Issue("E_DOCTOR006", str(protocol_path), f"language profile {profile_name} has unsupported path {declared}"))
+            continue
+        require_path(profile_path, "file", issues, "E_DOCTOR006")
+        profile = load_yaml(profile_path, issues)
+        if not isinstance(profile, dict):
+            continue
+        default_fixture = string_at(profile, ["fixtures", "default"])
+        if default_fixture:
+            fixture_root = project_root / default_fixture
+            require_path(fixture_root, "dir", issues, "E_DOCTOR007")
+            if fixture_root.exists():
+                resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False)
+                if resolution.profile_name != profile_name:
+                    issues.append(
+                        Issue(
+                            "E_DOCTOR012",
+                            str(fixture_root),
+                            f"default fixture {default_fixture} resolves to {resolution.profile_name or resolution.status}, expected {profile_name}",
+                        )
+                    )
+        catalog = string_at(profile, ["technology_decisions", "catalog"])
+        if catalog:
+            require_path(project_root / catalog, "file", issues, "E_DOCTOR011")
+
+
+def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    protocol_path = claude_root / "runtime" / "protocol.yaml"
+    protocol = load_yaml(protocol_path, issues)
+    if not isinstance(protocol, dict):
+        return
+    rendering = protocol.get("result_rendering")
+    if isinstance(rendering, dict):
+        for key in ("success_template", "error_template"):
+            value = rendering.get(key)
+            if isinstance(value, str):
+                require_path(project_root / value, "file", issues, "E_DOCTOR008")
+    technology_decisions = protocol.get("technology_decisions") if isinstance(protocol.get("technology_decisions"), dict) else {}
+    catalog_schema = technology_decisions.get("catalog_schema")
+    if isinstance(catalog_schema, str):
+        require_path(project_root / catalog_schema, "file", issues, "E_DOCTOR008")
+    language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
+    profile = language_profile.get("default")
+    profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
+    if not isinstance(profile, str) or profile not in profiles:
+        issues.append(Issue("E_DOCTOR009", str(protocol_path), "default language profile must be declared"))
+    check_language_profiles(project_root, protocol_path, protocol, issues)
+
+
+def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
+    repo_root = git_repo_root(project_root)
+    workflow_path = repo_root / ".github" / "workflows" / "harness.yml"
+    if not workflow_path.exists():
+        return
+    text = read(workflow_path)
+    for match in re.finditer(r"--fixture\s+([^\s]+)", text):
+        fixture = match.group(1).strip()
+        fixture_root = project_root / fixture
+        if not fixture_root.exists():
+            issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not exist"))
+            continue
+        resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False)
+        if resolution.status != "resolved":
+            issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not resolve to a declared language profile"))
+
+
+def build_report() -> dict[str, Any]:
+    claude_root = Path(__file__).resolve().parent.parent
+    project_root = claude_root.parent
+    issues: list[Issue] = []
+    check_required_layout(project_root, claude_root, issues)
+    check_scripts_executable(claude_root, issues)
+    check_protocol_assets(project_root, claude_root, issues)
+    check_ci_fixture_paths(project_root, issues)
+    return {
+        "tool": "cc-doctor-check",
+        "status": "failed" if issues else "passed",
+        "project_root": str(project_root),
+        "issues": [issue.__dict__ for issue in issues],
+    }
+
+
+def main(argv: list[str]) -> int:
+    json_output = "--json" in argv
+    report = build_report()
+    if json_output:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-doctor-check: ok")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

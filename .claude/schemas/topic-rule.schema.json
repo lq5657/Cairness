@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/topic-rule.schema.json",
+  "title": "cc_spec Harness Topic Rule Frontmatter",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "alwaysApply",
+    "description"
+  ],
+  "properties": {
+    "alwaysApply": {
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
