@@ -30,8 +30,8 @@ alwaysApply: true
 
 #### 3. 状态与导航
 
-- 项目状态根目录: `.cc/`
-- 框架资产根目录: `.claude/`
+- 项目状态目录（`.cc`）: `.cc/`
+- 框架目录（Harness 提供）: `.claude/`
 - 开发导航: `.cc/context/dev-map.md`
 - change 看板: `.cc/changes/task-board.md`
 
