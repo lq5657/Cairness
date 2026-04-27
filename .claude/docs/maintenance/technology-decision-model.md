@@ -51,7 +51,9 @@ The active language profile is resolved before technology decisions:
 
 `cc-propose` uses the catalog for change-level choices. It should ask only the decision groups triggered by the current change. For example, adding an MQ consumer may trigger `async_messaging`; changing a simple handler should not reopen the entire project technology stack.
 
-`cc-init` and `cc-enrich-context` use the catalog only as a fact-finding aid for existing projects. They record observed choices and unresolved facts; they do not ask the user to reselect technology unless the user explicitly wants a redesign.
+Runtime readsets model this as on-demand input: `cc-propose` does not include the language technology catalog in `always_reads`; it exposes it under `conditional_reads.when_technology_decision_is_required`. A proposal must first classify whether the requested change actually requires a new or changed technology decision. If not, it should rely on project context, dev map, existing code, and topic rules instead of reading the catalog.
+
+`cc-init` does not load the catalog by default. It should record directly observed project facts and unresolved unknowns from context files and low-cost repository evidence. A future `cc-enrich-context` mode may use the catalog only as an explicit fact-finding aid for existing projects; it must record observed choices and unresolved facts, not ask the user to reselect technology unless the user explicitly wants a redesign.
 
 ## Project State Outputs
 

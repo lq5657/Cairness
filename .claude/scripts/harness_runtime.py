@@ -128,6 +128,20 @@ def protocol_language_assets(project_root: Path, protocol: dict[str, Any], *, in
     return ordered
 
 
+def protocol_language_catalogs(project_root: Path, protocol: dict[str, Any]) -> list[str]:
+    catalogs: list[str] = []
+    for profile in protocol_language_profiles(project_root, protocol):
+        if profile.catalog_declared:
+            catalogs.append(profile.catalog_declared)
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for catalog in catalogs:
+        if catalog and catalog not in seen:
+            ordered.append(catalog)
+            seen.add(catalog)
+    return ordered
+
+
 def resolve_language_profile(
     project_root: Path,
     *,

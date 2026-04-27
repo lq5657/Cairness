@@ -5,16 +5,13 @@ generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 - .cc/context/project-context.md
-- .claude/docs/maintenance/subagent-model.md
 optional_reads: []
 conditional_reads:
   when_mode_is_architecture:
@@ -27,3 +24,5 @@ conditional_reads:
   when_mode_is_test_debt:
   - .claude/rules/testing-strategy.md
   - .claude/rules/verification.md
+  when_subagent_delegation_is_used:
+  - .claude/docs/maintenance/subagent-model.md

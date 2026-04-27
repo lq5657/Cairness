@@ -25,6 +25,9 @@ forbids:
 required_reads:
   - .cc/context/project-context.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - explicit_cc_inspect_codebase_command_received
   - mode_is_one_of_architecture_logic_observability_test_debt

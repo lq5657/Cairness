@@ -5,13 +5,11 @@ generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-apply.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-apply.yaml
 - .cc/changes/<change-id>/spec.md
 - .cc/changes/<change-id>/tasks.md
@@ -20,7 +18,6 @@ always_reads:
 - .claude/harness.config.yaml
 - .claude/rules/verification.md
 - .claude/rules/coding-style.md
-- .claude/docs/maintenance/subagent-model.md
 optional_reads: []
 conditional_reads:
   when_task_touches_logic_bug_chain_or_data_access:
@@ -41,3 +38,5 @@ conditional_reads:
   - .claude/rules/source-driven-development.md
   when_change_has_dependency_or_parallelism_constraints:
   - .claude/rules/git-workflow.md
+  when_subagent_delegation_is_used:
+  - .claude/docs/maintenance/subagent-model.md

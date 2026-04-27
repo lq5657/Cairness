@@ -25,6 +25,9 @@ required_reads:
   - .cc/context/dev-map.md
   - .claude/rules/memory-policy.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - claude_scaffold_exists
   - confirm_goal_is_basic_fact_initialization

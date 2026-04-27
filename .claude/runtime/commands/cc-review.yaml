@@ -31,6 +31,9 @@ optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/context/mvp-roadmap.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - spec_status_is_review
   - read_validation_mapping_and_existing_evidence

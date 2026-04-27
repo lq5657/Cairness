@@ -36,6 +36,9 @@ required_reads:
   - .cc/changes/task-board.md
   - .claude/harness.config.yaml
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - spec_and_tasks_exist
   - hard_gate_confirmed_for_current_revisions

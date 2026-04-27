@@ -77,7 +77,7 @@
       "properties": {
         "technology_catalog": {
           "type": "string",
-          "enum": ["always", "never"]
+          "enum": ["always", "never", "on_demand"]
         }
       }
     },

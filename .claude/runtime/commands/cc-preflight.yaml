@@ -24,6 +24,9 @@ required_reads:
   - .cc/context/dev-map.md
   - .cc/changes/task-board.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - confirm_goal_is_preflight_not_project_inspection
   - keep_scope_on_harness_scaffold_and_entrypoints

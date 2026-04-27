@@ -30,6 +30,9 @@ required_reads:
 optional_reads:
   - .claude/runtime/commands/cc-propose.yaml
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - audit_report_exists
   - target_change_id_is_decided

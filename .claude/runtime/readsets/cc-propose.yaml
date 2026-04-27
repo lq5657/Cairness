@@ -5,13 +5,11 @@ generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-propose.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/languages/golang.yaml
-- .claude/runtime/technology/golang.yaml
 - .claude/runtime/commands/cc-propose.yaml
 - .cc/context/project-context.md
 - .cc/context/dev-map.md
@@ -38,3 +36,5 @@ conditional_reads:
   - .claude/rules/source-driven-development.md
   when_change_has_dependency_or_parallelism_constraints:
   - .claude/rules/git-workflow.md
+  when_technology_decision_is_required:
+  - .claude/runtime/technology/golang.yaml

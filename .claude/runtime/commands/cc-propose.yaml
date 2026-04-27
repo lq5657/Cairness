@@ -31,9 +31,13 @@ required_reads:
   - .cc/context/dev-map.md
   - .cc/changes/task-board.md
 
+runtime_protocol_reads:
+  technology_catalog: on_demand
+
 preconditions:
   - decide_existing_project_change_vs_new_project
   - perform_minimum_local_research_before_broad_questions
+  - classify_whether_technology_decision_catalog_is_needed
   - distinguish_resolved_vs_blocking_clarifications
   - check_change_conflicts_and_depends_on
   - classify_change_size_and_split_boundaries
@@ -104,6 +108,7 @@ steps:
   - clarify_only_high_value_unknowns
   - present_blocking_clarification_questions_and_wait_for_answers
   - classify_scope_axes_and_size
+  - read_technology_catalog_only_for_triggered_change_level_decisions
   - compare_recommended_vs_rejected_option
   - split_or_phase_oversized_work
   - freeze_in_scope_and_out_of_scope
@@ -122,6 +127,7 @@ anti_rationalizations:
   - claim_task_is_small_without_declared_file_scope_acceptance_and_evidence
   - treat_clarification_list_as_if_user_answered_it
   - treat_hard_gate_summary_as_if_user_confirmed_it
+  - reopen_full_technology_stack_for_change_without_triggered_decision
 
 red_flags:
   - task_scope_writes_broad_directories_without_named_modules
@@ -130,6 +136,7 @@ red_flags:
   - subagents_would_need_overlapping_write_scopes
   - final_output_contains_pending_questions_but_no_direct_question_to_user
   - final_output_says_execute_cc_apply_without_confirm_revise_block_options
+  - technology_catalog_read_without_change_level_decision_trigger
 
 auto_validation:
   - .claude/scripts/cc-verify --harness-only --change <change-id>

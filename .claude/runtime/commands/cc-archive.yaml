@@ -33,6 +33,9 @@ required_reads:
 optional_reads:
   - .cc/knowledge/index.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - review_exists_and_allows_archive
   - spec_status_is_review

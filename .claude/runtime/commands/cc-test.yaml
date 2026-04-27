@@ -36,6 +36,9 @@ optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/changes/<change-id>/log.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - spec_status_is_apply_or_review
   - choose_mode_supplement_or_recovery

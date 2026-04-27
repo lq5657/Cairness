@@ -120,6 +120,10 @@ TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Req
 RESULT_CONTRACT_FIELDS = ["status", "summary", "writes", "evidence", "risks", "next_action"]
 INTERACTION_CONTRACT_MARKERS = {
     "cc-propose": [
+        "runtime_protocol_reads:",
+        "technology_catalog: on_demand",
+        "classify_whether_technology_decision_catalog_is_needed",
+        "read_technology_catalog_only_for_triggered_change_level_decisions",
         "interaction_contract:",
         "mode: interactive_required",
         "clarification:",

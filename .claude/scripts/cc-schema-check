@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import protocol_language_assets
+from harness_runtime import protocol_language_assets, protocol_language_catalogs
 
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -669,9 +669,14 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
     return catalog if isinstance(catalog, str) else ""
 
 
-def include_technology_catalog(manifest: dict[str, Any]) -> bool:
+def technology_catalog_mode(manifest: dict[str, Any]) -> str:
     runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
-    return runtime_reads.get("technology_catalog", "always") != "never"
+    mode = runtime_reads.get("technology_catalog", "always")
+    return mode if mode in {"always", "never", "on_demand"} else "always"
+
+
+def include_technology_catalog(manifest: dict[str, Any]) -> bool:
+    return technology_catalog_mode(manifest) == "always"
 
 
 def runtime_protocol_reads(
@@ -687,6 +692,22 @@ def runtime_protocol_reads(
     if isinstance(protocol, dict):
         reads.extend(protocol_language_assets(project_root, protocol, include_catalog=include_technology_catalog(manifest)))
     return ordered_unique(reads)
+
+
+def on_demand_technology_catalog_reads(
+    project_root: Path,
+    core: dict[str, Any] | None,
+    manifest: dict[str, Any],
+    issues: list[Issue],
+) -> list[str]:
+    if technology_catalog_mode(manifest) != "on_demand":
+        return []
+    config = runtime_protocol_config(core)
+    protocol_path = project_path(project_root, config["protocol"])
+    protocol = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
+    if not isinstance(protocol, dict):
+        return []
+    return ordered_unique(protocol_language_catalogs(project_root, protocol))
 
 
 def command_order(core: dict[str, Any]) -> list[str]:
@@ -710,9 +731,22 @@ def derive_command_readset(
         if condition == "always":
             continue
         conditional_reads[condition] = ordered_unique(string_list(rules))
+    on_demand_catalogs = on_demand_technology_catalog_reads(project_root, core, manifest, issues)
+    if on_demand_catalogs:
+        condition = "when_technology_decision_is_required"
+        conditional_reads[condition] = ordered_unique([
+            *conditional_reads.get(condition, []),
+            *on_demand_catalogs,
+        ])
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
+    if subagent_policy:
+        condition = "when_subagent_delegation_is_used"
+        conditional_reads[condition] = ordered_unique([
+            *conditional_reads.get(condition, []),
+            subagent_policy,
+        ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
     always_reads = [
         ".claude/runtime/core.yaml",
@@ -721,8 +755,6 @@ def derive_command_readset(
         *string_list(manifest.get("required_reads")),
         *string_list(topic_rules.get("always")),
     ]
-    if subagent_policy:
-        always_reads.append(subagent_policy)
 
     return {
         "version": 1,

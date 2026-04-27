@@ -18,7 +18,6 @@ always_reads:
 - .cc/changes/task-board.md
 - .claude/rules/verification.md
 - .claude/rules/debugging-workflow.md
-- .claude/docs/maintenance/subagent-model.md
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/context/dev-map.md
@@ -41,3 +40,5 @@ conditional_reads:
   - .claude/rules/source-driven-development.md
   when_finding_touches_dependency_or_wave_order:
   - .claude/rules/git-workflow.md
+  when_subagent_delegation_is_used:
+  - .claude/docs/maintenance/subagent-model.md
