@@ -535,6 +535,19 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                 "subagents:",
                 "enabled: true",
                 "policy: .claude/docs/maintenance/subagent-model.md",
+            ):
+                if key not in text:
+                    errors.append(f"{path}: missing subagent contract field {key.rstrip(':')}")
+            contract_match = re.search(r"^\s+contract:\s*(\.claude/runtime/subagents/cc-[a-z0-9-]+\.yaml)\s*$", text, re.M)
+            contract_text = text
+            if contract_match:
+                contract_path = project_path(root, contract_match.group(1))
+                if contract_path is None or not contract_path.exists():
+                    errors.append(f"{path}: subagent contract path does not exist: {contract_match.group(1)}")
+                    contract_text = ""
+                else:
+                    contract_text = read(contract_path)
+            for key in (
                 "merge_owner: main_flow",
                 "final_writes_by: main_flow",
                 "write_scope_policy: parent_writes_subset",
@@ -545,7 +558,7 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
                 "format: structured_subagent_result",
                 "merge_requirements:",
             ):
-                if key not in text:
+                if key not in contract_text:
                     errors.append(f"{path}: missing subagent contract field {key.rstrip(':')}")
         if command in ANTI_RATIONALIZATION_COMMANDS:
             for key in ("anti_rationalizations:", "red_flags:"):

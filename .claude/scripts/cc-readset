@@ -182,11 +182,13 @@ def derive_command_readset(
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
-    if subagent_policy:
+    subagent_contract = subagents.get("contract") if subagents.get("enabled") is True and isinstance(subagents.get("contract"), str) else ""
+    if subagent_policy or subagent_contract:
         condition = "when_subagent_delegation_is_used"
         conditional_reads[condition] = ordered_unique([
             *conditional_reads.get(condition, []),
-            subagent_policy,
+            *([subagent_policy] if subagent_policy else []),
+            *([subagent_contract] if subagent_contract else []),
         ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
     always_reads = [

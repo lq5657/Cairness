@@ -38,3 +38,4 @@ conditional_reads:
   - .claude/rules/source-driven-development.md
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
+  - .claude/runtime/subagents/cc-test.yaml

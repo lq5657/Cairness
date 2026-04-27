@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/runtime-subagent-contract.schema.json",
+  "title": "cc_spec Harness Runtime Subagent Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command",
+    "merge_owner",
+    "final_writes_by",
+    "write_scope_policy",
+    "parallel_policy",
+    "agents",
+    "merge_requirements"
+  ],
+  "properties": {
+    "command": {
+      "$ref": "#/$defs/ccCommand"
+    },
+    "merge_owner": {
+      "type": "string",
+      "enum": ["main_flow"]
+    },
+    "final_writes_by": {
+      "type": "string",
+      "enum": ["main_flow"]
+    },
+    "write_scope_policy": {
+      "type": "string",
+      "enum": ["parent_writes_subset"]
+    },
+    "parallel_policy": {
+      "type": "string",
+      "enum": ["disjoint_writes_only", "read_only_parallel_only"]
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "role", "mode", "trigger", "writes", "output", "output_contract"],
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/hyphenId"
+          },
+          "role": {
+            "$ref": "#/$defs/hyphenId"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["read_only", "scoped_write", "proposal_only"]
+          },
+          "trigger": {
+            "$ref": "#/$defs/snakeId"
+          },
+          "writes": {
+            "$ref": "#/$defs/stringList"
+          },
+          "output": {
+            "$ref": "#/$defs/snakeId"
+          },
+          "output_contract": {
+            "$ref": "#/$defs/subagentOutputContract"
+          }
+        }
+      }
+    },
+    "merge_requirements": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    }
+  },
+  "$defs": {
+    "ccCommand": {
+      "type": "string",
+      "pattern": "^cc-[a-z0-9-]+$"
+    },
+    "hyphenId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "snakeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonEmptySnakeList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/snakeId"
+      }
+    },
+    "subagentOutputContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "required_fields", "evidence_quality"],
+      "properties": {
+        "format": {
+          "const": "structured_subagent_result"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["summary", "scope", "writes", "evidence", "risks", "merge_notes"]
+          }
+        },
+        "evidence_quality": {
+          "$ref": "#/$defs/subagentEvidenceQuality"
+        }
+      }
+    },
+    "subagentEvidenceQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_evidence_items", "min_risk_items", "require_concrete_references", "allow_freeform"],
+      "properties": {
+        "min_evidence_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_risk_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "require_concrete_references": {
+          "const": true
+        },
+        "allow_freeform": {
+          "const": false
+        }
+      }
+    }
+  }
+}

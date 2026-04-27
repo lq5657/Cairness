@@ -40,3 +40,4 @@ conditional_reads:
   - .claude/rules/git-workflow.md
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
+  - .claude/runtime/subagents/cc-review.yaml

@@ -129,13 +129,26 @@
       "additionalProperties": false,
       "required": [
         "enabled",
-        "policy",
-        "merge_owner",
-        "final_writes_by",
-        "write_scope_policy",
-        "parallel_policy",
-        "agents",
-        "merge_requirements"
+        "policy"
+      ],
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": ["contract"]
+            },
+            {
+              "required": [
+                "merge_owner",
+                "final_writes_by",
+                "write_scope_policy",
+                "parallel_policy",
+                "agents",
+                "merge_requirements"
+              ]
+            }
+          ]
+        }
       ],
       "properties": {
         "enabled": {
@@ -144,6 +157,10 @@
         "policy": {
           "type": "string",
           "pattern": "^\\.claude/docs/maintenance/subagent-model\\.md$"
+        },
+        "contract": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/subagents/cc-[a-z0-9-]+\\.yaml$"
         },
         "merge_owner": {
           "type": "string",

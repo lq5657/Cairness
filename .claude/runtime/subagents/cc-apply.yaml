@@ -1,0 +1,72 @@
+command: cc-apply
+merge_owner: main_flow
+final_writes_by: main_flow
+write_scope_policy: parent_writes_subset
+parallel_policy: disjoint_writes_only
+agents:
+  - name: task-worker
+    role: developer
+    mode: scoped_write
+    trigger: implement_selected_ready_task_or_disjoint_file_subset
+    writes:
+      - task_declared_code_files
+    output: scoped_task_patch_summary
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+  - name: test-verifier
+    role: test-verifier
+    mode: scoped_write
+    trigger: verify_selected_task
+    writes:
+      - test_files
+    output: task_verification_evidence
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+  - name: context-curator
+    role: context-curator
+    mode: proposal_only
+    trigger: module_boundary_or_verification_entry_changed
+    writes: []
+    output: dev_map_update_proposal
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+merge_requirements:
+  - main_flow_keeps_one_task_in_progress
+  - main_flow_records_baseline_delta_and_task_evidence
+  - subagents_may_parallelize_only_disjoint_file_subsets_within_selected_task

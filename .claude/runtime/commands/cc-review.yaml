@@ -65,55 +65,7 @@ topic_rules:
 subagents:
   enabled: true
   policy: .claude/docs/maintenance/subagent-model.md
-  merge_owner: main_flow
-  final_writes_by: main_flow
-  write_scope_policy: parent_writes_subset
-  parallel_policy: read_only_parallel_only
-  agents:
-    - name: spec-reviewer
-      role: spec-reviewer
-      mode: read_only
-      trigger: stage1_spec_compliance
-      writes: []
-      output: stage1_review_fragment
-      output_contract:
-        format: structured_subagent_result
-        required_fields:
-          - summary
-          - scope
-          - writes
-          - evidence
-          - risks
-          - merge_notes
-        evidence_quality:
-          min_evidence_items: 1
-          min_risk_items: 1
-          require_concrete_references: true
-          allow_freeform: false
-    - name: code-quality-reviewer
-      role: code-quality-reviewer
-      mode: read_only
-      trigger: stage2_after_stage1_pass
-      writes: []
-      output: stage2_review_fragment
-      output_contract:
-        format: structured_subagent_result
-        required_fields:
-          - summary
-          - scope
-          - writes
-          - evidence
-          - risks
-          - merge_notes
-        evidence_quality:
-          min_evidence_items: 1
-          min_risk_items: 1
-          require_concrete_references: true
-          allow_freeform: false
-  merge_requirements:
-    - main_flow_writes_review_md
-    - stage2_must_not_run_when_stage1_fails
-    - findings_status_decided_by_main_flow
+  contract: .claude/runtime/subagents/cc-review.yaml
 
 anti_rationalizations:
   - pass_review_because_tests_passed

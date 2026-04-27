@@ -1,0 +1,31 @@
+command: cc-test
+merge_owner: main_flow
+final_writes_by: main_flow
+write_scope_policy: parent_writes_subset
+parallel_policy: disjoint_writes_only
+agents:
+  - name: test-verifier
+    role: test-verifier
+    mode: scoped_write
+    trigger: design_and_collect_fresh_test_evidence
+    writes:
+      - test_files
+    output: test_plan_evidence_and_mapping_recommendation
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+merge_requirements:
+  - main_flow_updates_test_spec_and_mapping
+  - red_green_or_exception_must_be_recorded
+  - old_evidence_must_not_close_mapping

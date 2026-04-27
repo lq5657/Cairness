@@ -58,6 +58,7 @@ TASK_FIELDS = [
 ]
 RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
+RUNTIME_SUBAGENT_CONTRACT_SCHEMA = "runtime-subagent-contract.schema.json"
 RUNTIME_READSET_SCHEMA = "runtime-readset.schema.json"
 COMMAND_PROTOCOL_SCHEMA = "command-protocol.schema.json"
 TECHNOLOGY_DECISION_CATALOG_SCHEMA = "technology-decision-catalog.schema.json"
@@ -741,11 +742,13 @@ def derive_command_readset(
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
-    if subagent_policy:
+    subagent_contract = subagents.get("contract") if subagents.get("enabled") is True and isinstance(subagents.get("contract"), str) else ""
+    if subagent_policy or subagent_contract:
         condition = "when_subagent_delegation_is_used"
         conditional_reads[condition] = ordered_unique([
             *conditional_reads.get(condition, []),
-            subagent_policy,
+            *([subagent_policy] if subagent_policy else []),
+            *([subagent_contract] if subagent_contract else []),
         ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
     always_reads = [
@@ -1080,6 +1083,45 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
     return core
 
 
+def effective_subagent_contract(
+    project_root: Path,
+    command: str,
+    manifest: dict[str, Any],
+    manifest_path: Path,
+    contract_schema: dict[str, Any] | None,
+    checked: list[str],
+    issues: list[Issue],
+) -> dict[str, Any] | None:
+    subagents = manifest.get("subagents")
+    if not isinstance(subagents, dict):
+        return None
+    contract_declared = subagents.get("contract")
+    if not isinstance(contract_declared, str):
+        return subagents
+
+    contract_path = project_path(project_root, contract_declared)
+    if contract_path is None:
+        add(issues, "E_SCHEMA183", manifest_path, f"subagents.contract must be a project path: {contract_declared}")
+        return subagents
+    checked.append(str(contract_path))
+    contract = load_yaml_file(contract_path, issues)
+    if not isinstance(contract, dict):
+        return subagents
+    if contract_schema is not None:
+        validate_against_schema(contract, contract_schema, contract_schema, [], contract_path, issues)
+    if contract.get("command") != command:
+        add(issues, "E_SCHEMA184", contract_path, f"subagent contract command must be {command}")
+
+    merged = {
+        "enabled": subagents.get("enabled"),
+        "policy": subagents.get("policy"),
+    }
+    for key in ("merge_owner", "final_writes_by", "write_scope_policy", "parallel_policy", "agents", "merge_requirements"):
+        if key in contract:
+            merged[key] = contract[key]
+    return merged
+
+
 def validate_subagent_runtime_contract(
     command: str,
     manifest: dict[str, Any],
@@ -1097,6 +1139,7 @@ def validate_subagent_runtime_contract(
 
     agents = subagents.get("agents")
     if not isinstance(agents, list):
+        add(issues, "E_SCHEMA185", path, f"{command} subagents must declare agents inline or through subagents.contract")
         return
     parent_writes = {normalize_declared_path(item) for item in string_list(manifest.get("writes"))}
     merge_requirements = string_list(subagents.get("merge_requirements"))
@@ -1322,12 +1365,16 @@ def validate_runtime_command_references(
     subagents = manifest.get("subagents")
     if isinstance(subagents, dict):
         require_declared_path(project_root, path, subagents.get("policy"), "subagents.policy", issues)
+        if isinstance(subagents.get("contract"), str):
+            require_declared_path(project_root, path, subagents.get("contract"), "subagents.contract", issues)
 
 
 def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     project_root = claude_root.parent
     schema_path = claude_root / "schemas" / RUNTIME_COMMAND_SCHEMA
     schema = load_json_file(schema_path, issues)
+    subagent_schema_path = claude_root / "schemas" / RUNTIME_SUBAGENT_CONTRACT_SCHEMA
+    subagent_schema = load_json_file(subagent_schema_path, issues)
     registered_roles = load_registered_roles(project_root, issues)
     runtime_commands = core.get("runtime_commands") if isinstance(core, dict) else None
     if isinstance(runtime_commands, dict):
@@ -1335,7 +1382,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     else:
         command_paths = [(path.stem, path) for path in sorted((claude_root / "runtime" / "commands").glob("cc-*.yaml"))]
 
-    checked: list[str] = []
+    checked: list[str] = [str(subagent_schema_path)]
     for command, resolved_path in command_paths:
         if resolved_path is None:
             continue
@@ -1346,7 +1393,19 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         if schema is not None:
             validate_against_schema(manifest, schema, schema, [], resolved_path, issues)
         validate_runtime_command_references(project_root, core, command, manifest, resolved_path, issues)
-        validate_subagent_runtime_contract(command, manifest, resolved_path, issues, registered_roles)
+        effective_manifest = dict(manifest)
+        effective_subagents = effective_subagent_contract(
+            project_root,
+            command,
+            manifest,
+            resolved_path,
+            subagent_schema,
+            checked,
+            issues,
+        )
+        if effective_subagents is not None:
+            effective_manifest["subagents"] = effective_subagents
+        validate_subagent_runtime_contract(command, effective_manifest, resolved_path, issues, registered_roles)
         validate_result_contract(command, manifest, resolved_path, issues)
         validate_interaction_contract(command, manifest, resolved_path, issues)
     return checked
