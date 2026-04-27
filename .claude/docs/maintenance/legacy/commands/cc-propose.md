@@ -111,7 +111,7 @@
 - 未完成范围冻结前，不得生成最终版 `tasks.md`
 - 不得因为仓库为空、缺少 Go 源文件或 `project-context.md` 尚未初始化，就把新项目定义强行塞进 `cc-propose`
 - 若仍存在影响 task 拆分的关键未决问题，只能产出草案，保持 `status: propose`，不得宣称提案已就绪
-- 进入 `cc-apply` 前，必须在 `spec.md` 的 HARD-GATE 记录中写明 `confirmed_spec_revision`、`confirmed_tasks_revision`、`confirmed_scope`、`accepted_risks` 与 `human_review_status`
+- 进入 `cc-apply` 前，必须在 `spec.md` 的 HARD-GATE 记录中写明 `confirmed_spec_revision`、`confirmed_tasks_revision`、`confirmed_scope`、`resolved_risk_decisions`、`accepted_residual_risks` 与 `human_review_status`
 - HARD-GATE 必须有用户显式选择；展示摘要、表格或“请确认”文字本身不等于确认
 - 若 `validation.auto_run = true`，生成或更新 `spec.md` / `tasks.md` 后必须自动运行 `.claude/scripts/cc-verify --harness-only --change <change-id>`；若失败且 `fail_on_error = true`，不得进入 HARD-GATE 就绪结论
 

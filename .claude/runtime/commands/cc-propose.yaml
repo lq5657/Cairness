@@ -24,6 +24,7 @@ forbids:
   - skip_validation_mapping
   - create_oversized_or_mixed_scope_change
   - treat_listed_clarifications_as_resolved
+  - treat_recommended_risk_resolution_as_if_user_selected_it
   - present_hard_gate_without_user_choice
 
 required_reads:
@@ -42,6 +43,7 @@ preconditions:
   - perform_minimum_local_research_before_broad_questions
   - classify_whether_technology_decision_catalog_is_needed
   - distinguish_resolved_vs_blocking_clarifications
+  - distinguish_user_decision_risks_vs_residual_risks
   - check_change_conflicts_and_depends_on
   - classify_change_size_and_split_boundaries
   - freeze_scope_before_final_tasks
@@ -50,22 +52,23 @@ preconditions:
 interaction_contract:
   mode: interactive_required
   clarification:
-    when: blocking_unknowns_affect_scope_acceptance_or_task_split
+    when: blocking_unknowns_or_user_decision_required_risks_affect_scope_acceptance_or_task_split_or_validation_boundary
     presentation:
       - show_current_understanding_summary
       - ask_numbered_questions_with_expected_answer_shape
       - offer_explicit_options_when_question_has_known_choices
+      - present_decision_options_with_recommendation_and_tradeoffs
       - wait_for_user_answer_before_freezing_scope
     blocking_behavior:
-      - unresolved_blocking_clarifications_status_blocked_or_partial
-      - do_not_present_hard_gate_as_ready_until_blockers_resolved
-      - next_action_must_be_answer_clarification_questions
+      - unresolved_blocking_clarifications_or_decision_risks_status_blocked_or_partial
+      - do_not_freeze_scope_or_present_hard_gate_until_blockers_resolved
+      - next_action_must_be_answer_clarification_questions_or_choose_risk_resolution
     max_questions_per_round: 4
     resolution_required_before_ready: true
   hard_gate:
-    when: artifacts_written_and_auto_validation_passed_without_blocking_clarifications
+    when: artifacts_written_and_auto_validation_passed_without_blocking_clarifications_or_unresolved_decision_risks
     presentation:
-      - show_confirmable_items_scope_acceptance_risks_validation_mapping
+      - show_confirmable_items_scope_acceptance_confirmed_risk_decisions_residual_risks_validation_mapping
       - ask_user_to_choose_confirm_revise_or_block
       - record_selected_confirmation_in_spec_hard_gate
     confirmation_options:
@@ -74,7 +77,8 @@ interaction_contract:
       - block_until_clarified
     required_confirmations:
       - confirmed_scope
-      - accepted_risks
+      - resolved_risk_decisions
+      - accepted_residual_risks
       - validation_mapping
       - human_review_status
     blocking_behavior:
@@ -109,13 +113,14 @@ steps:
   - read_project_summary_and_navigation
   - read_full_project_context_only_when_summary_is_insufficient
   - restate_goal_and_constraints
-  - clarify_only_high_value_unknowns
-  - present_blocking_clarification_questions_and_wait_for_answers
+  - clarify_only_high_value_unknowns_and_decision_risks
+  - present_blocking_clarification_questions_or_risk_resolution_choices_and_wait_for_answers
   - classify_scope_axes_and_size
   - read_technology_catalog_only_for_triggered_change_level_decisions
   - compare_recommended_vs_rejected_option
   - split_or_phase_oversized_work
   - freeze_in_scope_and_out_of_scope
+  - record_user_selected_risk_resolution_paths
   - record_split_rationale_dependencies_and_parallel_safety
   - write_spec
   - write_tasks
@@ -130,6 +135,7 @@ anti_rationalizations:
   - merge_unrelated_risks_under_one_validation_mapping
   - claim_task_is_small_without_declared_file_scope_acceptance_and_evidence
   - treat_clarification_list_as_if_user_answered_it
+  - choose_risk_resolution_for_user_because_one_option_seems_best
   - treat_hard_gate_summary_as_if_user_confirmed_it
   - reopen_full_technology_stack_for_change_without_triggered_decision
 
@@ -139,6 +145,7 @@ red_flags:
   - rollback_differs_across_items_inside_one_task
   - subagents_would_need_overlapping_write_scopes
   - final_output_contains_pending_questions_but_no_direct_question_to_user
+  - final_output_contains_unresolved_decision_risks_or_implicit_resolution_choice
   - final_output_says_execute_cc_apply_without_confirm_revise_block_options
   - technology_catalog_read_without_change_level_decision_trigger
 
@@ -163,13 +170,15 @@ result_contract:
       - interaction_state
   next_actions:
     - wait_for_hard_gate_or_revise_scope
-    - answer_clarification_questions
+    - answer_clarification_questions_or_choose_risk_resolution
     - choose_hard_gate_confirmation_option
 
 stop_conditions:
   - missing_required_argument
   - unresolved_blocking_clarifications
+  - unresolved_decision_risks
   - user_answer_required_for_blocking_clarification
+  - user_choice_required_for_risk_resolution
   - oversized_scope_without_split_or_human_exception
   - task_traceability_not_closed
   - auto_validation_failed

@@ -224,6 +224,7 @@ complexity: 🟡中等
 * **confirmed_spec_revision**：example/user-create-api spec v1
 * **confirmed_tasks_revision**：example/user-create-api tasks v1
 * **confirmed_scope**：新增用户创建接口、Service 幂等检查、Handler 接线与 L2 package 回归
-* **accepted_risks**：不引入真实 HTTP / DB 集成环境；若后续需要链路级证据，另开 change 补强
+* **resolved_risk_decisions**：无
+* **accepted_residual_risks**：不引入真实 HTTP / DB 集成环境；若后续需要链路级证据，另开 change 补强
 * **human_review_required**：false
 * **human_review_status**：not_required

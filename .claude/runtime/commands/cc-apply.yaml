@@ -64,7 +64,8 @@ interaction_contract:
       - confirmed_spec_revision
       - confirmed_tasks_revision
       - confirmed_scope
-      - accepted_risks
+      - resolved_risk_decisions
+      - accepted_residual_risks
     blocking_behavior:
       - do_not_start_apply_until_hard_gate_current
       - next_action_must_be_resolve_hard_gate

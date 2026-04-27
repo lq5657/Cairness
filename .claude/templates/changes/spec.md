@@ -122,6 +122,7 @@ complexity: simple | medium | complex
 #### 8. 风险与关注点
 
 若本次风险很低，可只保留 1-3 条真正需要提醒 review / release 的事项；若无额外风险，可写 `无额外风险`。
+若某条风险存在多个合理处理路径，且不同路径会改变 scope、task 拆分、验收口径或验证策略，不要在本节替用户拍板，改记录到 `10.1 风险决策`。
 
 | 类型 | 描述 | 处理方式 |
 |------|------|----------|
@@ -190,6 +191,16 @@ complexity: simple | medium | complex
 
 * [ ] 问题 1：
 
+#### 10.1 风险决策（需用户选择）
+
+记录那些存在多个合理处理路径、且路径选择会改变 scope、task 拆分、验收标准或验证边界的风险。
+若本节非空，`cc-propose` 的最终输出必须把这些项作为明确选项直接给用户选择；可以给推荐，但不得把推荐路径写成已选结论。
+只有用户完成选择后，才允许冻结范围并进入 HARD-GATE。
+
+| 决策风险 | 可选处理路径 | 推荐路径 | 用户选择 / 状态 |
+|----------|--------------|----------|-----------------|
+| 风险 1 | 路径 A / 路径 B | 路径 A（原因） | pending / 已选择 |
+
 #### 11.0 成熟替代方案检查（按需）
 
 仅在满足以下条件中的多数时填写：本地暂无可直接复用实现、问题域存在成熟通用方案的高概率、自研成本或错误代价较高。
@@ -230,12 +241,14 @@ complexity: simple | medium | complex
 
 进入 `cc-apply` 前必须填写。确认记录必须覆盖当前 spec / tasks 版本，而不是只记录“用户同意”。
 `cc-propose` 必须在最终输出中要求用户显式选择确认、要求修改或阻塞待澄清；仅展示摘要不算确认。
+HARD-GATE 只确认用户已选定的方案和剩余风险，不承担首次风险路径选择。
 
 * **confirmed_at**：
 * **confirmed_by**：
 * **confirmed_spec_revision**：（commit / diff 摘要 / 文档版本）
 * **confirmed_tasks_revision**：（commit / diff 摘要 / 文档版本）
 * **confirmed_scope**：
-* **accepted_risks**：
+* **resolved_risk_decisions**：（记录用户已选择的风险处理路径；无则写 `无`）
+* **accepted_residual_risks**：（仅记录用户选定方案后仍接受的残余风险；无则写 `无`）
 * **human_review_required**：true / false
 * **human_review_status**：not_required / pending / approved / rejected

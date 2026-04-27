@@ -92,11 +92,18 @@
         "confirmed_spec_revision",
         "confirmed_tasks_revision",
         "confirmed_scope",
-        "accepted_risks",
+        "resolved_risk_decisions",
+        "accepted_residual_risks",
         "human_review_required",
         "human_review_status"
       ],
       "properties": {
+        "resolved_risk_decisions": {
+          "type": "string"
+        },
+        "accepted_residual_risks": {
+          "type": "string"
+        },
         "human_review_required": {
           "type": "boolean"
         },

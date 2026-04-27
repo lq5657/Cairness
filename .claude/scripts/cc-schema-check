@@ -42,7 +42,8 @@ HARD_GATE_FIELDS = [
     "confirmed_spec_revision",
     "confirmed_tasks_revision",
     "confirmed_scope",
-    "accepted_risks",
+    "resolved_risk_decisions",
+    "accepted_residual_risks",
     "human_review_required",
     "human_review_status",
 ]
@@ -94,12 +95,14 @@ INTERACTION_REQUIREMENTS = {
     "cc-propose": {
         ("clarification", "presentation"): {
             "ask_numbered_questions_with_expected_answer_shape",
+            "present_decision_options_with_recommendation_and_tradeoffs",
             "wait_for_user_answer_before_freezing_scope",
         },
         ("clarification", "blocking_behavior"): {
-            "do_not_present_hard_gate_as_ready_until_blockers_resolved",
+            "do_not_freeze_scope_or_present_hard_gate_until_blockers_resolved",
         },
         ("hard_gate", "presentation"): {
+            "show_confirmable_items_scope_acceptance_confirmed_risk_decisions_residual_risks_validation_mapping",
             "ask_user_to_choose_confirm_revise_or_block",
         },
         ("hard_gate", "confirmation_options"): {

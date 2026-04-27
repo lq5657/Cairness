@@ -204,6 +204,7 @@ complexity: 🟢简单
 * **confirmed_spec_revision**：example/user-create-api-fix spec v1
 * **confirmed_tasks_revision**：example/user-create-api-fix tasks v1
 * **confirmed_scope**：修复 repo timeout、service 错误包装、review Findings 回写和 L2 package 回归
-* **accepted_risks**：不引入真实 DB 慢调用环境，timeout 行为以 helper/package 回归和 review 说明替代
+* **resolved_risk_decisions**：无
+* **accepted_residual_risks**：不引入真实 DB 慢调用环境，timeout 行为以 helper/package 回归和 review 说明替代
 * **human_review_required**：false
 * **human_review_status**：not_required
