@@ -20,6 +20,9 @@ forbids:
 required_reads:
   - .claude/harness.config.yaml
   - .claude/workflows/cc-workflow.yaml
+  - .claude/runtime/checklists/preflight.yaml
+
+optional_reads:
   - .claude/docs/adoption/integration-preflight-checklist.md
   - .cc/context/dev-map.md
   - .cc/changes/task-board.md
@@ -33,7 +36,7 @@ preconditions:
   - prefer_checklist_items_over_freeform_extra_checks
 
 steps:
-  - read_adoption_checklist
+  - read_compact_preflight_checklist
   - verify_scaffold_and_directory_layout
   - verify_runtime_workflow_scripts_and_schemas_exist
   - verify_path_resolution_and_command_entry_consistency
@@ -43,19 +46,7 @@ steps:
 auto_validation: []
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

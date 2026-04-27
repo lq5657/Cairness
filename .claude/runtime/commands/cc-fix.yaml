@@ -33,22 +33,29 @@ forbids:
 
 required_reads:
   - .cc/changes/<change-id>/review.md
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/<change-id>/log.md
   - .cc/changes/task-board.md
+
+conditional_reads:
+  when_selected_finding_needs_spec_or_task_context:
+    - .cc/changes/<change-id>/spec.md
+    - .cc/changes/<change-id>/tasks.md
+  when_fix_requires_existing_execution_history:
+    - .cc/changes/<change-id>/log.md
 
 optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/context/dev-map.md
 
 runtime_protocol_reads:
+  language_profile: on_demand
   technology_catalog: never
 
 preconditions:
   - select_open_findings_only_by_default
   - cc_fix_change_id_defaults_to_next_eligible_open_finding
   - explicit_finding_id_or_fix_description_locks_scope
+  - start_from_review_finding_before_loading_full_change_docs
+  - load_spec_tasks_or_log_only_when_selected_finding_requires_that_context
   - restate_finding_in_technical_terms
   - confirm_finding_still_applies_or_record_why_not
   - separate_symptom_failure_point_and_root_cause
@@ -88,6 +95,7 @@ interaction_contract:
 topic_rules:
   always:
     - .claude/rules/verification.md
+  when_reproduction_or_failure_localization_is_required:
     - .claude/rules/debugging-workflow.md
   when_test_boundary_or_substitution_is_in_question:
     - .claude/rules/testing-strategy.md
@@ -128,6 +136,7 @@ red_flags:
 steps:
   - load_open_findings
   - select_one_eligible_open_finding
+  - load_only_targeted_change_context_needed_for_selected_finding
   - confirm_problem_still_applies_with_smallest_evidence
   - present_unclear_finding_questions_or_disposition_choices
   - localize_failure_point
@@ -146,19 +155,7 @@ auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

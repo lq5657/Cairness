@@ -4,24 +4,27 @@ source_manifest: .claude/runtime/commands/cc-fix.yaml
 generated_from:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
-- .claude/runtime/languages/golang.yaml
 - .claude/runtime/commands/cc-fix.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
-- .claude/runtime/languages/golang.yaml
 - .claude/runtime/commands/cc-fix.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
 - .cc/changes/<change-id>/review.md
-- .cc/changes/<change-id>/spec.md
-- .cc/changes/<change-id>/tasks.md
-- .cc/changes/<change-id>/log.md
 - .cc/changes/task-board.md
 - .claude/rules/verification.md
-- .claude/rules/debugging-workflow.md
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/context/dev-map.md
 conditional_reads:
+  when_selected_finding_needs_spec_or_task_context:
+  - .cc/changes/<change-id>/spec.md
+  - .cc/changes/<change-id>/tasks.md
+  when_fix_requires_existing_execution_history:
+  - .cc/changes/<change-id>/log.md
+  when_reproduction_or_failure_localization_is_required:
+  - .claude/rules/debugging-workflow.md
   when_test_boundary_or_substitution_is_in_question:
   - .claude/rules/testing-strategy.md
   when_finding_touches_database:
@@ -40,6 +43,9 @@ conditional_reads:
   - .claude/rules/source-driven-development.md
   when_finding_touches_dependency_or_wave_order:
   - .claude/rules/git-workflow.md
+  when_language_profile_resolution_is_required:
+  - .claude/runtime/protocol/language-profile.yaml
+  - .claude/runtime/languages/golang.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-fix.yaml

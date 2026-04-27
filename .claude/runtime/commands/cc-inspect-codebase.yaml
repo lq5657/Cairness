@@ -23,6 +23,9 @@ forbids:
   - enter_promote_audit_automatically
 
 required_reads:
+  - .cc/context/project-summary.md
+
+optional_reads:
   - .cc/context/project-context.md
 
 runtime_protocol_reads:
@@ -102,7 +105,8 @@ subagents:
 
 steps:
   - validate_mode_and_scope
-  - read_project_context
+  - read_project_summary
+  - read_full_project_context_only_for_extended_facts
   - load_minimum_mode_rules
   - inspect_scope_for_code_config_or_call_chain_evidence
   - group_findings_by_severity
@@ -113,19 +117,7 @@ steps:
 auto_validation: []
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

@@ -10,6 +10,7 @@ state:
   change_to: unchanged
 
 writes:
+  - .cc/context/project-summary.md
   - .cc/context/project-context.md
   - .cc/context/dev-map.md
 
@@ -19,13 +20,18 @@ forbids:
   - deep_code_review
   - expand_into_enrich_explain_or_inspect
   - record_assumptions_as_facts
+  - treat_planned_paths_as_confirmed_facts
 
 required_reads:
-  - .cc/context/project-context.md
+  - .cc/context/project-summary.md
   - .cc/context/dev-map.md
   - .claude/rules/memory-policy.md
 
+optional_reads:
+  - .cc/context/project-context.md
+
 runtime_protocol_reads:
+  language_profile: on_demand
   technology_catalog: never
 
 preconditions:
@@ -33,6 +39,7 @@ preconditions:
   - confirm_goal_is_basic_fact_initialization
   - keep_read_scope_low_cost_and_navigation_focused
   - distinguish_confirmed_facts_from_unknowns
+  - record_entrypoints_as_confirmed_planned_or_unknown
   - do_not_install_or_repair_harness_scaffold
 
 steps:
@@ -41,6 +48,7 @@ steps:
   - identify_dependency_build_and_start_entries
   - identify_key_directories_configuration_and_test_entries
   - record_unknowns_for_unconfirmed_high_cost_context
+  - update_project_summary_for_default_runtime_reads
   - update_project_context_basic_fact_layer
   - update_dev_map_basic_navigation
   - stop_without_entering_other_cc_workflows
@@ -48,19 +56,7 @@ steps:
 auto_validation: []
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

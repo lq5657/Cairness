@@ -72,11 +72,19 @@
     "runtime_protocol": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["protocol", "schema", "default_language_profile"],
+      "required": ["protocol", "technology_decisions", "language_profile", "schema", "default_language_profile"],
       "properties": {
         "protocol": {
           "type": "string",
           "pattern": "^\\.claude/runtime/protocol\\.yaml$"
+        },
+        "technology_decisions": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/protocol/technology-decisions\\.yaml$"
+        },
+        "language_profile": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/protocol/language-profile\\.yaml$"
         },
         "schema": {
           "type": "string",

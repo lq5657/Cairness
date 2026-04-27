@@ -29,14 +29,13 @@ required_reads:
   - .cc/changes/<change-id>/spec.md
   - .cc/changes/<change-id>/tasks.md
   - .cc/changes/task-board.md
-  - .claude/rules/testing-strategy.md
-  - .claude/rules/verification.md
 
 optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/changes/<change-id>/log.md
 
 runtime_protocol_reads:
+  language_profile: on_demand
   technology_catalog: never
 
 preconditions:
@@ -97,19 +96,7 @@ auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

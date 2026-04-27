@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import protocol_language_assets, protocol_language_catalogs
+from harness_runtime import protocol_language_assets
 
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -653,6 +653,8 @@ def runtime_protocol_config(core: dict[str, Any] | None) -> dict[str, str]:
     config = core.get("runtime_protocol") if isinstance(core, dict) and isinstance(core.get("runtime_protocol"), dict) else {}
     return {
         "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
+        "technology_decisions": config.get("technology_decisions", ".claude/runtime/protocol/technology-decisions.yaml"),
+        "language_profile": config.get("language_profile", ".claude/runtime/protocol/language-profile.yaml"),
         "schema": config.get("schema", f".claude/schemas/{COMMAND_PROTOCOL_SCHEMA}"),
         "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
     }
@@ -670,14 +672,74 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
     return catalog if isinstance(catalog, str) else ""
 
 
-def technology_catalog_mode(manifest: dict[str, Any]) -> str:
+def load_runtime_protocol(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> dict[str, Any]:
+    config = runtime_protocol_config(core)
+    protocol_path = project_path(project_root, config["protocol"])
+    loaded = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
+    protocol = loaded if isinstance(loaded, dict) else {}
+    for key in ("technology_decisions", "language_profile"):
+        declared = config.get(key, "")
+        if not declared or declared == config["protocol"]:
+            continue
+        asset_path = project_path(project_root, declared)
+        asset = load_yaml_file(asset_path, issues) if asset_path is not None else None
+        if isinstance(asset, dict):
+            protocol.update(asset)
+    return protocol
+
+
+def runtime_protocol_read_mode(manifest: dict[str, Any], key: str, default: str) -> str:
     runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
-    mode = runtime_reads.get("technology_catalog", "always")
+    mode = runtime_reads.get(key, default)
     return mode if mode in {"always", "never", "on_demand"} else "always"
+
+
+def language_profile_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "language_profile", "never")
+
+
+def technology_decisions_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "technology_decisions", "never")
+
+
+def technology_catalog_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "technology_catalog", "always")
 
 
 def include_technology_catalog(manifest: dict[str, Any]) -> bool:
     return technology_catalog_mode(manifest) == "always"
+
+
+def protocol_asset_read(config: dict[str, str], key: str) -> list[str]:
+    declared = config.get(key, "")
+    return [declared] if declared else []
+
+
+def language_profile_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
+    config = runtime_protocol_config(core)
+    return ordered_unique([
+        *protocol_asset_read(config, "language_profile"),
+        *protocol_language_assets(project_root, protocol, include_catalog=False),
+    ])
+
+
+def technology_decision_reads(core: dict[str, Any] | None) -> list[str]:
+    config = runtime_protocol_config(core)
+    return protocol_asset_read(config, "technology_decisions")
+
+
+def technology_catalog_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
+    return ordered_unique([
+        *technology_decision_reads(core),
+        *language_profile_reads(project_root, core, protocol),
+        *protocol_language_assets(project_root, protocol, include_catalog=True),
+    ])
+
+
+def result_contract_profile_reads(manifest: dict[str, Any]) -> list[str]:
+    result_contract = manifest.get("result_contract") if isinstance(manifest.get("result_contract"), dict) else {}
+    profile = result_contract.get("profile")
+    return [profile] if isinstance(profile, str) else []
 
 
 def runtime_protocol_reads(
@@ -688,27 +750,34 @@ def runtime_protocol_reads(
 ) -> list[str]:
     config = runtime_protocol_config(core)
     reads = [config["protocol"]]
-    protocol_path = project_path(project_root, config["protocol"])
-    protocol = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
-    if isinstance(protocol, dict):
-        reads.extend(protocol_language_assets(project_root, protocol, include_catalog=include_technology_catalog(manifest)))
+    protocol = load_runtime_protocol(project_root, core, issues)
+    if language_profile_mode(manifest) == "always":
+        reads.extend(language_profile_reads(project_root, core, protocol))
+    if technology_decisions_mode(manifest) == "always":
+        reads.extend(technology_decision_reads(core))
+    if include_technology_catalog(manifest):
+        reads.extend(technology_catalog_reads(project_root, core, protocol))
     return ordered_unique(reads)
 
 
-def on_demand_technology_catalog_reads(
+def on_demand_runtime_protocol_reads(
     project_root: Path,
     core: dict[str, Any] | None,
     manifest: dict[str, Any],
     issues: list[Issue],
-) -> list[str]:
-    if technology_catalog_mode(manifest) != "on_demand":
-        return []
-    config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
-    protocol = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
-    if not isinstance(protocol, dict):
-        return []
-    return ordered_unique(protocol_language_catalogs(project_root, protocol))
+) -> dict[str, list[str]]:
+    protocol = load_runtime_protocol(project_root, core, issues)
+    reads: dict[str, list[str]] = {}
+    if language_profile_mode(manifest) == "on_demand":
+        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol)
+    if technology_decisions_mode(manifest) == "on_demand":
+        reads["when_technology_decision_is_required"] = technology_decision_reads(core)
+    if technology_catalog_mode(manifest) == "on_demand":
+        reads["when_technology_decision_is_required"] = ordered_unique([
+            *reads.get("when_technology_decision_is_required", []),
+            *technology_catalog_reads(project_root, core, protocol),
+        ])
+    return reads
 
 
 def command_order(core: dict[str, Any]) -> list[str]:
@@ -728,16 +797,17 @@ def derive_command_readset(
 ) -> dict[str, Any]:
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     conditional_reads: dict[str, list[str]] = {}
+    manifest_conditional_reads = manifest.get("conditional_reads") if isinstance(manifest.get("conditional_reads"), dict) else {}
+    for condition, reads in manifest_conditional_reads.items():
+        conditional_reads[condition] = ordered_unique(string_list(reads))
     for condition, rules in topic_rules.items():
         if condition == "always":
             continue
         conditional_reads[condition] = ordered_unique(string_list(rules))
-    on_demand_catalogs = on_demand_technology_catalog_reads(project_root, core, manifest, issues)
-    if on_demand_catalogs:
-        condition = "when_technology_decision_is_required"
+    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues).items():
         conditional_reads[condition] = ordered_unique([
             *conditional_reads.get(condition, []),
-            *on_demand_catalogs,
+            *reads,
         ])
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
@@ -751,10 +821,12 @@ def derive_command_readset(
             *([subagent_contract] if subagent_contract else []),
         ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
+    result_profile_reads = result_contract_profile_reads(manifest)
     always_reads = [
         ".claude/runtime/core.yaml",
         *protocol_reads,
         manifest_path,
+        *result_profile_reads,
         *string_list(manifest.get("required_reads")),
         *string_list(topic_rules.get("always")),
     ]
@@ -767,6 +839,7 @@ def derive_command_readset(
             ".claude/runtime/core.yaml",
             *protocol_reads,
             manifest_path,
+            *result_profile_reads,
         ],
         "always_reads": ordered_unique(always_reads),
         "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),
@@ -927,11 +1000,13 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
     if schema_path is not None:
         checked.append(str(schema_path))
         schema = load_json_file(schema_path, issues)
-    if protocol_path is not None:
-        checked.append(str(protocol_path))
-        protocol = load_yaml_file(protocol_path, issues)
-        if isinstance(protocol, dict) and schema is not None:
-            validate_against_schema(protocol, schema, schema, [], protocol_path, issues)
+    for key in ("protocol", "technology_decisions", "language_profile"):
+        asset_path = project_path(project_root, config.get(key))
+        if asset_path is not None:
+            checked.append(str(asset_path))
+    protocol = load_runtime_protocol(project_root, core, issues)
+    if isinstance(protocol, dict) and schema is not None and protocol_path is not None:
+        validate_against_schema(protocol, schema, schema, [], protocol_path, issues)
     language_profile_schema: dict[str, Any] | None = None
     language_profile_schema_path: Path | None = None
     catalog_schema: dict[str, Any] | None = None
@@ -1241,8 +1316,48 @@ def result_sources(result_contract: dict[str, Any], section: str) -> set[str]:
     return {item for item in value["sources"] if isinstance(item, str)}
 
 
-def validate_result_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
+def effective_result_contract(
+    project_root: Path,
+    manifest: dict[str, Any],
+    path: Path,
+    checked: list[str],
+    issues: list[Issue],
+) -> dict[str, Any] | None:
     result_contract = manifest.get("result_contract")
+    if not isinstance(result_contract, dict):
+        return None
+
+    effective: dict[str, Any] = {}
+    profile_declared = result_contract.get("profile")
+    if isinstance(profile_declared, str):
+        profile_path = project_path(project_root, profile_declared)
+        if profile_path is not None:
+            checked.append(str(profile_path))
+            profile = load_yaml_file(profile_path, issues)
+            if isinstance(profile, dict):
+                effective.update(profile)
+
+    for key, value in result_contract.items():
+        if key == "profile":
+            continue
+        if key in {"evidence", "risks"} and isinstance(value, dict) and isinstance(effective.get(key), dict):
+            merged = dict(effective[key])
+            merged.update(value)
+            effective[key] = merged
+        else:
+            effective[key] = value
+    return effective
+
+
+def validate_result_contract(
+    project_root: Path,
+    command: str,
+    manifest: dict[str, Any],
+    path: Path,
+    checked: list[str],
+    issues: list[Issue],
+) -> None:
+    result_contract = effective_result_contract(project_root, manifest, path, checked, issues)
     if not isinstance(result_contract, dict):
         return
 
@@ -1351,6 +1466,13 @@ def validate_runtime_command_references(
 
     for idx, declared in enumerate(manifest.get("required_reads", []) if isinstance(manifest.get("required_reads"), list) else []):
         require_declared_path(project_root, path, declared, f"required_reads[{idx}]", issues)
+    conditional_reads = manifest.get("conditional_reads")
+    if isinstance(conditional_reads, dict):
+        for condition, reads in conditional_reads.items():
+            if not isinstance(reads, list):
+                continue
+            for idx, declared in enumerate(reads):
+                require_declared_path(project_root, path, declared, f"conditional_reads.{condition}[{idx}]", issues)
 
     topic_rules = manifest.get("topic_rules")
     if isinstance(topic_rules, dict):
@@ -1367,6 +1489,9 @@ def validate_runtime_command_references(
         require_declared_path(project_root, path, subagents.get("policy"), "subagents.policy", issues)
         if isinstance(subagents.get("contract"), str):
             require_declared_path(project_root, path, subagents.get("contract"), "subagents.contract", issues)
+    result_contract = manifest.get("result_contract")
+    if isinstance(result_contract, dict):
+        require_declared_path(project_root, path, result_contract.get("profile"), "result_contract.profile", issues)
 
 
 def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
@@ -1406,7 +1531,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         if effective_subagents is not None:
             effective_manifest["subagents"] = effective_subagents
         validate_subagent_runtime_contract(command, effective_manifest, resolved_path, issues, registered_roles)
-        validate_result_contract(command, manifest, resolved_path, issues)
+        validate_result_contract(project_root, command, manifest, resolved_path, checked, issues)
         validate_interaction_contract(command, manifest, resolved_path, issues)
     return checked
 

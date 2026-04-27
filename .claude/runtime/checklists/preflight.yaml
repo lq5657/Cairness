@@ -1,0 +1,46 @@
+version: 1
+checklist_id: compact-preflight
+summary: Minimal scaffold and runtime readiness checks for cc-preflight.
+
+default_scope:
+  - scaffold_layout
+  - runtime_assets
+  - command_entry
+  - state_roots
+  - deterministic_checks
+
+checks:
+  - id: scaffold_layout
+    require:
+      - .claude/runtime/core.yaml
+      - .claude/runtime/protocol.yaml
+      - .claude/runtime/protocol/technology-decisions.yaml
+      - .claude/runtime/protocol/language-profile.yaml
+      - .claude/workflows/cc-workflow.yaml
+      - .claude/harness.config.yaml
+  - id: runtime_assets
+    require:
+      - .claude/runtime/commands
+      - .claude/runtime/readsets/index.yaml
+      - .claude/schemas/runtime-core.schema.json
+      - .claude/schemas/runtime-command.schema.json
+      - .claude/schemas/command-protocol.schema.json
+  - id: command_entry
+    require:
+      - .claude/skills/cc-harness/SKILL.md
+    reject:
+      - slash_command_rewrite_for_cc_commands
+      - legacy_docs_as_default_for_migrated_commands
+  - id: state_roots
+    require:
+      - .cc/context/project-summary.md
+      - .cc/context/project-context.md
+      - .cc/context/dev-map.md
+      - .cc/changes/task-board.md
+      - .cc/knowledge/index.md
+  - id: deterministic_checks
+    commands:
+      - .claude/scripts/cc-readset --check
+      - .claude/scripts/cc-schema-check .cc/changes
+      - .claude/scripts/cc-lint
+      - .claude/scripts/cc-eval .claude/evals

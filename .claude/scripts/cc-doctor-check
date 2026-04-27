@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import project_path, resolve_language_profile
+from harness_runtime import load_runtime_protocol, project_path, resolve_language_profile, runtime_protocol_asset_declarations
 
 
 @dataclass
@@ -74,6 +74,9 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
     required = [
         (claude_root / "runtime" / "core.yaml", "file"),
         (claude_root / "runtime" / "protocol.yaml", "file"),
+        (claude_root / "runtime" / "protocol" / "technology-decisions.yaml", "file"),
+        (claude_root / "runtime" / "protocol" / "language-profile.yaml", "file"),
+        (claude_root / "runtime" / "result-contracts" / "standard-command.yaml", "file"),
         (claude_root / "workflows" / "cc-workflow.yaml", "file"),
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
@@ -85,6 +88,7 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "UPGRADE.md", "file"),
         (claude_root / "VERSION", "file"),
         (claude_root / "templates" / "context" / "project-context.md", "file"),
+        (claude_root / "templates" / "context" / "project-summary.md", "file"),
         (claude_root / "templates" / "context" / "dev-map.md", "file"),
         (claude_root / "templates" / "changes" / "events.jsonl", "file"),
         (claude_root / "templates" / "changes" / "task-board.md", "file"),
@@ -92,6 +96,7 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "templates" / "results" / "command-result.md", "file"),
         (claude_root / "templates" / "results" / "command-error.md", "file"),
         (project_root / ".cc" / "context" / "project-context.md", "file"),
+        (project_root / ".cc" / "context" / "project-summary.md", "file"),
         (project_root / ".cc" / "context" / "dev-map.md", "file"),
         (project_root / ".cc" / "changes" / "task-board.md", "file"),
         (project_root / ".cc" / "knowledge" / "index.md", "file"),
@@ -142,8 +147,12 @@ def check_language_profiles(project_root: Path, protocol_path: Path, protocol: d
 
 
 def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
-    protocol_path = claude_root / "runtime" / "protocol.yaml"
-    protocol = load_yaml(protocol_path, issues)
+    core, protocol, protocol_path = load_runtime_protocol(project_root)
+    for declared in runtime_protocol_asset_declarations(core):
+        asset_path = project_path(project_root, declared)
+        if asset_path is not None:
+            require_path(asset_path, "file", issues, "E_DOCTOR008")
+    protocol_path = protocol_path or claude_root / "runtime" / "protocol.yaml"
     if not isinstance(protocol, dict):
         return
     rendering = protocol.get("result_rendering")

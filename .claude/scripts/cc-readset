@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import protocol_language_assets, protocol_language_catalogs
+from harness_runtime import protocol_language_assets
 
 
 CORE_PATH = ".claude/runtime/core.yaml"
@@ -92,6 +92,8 @@ def runtime_protocol_config(core: dict[str, Any]) -> dict[str, str]:
     config = core.get("runtime_protocol") if isinstance(core.get("runtime_protocol"), dict) else {}
     return {
         "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
+        "technology_decisions": config.get("technology_decisions", ".claude/runtime/protocol/technology-decisions.yaml"),
+        "language_profile": config.get("language_profile", ".claude/runtime/protocol/language-profile.yaml"),
         "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
     }
 
@@ -108,14 +110,74 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
     return catalog if isinstance(catalog, str) else ""
 
 
-def technology_catalog_mode(manifest: dict[str, Any]) -> str:
+def load_runtime_protocol(project_root: Path, core: dict[str, Any], issues: list[Issue]) -> dict[str, Any]:
+    config = runtime_protocol_config(core)
+    protocol_path = project_path(project_root, config["protocol"])
+    loaded = load_yaml(protocol_path, issues) if protocol_path is not None else None
+    protocol = loaded if isinstance(loaded, dict) else {}
+    for key in ("technology_decisions", "language_profile"):
+        declared = config.get(key, "")
+        if not declared or declared == config["protocol"]:
+            continue
+        asset_path = project_path(project_root, declared)
+        asset = load_yaml(asset_path, issues) if asset_path is not None else None
+        if isinstance(asset, dict):
+            protocol.update(asset)
+    return protocol
+
+
+def runtime_protocol_read_mode(manifest: dict[str, Any], key: str, default: str) -> str:
     runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
-    mode = runtime_reads.get("technology_catalog", "always")
+    mode = runtime_reads.get(key, default)
     return mode if mode in {"always", "never", "on_demand"} else "always"
+
+
+def language_profile_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "language_profile", "never")
+
+
+def technology_decisions_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "technology_decisions", "never")
+
+
+def technology_catalog_mode(manifest: dict[str, Any]) -> str:
+    return runtime_protocol_read_mode(manifest, "technology_catalog", "always")
 
 
 def include_technology_catalog(manifest: dict[str, Any]) -> bool:
     return technology_catalog_mode(manifest) == "always"
+
+
+def protocol_asset_read(config: dict[str, str], key: str) -> list[str]:
+    declared = config.get(key, "")
+    return [declared] if declared else []
+
+
+def language_profile_reads(project_root: Path, core: dict[str, Any], protocol: dict[str, Any]) -> list[str]:
+    config = runtime_protocol_config(core)
+    return ordered_unique([
+        *protocol_asset_read(config, "language_profile"),
+        *protocol_language_assets(project_root, protocol, include_catalog=False),
+    ])
+
+
+def technology_decision_reads(core: dict[str, Any]) -> list[str]:
+    config = runtime_protocol_config(core)
+    return protocol_asset_read(config, "technology_decisions")
+
+
+def technology_catalog_reads(project_root: Path, core: dict[str, Any], protocol: dict[str, Any]) -> list[str]:
+    return ordered_unique([
+        *technology_decision_reads(core),
+        *language_profile_reads(project_root, core, protocol),
+        *protocol_language_assets(project_root, protocol, include_catalog=True),
+    ])
+
+
+def result_contract_profile_reads(manifest: dict[str, Any]) -> list[str]:
+    result_contract = manifest.get("result_contract") if isinstance(manifest.get("result_contract"), dict) else {}
+    profile = result_contract.get("profile")
+    return [profile] if isinstance(profile, str) else []
 
 
 def runtime_protocol_reads(
@@ -126,27 +188,34 @@ def runtime_protocol_reads(
 ) -> list[str]:
     config = runtime_protocol_config(core)
     reads = [config["protocol"]]
-    protocol_path = project_path(project_root, config["protocol"])
-    protocol = load_yaml(protocol_path, issues) if protocol_path is not None else None
-    if isinstance(protocol, dict):
-        reads.extend(protocol_language_assets(project_root, protocol, include_catalog=include_technology_catalog(manifest)))
+    protocol = load_runtime_protocol(project_root, core, issues)
+    if language_profile_mode(manifest) == "always":
+        reads.extend(language_profile_reads(project_root, core, protocol))
+    if technology_decisions_mode(manifest) == "always":
+        reads.extend(technology_decision_reads(core))
+    if include_technology_catalog(manifest):
+        reads.extend(technology_catalog_reads(project_root, core, protocol))
     return ordered_unique(reads)
 
 
-def on_demand_technology_catalog_reads(
+def on_demand_runtime_protocol_reads(
     project_root: Path,
     core: dict[str, Any],
     manifest: dict[str, Any],
     issues: list[Issue],
-) -> list[str]:
-    if technology_catalog_mode(manifest) != "on_demand":
-        return []
-    config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
-    protocol = load_yaml(protocol_path, issues) if protocol_path is not None else None
-    if not isinstance(protocol, dict):
-        return []
-    return ordered_unique(protocol_language_catalogs(project_root, protocol))
+) -> dict[str, list[str]]:
+    protocol = load_runtime_protocol(project_root, core, issues)
+    reads: dict[str, list[str]] = {}
+    if language_profile_mode(manifest) == "on_demand":
+        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol)
+    if technology_decisions_mode(manifest) == "on_demand":
+        reads["when_technology_decision_is_required"] = technology_decision_reads(core)
+    if technology_catalog_mode(manifest) == "on_demand":
+        reads["when_technology_decision_is_required"] = ordered_unique([
+            *reads.get("when_technology_decision_is_required", []),
+            *technology_catalog_reads(project_root, core, protocol),
+        ])
+    return reads
 
 
 def command_order(core: dict[str, Any]) -> list[str]:
@@ -168,16 +237,17 @@ def derive_command_readset(
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     always_topic_rules = string_list(topic_rules.get("always"))
     conditional_reads: dict[str, list[str]] = {}
+    manifest_conditional_reads = manifest.get("conditional_reads") if isinstance(manifest.get("conditional_reads"), dict) else {}
+    for condition, reads in manifest_conditional_reads.items():
+        conditional_reads[condition] = ordered_unique(string_list(reads))
     for condition, rules in topic_rules.items():
         if condition == "always":
             continue
         conditional_reads[condition] = ordered_unique(string_list(rules))
-    on_demand_catalogs = on_demand_technology_catalog_reads(project_root, core, manifest, issues)
-    if on_demand_catalogs:
-        condition = "when_technology_decision_is_required"
+    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues).items():
         conditional_reads[condition] = ordered_unique([
             *conditional_reads.get(condition, []),
-            *on_demand_catalogs,
+            *reads,
         ])
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
@@ -191,10 +261,12 @@ def derive_command_readset(
             *([subagent_contract] if subagent_contract else []),
         ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
+    result_profile_reads = result_contract_profile_reads(manifest)
     always_reads = [
         CORE_PATH,
         *protocol_reads,
         manifest_path,
+        *result_profile_reads,
         *string_list(manifest.get("required_reads")),
         *always_topic_rules,
     ]
@@ -207,6 +279,7 @@ def derive_command_readset(
             CORE_PATH,
             *protocol_reads,
             manifest_path,
+            *result_profile_reads,
         ],
         "always_reads": ordered_unique(always_reads),
         "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),

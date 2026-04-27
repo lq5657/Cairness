@@ -75,9 +75,33 @@ def runtime_protocol_config(core: dict[str, Any]) -> dict[str, str]:
     config = core.get("runtime_protocol") if isinstance(core.get("runtime_protocol"), dict) else {}
     return {
         "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
+        "technology_decisions": config.get("technology_decisions", ".claude/runtime/protocol/technology-decisions.yaml"),
+        "language_profile": config.get("language_profile", ".claude/runtime/protocol/language-profile.yaml"),
         "schema": config.get("schema", ".claude/schemas/command-protocol.schema.json"),
         "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
     }
+
+
+def runtime_protocol_asset_declarations(core: dict[str, Any]) -> list[str]:
+    config = runtime_protocol_config(core)
+    return [
+        declared
+        for declared in (
+            config["protocol"],
+            config["technology_decisions"],
+            config["language_profile"],
+        )
+        if declared
+    ]
+
+
+def merge_protocol_asset(project_root: Path, protocol: dict[str, Any], declared: str) -> None:
+    path = project_path(project_root, declared)
+    asset = load_yaml_mapping(path) if path is not None else {}
+    if not isinstance(asset, dict):
+        return
+    for key, value in asset.items():
+        protocol[key] = value
 
 
 def load_runtime_protocol(project_root: Path) -> tuple[dict[str, Any], dict[str, Any], Path | None]:
@@ -85,6 +109,9 @@ def load_runtime_protocol(project_root: Path) -> tuple[dict[str, Any], dict[str,
     config = runtime_protocol_config(core)
     protocol_path = project_path(project_root, config["protocol"])
     protocol = load_yaml_mapping(protocol_path) if protocol_path is not None else {}
+    for declared in (config["technology_decisions"], config["language_profile"]):
+        if declared and declared != config["protocol"]:
+            merge_protocol_asset(project_root, protocol, declared)
     return core, protocol, protocol_path
 
 

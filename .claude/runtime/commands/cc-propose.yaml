@@ -27,9 +27,12 @@ forbids:
   - present_hard_gate_without_user_choice
 
 required_reads:
-  - .cc/context/project-context.md
+  - .cc/context/project-summary.md
   - .cc/context/dev-map.md
   - .cc/changes/task-board.md
+
+optional_reads:
+  - .cc/context/project-context.md
 
 runtime_protocol_reads:
   technology_catalog: on_demand
@@ -103,7 +106,8 @@ topic_rules:
 
 steps:
   - classify_request
-  - read_project_context_if_present
+  - read_project_summary_and_navigation
+  - read_full_project_context_only_when_summary_is_insufficient
   - restate_goal_and_constraints
   - clarify_only_high_value_unknowns
   - present_blocking_clarification_questions_and_wait_for_answers
@@ -142,19 +146,7 @@ auto_validation:
   - .claude/scripts/cc-verify --harness-only --change <change-id>
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

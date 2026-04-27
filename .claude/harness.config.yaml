@@ -27,6 +27,7 @@ runtime:
   legacy_checkpoint_dir: ".claude/checkpoints"
 
 memory:
+  project_summary: ".cc/context/project-summary.md"
   project_context: ".cc/context/project-context.md"
   dev_map: ".cc/context/dev-map.md"
   task_board: ".cc/changes/task-board.md"

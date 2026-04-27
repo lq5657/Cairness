@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import load_runtime_protocol, protocol_language_assets
+from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
 
 
 @dataclass
@@ -78,6 +78,7 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     for path in framework_assets:
         require(path, "dir", issues, "E_UPGRADE006")
     creation_templates = [
+        claude_root / "templates" / "context" / "project-summary.md",
         claude_root / "templates" / "context" / "project-context.md",
         claude_root / "templates" / "context" / "dev-map.md",
         claude_root / "templates" / "changes" / "task-board.md",
@@ -85,15 +86,18 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     ]
     for path in creation_templates:
         require(path, "file", issues, "E_UPGRADE006")
-    _, protocol, _ = load_runtime_protocol(project_root)
+    core, protocol, _ = load_runtime_protocol(project_root)
     technology_assets = [
         (claude_root / "runtime" / "technology", "dir"),
+        (claude_root / "runtime" / "result-contracts" / "standard-command.yaml", "file"),
         (claude_root / "schemas" / "technology-decision-catalog.schema.json", "file"),
+        *[(project_root / declared, "file") for declared in runtime_protocol_asset_declarations(core)],
         *[(project_root / declared, "file") for declared in protocol_language_assets(project_root, protocol)],
     ]
     for path, kind in technology_assets:
         require(path, kind, issues, "E_UPGRADE006")
     protected_state = [
+        project_root / ".cc" / "context" / "project-summary.md",
         project_root / ".cc" / "context" / "project-context.md",
         project_root / ".cc" / "context" / "dev-map.md",
         project_root / ".cc" / "changes" / "task-board.md",

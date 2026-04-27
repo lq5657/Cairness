@@ -27,9 +27,10 @@
 | 用户已选择采用推荐方案、保留待确认或暂停项目定义 | ✅ / ❌ / ⚠️ / N/A |
 | 若技术方向明显影响范围，已补受控 Research | ✅ / ❌ / ⚠️ / N/A |
 | 已形成技术方向、模块草图或待确认实现点 | ✅ / ❌ / ⚠️ / N/A |
+| 新项目入口路径已标记为 `planned_uncreated` 或 `unknown`，未伪装成已确认仓库事实 | ✅ / ❌ / ⚠️ / N/A |
 | 已形成 MVP 路线图，而不是只停留在需求描述 | ✅ / ❌ / ⚠️ / N/A |
 | 已形成首批推荐 change backlog | ✅ / ❌ / ⚠️ / N/A |
-| 已准备同步 `.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选 | ✅ / ❌ / ⚠️ / N/A |
+| 已准备同步 `.cc/context/project-summary.md`、`.cc/context/dev-map.md` 的规划级导航和 `.cc/changes/task-board.md` 的 backlog 候选 | ✅ / ❌ / ⚠️ / N/A |
 | 已明确记录“当前已明确 / 仍待确认”的关键讨论结论 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查首批推荐 change 是否能自然进入 `cc-propose`，而不是仍停留在项目级空话 | ✅ / ❌ / ⚠️ / N/A |
 | 未把 `cc-new-project` 退化成 `cc-propose`、`cc-init` 或直接编码 | ✅ / ❌ / ⚠️ / N/A |
@@ -39,9 +40,10 @@
 | 检查项 | 结果 |
 |--------|------|
 | 已输出 `.cc/context/project-definition.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已输出 `.cc/context/project-summary.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已输出 `.cc/context/mvp-roadmap.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已输出 `.cc/context/architecture-outline.md` | ✅ / ❌ / ⚠️ / N/A |
-| 已同步 `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要 | ✅ / ❌ / ⚠️ / N/A |
+| 已同步 `.cc/context/project-summary.md`、`.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 已给出推荐下一步，而不是自动进入 `cc-propose` 或 `cc-apply` | ✅ / ❌ / ⚠️ / N/A |
 | 仍待确认的关键点已明确记录 | ✅ / ❌ / ⚠️ / N/A |
 | 未把“仍待确认”列表当作项目定义已完成的依据 | ✅ / ❌ / ⚠️ / N/A |

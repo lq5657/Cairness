@@ -52,6 +52,7 @@
 
 产出：
 - `.cc/context/project-definition.md`
+- `.cc/context/project-summary.md`
 - `.cc/context/mvp-roadmap.md`
 - `.cc/context/architecture-outline.md`
 - `.cc/context/dev-map.md` 的规划级模块导航
@@ -70,10 +71,10 @@
 以 `rules/command-contracts.md` 中 `cc-new-project` 行为准：
 - 状态机定位：项目级定义命令，不创建正式 change 状态
 - 输入：项目想法
-- 输出：`.cc/context/project-definition.md`、`.cc/context/mvp-roadmap.md`、`.cc/context/architecture-outline.md`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`
+- 输出：`.cc/context/project-summary.md`、`.cc/context/project-definition.md`、`.cc/context/mvp-roadmap.md`、`.cc/context/architecture-outline.md`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`
 - 可写文件：上述项目级 context 文档、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`
-- 必须校验：项目目标、目标用户、MVP 范围、本次不做、首批 change backlog 能自然桥接到 `cc-propose`，且长期记忆写入符合 `rules/memory-policy.md`
-- 禁止行为：写业务代码、创建 `.cc/changes/<change-id>/`、自动进入 `cc-propose` 或 `cc-apply`、把项目级灰区伪装成已冻结 change
+- 必须校验：项目目标、目标用户、MVP 范围、本次不做、首批 change backlog 能自然桥接到 `cc-propose`、规划路径状态正确，且长期记忆写入符合 `rules/memory-policy.md`
+- 禁止行为：写业务代码、创建 `.cc/changes/<change-id>/`、自动进入 `cc-propose` 或 `cc-apply`、把项目级灰区伪装成已冻结 change、把新项目规划路径写成已确认仓库事实
 
 ## 必守边界
 
@@ -119,6 +120,8 @@
   - MVP 分期
   - 首批 change backlog
   - 建议先做哪一个正式 change
+  - 若已选择脚手架或架构方向，记录启动入口、依赖入口、配置入口、测试入口 / 目录 / 文件模式的规划值，并标记 `planned_uncreated`
+  - 若路径尚未由用户、脚手架或架构定义确认，必须标记 `unknown`，不得把经验默认路径写成事实
 
 ## 默认执行流程
 
@@ -140,7 +143,7 @@
    - MVP 是否收敛
    - 首批 change 是否能落入现有 change 生命周期
    - 是否存在未冻结而会阻塞 `cc-propose` 的关键灰区
-9. 更新 `.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选摘要
+9. 更新 `.cc/context/project-summary.md`、`.cc/context/dev-map.md` 的规划级模块导航和 `.cc/changes/task-board.md` 的 backlog 候选摘要
 10. 输出项目级文档
 11. 停止，并建议下一步进入 `cc-propose <首批change>`
 
@@ -193,8 +196,9 @@ Research 只用于：
 6. 已形成至少一版 MVP 路线图
 7. 已给出首批推荐 change backlog
 8. 已验证首批推荐 change 能自然桥接到 `cc-propose`
-9. 已同步 `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要
-10. 已输出项目级文档，而不是直接进入 change 文档
+9. 已同步 `.cc/context/project-summary.md`、`.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 的项目级摘要
+10. 新项目路径只使用 `planned_uncreated` 或 `unknown`，除非对应文件/目录已经实际创建并可验证
+11. 已输出项目级文档，而不是直接进入 change 文档
 
 ## 失败处理
 
@@ -218,6 +222,7 @@ Research 只用于：
 
 - `checkpoints/cc-new-project.md`
 - `.claude/templates/context/project-definition.md`
+- `.claude/templates/context/project-summary.md`
 - `.claude/templates/context/mvp-roadmap.md`
 - `.claude/templates/context/architecture-outline.md`
 - 当前 language profile 声明的 technology decision catalog

@@ -37,6 +37,7 @@ required_reads:
   - .claude/harness.config.yaml
 
 runtime_protocol_reads:
+  language_profile: on_demand
   technology_catalog: never
 
 preconditions:
@@ -128,19 +129,7 @@ auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
 
 result_contract:
-  format: structured_command_result
-  required_fields:
-    - status
-    - summary
-    - writes
-    - evidence
-    - risks
-    - next_action
-  status_values:
-    - passed
-    - blocked
-    - partial
-  writes: manifest_writes
+  profile: .claude/runtime/result-contracts/standard-command.yaml
   evidence:
     required: true
     sources:

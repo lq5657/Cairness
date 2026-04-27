@@ -34,6 +34,8 @@ runtime_readsets:
 
 runtime_protocol:
   protocol: .claude/runtime/protocol.yaml
+  technology_decisions: .claude/runtime/protocol/technology-decisions.yaml
+  language_profile: .claude/runtime/protocol/language-profile.yaml
   schema: .claude/schemas/command-protocol.schema.json
   default_language_profile: .claude/runtime/languages/golang.yaml
 

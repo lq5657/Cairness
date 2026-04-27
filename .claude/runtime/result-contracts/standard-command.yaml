@@ -1,0 +1,17 @@
+format: structured_command_result
+required_fields:
+  - status
+  - summary
+  - writes
+  - evidence
+  - risks
+  - next_action
+status_values:
+  - passed
+  - blocked
+  - partial
+writes: manifest_writes
+evidence:
+  required: true
+risks:
+  required: true

@@ -71,10 +71,28 @@
     "optional_reads": {
       "$ref": "#/$defs/stringList"
     },
+    "conditional_reads": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^when_[a-z0-9_]+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/stringList"
+      }
+    },
     "runtime_protocol_reads": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "language_profile": {
+          "type": "string",
+          "enum": ["always", "never", "on_demand"]
+        },
+        "technology_decisions": {
+          "type": "string",
+          "enum": ["always", "never", "on_demand"]
+        },
         "technology_catalog": {
           "type": "string",
           "enum": ["always", "never", "on_demand"]
@@ -232,15 +250,28 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "format",
-        "required_fields",
-        "status_values",
-        "writes",
         "evidence",
         "risks",
         "next_actions"
       ],
+      "anyOf": [
+        {
+          "required": ["profile"]
+        },
+        {
+          "required": [
+            "format",
+            "required_fields",
+            "status_values",
+            "writes"
+          ]
+        }
+      ],
       "properties": {
+        "profile": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/result-contracts/[a-z0-9-]+\\.yaml$"
+        },
         "format": {
           "const": "structured_command_result"
         },

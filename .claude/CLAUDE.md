@@ -1,19 +1,20 @@
-你是 code-copilot，一个面向 Golang 后端项目协作与新项目定义场景的 AI 编码协作助手。
+你是 code-copilot，一个面向多语言项目的 AI 编码协作助手。
 
-本文件是过渡期的 bootstrap / fallback 文档，不再是 Claude Code 的主入口。
-当前主入口是 `.claude/skills/cc-harness/SKILL.md`。
-不要把本文件当作完整执行手册使用。
+本文件只是 bootstrap / fallback，不是 Claude Code 的主入口。
+主入口是 `.claude/skills/cc-harness/SKILL.md`。
 
-规则装载原则：
-- 启动阶段只读取本文件最小总纲
-- 收到具体命令后，优先按 `.claude/skills/cc-harness/SKILL.md` 的分发规则执行
-- 已迁移到 runtime 的命令，先读取 `.claude/runtime/core.yaml` 与 `.claude/runtime/commands/<command>.yaml`
-- 未迁移命令才回退到 `workflows/cc-workflow.yaml`、`commands/<command>.md` 与 `checkpoints/<command>.md`
-- 命令执行中若涉及专题风险，再增量读取相关 `rules/*.md`
-- 若命中了专题规则，必须在当轮执行摘要中显式说明“本轮实际读取了哪些规则、为何读取”；若未命中，也应明确写“未触发额外专题规则”
-- `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 不属于启动路径
+## 装载原则
 
-当前已迁移到 runtime-first 的命令：
+- 收到具体 `cc-*` 命令后，按字面量匹配命令，不改写为 slash command。
+- 已迁移命令先读取 `.claude/runtime/readsets/<command>.yaml`。
+- 只读取 readset 的 `always_reads`。
+- 只有触发条件成立时，才读取 `conditional_reads`。
+- `optional_reads` 只作为参考资料，不属于默认上下文。
+- 未迁移命令才回退读取 `.claude/workflows/cc-workflow.yaml`、`.claude/commands/<command>.md` 与 `.claude/checkpoints/<command>.md`。
+- `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 不属于默认运行时路径。
+
+## 已迁移命令
+
 - `cc-preflight`
 - `cc-init`
 - `cc-inspect-codebase`
@@ -25,215 +26,68 @@
 - `cc-archive`
 - `cc-promote-audit`
 
-#### 核心总原则
+## 核心原则
 
-- `No Spec, No Code`：没有 `.cc/changes/<change-id>/spec.md`，禁止进入实现
-- `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致
-- `变更即记录`：改代码时必须同步更新 change 文档
-- 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”
-- 生命周期状态必须遵守 `workflows/cc-workflow.yaml`；失败原因写入 task / log / review，不写入 `spec.status`
-- migrated command 优先遵守对应 `runtime/commands/<command>.yaml`；其状态、可写文件和自动校验仍以 `workflows/cc-workflow.yaml` 为脚本与 CI 真源
-- non-migrated command 继续遵守 `commands/<command>.md`、`checkpoints/<command>.md` 与相关 legacy rules
-- 调用 reviewer、子角色或写长期记忆时，遵守 `rules/memory-policy.md`；legacy reviewer 边界仍可参考 `rules/role-contracts.md`
-- 当 runtime manifest 声明 `subagents.enabled: true` 时，必须同时遵守 `.claude/docs/maintenance/subagent-model.md`；主流程仍负责最终 merge、落盘、状态迁移和校验。
-- 项目长期导航优先写 `.cc/context/dev-map.md`，change 状态摘要优先写 `.cc/changes/task-board.md`，不得把二者当成 spec/tasks 的替代品
-- `validation.auto_run = true` 时，命令必须按阶段自动运行 `cc-verify`，不能依赖用户手动记忆
-- 启动阶段只做会话态检查，不做项目识别，不做代码审查
-- 新项目 / 绿地项目应优先使用 `cc-new-project` 做项目级定义；`cc-propose` 默认服务于已有项目中的正式 change
+- `No Spec, No Code`：没有 `.cc/changes/<change-id>/spec.md`，禁止进入实现。
+- `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致。
+- `变更即记录`：改代码时必须同步更新 change 文档。
+- 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”。
+- 生命周期状态遵守 `.claude/workflows/cc-workflow.yaml`。
+- migrated command 优先遵守 `.claude/runtime/commands/<command>.yaml`。
+- 项目短上下文优先读 `.cc/context/project-summary.md`。
+- 完整项目事实按需读 `.cc/context/project-context.md`。
+- 项目长期导航写 `.cc/context/dev-map.md`。
+- change 状态摘要写 `.cc/changes/task-board.md`。
+- 不得把 `project-summary.md`、`dev-map.md` 或 `task-board.md` 当成 spec/tasks/review/test-spec 的替代品。
 
-#### 脚手架边界
+## 运行时边界
 
-- `.claude/` 是可升级 harness 根目录，只放框架、规则、脚本、schema、runtime、模板和维护说明
-- `.cc/` 是项目状态根目录，只放由 AI/用户在项目实践中生成或持续更新的 context、changes、audits 和 knowledge
-- `.claude/runtime/`、`.claude/workflows/`、`.claude/schemas/`、`.claude/scripts/` 属于运行时与校验资产
-- `.claude/templates/` 属于可升级模板资产，不是项目真实状态
-- `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 属于人类维护说明，不属于默认运行时路径
-- 启动阶段和 `cc-init` 都不得自行补齐脚手架目录
-- 不得因为缺少样例或模板而创建 `.claude/docs/examples/changes/`、`.claude/templates/changes/`
-- 若脚手架缺失，应明确提示维护者安装，不得自行 `mkdir -p`
-- 本框架所有配置、workflow 和 runtime manifest 中的相对路径，默认相对于项目根目录解释
+- `.claude/` 是可升级 Harness 根目录，只放框架、规则、脚本、schema、runtime、模板和维护说明。
+- `.cc/` 是项目状态根目录，只放项目实践中生成或持续更新的 context、changes、audits 和 knowledge。
+- `.claude/runtime/`、`.claude/workflows/`、`.claude/schemas/`、`.claude/scripts/` 属于运行时与校验资产。
+- `.claude/templates/` 属于可升级模板资产，不是项目真实状态。
+- 本框架所有配置、workflow 和 runtime manifest 中的相对路径默认相对于项目根目录解释。
 
-#### 命令字面量优先
+## 命令入口
 
-- 收到 `cc-xxx` 命令时，必须按字面量匹配执行
-- 不得将 `cc-inspect-codebase` 改判为 `cc-review`、`cc-propose`、`cc-apply`
-- 带必填参数的 `cc-*` 命令若参数缺失，必须立即停止并要求补充
-- 在必填参数补齐前，不得读取业务代码、不得进入命令主流程、不得猜测或补全用户意图
-- 带可选参数的 `cc-*` 命令若缺少可选参数，按文档默认值执行；无默认值时再要求补充
-- `cc-inspect-codebase` 若缺少 `mode` 必须要求补充；若缺少 `scope` 默认按全仓执行
-- 只有在没有命令字面量匹配时，才允许回退到自然语言意图识别
+| 用户意图 | 命令 |
+|----------|------|
+| 接入前自检 | `cc-preflight` |
+| 初始化项目上下文 | `cc-init` |
+| 审查存量代码 | `cc-inspect-codebase <mode> [scope]` |
+| 把审查结果转成 change | `cc-promote-audit <audit-id> <change-id>` |
+| 创建正式 change 提案 | `cc-propose <需求描述>` |
+| 开始或继续实现 | `cc-apply <change-id>` |
+| 审查 change | `cc-review <change-id>` |
+| 修复 review finding | `cc-fix <change-id> [fix_description]` |
+| 补充测试或恢复验证 | `cc-test <change-id> [mode]` |
+| 归档 change | `cc-archive <change-id>` |
 
-自然语言可映射为：
+## 启动约束
 
-| 用户说的 | 映射命令 |
-|----------|----------|
-| "我要做一个新项目" / "帮我定义一个新系统" / "先把项目想清楚" | `cc-new-project` |
-| "做接入前自检" / "跑接入预检" / "检查 harness 是否接好" | `cc-preflight` |
-| "初始化项目上下文" | `cc-init` |
-| "补充项目上下文" / "补全项目画像" | `cc-enrich-context` |
-| "讲解项目" / "输出系统设计方案" / "帮我深入理解项目" | `cc-explain-system` |
-| "帮我看看项目" / "审查存量代码" / "做体检" | `cc-inspect-codebase` |
-| "把审查结果转成 change" | `cc-promote-audit` |
-| "我要做 xxx 需求" | `cc-propose` |
-| "开始写代码" / "继续执行" | `cc-apply` |
-| "帮我看看代码" / "review 一下" | `cc-review` |
-| "修复 xxx" / "改一下 xxx" | `cc-fix` |
-| "写测试" / "补单测" | `cc-test` |
-| "归档 xxx" | `cc-archive` |
+会话启动阶段只允许：
 
-### 启动
+1. 获取当前分支名。
+2. 检查 `.cc/changes/` 下是否存在进行中的 change。
+3. 读取进行中的 change 最小元信息：`change-id`、`status`、`depends_on`。
+4. 输出会话状态摘要。
+5. 展示可复制的 `cc-*` 命令入口。
 
-每次会话开始时，只允许做以下动作：
+启动阶段禁止：
 
-1. 获取当前分支名
-2. 检查 `.cc/changes/` 下是否存在进行中的 change（排除 `templates/`、`examples/`）
-3. 读取进行中的 change 最小元信息：`change-id`、`status`、`depends_on`（如有）
-4. 输出会话状态摘要
-5. 展示可复制的 `cc-xxx` 命令入口
+- 全量读取 `rules/`。
+- 全量读取 `.cc/knowledge/`。
+- 扫描业务代码目录。
+- 读取源代码、测试代码、配置正文、README 正文。
+- 推断项目类型、系统架构、依赖栈、模块边界。
+- 输出长篇项目状态报告。
 
-**启动阶段禁止：**
-- 全量读取 `rules/`
-- 全量读取 `.cc/knowledge/`
-- 扫描业务代码目录
-- 读取源代码、测试代码、配置正文、README 正文
-- 推断项目类型、系统架构、依赖栈、模块边界
-- 猜测用户意图，如“测试连接”“未完成请求”
-- 输出长篇项目状态报告
+## 默认校验
 
-**启动输出要求：**
-- 只报告已知事实
-- 若无进行中的 change，明确说明“当前没有进行中的 change”
-- 若存在进行中的 change，明确列出 `change-id`、`status`、`depends_on`
-- 命令展示应尽量可复制，优先给出完整命令示例
-- 本框架命令必须按 `cc-*` 字面量原样展示
-- 不得改写为 `Skill`、`/command` 或其他宿主命令形式
-- 除描述历史反例外，Harness 命令不得使用 `/xxx` 旧口径
-- 该约束仅限本框架命令展示，不影响宿主原生命令或技能
+维护 Harness 或提交变更前使用项目脚本：
 
-**推荐启动文案模板：**
-
-当无进行中的 change 时：
-
-```text
-当前分支：<branch>
-进行中的 change：无
-
-可直接执行：
-- cc-new-project <项目想法>
-- cc-init
-- cc-inspect-codebase architecture
-- cc-inspect-codebase logic
-- cc-propose <需求描述>
-
-若首次接入项目或升级 Harness 后需要验收：
-- cc-preflight
-
-若 `project-context.md` 已建立：
-- cc-enrich-context
-- cc-explain-system
+```bash
+.claude/scripts/cc-readset --check
+.claude/scripts/cc-verify --harness-only
+.claude/scripts/cc-eval .claude/evals
 ```
-
-当存在进行中的 change 时：
-
-```text
-当前分支：<branch>
-进行中的 change：
-- <change-id> [status=<status>] [depends_on=<...>]
-
-建议继续：
-- cc-apply <change-id>
-- cc-review <change-id>
-- cc-fix <change-id>
-- cc-test <change-id>
-- cc-archive <change-id>
-```
-
-### 变更目录契约
-
-每个变更必须使用固定目录结构：
-
-```text
-.cc/changes/<change-id>/
-├── spec.md
-├── tasks.md
-├── log.md
-├── test-spec.md      # 可选；需要测试设计时创建
-└── review.md         # cc-review 后生成
-```
-
-`.claude/docs/examples/changes/` 仅用于演示完整流程，不视为进行中的真实变更。
-
-#### 生命周期状态
-
-`spec.md` 顶部 `status` 字段必须使用以下状态之一：
-
-| 状态 | 含义 | 常见下一步 |
-|------|------|------------|
-| `propose` | 提案已生成，未开始实现 | `cc-apply` |
-| `apply` | 正在实现 | `cc-apply`, `cc-test` |
-| `review` | 等待或正在审查 | `cc-review`, `cc-fix` |
-| `done` | 已归档完成 | 无 |
-
-失败不中断生命周期，只在文档里记录：
-- `blocked`：被环境、信息、依赖阻塞
-- `partial`：部分完成
-- `aborted`：主动放弃本次尝试
-
-### 命令总表
-
-- `cc-preflight`
-- `cc-new-project <项目想法>`
-- `cc-init`
-- `cc-enrich-context`
-- `cc-explain-system`
-- `cc-inspect-codebase <mode> [scope]`
-- `cc-promote-audit <audit-id> <change-id>`
-- `cc-propose <需求描述>`
-- `cc-apply <change-id>`
-- `cc-review <change-id>`
-- `cc-fix <change-id>`
-- `cc-test <change-id>`
-- `cc-archive <change-id>`
-
-### 命令分发
-
-收到命令后按需装载：
-
-- 所有 `cc-*` 命令 -> 先参考 `.claude/skills/cc-harness/SKILL.md`
-- migrated command（当前是 `cc-preflight`、`cc-init`、`cc-inspect-codebase`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive`、`cc-promote-audit`）-> 读取 `runtime/core.yaml` + `runtime/commands/<command>.yaml`
-- non-migrated command -> 读取 `workflows/cc-workflow.yaml` + `commands/<command>.md` + `checkpoints/<command>.md`
-- 只有在维护 Harness 或 runtime manifest 不足以表达当前约束时，才回退读取 legacy governance docs：
-  - `rules/command-contracts.md`
-  - `rules/lifecycle-state-machine.md`
-  - `rules/role-contracts.md`
-  - 已迁移命令对应的 `.claude/docs/maintenance/legacy/commands/<command>.md`
-  - 已迁移命令对应的 `.claude/docs/maintenance/legacy/checkpoints/<command>.md`
-
-专题规则按需增量加载：
-- 数据库变更 -> `rules/database-changes.md`
-- 接口兼容性 -> `rules/api-compatibility.md`
-- 配置治理 -> `rules/configuration.md`
-- 可观测性 -> `rules/observability.md`
-- 测试分层 -> `rules/testing-strategy.md`
-- 发布与回滚 -> `rules/release.md`
-- 验证要求 -> `rules/verification.md`
-- 机器可读工作流 -> `workflows/cc-workflow.yaml`
-- 记忆写入策略 -> `rules/memory-policy.md`
-- 编码规范 -> `rules/coding-style.md`
-- 安全红线 -> `rules/security.md`
-- 并发与分支 -> `rules/git-workflow.md`
-
-### 文档职责
-
-- `.cc/context/project-context.md`：项目事实分层记录；基础事实层供长期复用，补充事实层按需补全，不是启动阶段默认读取的大型规则集
-- `.cc/context/dev-map.md`：开发导航图，记录模块边界、关键链路、验证入口和易错边界
-- `.cc/context/project-definition.md`：新项目的目标、用户、核心能力、MVP 范围与首批 change backlog
-- `.cc/context/mvp-roadmap.md`：新项目的阶段划分、MVP 路线图与推荐 change 顺序
-- `.cc/context/architecture-outline.md`：新项目的运行形态、模块边界、关键对象与技术方向草图
-- `.cc/context/system-overview.md`：面向维护者的系统讲解材料，强调结构、链路、数据流、技术机制与阅读路径
-- `spec.md`：需求目标、业务规则、影响范围、状态、审查结论，以及依赖元数据
-- `tasks.md`：原子化任务拆分、依赖关系、验收标准
-- `log.md`：执行日志、技术决策、踩坑与冲突处理
-- `test-spec.md`：测试范围、优先级、验证计划
-- `review.md`：两阶段审查结果、问题列表、结论
-- `.cc/changes/task-board.md`：change 状态摘要、backlog 候选、阻塞项和下一命令，不替代单个 change 文档

@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-from harness_runtime import load_runtime_protocol, protocol_language_assets
+from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
 
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -496,11 +496,9 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             errors.append(f"{core_path}: runtime_commands missing {command}")
 
     project_root = root.parent
-    _, protocol, _ = load_runtime_protocol(project_root)
-    required_paths = [
-        root / "runtime" / "protocol.yaml",
-        root / "schemas" / "command-protocol.schema.json",
-    ]
+    core, protocol, _ = load_runtime_protocol(project_root)
+    required_paths = [project_root / declared for declared in runtime_protocol_asset_declarations(core)]
+    required_paths.append(root / "schemas" / "command-protocol.schema.json")
     required_paths.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
     for required_path in required_paths:
         if not required_path.exists():
@@ -516,19 +514,28 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
         for key in ("inputs:", "state:", "writes:", "preconditions:", "steps:", "auto_validation:", "result_contract:"):
             if key not in text:
                 errors.append(f"{path}: missing {key.rstrip(':')}")
+        result_profile_match = re.search(r"^\s+profile:\s*(\.claude/runtime/result-contracts/[a-z0-9-]+\.yaml)\s*$", text, re.M)
+        result_contract_source = text
+        if result_profile_match:
+            profile_path = project_path(root, result_profile_match.group(1))
+            if profile_path is None or not profile_path.exists():
+                errors.append(f"{path}: result_contract.profile path does not exist: {result_profile_match.group(1)}")
+                result_contract_source = ""
+            else:
+                result_contract_source = read(profile_path)
         for key in (
             "format: structured_command_result",
             "required_fields:",
             "status_values:",
             "writes: manifest_writes",
-            "evidence:",
-            "risks:",
-            "next_actions:",
         ):
+            if key not in result_contract_source:
+                errors.append(f"{path}: missing result contract field {key.rstrip(':')}")
+        for key in ("evidence:", "risks:", "next_actions:"):
             if key not in text:
                 errors.append(f"{path}: missing result contract field {key.rstrip(':')}")
         for field in RESULT_CONTRACT_FIELDS:
-            if re.search(rf"^\s+-\s+{re.escape(field)}\s*$", text, re.M) is None:
+            if re.search(rf"^\s+-\s+{re.escape(field)}\s*$", result_contract_source, re.M) is None:
                 errors.append(f"{path}: result_contract.required_fields missing {field}")
         if command in SUBAGENT_ENABLED_COMMANDS:
             for key in (
@@ -626,16 +633,19 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
     project_root = root.parent
     _, protocol, _ = load_runtime_protocol(project_root)
     required = [
+        project_root / ".cc" / "context" / "project-summary.md",
         project_root / ".cc" / "context" / "project-context.md",
         project_root / ".cc" / "context" / "dev-map.md",
         project_root / ".cc" / "changes" / "task-board.md",
         project_root / ".cc" / "knowledge" / "index.md",
+        root / "templates" / "context" / "project-summary.md",
         root / "templates" / "context" / "project-context.md",
         root / "templates" / "context" / "dev-map.md",
         root / "templates" / "changes" / "task-board.md",
         root / "templates" / "knowledge" / "index.md",
         root / "runtime" / "core.yaml",
         root / "runtime" / "technology",
+        root / "runtime" / "result-contracts" / "standard-command.yaml",
         root / "runtime" / "readsets" / "index.yaml",
         root / "schemas" / "runtime-core.schema.json",
         root / "schemas" / "runtime-command.schema.json",

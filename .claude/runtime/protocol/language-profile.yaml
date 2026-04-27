@@ -1,0 +1,22 @@
+language_profile:
+  default: golang
+  schema: .claude/schemas/language-profile.schema.json
+  resolution:
+    order:
+      - project_state
+      - repository_detection
+      - user_confirmation
+      - default_if_single_profile
+    project_state_paths:
+      - .cc/context/project-definition.md
+      - .cc/context/project-summary.md
+      - .cc/context/project-context.md
+    new_project_requires_confirmation: true
+    ambiguous_error: user_confirmation_required
+    unsupported_error: unsupported_command
+    selection_outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-summary.md
+      - .cc/context/project-context.md
+  profiles:
+    golang: .claude/runtime/languages/golang.yaml
