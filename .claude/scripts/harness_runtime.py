@@ -113,11 +113,11 @@ def protocol_language_profiles(project_root: Path, protocol: dict[str, Any]) -> 
     return loaded_profiles
 
 
-def protocol_language_assets(project_root: Path, protocol: dict[str, Any]) -> list[str]:
+def protocol_language_assets(project_root: Path, protocol: dict[str, Any], *, include_catalog: bool = True) -> list[str]:
     assets: list[str] = []
     for profile in protocol_language_profiles(project_root, protocol):
         assets.append(profile.declared_path)
-        if profile.catalog_declared:
+        if include_catalog and profile.catalog_declared:
             assets.append(profile.catalog_declared)
     seen: set[str] = set()
     ordered: list[str] = []

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Optimized `cc-fix` runtime startup by allowing command manifests to omit language technology catalogs from protocol readsets.
+- Clarified `cc-fix <change-id>` defaults to one eligible open finding and only asks for disposition when accepting, reframing, or expanding scope is needed.
 - Moved the Harness project root from the previous language-specific top-level directory to the repository root so `.claude/` and `.cc/` are top-level multi-language framework assets.
 - Added an Agent-native command protocol at `.claude/runtime/protocol.yaml` to standardize command resolution, input validation, path roles, error taxonomy, and result rendering without adding a user-facing CLI.
 - Added a Go language profile at `.claude/runtime/languages/golang.yaml` for Go module detection, verification commands, and default fixture metadata.

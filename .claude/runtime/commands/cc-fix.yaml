@@ -42,8 +42,13 @@ optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/context/dev-map.md
 
+runtime_protocol_reads:
+  technology_catalog: never
+
 preconditions:
   - select_open_findings_only_by_default
+  - cc_fix_change_id_defaults_to_next_eligible_open_finding
+  - explicit_finding_id_or_fix_description_locks_scope
   - restate_finding_in_technical_terms
   - confirm_finding_still_applies_or_record_why_not
   - separate_symptom_failure_point_and_root_cause
@@ -63,13 +68,13 @@ interaction_contract:
     max_questions_per_round: 3
     resolution_required_before_ready: true
   confirmation:
-    when: finding_should_be_fixed_accepted_or_reframed
+    when: finding_should_be_accepted_reframed_or_scope_expanded
     presentation:
-      - show_fix_accept_reframe_options
-      - ask_user_to_choose_fix_accept_or_reframe
+      - show_accept_reframe_or_scope_expansion_options
+      - ask_user_only_when_accept_reframe_or_scope_expansion_needed
       - record_selected_finding_disposition
     confirmation_options:
-      - fix_open_finding
+      - continue_with_minimal_fix_after_scope_confirmation
       - mark_finding_accepted
       - request_review_update
     required_confirmations:
@@ -193,10 +198,12 @@ red_flags:
 
 steps:
   - load_open_findings
-  - reproduce_or_confirm_problem_still_applies
+  - select_one_eligible_open_finding
+  - confirm_problem_still_applies_with_smallest_evidence
   - present_unclear_finding_questions_or_disposition_choices
   - localize_failure_point
   - separate_symptom_failure_point_root_cause_and_blast_radius
+  - use_structural_code_evidence_for_architecture_findings
   - define_minimal_fix_hypothesis
   - implement_minimal_fix
   - add_or_identify_regression_guard

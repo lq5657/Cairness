@@ -159,10 +159,10 @@ INTERACTION_REQUIREMENTS = {
             "do_not_implement_unclear_finding",
         },
         ("confirmation", "presentation"): {
-            "ask_user_to_choose_fix_accept_or_reframe",
+            "ask_user_only_when_accept_reframe_or_scope_expansion_needed",
         },
         ("confirmation", "confirmation_options"): {
-            "fix_open_finding",
+            "continue_with_minimal_fix_after_scope_confirmation",
             "mark_finding_accepted",
             "request_review_update",
         },
@@ -669,13 +669,23 @@ def technology_catalog_from_language_profile(project_root: Path, declared_profil
     return catalog if isinstance(catalog, str) else ""
 
 
-def runtime_protocol_reads(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
+def include_technology_catalog(manifest: dict[str, Any]) -> bool:
+    runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
+    return runtime_reads.get("technology_catalog", "always") != "never"
+
+
+def runtime_protocol_reads(
+    project_root: Path,
+    core: dict[str, Any] | None,
+    manifest: dict[str, Any],
+    issues: list[Issue],
+) -> list[str]:
     config = runtime_protocol_config(core)
     reads = [config["protocol"]]
     protocol_path = project_path(project_root, config["protocol"])
     protocol = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
     if isinstance(protocol, dict):
-        reads.extend(protocol_language_assets(project_root, protocol))
+        reads.extend(protocol_language_assets(project_root, protocol, include_catalog=include_technology_catalog(manifest)))
     return ordered_unique(reads)
 
 
@@ -703,7 +713,7 @@ def derive_command_readset(
 
     subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
     subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
-    protocol_reads = runtime_protocol_reads(project_root, core, issues)
+    protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
     always_reads = [
         ".claude/runtime/core.yaml",
         *protocol_reads,

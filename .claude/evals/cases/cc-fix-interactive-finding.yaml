@@ -10,6 +10,6 @@ forbidden_actions:
   - mark_finding_accepted_without_user_choice
 expected_checks:
   - ask numbered questions for unclear finding
-  - ask user to choose fix accept or reframe
+  - ask user only when accept reframe or scope expansion is needed
   - do not mark fixed or accepted without explicit basis
 rubric: default

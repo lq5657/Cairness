@@ -34,6 +34,8 @@ runtime manifest 的机器契约是：
 
 每个 migrated command 的 read set 由 `.claude/scripts/cc-readset` 生成到 `.claude/runtime/readsets/`。生成物不是 authoring source；runtime manifest 才是来源。`cc-readset --check` 和 `cc-schema-check` 会阻止 readset 与 manifest 漂移。
 
+Runtime command manifest 可通过 `runtime_protocol_reads.technology_catalog: never` 避免把 language profile 声明的 technology catalog 放入默认 readset。该开关适用于不做技术选型的高频命令，例如局部 finding 修复；命令仍会读取 language profile 以解析语言和验证能力。
+
 `.claude/runtime/protocol.yaml` 是 Agent-native command protocol，不是用户 CLI。它统一 command resolution、input validation、path roles、error taxonomy 和 result rendering。Claude Code 和未来其他编程 Agent 应继续使用 `cc-*` 作为用户入口，但执行前必须通过 protocol 做输入和路径解析。`.claude/runtime/languages/<language>.yaml` 只承载对应语言的 project detection、verification commands 和 fixture path。
 
 语言 profile 由 `.claude/schemas/language-profile.schema.json` 校验。`cc-verify` 会先解析 active profile，再从该 profile 读取 verification commands；`harness.config.yaml` 的 `validation.verification.capabilities` 负责 capability 级启停，Go 的 `validation.go.*` 只是兼容旧配置的 fallback。语言 profile 还声明 repository detection metadata 和 technology decision catalog，用于把通用澄清协议和语言专属选项拆开。

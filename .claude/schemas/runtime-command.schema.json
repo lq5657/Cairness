@@ -71,6 +71,16 @@
     "optional_reads": {
       "$ref": "#/$defs/stringList"
     },
+    "runtime_protocol_reads": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "technology_catalog": {
+          "type": "string",
+          "enum": ["always", "never"]
+        }
+      }
+    },
     "preconditions": {
       "$ref": "#/$defs/nonEmptySnakeList"
     },
