@@ -21,7 +21,7 @@ These stages may run through bounded read-only subagents. The main flow still wr
 
 - `open` means unresolved and normally blocks archive.
 - `fixed` means resolved with fresh verification evidence; keep the row for auditability.
-- `accepted` must include the reason, impact, and why not fixing is acceptable.
+- `accepted` must include the reason, impact, why not fixing is acceptable, and an explicit user acceptance choice.
 - `Critical open` always blocks archive.
 - `Important open` blocks archive unless explicitly and defensibly accepted.
 

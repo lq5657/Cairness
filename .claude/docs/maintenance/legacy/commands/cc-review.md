@@ -49,7 +49,7 @@
 
 - Stage 1 若为 `fail`，总体结论只能是进入 `cc-fix`；`stage2_status` 只能写 `skipped` 或 `partial`，不得写“可归档”
 - Stage 2 若存在 `Critical` 且状态为 `open` 的 Findings，总体结论只能是进入 `cc-fix`
-- Stage 2 若存在 `Important` 且状态为 `open` 的 Findings，默认不得归档；如确需放行，必须转为 `accepted`，并写明接受理由、影响面与承担依据
+- Stage 2 若存在 `Important` 且状态为 `open` 的 Findings，默认不得归档；如确需放行，必须让用户显式选择接受该风险，再转为 `accepted`，并写明接受理由、影响面与承担依据
 - `Minor` Findings 默认不阻断归档，但仍应记录，除非确认无审计价值
 
 ### Task Coverage
@@ -94,7 +94,17 @@
 
 - `open`：问题存在，必须进入 `cc-fix` 处理，除非后续转为 `accepted`
 - `fixed`：问题已在后续修复中解决，必须保留审计记录，不得删除
-- `accepted`：经明确评估后暂不处理，必须写明接受理由，不得作为默认兜底状态
+- `accepted`：经明确评估后暂不处理，必须写明接受理由，且必须记录用户显式接受选择，不得作为默认兜底状态
+
+### Accepted 处置交互
+
+- 当 review 结论想把某个 Finding 记为 `accepted` 时，必须向用户显式给出处置选择，而不是 reviewer 直接落盘。
+- 处置选择至少包括：
+  1. 保持 `open` 并进入 `cc-fix`
+  2. 接受风险并标记为 `accepted`
+  3. 要求修订 review 结论
+- 只写“建议 accepted”“风险可接受”或“可归档”不算完成处置；用户未选择前，不得把 Finding 标为 `accepted`，也不得据此给出“可归档”结论。
+- 若 `review.md` 中存在 `accepted` Findings，必须在对应的确认记录中写明 `confirmed_by`、`confirmed_at`、用户选择和接受依据摘要。
 
 ### 自动 Harness 校验
 

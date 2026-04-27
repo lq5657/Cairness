@@ -47,6 +47,7 @@
 | 已检查 Minor 风险：Go doc、注释、import、依赖使用 | ✅ / ❌ / ⚠️ / N/A |
 | 已按 Findings 严重级别判断是否阻断 | ✅ / ❌ / ⚠️ / N/A |
 | `Important` 问题若未修复，已判断是否允许 `accepted` | ✅ / ❌ / ⚠️ / N/A |
+| 若要把 Finding 标为 `accepted`，已要求用户显式选择接受风险而不是 reviewer 直接决定 | ✅ / ❌ / ⚠️ / N/A |
 | `Minor` 问题是否写入 Findings 已有明确判断 | ✅ / ❌ / ⚠️ / N/A |
 
 ## 完成后检查
@@ -61,6 +62,7 @@
 | 已检查触发镜头发现的问题是否形成 Findings | ✅ / ❌ / ⚠️ / N/A |
 | `open` / `fixed` / `accepted` 状态使用符合语义 | ✅ / ❌ / ⚠️ / N/A |
 | `accepted` 的问题已写明接受理由 | ✅ / ❌ / ⚠️ / N/A |
+| `accepted` 的问题已记录用户确认人、确认时间和接受依据摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 最终结论与 Stage 1 / Stage 2 / Findings 严重级别一致 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 已将 `spec.md` 的“审查结论”章节同步为当前结论 | ✅ / ❌ / ⚠️ / N/A |

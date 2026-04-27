@@ -58,6 +58,16 @@ def finding_rows(text: str) -> list[list[str]]:
     ]
 
 
+def accepted_confirmation_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\.1 Accepted Findings 确认记录（按需）(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    return [
+        row for row in table_rows(match.group(1))
+        if len(row) >= 5 and row[0] != "Finding 描述（与上表一致）"
+    ]
+
+
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:
     dirs: set[Path] = set()
     for item in inputs:
@@ -108,11 +118,19 @@ def check_change(change_dir: Path, errors: list[str]) -> None:
         open_rows = [row for row in finding_rows(review) if len(row) >= 5 and row[4].strip("` ") == "open"]
         if final_status == "pass" and open_rows:
             errors.append(f"{review_path}: final_status pass with open findings")
+        confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(review) if row[0].strip()}
         for row in finding_rows(review):
             if len(row) >= 5 and row[4].strip("` ") == "accepted":
+                description = row[1].strip()
                 reason_text = " ".join(row[:4])
                 if len(reason_text.strip()) < 20:
                     errors.append(f"{review_path}: accepted finding lacks reason")
+                confirmation = confirmations.get(description)
+                if not confirmation:
+                    errors.append(f"{review_path}: accepted finding '{description}' missing accepted confirmation record")
+                    continue
+                if any(not cell.strip() for cell in confirmation[:5]):
+                    errors.append(f"{review_path}: accepted finding '{description}' has incomplete confirmation record")
 
     spec_meta = parse_meta(spec)
     if spec_meta.get("status") == "done":

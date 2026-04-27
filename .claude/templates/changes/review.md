@@ -21,7 +21,7 @@ final_status: partial
 - 本文件是 `cc-review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
-- `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
+- `accepted`：必须写明接受理由、影响面与不修依据，且必须记录用户显式接受选择，不能作为默认兜底
 
 #### 1. 输入材料
 
@@ -78,6 +78,15 @@ final_status: partial
 |------|------|------|----------|------|
 | | | | | `open`、`fixed`、`accepted` |
 
+#### 5.1 Accepted Findings 确认记录（按需）
+
+若 `Findings` 中存在 `accepted`，本节必须逐条记录用户确认；若没有，写 `无`。
+`Finding 描述（与上表一致）` 必须与 `5. Findings` 中对应行的“描述”列完全一致，便于校验脚本关联。
+
+| Finding 描述（与上表一致） | confirmed_by | confirmed_at | 用户选择 | 接受依据摘要 |
+|----------------------------|--------------|--------------|----------|--------------|
+| | | | `mark_finding_accepted` | |
+
 #### 6. 结论
 
 * **Stage 1 结论**：
@@ -87,3 +96,4 @@ final_status: partial
 结论约束：
 - 若存在 `Critical open`，总体结论不得为“可归档”
 - 若存在未被合理接受的 `Important open`，总体结论不得为“可归档”
+- 若存在 `accepted` Finding，但缺少用户确认记录，总体结论不得为“可归档”

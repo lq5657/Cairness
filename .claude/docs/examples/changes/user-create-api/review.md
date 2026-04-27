@@ -10,7 +10,7 @@
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
-- `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
+- `accepted`：必须写明接受理由、影响面与不修依据，且必须记录用户显式接受选择，不能作为默认兜底
 - 本文件是 `cc-review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
@@ -77,6 +77,10 @@ final_status: pass
 |------|------|------|----------|------|
 | 无 | 无问题 | — | 无 | — |
 
+#### 5.1 Accepted Findings 确认记录（按需）
+
+无
+
 #### 6. 结论
 
 * **Stage 1 结论**：pass
@@ -86,3 +90,4 @@ final_status: pass
 结论约束：
 - 若存在 `Critical open`，总体结论不得为“可归档”
 - 若存在未被合理接受的 `Important open`，总体结论不得为“可归档”
+- 若存在 `accepted` Finding，但缺少用户确认记录，总体结论不得为“可归档”

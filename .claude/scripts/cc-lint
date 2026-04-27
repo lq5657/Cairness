@@ -180,6 +180,16 @@ INTERACTION_CONTRACT_MARKERS = {
         "request_review_update",
         "do_not_mark_fixed_or_accepted_without_explicit_basis",
     ],
+    "cc-review": [
+        "interaction_contract:",
+        "confirmation:",
+        "show_acceptance_candidate_reason_impact_and_fix_alternative",
+        "ask_user_to_choose_fix_accept_or_revise_review",
+        "keep_finding_open_and_run_cc_fix",
+        "mark_finding_accepted",
+        "request_review_revision",
+        "do_not_mark_finding_accepted_or_recommend_archive_without_explicit_user_choice",
+    ],
 }
 
 
@@ -302,6 +312,17 @@ def finding_rows(text: str) -> list[list[str]]:
     return rows
 
 
+def accepted_confirmation_rows(text: str) -> list[list[str]]:
+    match = re.search(r"#### 5\.1 Accepted Findings 确认记录（按需）(.*?)(?:\n#### 6\.|\Z)", text, re.S)
+    if not match:
+        return []
+    rows = []
+    for row in table_rows(match.group(1)):
+        if len(row) >= 5 and row[0] != "Finding 描述（与上表一致）":
+            rows.append(row)
+    return rows
+
+
 def line_allowed_for_slash(path: Path, line: str) -> bool:
     return path.name == "common-integration-pitfalls.md" and "文档示例混用了" in line
 
@@ -383,6 +404,19 @@ def lint_review(change_dir: Path, errors: list[str]) -> None:
         status = row[4].strip("` ")
         if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
             errors.append(f"{path}: finding has invalid status {status}")
+    accepted_rows = [row for row in rows if len(row) >= 5 and row[4].strip("` ") == "accepted"]
+    confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}
+    for row in accepted_rows:
+        description = row[1].strip()
+        reason_text = " ".join(row[:4]).strip()
+        if len(reason_text) < 20:
+            errors.append(f"{path}: accepted finding '{description}' lacks reason")
+        confirmation = confirmations.get(description)
+        if not confirmation:
+            errors.append(f"{path}: accepted finding '{description}' missing accepted confirmation record")
+            continue
+        if any(not cell.strip() for cell in confirmation[:5]):
+            errors.append(f"{path}: accepted finding '{description}' has incomplete confirmation record")
 
 
 def lint_test_spec(change_dir: Path, errors: list[str]) -> None:

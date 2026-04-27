@@ -10,7 +10,7 @@
 - `stage1_status`、`stage2_status`、`final_status` 必须与正文结论一致
 - `open`：必须进入 `cc-fix`，除非后续转为 `accepted`
 - `fixed`：问题已修复，保留记录，不得删除
-- `accepted`：必须写明接受理由、影响面与不修依据，不能作为默认兜底
+- `accepted`：必须写明接受理由、影响面与不修依据，且必须记录用户显式接受选择，不能作为默认兜底
 - 本文件是 `cc-review` 主流程汇总后的最终结果，不等同于任一 reviewer 的原始输出
 
 ```
@@ -79,6 +79,12 @@ final_status: pass
 | Important | repo 创建路径缺少显式 timeout | `internal/repo/user_repo.go:L1` | 增加 `context.WithTimeout` | fixed |
 | Important | service 返回错误缺少上下文包装 | `internal/service/user_service.go:L1` | 用 `%w` 包装底层错误 | fixed |
 
+#### 5.1 Accepted Findings 确认记录（按需）
+
+| Finding 描述（与上表一致） | confirmed_by | confirmed_at | 用户选择 | 接受依据摘要 |
+|----------------------------|--------------|--------------|----------|--------------|
+| 示例约束：`cc-fix` 默认只处理 `open` Findings，并在修复后改状态而非删除记录 | Maintainer Demo | 2026-04-11 16:08 | `mark_finding_accepted` | 该条属于示例文档约束说明，不影响当前 change 的业务安全或归档判断，保留为 accepted 审计记录即可 |
+
 #### 6. 结论
 
 * **Stage 1 结论**：pass
@@ -88,3 +94,4 @@ final_status: pass
 结论约束：
 - 若存在 `Critical open`，总体结论不得为“可归档”
 - 若存在未被合理接受的 `Important open`，总体结论不得为“可归档”
+- 若存在 `accepted` Finding，但缺少用户确认记录，总体结论不得为“可归档”

@@ -136,8 +136,8 @@ commands:
     inputs: [change_id]
     outputs: [.cc/changes/<change-id>/review.md, .cc/changes/task-board.md]
     writes: [.cc/changes/<change-id>/review.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md]
-    validates: [task_coverage, verification_evidence, finding_status, evidence_matrix, role_contracts]
-    forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record]
+    validates: [task_coverage, verification_evidence, finding_status, evidence_matrix, role_contracts, finding_acceptance_interaction]
+    forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record, mark_finding_accepted_without_user_choice, treat_reviewer_recommendation_as_user_acceptance]
     auto_validation: ["cc-role-check --command cc-review --change <change-id>", "cc-verify --harness-only --change <change-id>"]
 
   cc-fix:
