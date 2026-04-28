@@ -30,7 +30,7 @@
 | rules 存在 | `.claude/rules/` 存在且包含核心规则文件 | [ ] |
 | 机器工作流存在 | `.claude/workflows/cc-workflow.yaml` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | runtime core 存在 | `.claude/runtime/core.yaml` 存在，且登记所有 migrated command | [ ] |
-| runtime command 存在 | `cc-preflight`、`cc-init`、`cc-inspect-codebase`、主 change lifecycle、`cc-promote-audit` 均有 `.claude/runtime/commands/<command>.yaml` | [ ] |
+| runtime command 存在 | `cc-new-project`、`cc-preflight`、`cc-init`、`cc-enrich-context`、`cc-explain-system`、`cc-inspect-codebase`、主 change lifecycle、`cc-promote-audit` 均有 `.claude/runtime/commands/<command>.yaml` | [ ] |
 | 生命周期状态机存在 | `legacy-compatible` 要求 `.claude/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | 命令契约矩阵存在 | `legacy-compatible` 要求 `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | 角色与记忆规则存在 | `.claude/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
