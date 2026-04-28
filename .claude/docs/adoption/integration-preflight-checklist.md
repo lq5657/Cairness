@@ -14,7 +14,7 @@
 
 检查分两档：
 - `runtime-minimal`：只要求 runtime-first 命令、脚本、schema 和基础治理资产完整，适合新接入或已升级项目。
-- `legacy-compatible`：额外要求未迁移命令的 `commands/`、`checkpoints/` 和 legacy rules 完整，适合仍依赖 fallback 的项目。
+- `legacy-compatible`：额外要求 legacy `commands/`、`checkpoints/` 和 legacy rules 完整，适合仍保留自定义 fallback 命令的项目。
 
 如果这份清单没通过，不建议直接开始正式使用。
 
@@ -36,8 +36,8 @@
 | 角色与记忆规则存在 | `.claude/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
 | knowledge 状态与模板存在 | `.cc/knowledge/index.md` 与 `.claude/templates/knowledge/index.md` 存在 | [ ] |
 | context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
-| commands 完整 | `legacy-compatible` 要求未迁移命令，如 `cc-enrich-context`、`cc-explain-system`、`cc-new-project` 的 command 文件齐全 | [ ] |
-| checkpoints 完整 | `legacy-compatible` 要求未迁移命令对应的 `checkpoints/*.md` 文件齐全 | [ ] |
+| commands 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback command 文件齐全 | [ ] |
+| checkpoints 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback checkpoint 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/templates/changes/` 存在 | [ ] |
 | task-board 存在 | `.cc/changes/task-board.md` 与 `.claude/templates/changes/task-board.md` 存在 | [ ] |
 | audits 模板存在 | `.claude/templates/audits/` 存在 | [ ] |

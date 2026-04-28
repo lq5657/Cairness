@@ -74,8 +74,11 @@ Maintenance and adoption docs live under:
 
 Runtime-slimmed commands:
 
+- `cc-new-project`
 - `cc-preflight`
 - `cc-init`
+- `cc-enrich-context`
+- `cc-explain-system`
 - `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
@@ -85,11 +88,7 @@ Runtime-slimmed commands:
 - `cc-archive`
 - `cc-promote-audit`
 
-Legacy fallback commands still exist for lower-frequency workflows:
-
-- `cc-new-project`
-- `cc-enrich-context`
-- `cc-explain-system`
+Legacy command and checkpoint documents are retained as maintenance references, but built-in `cc-*` commands use the runtime-first path.
 
 ## Common Verification
 

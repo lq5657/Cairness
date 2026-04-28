@@ -68,8 +68,11 @@ WORKFLOW_REQUIRED_COMMAND_KEYS = [
 WORKFLOW_SPECIAL_FROM_STATES = {"none"}
 WORKFLOW_SPECIAL_TO_STATES = {"unchanged"}
 REQUIRED_RUNTIME_COMMANDS = {
+    "cc-new-project",
     "cc-preflight",
     "cc-init",
+    "cc-enrich-context",
+    "cc-explain-system",
     "cc-inspect-codebase",
     "cc-propose",
     "cc-apply",

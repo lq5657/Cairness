@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Migrated `cc-new-project`, `cc-enrich-context`, and `cc-explain-system` to runtime-first command manifests and generated readsets while preserving exploratory discovery, discussion, and convergence gates for project definition flows.
 - Compacted high-traffic runtime command manifests by moving detailed subagent contracts for `cc-apply`, `cc-fix`, `cc-review`, and `cc-test` into conditional runtime subagent assets.
 - Optimized `cc-propose` runtime startup by moving language technology catalogs to on-demand conditional reads for change-level technology decisions.
 - Reduced default runtime readsets by omitting language technology catalogs from commands that do not make technology decisions and by making subagent policy conditional on actual delegation.

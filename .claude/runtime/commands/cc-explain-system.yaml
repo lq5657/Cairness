@@ -1,0 +1,124 @@
+command: cc-explain-system
+summary: Produce evidence-backed system orientation material without turning the work into an audit or change proposal.
+
+inputs:
+  required: []
+  optional:
+    - optional_scope
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .cc/context/system-overview.md
+
+forbids:
+  - finding_output
+  - change_creation
+  - audit_creation
+  - business_code_write
+  - preference_as_fact
+
+required_reads:
+  - .cc/context/project-context.md
+  - .cc/context/dev-map.md
+
+conditional_reads:
+  when_writing_system_overview:
+    - .claude/templates/context/system-overview.md
+
+runtime_protocol_reads:
+  technology_catalog: never
+
+preconditions:
+  - project_context_exists_or_minimal_context_can_be_established
+  - confirm_goal_is_system_explanation_not_audit_or_change
+  - resolve_scope_or_accept_default_whole_repo
+  - bound_scope_before_deep_reading
+  - require_evidence_for_key_claims
+
+interaction_contract:
+  mode: interactive_required
+  clarification:
+    when: scope_is_ambiguous_or_too_large_for_reliable_explanation
+    presentation:
+      - show_current_scope_and_why_it_is_not_explainable_enough
+      - ask_numbered_scope_questions_with_expected_answer_shape
+      - offer_scope_options_by_directory_module_flow_or_business_topic
+      - wait_for_user_answer_before_deep_reading
+    blocking_behavior:
+      - do_not_write_system_overview_for_unbounded_scope
+      - record_unexplained_areas_as_pending_when_scope_is_narrowed
+      - next_action_must_be_answer_scope_question_or_choose_scope
+    max_questions_per_round: 3
+    resolution_required_before_ready: true
+
+topic_rules:
+  when_testing_or_verification_is_explained:
+    - .claude/rules/testing-strategy.md
+    - .claude/rules/verification.md
+  when_configuration_mechanism_is_explained:
+    - .claude/rules/configuration.md
+  when_observability_mechanism_is_explained:
+    - .claude/rules/observability.md
+  when_security_or_auth_mechanism_is_explained:
+    - .claude/rules/security.md
+  when_external_or_version_sensitive_mechanism_is_claimed:
+    - .claude/rules/source-driven-development.md
+
+anti_rationalizations:
+  - turn_system_explanation_into_findings_report
+  - fill_system_overview_template_without_evidence
+  - keep_expanding_scope_until_every_possible_capability_is_explained
+  - describe_preferred_architecture_as_current_system_fact
+  - omit_entrypoints_because_summary_sounds_plausible
+
+red_flags:
+  - output_contains_severity_findings_or_fix_plan
+  - architecture_diagram_has_no_matching_code_or_config_evidence
+  - system_overview_claims_capability_without_entrypoint_or_path
+  - explanation_scope_expands_after_writing_started
+  - final_output_hides_unknowns_instead_of_marking_pending
+
+steps:
+  - confirm_explanation_goal_and_scope
+  - read_project_context_and_dev_map
+  - ask_for_scope_resolution_when_needed
+  - inspect_scope_relevant_structure_entries_and_call_chains
+  - identify_architecture_modules_flows_data_objects_and_mechanisms
+  - distinguish_currently_present_absent_and_pending_capabilities
+  - prepare_mermaid_or_ascii_diagrams_only_when_evidence_backed
+  - write_system_overview_with_evidence_and_reading_path
+  - stop_without_audit_change_or_implementation
+
+auto_validation: []
+
+result_contract:
+  profile: .claude/runtime/result-contracts/standard-command.yaml
+  evidence:
+    required: true
+    sources:
+      - written_artifacts
+      - code_evidence
+      - config_evidence
+      - flow_evidence
+      - interaction_state
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+      - interaction_state
+  next_actions:
+    - read_system_overview_or_choose_followup_command
+    - answer_scope_question_or_choose_scope
+
+stop_conditions:
+  - project_context_missing_and_minimal_context_unavailable
+  - scope_too_large_without_user_resolution
+  - evidence_insufficient_for_key_explanation
+  - requested_output_is_audit_or_change
+  - system_overview_would_be_preference_not_fact

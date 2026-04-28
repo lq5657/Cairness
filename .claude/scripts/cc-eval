@@ -18,6 +18,7 @@ COMMAND_RE = re.compile(r"\bcc-[a-z0-9-]+\b")
 PATH_RE = re.compile(r"(?:(?:\.claude|\.cc)/[A-Za-z0-9_./<>*-]+|README\.md)")
 SCRIPT_COMMAND_RE = re.compile(r"^(\.claude/scripts/[A-Za-z0-9_-]+)\b")
 GOVERNANCE_RULE_READS = {
+    ".claude/rules/memory-policy.md",
     ".claude/rules/role-contracts.md",
 }
 GENERIC_TOKENS = {

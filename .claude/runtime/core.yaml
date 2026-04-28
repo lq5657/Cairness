@@ -4,8 +4,11 @@ runtime_id: cc-spec-harness-runtime
 workflow_definition: .claude/workflows/cc-workflow.yaml
 
 migrated_commands:
+  - cc-new-project
   - cc-preflight
   - cc-init
+  - cc-enrich-context
+  - cc-explain-system
   - cc-inspect-codebase
   - cc-propose
   - cc-apply
@@ -16,8 +19,11 @@ migrated_commands:
   - cc-promote-audit
 
 runtime_commands:
+  cc-new-project: .claude/runtime/commands/cc-new-project.yaml
   cc-preflight: .claude/runtime/commands/cc-preflight.yaml
   cc-init: .claude/runtime/commands/cc-init.yaml
+  cc-enrich-context: .claude/runtime/commands/cc-enrich-context.yaml
+  cc-explain-system: .claude/runtime/commands/cc-explain-system.yaml
   cc-inspect-codebase: .claude/runtime/commands/cc-inspect-codebase.yaml
   cc-propose: .claude/runtime/commands/cc-propose.yaml
   cc-apply: .claude/runtime/commands/cc-apply.yaml

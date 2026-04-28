@@ -1,0 +1,30 @@
+version: 1
+command: cc-explain-system
+source_manifest: .claude/runtime/commands/cc-explain-system.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/commands/cc-explain-system.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/commands/cc-explain-system.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
+- .cc/context/project-context.md
+- .cc/context/dev-map.md
+optional_reads: []
+conditional_reads:
+  when_writing_system_overview:
+  - .claude/templates/context/system-overview.md
+  when_testing_or_verification_is_explained:
+  - .claude/rules/testing-strategy.md
+  - .claude/rules/verification.md
+  when_configuration_mechanism_is_explained:
+  - .claude/rules/configuration.md
+  when_observability_mechanism_is_explained:
+  - .claude/rules/observability.md
+  when_security_or_auth_mechanism_is_explained:
+  - .claude/rules/security.md
+  when_external_or_version_sensitive_mechanism_is_claimed:
+  - .claude/rules/source-driven-development.md

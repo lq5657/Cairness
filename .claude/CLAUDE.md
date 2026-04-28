@@ -10,13 +10,16 @@
 - 只读取 readset 的 `always_reads`。
 - 只有触发条件成立时，才读取 `conditional_reads`。
 - `optional_reads` 只作为参考资料，不属于默认上下文。
-- 未迁移命令才回退读取 `.claude/workflows/cc-workflow.yaml`、`.claude/commands/<command>.md` 与 `.claude/checkpoints/<command>.md`。
+- 自定义或未迁移命令才回退读取 `.claude/workflows/cc-workflow.yaml`、`.claude/commands/<command>.md` 与 `.claude/checkpoints/<command>.md`。
 - `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 不属于默认运行时路径。
 
 ## 已迁移命令
 
 - `cc-preflight`
+- `cc-new-project`
 - `cc-init`
+- `cc-enrich-context`
+- `cc-explain-system`
 - `cc-inspect-codebase`
 - `cc-propose`
 - `cc-apply`
@@ -53,7 +56,10 @@
 | 用户意图 | 命令 |
 |----------|------|
 | 接入前自检 | `cc-preflight` |
+| 定义新项目与 MVP 路线图 | `cc-new-project <项目想法>` |
 | 初始化项目上下文 | `cc-init` |
+| 补充项目事实画像 | `cc-enrich-context` |
+| 输出系统讲解材料 | `cc-explain-system [scope]` |
 | 审查存量代码 | `cc-inspect-codebase <mode> [scope]` |
 | 把审查结果转成 change | `cc-promote-audit <audit-id> <change-id>` |
 | 创建正式 change 提案 | `cc-propose <需求描述>` |

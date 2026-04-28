@@ -1,0 +1,127 @@
+command: cc-enrich-context
+summary: Enrich the project fact layer with evidence-backed context while avoiding audit findings or change creation.
+
+inputs:
+  required: []
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .cc/context/project-context.md
+  - .cc/context/dev-map.md
+
+forbids:
+  - finding_output
+  - change_creation
+  - audit_creation
+  - assumptions_as_facts
+  - auto_review_or_apply
+  - treat_listed_assumptions_as_confirmed
+  - write_unconfirmed_blocking_assumption_as_fact
+
+required_reads:
+  - .cc/context/project-context.md
+  - .cc/context/dev-map.md
+  - .claude/rules/memory-policy.md
+
+optional_reads:
+  - .cc/context/project-summary.md
+
+runtime_protocol_reads:
+  technology_catalog: never
+
+preconditions:
+  - claude_scaffold_exists
+  - base_context_exists
+  - confirm_goal_is_context_enrichment_not_audit_or_explanation
+  - identify_thin_or_pending_context_areas_before_reading_code
+  - keep_reads_targeted_to_fact_confirmation
+  - distinguish_confirmed_facts_from_hypotheses
+
+interaction_contract:
+  mode: interactive_required
+  clarification:
+    when: blocking_assumptions_affect_fact_write_accuracy
+    presentation:
+      - show_candidate_assumptions_with_evidence_confidence_and_impact
+      - ask_numbered_questions_for_only_blocking_assumptions
+      - offer_confirm_correct_or_keep_pending_options
+      - wait_for_user_answer_before_writing_confirmed_facts
+    blocking_behavior:
+      - do_not_write_unconfirmed_blocking_assumptions_as_facts
+      - record_unanswered_assumptions_as_pending
+      - next_action_must_be_answer_key_assumption_questions
+    max_questions_per_round: 3
+    resolution_required_before_ready: true
+
+topic_rules:
+  when_testing_facts_are_enriched:
+    - .claude/rules/testing-strategy.md
+  when_configuration_facts_are_enriched:
+    - .claude/rules/configuration.md
+  when_observability_facts_are_enriched:
+    - .claude/rules/observability.md
+  when_security_or_auth_boundary_facts_are_enriched:
+    - .claude/rules/security.md
+  when_external_or_version_sensitive_facts_are_claimed:
+    - .claude/rules/source-driven-development.md
+
+anti_rationalizations:
+  - treat_context_enrichment_as_codebase_audit
+  - turn_known_fragility_into_findings_or_remediation_plan
+  - infer_layering_from_directory_names_without_call_chain_evidence
+  - write_blocking_assumption_as_fact_to_avoid_interrupting_flow
+  - expand_read_scope_until_every_section_is_filled
+
+red_flags:
+  - output_contains_findings_or_severity_levels
+  - project_context_contains_confirmed_claim_without_evidence_location
+  - dev_map_records_hypothesis_as_stable_boundary
+  - more_than_three_blocking_assumptions_asked_in_one_round
+  - final_output_contains_pending_blocking_assumptions_without_direct_questions
+
+steps:
+  - verify_context_files_and_scaffold
+  - read_existing_context_and_dev_map
+  - identify_pending_or_thin_fact_areas
+  - select_high_value_fact_targets_before_reading_code
+  - inspect_only_targeted_structure_entries_and_samples
+  - separate_confirmed_facts_hypotheses_and_unknowns
+  - ask_user_to_confirm_blocking_assumptions_when_needed
+  - write_only_confirmed_or_explicitly_pending_facts
+  - update_project_context_supplemental_fact_layer
+  - update_dev_map_navigation_and_confidence
+  - stop_without_audit_change_explanation_or_implementation
+
+auto_validation: []
+
+result_contract:
+  profile: .claude/runtime/result-contracts/standard-command.yaml
+  evidence:
+    required: true
+    sources:
+      - written_artifacts
+      - evidence_locations
+      - recorded_unknowns
+      - interaction_state
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+      - interaction_state
+  next_actions:
+    - answer_assumption_questions_or_continue_context_use
+    - proceed_to_inspect_propose_or_explain
+
+stop_conditions:
+  - missing_context_files
+  - base_context_missing
+  - requested_scope_is_audit_explanation_or_implementation
+  - evidence_insufficient_for_confirmed_fact
+  - blocking_assumption_requires_user_answer
+  - memory_policy_violation

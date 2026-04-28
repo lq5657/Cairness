@@ -7,7 +7,7 @@
 1. 选一个样例输入给运行中的 harness。
 2. 观察 `cc-new-project` 是否保持项目级视角，而不是滑回 `cc-propose` 或直接进入编码。
 3. 按本文“必过信号 / 失败信号 / 评分点”打分。
-4. 若未通过，优先修 `commands/cc-new-project.md`、`checkpoints/cc-new-project.md`、项目级模板和路由规则。
+4. 若未通过，优先修 `.claude/runtime/commands/cc-new-project.yaml`、项目级模板和路由规则；legacy command/checkpoint 文档只作对照参考。
 
 ---
 

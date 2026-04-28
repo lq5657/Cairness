@@ -1,0 +1,46 @@
+version: 1
+command: cc-new-project
+source_manifest: .claude/runtime/commands/cc-new-project.yaml
+generated_from:
+- .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/commands/cc-new-project.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
+always_reads:
+- .claude/runtime/core.yaml
+- .claude/runtime/protocol.yaml
+- .claude/runtime/commands/cc-new-project.yaml
+- .claude/runtime/result-contracts/standard-command.yaml
+- .cc/context/project-summary.md
+- .cc/context/dev-map.md
+- .cc/changes/task-board.md
+- .claude/rules/memory-policy.md
+optional_reads:
+- .cc/context/project-context.md
+- .claude/docs/maintenance/technology-decision-model.md
+conditional_reads:
+  when_project_artifacts_are_written:
+  - .claude/templates/context/project-definition.md
+  - .claude/templates/context/project-summary.md
+  - .claude/templates/context/mvp-roadmap.md
+  - .claude/templates/context/architecture-outline.md
+  - .claude/templates/context/dev-map.md
+  - .claude/templates/changes/task-board.md
+  when_backlog_split_or_change_bridge_is_defined:
+  - .claude/rules/change-sizing.md
+  when_project_research_uses_external_or_version_sensitive_sources:
+  - .claude/rules/source-driven-development.md
+  when_project_touches_security_boundary:
+  - .claude/rules/security.md
+  when_project_touches_configuration_strategy:
+  - .claude/rules/configuration.md
+  when_project_touches_observability_strategy:
+  - .claude/rules/observability.md
+  when_language_profile_resolution_is_required:
+  - .claude/runtime/protocol/language-profile.yaml
+  - .claude/runtime/languages/golang.yaml
+  when_technology_decision_is_required:
+  - .claude/runtime/protocol/technology-decisions.yaml
+  - .claude/runtime/protocol/language-profile.yaml
+  - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/technology/golang.yaml

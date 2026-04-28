@@ -2,8 +2,11 @@ version: 1
 generated_by: .claude/scripts/cc-readset
 source_core: .claude/runtime/core.yaml
 commands:
+  cc-new-project: .claude/runtime/readsets/cc-new-project.yaml
   cc-preflight: .claude/runtime/readsets/cc-preflight.yaml
   cc-init: .claude/runtime/readsets/cc-init.yaml
+  cc-enrich-context: .claude/runtime/readsets/cc-enrich-context.yaml
+  cc-explain-system: .claude/runtime/readsets/cc-explain-system.yaml
   cc-inspect-codebase: .claude/runtime/readsets/cc-inspect-codebase.yaml
   cc-propose: .claude/runtime/readsets/cc-propose.yaml
   cc-apply: .claude/runtime/readsets/cc-apply.yaml

@@ -206,12 +206,12 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 ### 为什么 legacy docs 还没全部删
 
-项目定义、context enrichment 和 explain 类命令还没完成 runtime 化。当前保留 legacy docs，是为了在迁移期继续给低频命令提供 fallback。
+内置 `cc-*` 命令已经走 runtime-first。当前保留 legacy docs，是为了给维护者提供迁移期参考、历史对照和自定义命令 fallback 的示例边界。
 
 当前策略：
 
 - migrated command：只读 runtime
-- non-migrated command：workflow + legacy docs fallback
+- custom / non-migrated command：workflow + legacy docs fallback
 
 ## 迁移状态
 
@@ -225,8 +225,8 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 ### 仍在 `.claude/` 的 legacy 文档
 
-- 未迁移命令的 `.claude/commands/*`
-- 未迁移命令的 `.claude/checkpoints/*`
+- 历史命令的 `.claude/commands/*`
+- 历史命令的 `.claude/checkpoints/*`
 - `.claude/rules/command-contracts.md`
 - `.claude/rules/lifecycle-state-machine.md`
 - `.claude/rules/role-contracts.md`
@@ -237,12 +237,12 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 - 迁移期参考
 - 人类维护辅助
 
-不再是 migrated command 的默认运行时读取面。
+不再是内置 migrated command 的默认运行时读取面。
 
 ## 下一步
 
-优先继续迁移：
+优先继续收口：
 
-1. `cc-enrich-context`
-2. `cc-explain-system`
-3. `cc-new-project`
+1. 逐步把 legacy command / checkpoint 文档移动到维护参考区或删除重复内容。
+2. 扩充 `cc-new-project`、`cc-enrich-context` 和 `cc-explain-system` 的行为回放用例，确保 runtime 化后仍保留探索、讨论和收敛能力。
+3. 增加第二个 language profile，验证多语言 runtime 协议不只服务于 Go。

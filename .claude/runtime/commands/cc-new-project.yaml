@@ -1,0 +1,176 @@
+command: cc-new-project
+summary: Convert an open-ended project idea into a project definition, MVP roadmap, and first backlog candidates without creating a formal change.
+
+inputs:
+  required:
+    - project_idea
+
+state:
+  change_from:
+    - none
+  change_to: unchanged
+
+writes:
+  - .cc/context/project-summary.md
+  - .cc/context/project-definition.md
+  - .cc/context/mvp-roadmap.md
+  - .cc/context/architecture-outline.md
+  - .cc/context/dev-map.md
+  - .cc/changes/task-board.md
+
+forbids:
+  - business_code_write
+  - change_creation
+  - auto_enter_propose
+  - auto_enter_apply
+  - treat_project_unknowns_as_resolved
+  - treat_planned_paths_as_confirmed_facts
+  - mark_project_definition_complete_without_blocking_choices
+
+required_reads:
+  - .cc/context/project-summary.md
+  - .cc/context/dev-map.md
+  - .cc/changes/task-board.md
+  - .claude/rules/memory-policy.md
+
+optional_reads:
+  - .cc/context/project-context.md
+  - .claude/docs/maintenance/technology-decision-model.md
+
+conditional_reads:
+  when_project_artifacts_are_written:
+    - .claude/templates/context/project-definition.md
+    - .claude/templates/context/project-summary.md
+    - .claude/templates/context/mvp-roadmap.md
+    - .claude/templates/context/architecture-outline.md
+    - .claude/templates/context/dev-map.md
+    - .claude/templates/changes/task-board.md
+
+runtime_protocol_reads:
+  language_profile: on_demand
+  technology_catalog: on_demand
+
+preconditions:
+  - confirm_goal_is_new_project_definition_not_existing_change
+  - start_with_project_discovery_not_template_completion
+  - identify_goal_users_scenarios_success_and_mvp_boundary_before_technology
+  - resolve_or_record_language_profile_before_loading_catalog
+  - ask_only_triggered_technology_decisions
+  - preserve_open_discussion_until_scope_is_converged
+  - bridge_first_backlog_candidates_to_cc_propose_without_creating_changes
+
+interaction_contract:
+  mode: interactive_required
+  clarification:
+    when: project_goal_users_success_mvp_or_backlog_boundary_is_unclear
+    presentation:
+      - start_with_current_understanding_summary
+      - ask_goal_user_scenario_success_questions_before_technology
+      - ask_numbered_questions_with_expected_answer_shape
+      - keep_questions_focused_on_current_uncertainty
+      - allow_iterative_discussion_before_artifact_writing
+    blocking_behavior:
+      - do_not_freeze_project_definition_with_blocking_unknowns
+      - do_not_fill_project_artifacts_as_a_substitute_for_discovery
+      - next_action_must_be_answer_project_definition_questions
+    max_questions_per_round: 4
+    resolution_required_before_ready: true
+  selection:
+    when: language_profile_or_blocking_technology_decision_requires_user_choice
+    presentation:
+      - show_recommendation_alternatives_tradeoffs_and_defer_option
+      - explain_adoption_and_rejection_reasons
+      - ask_user_to_choose_adopt_defer_or_pause
+      - record_pending_decisions_as_pending_not_final
+    confirmation_options:
+      - adopt_recommended_option
+      - keep_decision_pending
+      - pause_project_definition
+    required_confirmations:
+      - language_profile_decision
+      - blocking_p0_technology_decisions
+      - mvp_scope_decision
+      - backlog_bridge_decision
+    blocking_behavior:
+      - do_not_load_technology_catalog_before_language_profile_resolution
+      - do_not_write_default_recommendation_as_user_choice
+      - next_action_must_be_choose_project_decision_or_continue_discovery
+
+topic_rules:
+  when_backlog_split_or_change_bridge_is_defined:
+    - .claude/rules/change-sizing.md
+  when_project_research_uses_external_or_version_sensitive_sources:
+    - .claude/rules/source-driven-development.md
+  when_project_touches_security_boundary:
+    - .claude/rules/security.md
+  when_project_touches_configuration_strategy:
+    - .claude/rules/configuration.md
+  when_project_touches_observability_strategy:
+    - .claude/rules/observability.md
+
+anti_rationalizations:
+  - turn_discovery_into_template_fill
+  - ask_technology_questions_before_goal_user_scenario_success_is_understood
+  - treat_default_recommendation_as_user_choice
+  - create_formal_change_from_project_backlog
+  - mark_project_definition_complete_with_blocking_unknowns
+  - over_specify_implementation_tasks_before_first_change
+  - treat_planned_paths_as_confirmed_repository_facts
+
+red_flags:
+  - final_output_is_only_filled_sections_without_discussion_summary
+  - project_definition_contains_confirmed_technology_without_user_choice
+  - first_backlog_item_cannot_enter_cc_propose
+  - planned_uncreated_paths_marked_confirmed
+  - open_questions_listed_without_direct_question_to_user
+  - technology_catalog_loaded_before_language_profile_confirmation
+
+steps:
+  - classify_new_project_idea_vs_existing_project_change
+  - explore_project_goal_users_scenarios_and_success
+  - discuss_mvp_boundary_out_of_scope_and_core_flows
+  - summarize_current_understanding_and_remaining_unknowns
+  - ask_blocking_discovery_questions_and_wait_when_needed
+  - resolve_language_profile_or_record_blocking_pending_decision
+  - load_technology_catalog_only_for_triggered_decisions
+  - discuss_recommendations_alternatives_tradeoffs_and_defer_options
+  - converge_project_definition_before_templates
+  - draft_mvp_roadmap_and_first_backlog_candidates
+  - verify_backlog_candidates_can_enter_cc_propose
+  - write_project_artifacts_with_planned_or_unknown_path_status
+  - sync_dev_map_planned_navigation
+  - sync_task_board_backlog_candidates
+  - stop_without_formal_change_or_code
+
+auto_validation: []
+
+result_contract:
+  profile: .claude/runtime/result-contracts/standard-command.yaml
+  evidence:
+    required: true
+    sources:
+      - written_artifacts
+      - project_definition_state
+      - backlog_bridge
+      - interaction_state
+      - recorded_unknowns
+  risks:
+    required: true
+    sources:
+      - stop_conditions
+      - forbids
+      - red_flags
+      - interaction_state
+  next_actions:
+    - answer_project_definition_questions_or_choose_decision
+    - run_cc_propose_for_first_backlog_candidate
+
+stop_conditions:
+  - missing_required_argument
+  - request_is_existing_project_change
+  - project_goal_or_success_criteria_too_abstract
+  - mvp_scope_not_converged
+  - language_profile_decision_missing
+  - blocking_technology_decision_missing
+  - backlog_bridge_not_ready_for_cc_propose
+  - user_choice_required_for_project_decision

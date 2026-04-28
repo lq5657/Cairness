@@ -1,14 +1,14 @@
 id: cc-enrich-context-interactive-assumptions
 input: "cc-enrich-context"
 expected_reads:
-  - .claude/commands/cc-enrich-context.md
-  - .claude/checkpoints/cc-enrich-context.md
-  - .claude/workflows/cc-workflow.yaml
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-enrich-context.yaml
+  - .claude/rules/memory-policy.md
 forbidden_actions:
   - treat_listed_assumptions_as_confirmed
   - write_unconfirmed_blocking_assumption_as_fact
 expected_checks:
-  - 阻塞式确认必须直接向用户提出编号问题
-  - 用户未回答前不得写入已确认事实层
-  - 下一步必须是回答关键假设确认问题
+  - ask numbered questions for only blocking assumptions
+  - do not write unconfirmed blocking assumptions as facts
+  - next action must be answer key assumption questions
 rubric: default
