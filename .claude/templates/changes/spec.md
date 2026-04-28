@@ -7,6 +7,7 @@ branch: feat/<change-id>
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 complexity: simple | medium | complex
+proposal_profile: micro | standard | staged
 ---
 
 ### 需求名称
@@ -31,6 +32,18 @@ complexity: simple | medium | complex
 默认推荐一行写法，避免为了模板增加填写负担：
 
 `原始诉求` → `关键澄清` → `收敛后的目标`（收敛方式：`light-clarify` / `brainstorm-needed`）
+
+#### 0.2 Proposal Profile 与逐节确认
+
+`proposal_profile` 用于控制 `cc-propose` 的交互和文档展开深度，不改变 change 生命周期，也不新增其他正式文档。
+
+| Profile | 使用条件 | 文档要求 |
+|---------|----------|----------|
+| `micro` | 单文件或明确局部小改；不涉及数据库、外部契约、权限、安全、配置、发布、并发、状态机；最低验证通常为 `L1-L2` | 可压缩填写目标、不做范围、改动文件、验收标准、验证映射和 HARD-GATE |
+| `standard` | 目标清楚、风险边界普通，按常规章节生成 | 按需填写本模板中的适用章节 |
+| `staged` | 中高复杂度、scope 不清、存在方案/风险/验证边界决策，或需要用户逐节确认 | 需求、现状、方案、范围冻结分阶段确认，但仍写入本文件与 `tasks.md` |
+
+逐节确认只用于收敛当前章节的理解、方案或风险决策；它不能替代最终 `15. 确认记录（HARD-GATE）`。
 
 #### 1. 背景与目标
 
@@ -205,6 +218,8 @@ complexity: simple | medium | complex
 
 仅在满足以下条件中的多数时填写：本地暂无可直接复用实现、问题域存在成熟通用方案的高概率、自研成本或错误代价较高。
 若不触发，可写 `不触发：本地已有可复用模式` 或省略本节。
+触发时先查本地代码、`.cc/knowledge`、既有依赖和测试；本地证据不足时再查官方文档、事实标准、主流开源项目或上游资料。
+外部 Research 只用于提炼候选方案、适配前提、关键权衡和不采用原因，不替代本项目的正式方案，也不得绕过用户对 scope / risk / validation 变化的选择。
 
 | 结论 | 候选方案 | 适配前提 | 不采用原因 / 采用原因 |
 |------|----------|----------|------------------------|

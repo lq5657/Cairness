@@ -46,13 +46,20 @@ final_status: partial
 |----------|--------------------|----------|-------------|------|
 | V1 | todo / apply-covered / test-covered / gap | 与证据一致 / 状态过高 / 仍缺证据 | | ✅/❌/⚠️ |
 
-#### 2.2 风险镜头检查（按触发填写）
+#### 2.2 Review Lens Matrix（按触发填写）
 
-未触发时写 `无`，不要为了完整性补四行 `N/A`。
+默认必须覆盖 `spec-compliance`、`verification-evidence`、`robustness`。其他 lens 只有在 spec、tasks、代码范围或验证证据触发时填写；未触发时写 `未触发：原因`，不要展开原始 reviewer 长文。
 
 | 镜头 | 触发原因 | 结论 | 是否形成 Finding |
 |------|----------|------|------------------|
-| scope-lens / feasibility-lens / security-lens / release-lens | | | 是/否 |
+| spec-compliance | 默认 | pass / finding / blocked | 是/否 |
+| verification-evidence | 默认 | pass / gap / finding | 是/否 |
+| robustness | 默认 | pass / finding / not-applicable | 是/否 |
+| performance | 热路径、循环、大量分配、并发放大等 | pass / finding / not-triggered | 是/否 |
+| security | 权限、敏感数据、输入边界等 | pass / finding / not-triggered | 是/否 |
+| api-contract | HTTP/gRPC/MQ/外部消费者契约 | pass / finding / not-triggered | 是/否 |
+| database-release | migration、回滚、兼容窗口、发布策略 | pass / finding / not-triggered | 是/否 |
+| standards | 明确项目规范、语言规范或禁用 API | pass / finding / not-triggered | 是/否 |
 
 #### 3. Stage 1 — Spec Compliance
 

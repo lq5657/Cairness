@@ -35,6 +35,8 @@ conditional_reads:
   - .claude/rules/security.md
   when_change_depends_on_external_or_version_sensitive_technology:
   - .claude/rules/source-driven-development.md
+  when_mature_alternative_check_is_triggered:
+  - .claude/rules/source-driven-development.md
   when_change_has_dependency_or_parallelism_constraints:
   - .claude/rules/git-workflow.md
   when_technology_decision_is_required:

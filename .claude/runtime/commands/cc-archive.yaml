@@ -43,6 +43,8 @@ preconditions:
   - no_open_findings_or_blocked_tasks
   - no_unexplained_gap
   - fresh_verification_evidence_exists
+  - classify_project_knowledge_vs_harness_refinement_candidate
+  - do_not_convert_refinement_candidate_to_rule_without_maintenance_change
   - knowledge_compounding_decision_is_explicit
 
 interaction_contract:
@@ -51,15 +53,19 @@ interaction_contract:
     when: knowledge_candidates_or_compounding_decision_required
     presentation:
       - show_knowledge_candidates_and_recommended_landing
+      - show_project_knowledge_and_refinement_candidates_separately
       - ask_user_to_choose_knowledge_decision
       - wait_for_user_choice_before_marking_done
     confirmation_options:
       - no_knowledge_compounding
       - create_new_knowledge
       - update_existing_knowledge
+      - record_refinement_candidate_only
+      - defer_refinement_to_maintenance_change
     required_confirmations:
       - knowledge_decision
       - knowledge_destination_when_needed
+      - refinement_candidate_decision_when_needed
       - archive_status
     blocking_behavior:
       - do_not_mark_done_until_knowledge_decision_explicit
@@ -67,7 +73,9 @@ interaction_contract:
 
 steps:
   - classify_knowledge_candidate_as_none_new_or_update
+  - classify_project_knowledge_vs_harness_refinement_candidate
   - if_knowledge_is_needed_select_destination
+  - record_refinement_candidate_without_modifying_runtime
   - present_knowledge_decision_options_and_wait_for_choice
   - rerun_pre_archive_validation
   - mark_spec_done
@@ -76,6 +84,11 @@ steps:
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
+
+anti_rationalizations:
+  - treat_project_knowledge_as_framework_rule
+  - promote_user_correction_to_runtime_rule_without_maintenance_change
+  - mark_done_before_refinement_candidate_disposition
 
 result_contract:
   profile: .claude/runtime/result-contracts/standard-command.yaml
@@ -96,12 +109,14 @@ result_contract:
   next_actions:
     - stop_change_complete
     - choose_knowledge_compounding_option
+    - choose_refinement_candidate_disposition
 
 stop_conditions:
   - missing_required_argument
   - review_not_passed
   - stale_or_missing_evidence
   - knowledge_decision_missing
+  - refinement_candidate_decision_missing
   - user_choice_required_for_knowledge_compounding
   - pre_archive_validation_failed
   - post_archive_validation_failed

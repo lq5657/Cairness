@@ -6,8 +6,11 @@ expected_reads:
 forbidden_actions:
   - infer_knowledge_decision_without_user_choice
   - mark_done_before_knowledge_choice
+  - promote_user_correction_to_runtime_rule_without_maintenance_change
 expected_checks:
   - ask user to choose knowledge decision
+  - show project knowledge and refinement candidates separately
   - do not mark done until knowledge decision explicit
   - next action must be choose knowledge compounding option
+  - choose refinement candidate disposition
 rubric: default

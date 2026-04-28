@@ -41,7 +41,11 @@ runtime_protocol_reads:
 preconditions:
   - decide_existing_project_change_vs_new_project
   - perform_minimum_local_research_before_broad_questions
+  - choose_micro_or_staged_proposal_path
+  - use_micro_spec_only_for_low_risk_single_scope_change
+  - preserve_single_change_artifact_set_for_staged_interaction
   - classify_whether_technology_decision_catalog_is_needed
+  - classify_whether_mature_alternative_check_is_needed
   - distinguish_resolved_vs_blocking_clarifications
   - distinguish_user_decision_risks_vs_residual_risks
   - check_change_conflicts_and_depends_on
@@ -55,6 +59,9 @@ interaction_contract:
     when: blocking_unknowns_or_user_decision_required_risks_affect_scope_acceptance_or_task_split_or_validation_boundary
     presentation:
       - show_current_understanding_summary
+      - use_staged_sections_for_medium_or_complex_changes
+      - confirm_requirements_current_state_solution_and_scope_before_hard_gate
+      - distinguish_stage_confirmation_from_final_hard_gate
       - ask_numbered_questions_with_expected_answer_shape
       - offer_explicit_options_when_question_has_known_choices
       - present_decision_options_with_recommendation_and_tradeoffs
@@ -69,6 +76,7 @@ interaction_contract:
     when: artifacts_written_and_auto_validation_passed_without_blocking_clarifications_or_unresolved_decision_risks
     presentation:
       - show_confirmable_items_scope_acceptance_confirmed_risk_decisions_residual_risks_validation_mapping
+      - preserve_final_hard_gate_after_staged_confirmations
       - ask_user_to_choose_confirm_revise_or_block
       - record_selected_confirmation_in_spec_hard_gate
     confirmation_options:
@@ -105,22 +113,33 @@ topic_rules:
     - .claude/rules/security.md
   when_change_depends_on_external_or_version_sensitive_technology:
     - .claude/rules/source-driven-development.md
+  when_mature_alternative_check_is_triggered:
+    - .claude/rules/source-driven-development.md
   when_change_has_dependency_or_parallelism_constraints:
     - .claude/rules/git-workflow.md
 
 steps:
   - classify_request
+  - choose_micro_or_staged_proposal_path
   - read_project_summary_and_navigation
   - read_full_project_context_only_when_summary_is_insufficient
   - restate_goal_and_constraints
   - clarify_only_high_value_unknowns_and_decision_risks
   - present_blocking_clarification_questions_or_risk_resolution_choices_and_wait_for_answers
+  - confirm_requirement_stage_when_scope_affecting_questions_are_resolved
   - classify_scope_axes_and_size
   - read_technology_catalog_only_for_triggered_change_level_decisions
+  - classify_whether_mature_alternative_check_is_needed
+  - research_mature_alternatives_only_when_triggered
+  - compare_local_pattern_external_option_and_custom_build
   - compare_recommended_vs_rejected_option
+  - confirm_solution_stage_when_options_change_scope_or_risk
   - split_or_phase_oversized_work
   - freeze_in_scope_and_out_of_scope
   - record_user_selected_risk_resolution_paths
+  - record_mature_alternative_check_and_user_selected_option
+  - for_micro_change_write_compressed_spec_and_single_task
+  - confirm_scope_stage_before_final_tasks
   - record_split_rationale_dependencies_and_parallel_safety
   - write_spec
   - write_tasks
@@ -138,12 +157,19 @@ anti_rationalizations:
   - choose_risk_resolution_for_user_because_one_option_seems_best
   - treat_hard_gate_summary_as_if_user_confirmed_it
   - reopen_full_technology_stack_for_change_without_triggered_decision
+  - treat_stage_confirmation_as_final_hard_gate_confirmation
+  - use_micro_spec_for_change_with_external_contract_or_release_risk
+  - skip_mature_alternative_check_when_custom_build_has_high_cost
+  - perform_broad_external_search_without_trigger
 
 red_flags:
   - task_scope_writes_broad_directories_without_named_modules
   - validation_ids_cannot_map_to_specific_tasks
   - rollback_differs_across_items_inside_one_task
   - subagents_would_need_overlapping_write_scopes
+  - micro_spec_used_for_database_security_external_contract_release_or_multi_file_change
+  - custom_build_selected_without_local_or_mature_alternative_comparison
+  - staged_interaction_creates_documents_outside_change_artifacts
   - final_output_contains_pending_questions_but_no_direct_question_to_user
   - final_output_contains_unresolved_decision_risks_or_implicit_resolution_choice
   - final_output_says_execute_cc_apply_without_confirm_revise_block_options
@@ -180,6 +206,9 @@ stop_conditions:
   - user_answer_required_for_blocking_clarification
   - user_choice_required_for_risk_resolution
   - oversized_scope_without_split_or_human_exception
+  - micro_spec_eligibility_not_met
+  - staged_confirmation_missing_for_scope_affecting_section
+  - mature_alternative_decision_missing
   - task_traceability_not_closed
   - auto_validation_failed
   - hard_gate_confirmation_missing

@@ -46,5 +46,6 @@ agents:
         allow_freeform: false
 merge_requirements:
   - main_flow_writes_review_md
+  - main_flow_records_review_lens_matrix
   - stage2_must_not_run_when_stage1_fails
   - findings_status_decided_by_main_flow

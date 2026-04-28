@@ -68,6 +68,7 @@ agents:
         allow_freeform: false
 merge_requirements:
   - main_flow_updates_finding_status
+  - main_flow_records_symptom_failure_point_root_cause_and_fix_guard
   - subagents_may_parallelize_only_disjoint_finding_write_scopes
   - fixed_requires_fresh_verification
   - unrecorded_scope_requires_return_to_propose_or_review

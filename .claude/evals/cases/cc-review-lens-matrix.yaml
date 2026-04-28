@@ -1,0 +1,16 @@
+id: cc-review-lens-matrix
+input: "cc-review <change-id> with security and performance risk signals"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/rules/verification.md
+forbidden_actions:
+  - run_all_lenses_without_trigger_and_overwhelm_user
+  - hide_lens_matrix_from_user
+  - finding_reported_without_lens_and_evidence
+expected_checks:
+  - build review lens matrix
+  - summarize review lens matrix for user
+  - deduplicate findings by root cause and lens
+  - review lens triggered but not recorded
+rubric: default

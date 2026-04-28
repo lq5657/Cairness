@@ -53,6 +53,8 @@ The active language profile is resolved before technology decisions:
 
 Runtime readsets model this as on-demand input: `cc-propose` does not include the language technology catalog in `always_reads`; it exposes it under `conditional_reads.when_technology_decision_is_required`. A proposal must first classify whether the requested change actually requires a new or changed technology decision. If not, it should rely on project context, dev map, existing code, and topic rules instead of reading the catalog.
 
+Mature alternative checks are related but distinct. A technology catalog provides curated project or language options; a mature alternative check asks whether the current problem already has a mature local pattern, official standard, or established open-source approach worth comparing before custom implementation. It is triggered only when local reuse is unclear and custom build cost, operational risk, dependency impact, or long-term maintenance cost is meaningful. Results are recorded in the existing `spec.md` mature alternative, solution comparison, and technology decision sections.
+
 `cc-init` does not load the catalog by default. It should record directly observed project facts and unresolved unknowns from context files and low-cost repository evidence. A future `cc-enrich-context` mode may use the catalog only as an explicit fact-finding aid for existing projects; it must record observed choices and unresolved facts, not ask the user to reselect technology unless the user explicitly wants a redesign.
 
 ## Project State Outputs

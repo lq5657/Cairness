@@ -17,12 +17,39 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 | 变更真相 | `.cc/changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
 | 复利知识 | `.cc/knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
 
+#### 1.1 项目私有知识包
+
+`.cc/knowledge/index.md` 是入口索引，具体知识建议按类型拆到专题目录，避免长期把所有内容堆在一个文件里：
+
+```text
+.cc/knowledge/
+  index.md
+  domain-rules/
+  technical-conventions/
+  pitfalls/
+  module-guides/
+  decision-records/
+  refinement-candidates/
+```
+
+知识状态建议使用：
+
+| 状态 | 含义 | 命令默认行为 |
+|------|------|--------------|
+| `candidate` | 候选经验，尚未确认可泛化 | 不作为硬规则，只能作为参考 |
+| `confirmed` | 有代码、配置、命令输出、用户确认或已归档 change 证据 | 可按触发条件加载 |
+| `deprecated` | 已过期或被新事实替代 | 不得继续引用为依据 |
+| `conflict` | 与代码、spec 或新决策冲突 | 必须先澄清或修正 |
+
+`refinement-candidates/` 只保存“框架/规则/流程改进候选”，不得在 `cc-archive` 中直接改 `.claude/rules`、runtime manifest 或模板。此类改动必须进入单独维护 change 并通过 Harness 校验。
+
 #### 2. 写入准入
 
 写入长期记忆前必须满足：
 - 有代码、配置、命令输出、用户确认或已归档 change 作为证据。
 - 能说明这条信息后续会在哪类命令中复用。
 - 能标注信心等级或待确认状态。
+- 能标注触发条件、适用边界和不适用边界；项目私有知识不得伪装成通用框架规则。
 - 不包含密钥、token、个人敏感信息、生产数据样本或完整日志。
 
 #### 3. 更新优先级

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added staged `cc-propose` interaction guidance, `micro` proposal profile constraints, and on-demand mature alternative checks that write into existing change artifacts instead of creating new documents.
+- Expanded change task templates with dependency/wave overview, impact mapping, upstream/downstream context, progressive verification, and spec coverage tables.
+- Strengthened `cc-fix` root-cause gates so fixes must record symptom, failure point, root cause, fix hypothesis, and verification guard before code changes.
+- Added `cc-review` lens matrix guidance for spec, verification, robustness, performance, security, API contract, database/release, and standards feedback without exposing raw reviewer noise.
+- Expanded project knowledge guidance with typed knowledge entries, candidate/confirmed/deprecated/conflict states, and refinement candidates that must not directly modify Harness runtime assets during archive.
 - Migrated `cc-new-project`, `cc-enrich-context`, and `cc-explain-system` to runtime-first command manifests and generated readsets while preserving exploratory discovery, discussion, and convergence gates for project definition flows.
 - Compacted high-traffic runtime command manifests by moving detailed subagent contracts for `cc-apply`, `cc-fix`, `cc-review`, and `cc-test` into conditional runtime subagent assets.
 - Optimized `cc-propose` runtime startup by moving language technology catalogs to on-demand conditional reads for change-level technology decisions.

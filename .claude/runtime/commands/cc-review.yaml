@@ -41,6 +41,8 @@ preconditions:
   - read_validation_mapping_and_existing_evidence
   - confirm_review_not_inspect_codebase
   - select_risk_lenses_from_spec_signals
+  - select_default_and_triggered_review_lenses
+  - summarize_review_lens_matrix_for_user
   - distinguish_fix_required_findings_vs_user_acceptance_candidates
 
 interaction_contract:
@@ -94,6 +96,8 @@ anti_rationalizations:
   - pass_review_because_tests_passed
   - skip_stage1_because_implementation_looks_reasonable
   - let_reviewer_subagent_write_final_review
+  - run_all_lenses_without_trigger_and_overwhelm_user
+  - hide_lens_matrix_from_user
   - accept_important_finding_without_reason_impact_and_no_fix_rationale
   - treat_strong_review_rationale_as_user_acceptance
 
@@ -102,13 +106,17 @@ red_flags:
   - validation_level_below_spec_requirement
   - stage2_runs_after_stage1_fail
   - review_missing_task_coverage_matrix
+  - review_lens_triggered_but_not_recorded
+  - finding_reported_without_lens_and_evidence
   - accepted_finding_missing_user_confirmation_record
 
 steps:
   - read_change_artifacts
+  - build_review_lens_matrix
   - perform_stage1_spec_compliance
-  - if_stage1_pass_then_perform_stage2_code_quality
+  - if_stage1_pass_then_perform_stage2_triggered_lenses
   - evaluate_task_coverage_and_mapping_closure
+  - deduplicate_findings_by_root_cause_and_lens
   - present_acceptance_choices_and_wait_for_user_selection_when_needed
   - emit_findings_with_open_fixed_or_accepted_status
   - sync_review_and_task_board
@@ -142,6 +150,7 @@ stop_conditions:
   - spec_status_not_review
   - missing_required_argument
   - stage1_failed
+  - review_lens_matrix_missing
   - open_critical_or_important_without_acceptance
   - finding_acceptance_choice_missing
   - harness_validation_failed

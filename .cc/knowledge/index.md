@@ -1,7 +1,29 @@
 ### 知识索引
 
 领域知识的轻量索引。每条用一句话说清核心逻辑。
-格式：`**触发关键词** : 一句话核心逻辑 → 文件路径.函数名（可选）`
+格式：`**触发关键词** : 一句话核心逻辑 → 具体知识文件或证据位置`
+
+建议目录：
+
+```text
+.cc/knowledge/
+  index.md
+  domain-rules/
+  technical-conventions/
+  pitfalls/
+  module-guides/
+  decision-records/
+  refinement-candidates/
+```
+
+状态含义：
+
+| 状态 | 含义 | 使用边界 |
+|------|------|----------|
+| `candidate` | 候选经验，尚未确认可泛化 | 仅作为参考，不作为硬规则 |
+| `confirmed` | 有证据支撑且可跨 change 复用 | 可被相关命令按触发条件加载 |
+| `deprecated` | 已过期 | 不得继续作为依据 |
+| `conflict` | 与代码、spec 或新决策冲突 | 先澄清或修正 |
 
 ---
 
@@ -16,6 +38,7 @@
 | 技术决策及其理由 | 选了 A 方案而未选 B |
 | 业务规则的特殊处理 | 某字段在 xx 情况下需要特殊处理 |
 | 第三方库的坑 | 某库在 xx 场景下有 bug |
+| AI / Harness 执行被用户纠正且具有模式性 | 先写入 `refinement-candidates/`，不得直接改框架规则 |
 
 ---
 
@@ -81,3 +104,8 @@
 #### 踩坑记录
 
 （随实践积累补充）
+
+#### Refinement Candidates
+
+仅记录可能需要改进 `.claude/rules`、runtime manifest、模板或 eval 的候选项。
+此类候选不得在 `cc-archive` 中直接升级为正式框架规则；必须进入单独维护 change 并通过 Harness 校验。

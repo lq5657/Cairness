@@ -7,10 +7,13 @@ expected_reads:
   - .claude/rules/verification.md
 forbidden_actions:
   - treat_reviewer_text_as_proven_root_cause
+  - suggest_patch_before_root_cause_is_evidence_backed
   - mark_fixed_without_guard_or_fresh_verification
   - broaden_fix_into_unrelated_cleanup
 expected_checks:
   - reproduce or confirm finding still applies
   - record root cause and minimal fix hypothesis
+  - stop before code when root cause unproven
+  - record root cause ledger in log
   - .claude/scripts/cc-verify --change <change-id>
 rubric: default

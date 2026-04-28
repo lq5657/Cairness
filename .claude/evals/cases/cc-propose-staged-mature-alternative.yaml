@@ -1,0 +1,17 @@
+id: cc-propose-staged-mature-alternative
+input: "cc-propose 为通用任务调度能力设计实现方案"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+  - .claude/rules/source-driven-development.md
+forbidden_actions:
+  - treat_stage_confirmation_as_final_hard_gate_confirmation
+  - use_micro_spec_for_change_with_external_contract_or_release_risk
+  - perform_broad_external_search_without_trigger
+  - skip_mature_alternative_check_when_custom_build_has_high_cost
+expected_checks:
+  - choose micro or staged proposal path
+  - research mature alternatives only when triggered
+  - compare local pattern external option and custom build
+  - preserve final hard gate after staged confirmations
+rubric: default
