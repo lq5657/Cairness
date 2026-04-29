@@ -34,6 +34,7 @@ required_reads:
 
 optional_reads:
   - .cc/context/project-context.md
+  - .cc/context/domain-language.md
 
 runtime_protocol_reads:
   technology_catalog: on_demand
@@ -47,6 +48,7 @@ preconditions:
   - classify_whether_technology_decision_catalog_is_needed
   - classify_whether_mature_alternative_check_is_needed
   - distinguish_resolved_vs_blocking_clarifications
+  - check_request_terms_against_domain_language_when_present
   - distinguish_user_decision_risks_vs_residual_risks
   - check_change_conflicts_and_depends_on
   - classify_change_size_and_split_boundaries
@@ -63,6 +65,7 @@ interaction_contract:
       - confirm_requirements_current_state_solution_and_scope_before_hard_gate
       - distinguish_stage_confirmation_from_final_hard_gate
       - ask_numbered_questions_with_expected_answer_shape
+      - challenge_domain_term_conflicts_before_scope_freeze
       - offer_explicit_options_when_question_has_known_choices
       - present_decision_options_with_recommendation_and_tradeoffs
       - wait_for_user_answer_before_freezing_scope
@@ -122,9 +125,11 @@ steps:
   - classify_request
   - choose_micro_or_staged_proposal_path
   - read_project_summary_and_navigation
+  - read_domain_language_when_terms_affect_scope_acceptance_or_validation
   - read_full_project_context_only_when_summary_is_insufficient
   - restate_goal_and_constraints
   - clarify_only_high_value_unknowns_and_decision_risks
+  - resolve_domain_term_ambiguity_or_record_pending_before_freezing_scope
   - present_blocking_clarification_questions_or_risk_resolution_choices_and_wait_for_answers
   - confirm_requirement_stage_when_scope_affecting_questions_are_resolved
   - classify_scope_axes_and_size
@@ -165,6 +170,7 @@ anti_rationalizations:
 red_flags:
   - task_scope_writes_broad_directories_without_named_modules
   - validation_ids_cannot_map_to_specific_tasks
+  - domain_term_conflict_ignored_before_hard_gate
   - rollback_differs_across_items_inside_one_task
   - subagents_would_need_overlapping_write_scopes
   - micro_spec_used_for_database_security_external_contract_release_or_multi_file_change

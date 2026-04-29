@@ -58,9 +58,11 @@ preconditions:
   - load_spec_tasks_or_log_only_when_selected_finding_requires_that_context
   - restate_finding_in_technical_terms
   - confirm_finding_still_applies_or_record_why_not
+  - build_smallest_feedback_loop_before_patch
   - separate_symptom_failure_point_and_root_cause
+  - record_reproduction_blocker_substitute_evidence_and_residual_risk_when_loop_is_impossible
   - no_fix_without_evidence_backed_root_cause
-  - record_symptom_failure_point_root_cause_fix_guard
+  - record_feedback_loop_symptom_failure_point_root_cause_fix_guard
   - block_when_log_or_reproduction_evidence_is_insufficient
   - define_minimal_fix_hypothesis
 
@@ -127,15 +129,19 @@ subagents:
 
 anti_rationalizations:
   - treat_reviewer_text_as_proven_root_cause
+  - skip_feedback_loop_because_patch_seems_obvious
   - suggest_patch_before_root_cause_is_evidence_backed
   - implement_fix_before_reproducing_or_confirming_finding
   - broaden_fix_into_unrelated_cleanup
+  - leave_temporary_debug_instrumentation_in_final_patch
   - mark_fixed_without_guard_or_fresh_verification
 
 red_flags:
+  - feedback_loop_missing_before_patch
   - root_cause_not_backed_by_code_or_command_evidence
   - fix_hypothesis_not_linked_to_failure_point
   - log_or_reproduction_gap_hidden_as_confidence
+  - temporary_debug_artifacts_left_in_final_writes
   - patch_touches_files_outside_finding_scope
   - reproduction_impossible_without_substitute_evidence
   - verification_failure_dismissed_without_delta_analysis
@@ -144,17 +150,20 @@ steps:
   - load_open_findings
   - select_one_eligible_open_finding
   - load_only_targeted_change_context_needed_for_selected_finding
+  - build_smallest_feedback_loop_for_reproduction_or_substitute_evidence
   - confirm_problem_still_applies_with_smallest_evidence
   - present_unclear_finding_questions_or_disposition_choices
   - collect_required_logs_commands_or_substitute_evidence_when_missing
   - localize_failure_point
+  - test_falsifiable_hypotheses_one_variable_at_a_time_when_needed
   - separate_symptom_failure_point_root_cause_and_blast_radius
   - stop_before_code_when_root_cause_unproven
-  - record_root_cause_ledger_in_log
+  - record_feedback_loop_and_root_cause_ledger_in_log
   - use_structural_code_evidence_for_architecture_findings
   - define_minimal_fix_hypothesis
   - implement_minimal_fix
   - add_or_identify_regression_guard
+  - remove_temporary_debug_instrumentation
   - rerun_verification_without_lowering_required_level
   - update_review_log_and_change_docs
   - sync_dev_map_if_boundaries_changed
@@ -187,6 +196,7 @@ result_contract:
 
 stop_conditions:
   - missing_required_argument
+  - feedback_loop_missing_before_patch
   - finding_not_open_and_not_explicitly_reframed
   - root_cause_unproven
   - required_diagnostic_evidence_missing

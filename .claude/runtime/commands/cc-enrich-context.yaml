@@ -11,6 +11,7 @@ state:
 
 writes:
   - .cc/context/project-context.md
+  - .cc/context/domain-language.md
   - .cc/context/dev-map.md
 
 forbids:
@@ -24,6 +25,7 @@ forbids:
 
 required_reads:
   - .cc/context/project-context.md
+  - .cc/context/domain-language.md
   - .cc/context/dev-map.md
   - .claude/rules/memory-policy.md
 
@@ -79,6 +81,7 @@ anti_rationalizations:
 red_flags:
   - output_contains_findings_or_severity_levels
   - project_context_contains_confirmed_claim_without_evidence_location
+  - domain_language_records_implementation_terms_as_domain_terms
   - dev_map_records_hypothesis_as_stable_boundary
   - more_than_three_blocking_assumptions_asked_in_one_round
   - final_output_contains_pending_blocking_assumptions_without_direct_questions
@@ -87,12 +90,14 @@ steps:
   - verify_context_files_and_scaffold
   - read_existing_context_and_dev_map
   - identify_pending_or_thin_fact_areas
+  - identify_domain_language_gaps_ambiguities_and_context_splits
   - select_high_value_fact_targets_before_reading_code
   - inspect_only_targeted_structure_entries_and_samples
   - separate_confirmed_facts_hypotheses_and_unknowns
   - ask_user_to_confirm_blocking_assumptions_when_needed
   - write_only_confirmed_or_explicitly_pending_facts
   - update_project_context_supplemental_fact_layer
+  - update_domain_language_with_confirmed_terms_only
   - update_dev_map_navigation_and_confidence
   - stop_without_audit_change_explanation_or_implementation
 

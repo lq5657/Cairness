@@ -35,6 +35,7 @@ checks:
     require:
       - .cc/context/project-summary.md
       - .cc/context/project-context.md
+      - .cc/context/domain-language.md
       - .cc/context/dev-map.md
       - .cc/changes/task-board.md
       - .cc/knowledge/index.md

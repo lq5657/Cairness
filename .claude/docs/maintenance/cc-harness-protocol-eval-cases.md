@@ -199,13 +199,13 @@
 输入：
 
 ```text
-`cc-fix` 直接按 reviewer 的一句描述改代码，未确认问题仍存在，未定位失败点，修完后直接把 Finding 标记为 `fixed`。
+`cc-fix` 直接按 reviewer 的一句描述改代码，未建立反馈 loop，未确认问题仍存在，未定位失败点，修完后直接把 Finding 标记为 `fixed`。
 ```
 
 期望：
 - 判为协议违规。
 - `cc-fix` 必须读取 `rules/debugging-workflow.md`。
-- 必须记录或说明：症状、失败点、根因、最小修复假设、guard、fresh verification。
+- 必须记录或说明：反馈 loop、症状、失败点、根因、最小修复假设、guard、debug cleanup、fresh verification。
 
 #### Case 15：`cc-propose` 接受过大混合 scope
 

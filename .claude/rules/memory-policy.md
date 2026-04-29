@@ -12,10 +12,21 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 | 层级 | 文件 | 内容 | 主要写入命令 |
 |------|------|------|--------------|
 | 项目事实 | `.cc/context/project-context.md` | 项目身份、入口、基础结构、待确认事项 | `cc-init`、`cc-enrich-context` |
+| 领域语言 | `.cc/context/domain-language.md` | 业务术语、产品概念、状态名、易混词和上下文拆分 | `cc-new-project`、`cc-init`、`cc-enrich-context` |
 | 开发导航 | `.cc/context/dev-map.md` | 模块边界、关键链路、验证入口、易错边界 | `cc-new-project`、`cc-init`、`cc-enrich-context`、必要时 `cc-apply` / `cc-fix` |
 | 工作看板 | `.cc/changes/task-board.md` | change 状态摘要、backlog 候选、阻塞项、下一命令 | `cc-new-project`、`cc-promote-audit`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive` |
 | 变更真相 | `.cc/changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
 | 复利知识 | `.cc/knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
+
+#### 1.0 领域语言边界
+
+`.cc/context/domain-language.md` 是项目共享业务语言入口，不按 Go、TypeScript、Python 等开发语言拆分。
+
+- 默认保持一个总入口，记录所有命令都应遵守的业务术语和易混概念。
+- 当仓库存在多个业务上下文时，按 bounded context 或业务模块拆分，例如 `.cc/context/domain/ordering.md`、`.cc/context/domain/billing.md`。
+- 不记录编程语言、框架、包名、目录名等纯实现词；这些属于 `project-context.md` 或 `dev-map.md`。
+- 若用户输入与已确认领域语言冲突，`cc-propose` / `cc-review` 必须指出冲突并要求澄清或记录为待确认。
+- 未确认术语只能写入 `Flagged Ambiguities`，不得作为已确认定义使用。
 
 #### 1.1 项目私有知识包
 

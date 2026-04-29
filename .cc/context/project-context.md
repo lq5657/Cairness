@@ -33,6 +33,8 @@ alwaysApply: true
 - 哪些内容已经确认
 - 哪些内容仍待确认
 
+领域语言另存于 `.cc/context/domain-language.md`。本文件可以引用领域语言事实，但不要把术语表复制到这里。
+
 ## 一、基础事实层（`cc-init` 填充）
 
 #### 1. 项目基本身份（必填）
@@ -91,6 +93,7 @@ alwaysApply: true
 | `cc-inspect-codebase` | （待填充） | |
 | `cc-explain-system` | （待填充） | |
 | `cc-test` | （待填充） | |
+| 领域语言确认 | `.cc/context/domain-language.md` | 仅在涉及业务术语、状态名、产品概念或易混词时优先读取 |
 
 ## 二、补充事实层（`cc-enrich-context` 补充）
 

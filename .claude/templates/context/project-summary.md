@@ -32,6 +32,7 @@ alwaysApply: true
 
 - 项目状态目录（`.cc`）: `.cc/`
 - 框架目录（Harness 提供）: `.claude/`
+- 领域语言: `.cc/context/domain-language.md`
 - 开发导航: `.cc/context/dev-map.md`
 - change 看板: `.cc/changes/task-board.md`
 
@@ -39,4 +40,5 @@ alwaysApply: true
 
 - 默认命令先读本摘要、dev-map 和 task-board。
 - 只有需要扩展事实、历史背景或专题上下文时，再读取 `.cc/context/project-context.md`。
+- 当需求、审查或系统讲解涉及业务术语、状态名或易混概念时，读取 `.cc/context/domain-language.md`。
 - 不把本摘要当作 spec、tasks、review 或 test-spec 的替代品。

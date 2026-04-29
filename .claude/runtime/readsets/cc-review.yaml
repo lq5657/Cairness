@@ -18,6 +18,7 @@ always_reads:
 - .claude/rules/verification.md
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
+- .cc/context/domain-language.md
 - .cc/context/mvp-roadmap.md
 conditional_reads:
   when_test_boundary_or_substitution_is_in_question:

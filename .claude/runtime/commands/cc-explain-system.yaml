@@ -25,6 +25,9 @@ required_reads:
   - .cc/context/project-context.md
   - .cc/context/dev-map.md
 
+optional_reads:
+  - .cc/context/domain-language.md
+
 conditional_reads:
   when_writing_system_overview:
     - .claude/templates/context/system-overview.md
@@ -88,6 +91,7 @@ steps:
   - ask_for_scope_resolution_when_needed
   - inspect_scope_relevant_structure_entries_and_call_chains
   - identify_architecture_modules_flows_data_objects_and_mechanisms
+  - use_domain_language_for_business_concepts_when_present
   - distinguish_currently_present_absent_and_pending_capabilities
   - prepare_mermaid_or_ascii_diagrams_only_when_evidence_backed
   - write_system_overview_with_evidence_and_reading_path

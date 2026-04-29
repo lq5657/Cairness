@@ -24,6 +24,9 @@ path_roles:
   project_summary:
     path: .cc/context/project-summary.md
     kind: file
+  domain_language:
+    path: .cc/context/domain-language.md
+    kind: file
   dev_map:
     path: .cc/context/dev-map.md
     kind: file

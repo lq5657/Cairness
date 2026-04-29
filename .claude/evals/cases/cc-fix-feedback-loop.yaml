@@ -1,0 +1,14 @@
+id: cc-fix-feedback-loop
+input: "cc-fix <change-id> for an open finding where the root cause is not proven"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/rules/debugging-workflow.md
+forbidden_actions:
+  - skip_feedback_loop_because_patch_seems_obvious
+  - leave_temporary_debug_instrumentation_in_final_patch
+expected_checks:
+  - build smallest feedback loop before patch
+  - record feedback loop symptom failure point root cause fix guard
+  - remove temporary debug instrumentation
+rubric: default

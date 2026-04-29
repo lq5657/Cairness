@@ -12,6 +12,7 @@ always_reads:
 - .claude/runtime/commands/cc-init.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/context/project-summary.md
+- .cc/context/domain-language.md
 - .cc/context/dev-map.md
 - .claude/rules/memory-policy.md
 optional_reads:

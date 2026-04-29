@@ -29,6 +29,7 @@ runtime:
 memory:
   project_summary: ".cc/context/project-summary.md"
   project_context: ".cc/context/project-context.md"
+  domain_language: ".cc/context/domain-language.md"
   dev_map: ".cc/context/dev-map.md"
   task_board: ".cc/changes/task-board.md"
   policy: ".claude/rules/memory-policy.md"

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a shared domain language context asset at `.cc/context/domain-language.md` with matching template, runtime reads, preflight coverage, and memory policy guidance that splits by bounded context rather than programming language.
+- Strengthened the `cc-fix` diagnostic workflow with a required feedback loop, falsifiable hypotheses, temporary instrumentation cleanup, and expanded debug log fields before marking findings fixed.
 - Added staged `cc-propose` interaction guidance, `micro` proposal profile constraints, and on-demand mature alternative checks that write into existing change artifacts instead of creating new documents.
 - Expanded change task templates with dependency/wave overview, impact mapping, upstream/downstream context, progressive verification, and spec coverage tables.
 - Strengthened `cc-fix` root-cause gates so fixes must record symptom, failure point, root cause, fix hypothesis, and verification guard before code changes.

@@ -13,6 +13,7 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/context/project-summary.md
 - .cc/context/dev-map.md
+- .cc/context/domain-language.md
 - .cc/changes/task-board.md
 - .claude/rules/memory-policy.md
 optional_reads:
@@ -22,6 +23,7 @@ conditional_reads:
   when_project_artifacts_are_written:
   - .claude/templates/context/project-definition.md
   - .claude/templates/context/project-summary.md
+  - .claude/templates/context/domain-language.md
   - .claude/templates/context/mvp-roadmap.md
   - .claude/templates/context/architecture-outline.md
   - .claude/templates/context/dev-map.md

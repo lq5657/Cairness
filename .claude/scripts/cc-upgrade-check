@@ -80,6 +80,7 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     creation_templates = [
         claude_root / "templates" / "context" / "project-summary.md",
         claude_root / "templates" / "context" / "project-context.md",
+        claude_root / "templates" / "context" / "domain-language.md",
         claude_root / "templates" / "context" / "dev-map.md",
         claude_root / "templates" / "changes" / "task-board.md",
         claude_root / "templates" / "knowledge" / "index.md",
@@ -99,6 +100,7 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     protected_state = [
         project_root / ".cc" / "context" / "project-summary.md",
         project_root / ".cc" / "context" / "project-context.md",
+        project_root / ".cc" / "context" / "domain-language.md",
         project_root / ".cc" / "context" / "dev-map.md",
         project_root / ".cc" / "changes" / "task-board.md",
         project_root / ".cc" / "knowledge" / "index.md",

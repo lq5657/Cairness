@@ -13,7 +13,8 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/context/project-context.md
 - .cc/context/dev-map.md
-optional_reads: []
+optional_reads:
+- .cc/context/domain-language.md
 conditional_reads:
   when_writing_system_overview:
   - .claude/templates/context/system-overview.md

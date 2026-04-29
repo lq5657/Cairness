@@ -35,7 +35,7 @@
 | 命令契约矩阵存在 | `legacy-compatible` 要求 `.claude/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | 角色与记忆规则存在 | `.claude/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
 | knowledge 状态与模板存在 | `.cc/knowledge/index.md` 与 `.claude/templates/knowledge/index.md` 存在 | [ ] |
-| context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
+| context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/domain-language.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/domain-language.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
 | commands 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback command 文件齐全 | [ ] |
 | checkpoints 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback checkpoint 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/templates/changes/` 存在 | [ ] |

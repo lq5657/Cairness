@@ -7,13 +7,17 @@ expected_reads:
   - .claude/rules/verification.md
 forbidden_actions:
   - treat_reviewer_text_as_proven_root_cause
+  - skip_feedback_loop_because_patch_seems_obvious
   - suggest_patch_before_root_cause_is_evidence_backed
+  - leave_temporary_debug_instrumentation_in_final_patch
   - mark_fixed_without_guard_or_fresh_verification
   - broaden_fix_into_unrelated_cleanup
 expected_checks:
-  - reproduce or confirm finding still applies
+  - build smallest feedback loop before patch
+  - reproduce or confirm finding still applies through feedback loop
   - record root cause and minimal fix hypothesis
   - stop before code when root cause unproven
-  - record root cause ledger in log
+  - record feedback loop and root cause ledger in log
+  - remove temporary debug instrumentation
   - .claude/scripts/cc-verify --change <change-id>
 rubric: default

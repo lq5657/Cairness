@@ -22,10 +22,17 @@
 
 #### 根因分析
 
-| 问题 / Finding | 症状 | 根因 | 影响面 |
-|----------------|------|------|--------|
-| repo 创建路径缺少显式 timeout | 创建调用在慢存储场景下可能无限等待 | 底层持久化路径没有最小超时保护，完全依赖上游请求生命周期 | 可能拖长整个创建请求，放大排障成本 |
-| service 返回错误缺少上下文包装 | 调用方只能拿到底层 error，难区分失败位置 | Service 层直接透传 repo 错误，没有补充业务动作上下文 | 日志与 review 难以定位是 service 编排失败还是 repo 写入失败 |
+| 问题 / Finding | 反馈 loop | 症状 | 失败点 | 假设与排除 | 根因 | 证据位置 | 影响面 |
+|----------------|-----------|------|--------|------------|------|----------|--------|
+| repo 创建路径缺少显式 timeout | review evidence + `go build ./...` | 创建调用在慢存储场景下可能无限等待 | `UserRepo.Create` 持久化边界 | 排除 handler-only 修复，因为 repo 是慢点边界 | 底层持久化路径没有最小超时保护，完全依赖上游请求生命周期 | `.claude/docs/examples/changes/user-create-api-fix/review.md` | 可能拖长整个创建请求，放大排障成本 |
+| service 返回错误缺少上下文包装 | review evidence + `TestUserServiceCreateWrapRepoError` | 调用方只能拿到底层 error，难区分失败位置 | `UserService.Create` repo 错误返回路径 | 排除新增错误码，因为 Finding 只要求补上下文 | Service 层直接透传 repo 错误，没有补充业务动作上下文 | `.claude/docs/examples/changes/user-create-api-fix/review.md` | 日志与 review 难以定位是 service 编排失败还是 repo 写入失败 |
+
+#### 调试清理记录
+
+| 问题 / Finding | 临时调试资产 | 处理结果 | 备注 |
+|----------------|--------------|----------|------|
+| repo 创建路径缺少显式 timeout | 无 | 无需清理 | 使用 review 证据与构建验证 |
+| service 返回错误缺少上下文包装 | 无 | 无需清理 | 使用回归测试验证 |
 
 #### 失败证据
 
@@ -36,10 +43,10 @@
 
 #### 修复假设
 
-| 问题 / Finding | 修复假设 | 不包含范围 | 验证方式 |
-|----------------|----------|------------|----------|
-| repo 创建路径缺少显式 timeout | 在 `UserRepo.Create` 边界补 `context.WithTimeout` 即可为持久化调用提供最小保护 | 不改 HTTP 层超时策略，不引入真实 DB 慢调用环境 | `go build ./...` + code review 验证 timeout 已接入 |
-| service 返回错误缺少上下文包装 | 在 `UserService.Create` 中用 `%w` 包装 repo error 即可保留底层错误并补齐失败上下文 | 不新增错误码，不调整原业务语义 | `TestUserServiceCreateWrapRepoError` + review 回写 |
+| 问题 / Finding | 修复假设 | 关联失败点 / 根因 | 不包含范围 | 验证 guard |
+|----------------|----------|-------------------|------------|------------|
+| repo 创建路径缺少显式 timeout | 在 `UserRepo.Create` 边界补 `context.WithTimeout` 即可为持久化调用提供最小保护 | `UserRepo.Create` 缺少最小超时保护 | 不改 HTTP 层超时策略，不引入真实 DB 慢调用环境 | `go build ./...` + code review 验证 timeout 已接入 |
+| service 返回错误缺少上下文包装 | 在 `UserService.Create` 中用 `%w` 包装 repo error 即可保留底层错误并补齐失败上下文 | `UserService.Create` 直接透传 repo 错误 | 不新增错误码，不调整原业务语义 | `TestUserServiceCreateWrapRepoError` + review 回写 |
 
 #### 验证结果
 
@@ -72,7 +79,7 @@
 | 问题 | 原因 | 解决方案 | 已沉淀？ |
 |------|------|----------|----------|
 | 修复后容易只改代码不改 review | review 被当成一次性产物 | 明确 `cc-fix` 必须同步回写 review Findings | 否 |
-| 修复后容易把 reviewer 表述直接当根因 | finding 只描述现象，不一定解释失效原因 | 先在 log 里区分症状、根因和修复假设，再动代码 | 否 |
+| 修复后容易把 reviewer 表述直接当根因 | finding 只描述现象，不一定解释失效原因 | 先在 log 里记录反馈 loop、失败点、根因和修复假设，再动代码 | 否 |
 | 修复后容易删除旧 Findings | 把 review 误当成“当前快照” | 保留问题行，只更新 `status` 为 `fixed` | 否 |
 
 #### 知识候选 / 发现（按归档确认）
@@ -80,7 +87,7 @@
 | 关键词 | 一句话结论 | 出处 | 建议落点 | 复利判断 | 处理结果 |
 |--------|------------|------|----------|----------|----------|
 | `fix-must-update-review` | `cc-fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `.claude/docs/examples/changes/user-create-api-fix/review.md` | `.cc/knowledge/index.md` | 更新既有知识 | 已沉淀 |
-| `finding-root-cause-split` | 修 fix 前应先区分症状、失败点和根因，再形成最小修复假设 | `.claude/docs/examples/changes/user-create-api-fix/log.md` | `.cc/knowledge/index.md` | 新增知识 | 已沉淀 |
+| `finding-root-cause-split` | 修 fix 前应先建立反馈 loop，并区分症状、失败点和根因，再形成最小修复假设 | `.claude/docs/examples/changes/user-create-api-fix/log.md` | `.cc/knowledge/index.md` | 新增知识 | 已沉淀 |
 
 #### Spec-Code 偏差记录
 

@@ -39,6 +39,7 @@
 - migrated command 优先遵守 `.claude/runtime/commands/<command>.yaml`。
 - 项目短上下文优先读 `.cc/context/project-summary.md`。
 - 完整项目事实按需读 `.cc/context/project-context.md`。
+- 领域语言按需读 `.cc/context/domain-language.md`；它按业务上下文拆分，不按编程语言拆分。
 - 项目长期导航写 `.cc/context/dev-map.md`。
 - change 状态摘要写 `.cc/changes/task-board.md`。
 - 不得把 `project-summary.md`、`dev-map.md` 或 `task-board.md` 当成 spec/tasks/review/test-spec 的替代品。

@@ -18,6 +18,7 @@ always_reads:
 - .claude/rules/change-sizing.md
 optional_reads:
 - .cc/context/project-context.md
+- .cc/context/domain-language.md
 conditional_reads:
   when_validation_boundary_is_unclear:
   - .claude/rules/testing-strategy.md

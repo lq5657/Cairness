@@ -1,0 +1,15 @@
+id: cc-domain-language-context
+input: "cc-propose add a buyer account status rule where domain terms may conflict"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+  - .cc/context/domain-language.md
+  - .claude/rules/memory-policy.md
+forbidden_actions:
+  - ignore_domain_term_conflict_before_hard_gate
+  - split_domain_language_by_programming_language
+expected_checks:
+  - check request terms against domain language when present
+  - challenge domain term conflicts before scope freeze
+  - domain language is split by bounded context not programming language
+rubric: default

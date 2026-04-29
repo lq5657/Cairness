@@ -31,6 +31,7 @@ required_reads:
 
 optional_reads:
   - .cc/changes/<change-id>/test-spec.md
+  - .cc/context/domain-language.md
   - .cc/context/mvp-roadmap.md
 
 runtime_protocol_reads:
@@ -42,6 +43,7 @@ preconditions:
   - confirm_review_not_inspect_codebase
   - select_risk_lenses_from_spec_signals
   - select_default_and_triggered_review_lenses
+  - select_domain_language_lens_when_terms_states_or_user_concepts_are_in_scope
   - summarize_review_lens_matrix_for_user
   - distinguish_fix_required_findings_vs_user_acceptance_candidates
 
@@ -113,6 +115,7 @@ red_flags:
 steps:
   - read_change_artifacts
   - build_review_lens_matrix
+  - read_domain_language_when_review_lens_is_triggered
   - perform_stage1_spec_compliance
   - if_stage1_pass_then_perform_stage2_triggered_lenses
   - evaluate_task_coverage_and_mapping_closure

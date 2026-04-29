@@ -12,6 +12,7 @@ state:
 writes:
   - .cc/context/project-summary.md
   - .cc/context/project-context.md
+  - .cc/context/domain-language.md
   - .cc/context/dev-map.md
 
 forbids:
@@ -24,6 +25,7 @@ forbids:
 
 required_reads:
   - .cc/context/project-summary.md
+  - .cc/context/domain-language.md
   - .cc/context/dev-map.md
   - .claude/rules/memory-policy.md
 
@@ -47,9 +49,11 @@ steps:
   - identify_project_identity_and_runtime_shape
   - identify_dependency_build_and_start_entries
   - identify_key_directories_configuration_and_test_entries
+  - identify_low_cost_domain_terms_or_leave_pending
   - record_unknowns_for_unconfirmed_high_cost_context
   - update_project_summary_for_default_runtime_reads
   - update_project_context_basic_fact_layer
+  - update_domain_language_without_language_specific_splits
   - update_dev_map_basic_navigation
   - stop_without_entering_other_cc_workflows
 

@@ -69,6 +69,7 @@ Do not read these legacy governance docs unless you are maintaining the Harness 
 - Validate inputs and path roles through the protocol before command execution.
 - Treat `.claude/runtime/commands/<command>.yaml` as the highest-priority runtime source for migrated commands.
 - Treat `.claude/workflows/cc-workflow.yaml` as the script and CI truth for state, writes, and auto-validation.
+- Treat `.cc/context/domain-language.md` as the shared business vocabulary. It is split by bounded context only when needed, not by programming language.
 - Treat subagent output as evidence input. The parent command remains responsible for state, final artifacts, and deterministic checks.
 - Respect `subagents.write_scope_policy` and `subagents.parallel_policy` when subagent delegation is used: scoped subagent writes must stay inside parent `writes`, and parallel scoped writers must have disjoint write targets.
 - Require subagent results to follow `output_contract` before parent merge when subagent delegation is used: `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`.

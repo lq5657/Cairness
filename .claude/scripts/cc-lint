@@ -676,11 +676,13 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
     required = [
         project_root / ".cc" / "context" / "project-summary.md",
         project_root / ".cc" / "context" / "project-context.md",
+        project_root / ".cc" / "context" / "domain-language.md",
         project_root / ".cc" / "context" / "dev-map.md",
         project_root / ".cc" / "changes" / "task-board.md",
         project_root / ".cc" / "knowledge" / "index.md",
         root / "templates" / "context" / "project-summary.md",
         root / "templates" / "context" / "project-context.md",
+        root / "templates" / "context" / "domain-language.md",
         root / "templates" / "context" / "dev-map.md",
         root / "templates" / "changes" / "task-board.md",
         root / "templates" / "knowledge" / "index.md",

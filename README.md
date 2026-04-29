@@ -60,6 +60,8 @@ AI and user-generated project state lives under:
 
 `.claude/` is upgradeable framework state. `.cc/` is project state and must not be overwritten by framework upgrades.
 
+`.cc/context/domain-language.md` is the shared domain vocabulary for specs, tasks, reviews, tests, and system explanations. It is split by business context only when needed, not by programming language.
+
 ### Human Documentation
 
 Maintenance and adoption docs live under:

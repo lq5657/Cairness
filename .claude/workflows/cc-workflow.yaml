@@ -23,8 +23,8 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: [project_idea]
-    outputs: [.cc/context/project-summary.md, .cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
-    writes: [.cc/context/project-summary.md, .cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
+    outputs: [.cc/context/project-summary.md, .cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/domain-language.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
+    writes: [.cc/context/project-summary.md, .cc/context/project-definition.md, .cc/context/mvp-roadmap.md, .cc/context/architecture-outline.md, .cc/context/domain-language.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, planned_path_status, memory_policy, blocking_project_decision_user_choice]
     forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply, treat_project_unknowns_as_resolved, treat_planned_paths_as_confirmed_facts, mark_project_definition_complete_without_blocking_choices]
     auto_validation: []
@@ -47,9 +47,9 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: []
-    outputs: [.cc/context/project-summary.md, .cc/context/project-context.md, .cc/context/dev-map.md]
-    writes: [.cc/context/project-summary.md, .cc/context/project-context.md, .cc/context/dev-map.md]
-    validates: [claude_scaffold_exists, entrypoints_status_recorded, unknowns_recorded, memory_policy]
+    outputs: [.cc/context/project-summary.md, .cc/context/project-context.md, .cc/context/domain-language.md, .cc/context/dev-map.md]
+    writes: [.cc/context/project-summary.md, .cc/context/project-context.md, .cc/context/domain-language.md, .cc/context/dev-map.md]
+    validates: [claude_scaffold_exists, entrypoints_status_recorded, domain_language_status_recorded, unknowns_recorded, memory_policy]
     forbids: [create_scaffold_assets, create_change_or_audit, deep_code_review, expand_into_enrich_explain_or_inspect, record_assumptions_as_facts, treat_planned_paths_as_confirmed_facts]
     auto_validation: []
 
@@ -59,9 +59,9 @@ commands:
     change_from: [none]
     change_to: unchanged
     inputs: []
-    outputs: [.cc/context/project-context.md, .cc/context/dev-map.md]
-    writes: [.cc/context/project-context.md, .cc/context/dev-map.md]
-    validates: [base_context_exists, assumptions_confirmed, evidence_locations, confidence_level, memory_policy, blocking_assumption_user_confirmation]
+    outputs: [.cc/context/project-context.md, .cc/context/domain-language.md, .cc/context/dev-map.md]
+    writes: [.cc/context/project-context.md, .cc/context/domain-language.md, .cc/context/dev-map.md]
+    validates: [base_context_exists, assumptions_confirmed, domain_language_terms_confirmed_or_pending, evidence_locations, confidence_level, memory_policy, blocking_assumption_user_confirmation]
     forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply, treat_listed_assumptions_as_confirmed, write_unconfirmed_blocking_assumption_as_fact]
     auto_validation: []
 
