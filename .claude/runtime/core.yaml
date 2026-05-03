@@ -46,8 +46,8 @@ runtime_protocol:
   default_language_profile: .claude/runtime/languages/golang.yaml
 
 legacy_fallback:
-  commands_dir: .claude/commands
-  checkpoints_dir: .claude/checkpoints
+  commands_dir: .claude/docs/maintenance/legacy/commands
+  checkpoints_dir: .claude/docs/maintenance/legacy/checkpoints
 
 governance:
   task_board: .cc/changes/task-board.md
