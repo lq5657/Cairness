@@ -3,6 +3,7 @@ input: "cc-inspect-codebase architecture internal/user"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-inspect-codebase.yaml
+  - .claude/templates/audits/report.md
 forbidden_actions:
   - auto_fix
   - create_change_docs

@@ -18,6 +18,8 @@ always_reads:
 optional_reads:
 - .cc/knowledge/index.md
 conditional_reads:
+  when_writing_knowledge_entry:
+  - .claude/templates/knowledge/entry.md
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml

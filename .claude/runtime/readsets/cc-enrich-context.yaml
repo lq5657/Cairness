@@ -18,6 +18,10 @@ always_reads:
 optional_reads:
 - .cc/context/project-summary.md
 conditional_reads:
+  when_writing_context_artifacts:
+  - .claude/templates/context/project-context.md
+  - .claude/templates/context/domain-language.md
+  - .claude/templates/context/dev-map.md
   when_testing_facts_are_enriched:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   when_configuration_facts_are_enriched:

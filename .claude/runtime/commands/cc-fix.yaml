@@ -41,6 +41,8 @@ conditional_reads:
     - .cc/changes/<change-id>/tasks.md
   when_fix_requires_existing_execution_history:
     - .cc/changes/<change-id>/log.md
+  when_creating_test_spec_artifact:
+    - .claude/templates/changes/test-spec.md
 
 optional_reads:
   - .cc/changes/<change-id>/test-spec.md
@@ -165,6 +167,7 @@ steps:
   - add_or_identify_regression_guard
   - remove_temporary_debug_instrumentation
   - rerun_verification_without_lowering_required_level
+  - load_test_spec_template_when_creating_test_spec
   - update_review_log_and_change_docs
   - sync_dev_map_if_boundaries_changed
   - sync_task_board

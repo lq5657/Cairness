@@ -20,6 +20,8 @@ optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/changes/<change-id>/log.md
 conditional_reads:
+  when_writing_test_spec_artifact:
+  - .claude/templates/changes/test-spec.md
   when_change_touches_database:
   - .claude/runtime/topic-rules/database-changes.yaml
   when_change_touches_external_contract:

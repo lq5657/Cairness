@@ -3,6 +3,7 @@ input: "cc-promote-audit <audit-id> <change-id>"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-promote-audit.yaml
+  - .claude/templates/audits/to-change.md
 forbidden_actions:
   - write_formal_change_spec_directly
   - auto_enter_propose

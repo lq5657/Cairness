@@ -23,6 +23,8 @@ conditional_reads:
   - .cc/changes/<change-id>/tasks.md
   when_fix_requires_existing_execution_history:
   - .cc/changes/<change-id>/log.md
+  when_creating_test_spec_artifact:
+  - .claude/templates/changes/test-spec.md
   when_reproduction_or_failure_localization_is_required:
   - .claude/runtime/topic-rules/debugging-workflow.yaml
   when_test_boundary_or_substitution_is_in_question:

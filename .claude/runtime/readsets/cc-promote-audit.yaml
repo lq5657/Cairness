@@ -16,6 +16,8 @@ always_reads:
 optional_reads:
 - .claude/runtime/commands/cc-propose.yaml
 conditional_reads:
+  when_writing_audit_bridge:
+  - .claude/templates/audits/to-change.md
   when_verification_level_hint_is_needed:
   - .claude/runtime/topic-rules/verification.yaml
   when_test_level_hint_is_needed:

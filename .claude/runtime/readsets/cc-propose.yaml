@@ -20,6 +20,10 @@ optional_reads:
 - .cc/context/project-context.md
 - .cc/context/domain-language.md
 conditional_reads:
+  when_writing_change_artifacts:
+  - .claude/templates/changes/spec.md
+  - .claude/templates/changes/tasks.md
+  - .claude/templates/changes/log.md
   when_validation_boundary_is_unclear:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   when_change_touches_database:

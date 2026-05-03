@@ -3,6 +3,7 @@ input: "cc-fix <change-id>"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-fix.yaml
+  - .claude/templates/changes/test-spec.md
 forbidden_actions:
   - delete_open_finding_record
   - mark_fixed_without_verification

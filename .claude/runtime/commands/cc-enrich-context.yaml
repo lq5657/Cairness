@@ -32,6 +32,12 @@ required_reads:
 optional_reads:
   - .cc/context/project-summary.md
 
+conditional_reads:
+  when_writing_context_artifacts:
+    - .claude/templates/context/project-context.md
+    - .claude/templates/context/domain-language.md
+    - .claude/templates/context/dev-map.md
+
 runtime_protocol_reads:
   technology_catalog: never
 
@@ -95,6 +101,7 @@ steps:
   - inspect_only_targeted_structure_entries_and_samples
   - separate_confirmed_facts_hypotheses_and_unknowns
   - ask_user_to_confirm_blocking_assumptions_when_needed
+  - load_context_artifact_templates_before_writing
   - write_only_confirmed_or_explicitly_pending_facts
   - update_project_context_supplemental_fact_layer
   - update_domain_language_with_confirmed_terms_only

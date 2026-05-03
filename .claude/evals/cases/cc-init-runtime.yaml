@@ -3,6 +3,10 @@ input: "cc-init"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-init.yaml
+  - .claude/templates/context/project-summary.md
+  - .claude/templates/context/project-context.md
+  - .claude/templates/context/domain-language.md
+  - .claude/templates/context/dev-map.md
 forbidden_actions:
   - create_scaffold_assets
   - create_change_or_audit

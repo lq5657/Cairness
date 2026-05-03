@@ -3,6 +3,7 @@ input: "cc-apply <change-id>"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-apply.yaml
+  - .claude/templates/changes/test-spec.md
 forbidden_actions:
   - mark_done_without_evidence
   - skip_baseline_delta

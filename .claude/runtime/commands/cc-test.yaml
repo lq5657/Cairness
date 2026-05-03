@@ -34,6 +34,10 @@ optional_reads:
   - .cc/changes/<change-id>/test-spec.md
   - .cc/changes/<change-id>/log.md
 
+conditional_reads:
+  when_writing_test_spec_artifact:
+    - .claude/templates/changes/test-spec.md
+
 runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
@@ -86,6 +90,7 @@ red_flags:
 steps:
   - confirm_test_mode
   - choose_test_levels_and_explain_why
+  - load_test_spec_template_before_writing
   - write_or_update_test_spec
   - generate_fresh_test_evidence
   - update_mapping_status_to_test_covered_or_gap

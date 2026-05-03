@@ -33,6 +33,10 @@ required_reads:
 optional_reads:
   - .cc/knowledge/index.md
 
+conditional_reads:
+  when_writing_knowledge_entry:
+    - .claude/templates/knowledge/entry.md
+
 runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
@@ -77,6 +81,7 @@ steps:
   - if_knowledge_is_needed_select_destination
   - record_refinement_candidate_without_modifying_runtime
   - present_knowledge_decision_options_and_wait_for_choice
+  - load_knowledge_entry_template_before_writing
   - rerun_pre_archive_validation
   - mark_spec_done
   - sync_log_and_task_board

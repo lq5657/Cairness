@@ -30,6 +30,10 @@ required_reads:
 optional_reads:
   - .claude/runtime/commands/cc-propose.yaml
 
+conditional_reads:
+  when_writing_audit_bridge:
+    - .claude/templates/audits/to-change.md
+
 runtime_protocol_reads:
   technology_catalog: never
 
@@ -71,6 +75,7 @@ steps:
   - define_in_scope_and_out_of_scope
   - map_findings_to_background_risks_and_tasks
   - propose_validation_level_hint
+  - load_audit_bridge_template_before_writing
   - write_to_change_bridge_note
   - update_task_board_backlog_candidate
 

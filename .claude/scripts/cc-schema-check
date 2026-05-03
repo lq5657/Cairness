@@ -217,6 +217,81 @@ FINAL_ARTIFACT_WRITE_NAMES = {
     ".cc/changes/task-board.md",
     ".cc/context/dev-map.md",
 }
+TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
+    "cc-propose": {
+        "when_writing_change_artifacts": [
+            ".claude/templates/changes/spec.md",
+            ".claude/templates/changes/tasks.md",
+            ".claude/templates/changes/log.md",
+        ],
+    },
+    "cc-review": {
+        "when_writing_review_artifact": [
+            ".claude/templates/changes/review.md",
+        ],
+    },
+    "cc-test": {
+        "when_writing_test_spec_artifact": [
+            ".claude/templates/changes/test-spec.md",
+        ],
+    },
+    "cc-apply": {
+        "when_creating_test_spec_artifact": [
+            ".claude/templates/changes/test-spec.md",
+        ],
+    },
+    "cc-fix": {
+        "when_creating_test_spec_artifact": [
+            ".claude/templates/changes/test-spec.md",
+        ],
+    },
+    "cc-inspect-codebase": {
+        "when_writing_audit_report": [
+            ".claude/templates/audits/report.md",
+        ],
+    },
+    "cc-promote-audit": {
+        "when_writing_audit_bridge": [
+            ".claude/templates/audits/to-change.md",
+        ],
+    },
+    "cc-archive": {
+        "when_writing_knowledge_entry": [
+            ".claude/templates/knowledge/entry.md",
+        ],
+    },
+    "cc-new-project": {
+        "when_project_artifacts_are_written": [
+            ".claude/templates/context/project-definition.md",
+            ".claude/templates/context/project-summary.md",
+            ".claude/templates/context/domain-language.md",
+            ".claude/templates/context/mvp-roadmap.md",
+            ".claude/templates/context/architecture-outline.md",
+            ".claude/templates/context/dev-map.md",
+            ".claude/templates/changes/task-board.md",
+        ],
+    },
+    "cc-explain-system": {
+        "when_writing_system_overview": [
+            ".claude/templates/context/system-overview.md",
+        ],
+    },
+    "cc-init": {
+        "when_writing_context_artifacts": [
+            ".claude/templates/context/project-summary.md",
+            ".claude/templates/context/project-context.md",
+            ".claude/templates/context/domain-language.md",
+            ".claude/templates/context/dev-map.md",
+        ],
+    },
+    "cc-enrich-context": {
+        "when_writing_context_artifacts": [
+            ".claude/templates/context/project-context.md",
+            ".claude/templates/context/domain-language.md",
+            ".claude/templates/context/dev-map.md",
+        ],
+    },
+}
 
 
 @dataclass
@@ -1527,6 +1602,16 @@ def validate_runtime_command_references(
                 continue
             for idx, declared in enumerate(reads):
                 require_declared_path(project_root, path, declared, f"conditional_reads.{condition}[{idx}]", issues)
+    template_requirements = TEMPLATE_READ_REQUIREMENTS.get(command, {})
+    conditional_read_map = conditional_reads if isinstance(conditional_reads, dict) else {}
+    for condition, templates in sorted(template_requirements.items()):
+        actual_reads = conditional_read_map.get(condition)
+        if not isinstance(actual_reads, list):
+            add(issues, "E_SCHEMA189", path, f"{command} missing conditional_reads.{condition} for template artifacts")
+            continue
+        for template in templates:
+            if template not in actual_reads:
+                add(issues, "E_SCHEMA190", path, f"{command} must conditionally read template {template} under {condition}")
 
     topic_rules = manifest.get("topic_rules")
     if isinstance(topic_rules, dict):

@@ -3,6 +3,7 @@ input: "cc-archive order-retry-fix"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-archive.yaml
+  - .claude/templates/knowledge/entry.md
 forbidden_actions:
   - infer_knowledge_decision_without_user_choice
   - mark_done_before_knowledge_choice

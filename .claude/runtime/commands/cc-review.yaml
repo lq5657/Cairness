@@ -26,13 +26,17 @@ forbids:
 required_reads:
   - .cc/changes/<change-id>/spec.md
   - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/<change-id>/review.md
   - .cc/changes/task-board.md
 
 optional_reads:
+  - .cc/changes/<change-id>/review.md
   - .cc/changes/<change-id>/test-spec.md
   - .cc/context/domain-language.md
   - .cc/context/mvp-roadmap.md
+
+conditional_reads:
+  when_writing_review_artifact:
+    - .claude/templates/changes/review.md
 
 runtime_protocol_reads:
   technology_catalog: never
@@ -121,6 +125,7 @@ steps:
   - evaluate_task_coverage_and_mapping_closure
   - deduplicate_findings_by_root_cause_and_lens
   - present_acceptance_choices_and_wait_for_user_selection_when_needed
+  - load_review_template_before_writing_review
   - emit_findings_with_open_fixed_or_accepted_status
   - sync_review_and_task_board
   - run_harness_validation

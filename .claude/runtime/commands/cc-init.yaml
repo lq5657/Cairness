@@ -32,6 +32,13 @@ required_reads:
 optional_reads:
   - .cc/context/project-context.md
 
+conditional_reads:
+  when_writing_context_artifacts:
+    - .claude/templates/context/project-summary.md
+    - .claude/templates/context/project-context.md
+    - .claude/templates/context/domain-language.md
+    - .claude/templates/context/dev-map.md
+
 runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
@@ -51,6 +58,7 @@ steps:
   - identify_key_directories_configuration_and_test_entries
   - identify_low_cost_domain_terms_or_leave_pending
   - record_unknowns_for_unconfirmed_high_cost_context
+  - load_context_artifact_templates_before_writing
   - update_project_summary_for_default_runtime_reads
   - update_project_context_basic_fact_layer
   - update_domain_language_without_language_specific_splits

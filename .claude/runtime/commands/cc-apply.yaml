@@ -36,6 +36,10 @@ required_reads:
   - .cc/changes/task-board.md
   - .claude/harness.config.yaml
 
+conditional_reads:
+  when_creating_test_spec_artifact:
+    - .claude/templates/changes/test-spec.md
+
 runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
@@ -116,6 +120,7 @@ steps:
   - select_one_ready_task
   - review_task_goal_scope_acceptance_and_verification
   - implement_only_declared_scope
+  - load_test_spec_template_when_creating_test_spec
   - sync_change_docs_and_governance_assets
   - run_post_task_validation
   - compare_baseline_delta

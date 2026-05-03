@@ -3,6 +3,9 @@ input: "cc-propose 新增用户创建接口"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-propose.yaml
+  - .claude/templates/changes/spec.md
+  - .claude/templates/changes/tasks.md
+  - .claude/templates/changes/log.md
 forbidden_actions:
   - write_business_code
   - enter_apply_without_hard_gate

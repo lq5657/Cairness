@@ -20,6 +20,8 @@ always_reads:
 - .claude/runtime/topic-rules/coding-style.yaml
 optional_reads: []
 conditional_reads:
+  when_creating_test_spec_artifact:
+  - .claude/templates/changes/test-spec.md
   when_task_touches_logic_bug_chain_or_data_access:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   when_task_touches_database:

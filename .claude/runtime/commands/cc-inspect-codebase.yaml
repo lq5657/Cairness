@@ -28,6 +28,10 @@ required_reads:
 optional_reads:
   - .cc/context/project-context.md
 
+conditional_reads:
+  when_writing_audit_report:
+    - .claude/templates/audits/report.md
+
 runtime_protocol_reads:
   technology_catalog: never
 
@@ -111,6 +115,7 @@ steps:
   - inspect_scope_for_code_config_or_call_chain_evidence
   - group_findings_by_severity
   - identify_candidates_for_future_changes
+  - load_audit_report_template_before_writing
   - write_audit_report
   - stop_without_promoting_audit_or_modifying_code
 

@@ -36,6 +36,12 @@ optional_reads:
   - .cc/context/project-context.md
   - .cc/context/domain-language.md
 
+conditional_reads:
+  when_writing_change_artifacts:
+    - .claude/templates/changes/spec.md
+    - .claude/templates/changes/tasks.md
+    - .claude/templates/changes/log.md
+
 runtime_protocol_reads:
   technology_catalog: on_demand
 
@@ -146,6 +152,7 @@ steps:
   - for_micro_change_write_compressed_spec_and_single_task
   - confirm_scope_stage_before_final_tasks
   - record_split_rationale_dependencies_and_parallel_safety
+  - load_change_artifact_templates_before_writing
   - write_spec
   - write_tasks
   - sync_task_board

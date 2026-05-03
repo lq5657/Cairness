@@ -3,6 +3,7 @@ input: "cc-review <change-id>"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-review.yaml
+  - .claude/templates/changes/review.md
 forbidden_actions:
   - modify_business_code
   - archive_change

@@ -3,6 +3,7 @@ input: "cc-test <change-id> --mode supplement"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-test.yaml
+  - .claude/templates/changes/test-spec.md
 forbidden_actions:
   - use_cc_test_as_default_apply_minimum_verification
   - mark_mapping_closed_without_evidence
