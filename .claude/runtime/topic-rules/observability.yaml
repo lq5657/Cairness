@@ -1,0 +1,100 @@
+id: observability
+description: "当变更涉及关键运行链路、错误处理、异步任务或上线后可观测性要求时应用本规则"
+
+trigger:
+  - "变更触及关键业务链路、入口 handler、外部依赖、异步任务、重试、降级或超时"
+  - "发布后需要观察成功率、错误率、延迟、吞吐、告警或人工回归信号"
+  - "cc-review 需要判断问题发生后是否能定位入口、上下文、失败点和影响范围"
+
+skip:
+  - "不用它要求所有小函数都新增日志、metrics 或 trace"
+  - "不用日志替代错误处理、安全脱敏、测试或发布验证"
+  - "纯文档或静态元数据变更通常不加载本规则"
+
+process:
+  - "确认本次变更的关键入口、阶段、外部依赖和失败路径"
+  - "设计必要日志字段、metrics、trace/request id、告警或观察窗口"
+  - "检查敏感信息脱敏和错误上下文是否足够"
+  - "在 spec、task 或验证证据中记录观测点和发布后观察方式"
+
+anti_rationalization:
+  - claim: "测试能过就不需要日志。"
+    reality: "测试不能替代生产故障定位信号。"
+    response: "为关键路径补入口、失败和结果观测点。"
+  - claim: "多打一整包请求最省事。"
+    reality: "原文日志可能泄露敏感信息并增加噪声。"
+    response: "只记录必要字段并脱敏。"
+  - claim: "异步任务失败会重试。"
+    reality: "重试没有任务标识和阶段日志仍不可排障。"
+    response: "记录 enqueue/start/retry/fail/success 等关键阶段。"
+
+red_flags:
+  - "关键路径无入口、失败原因、请求/任务标识或结果信号"
+  - "外部依赖失败只返回错误，无法定位依赖对象、超时或重试状态"
+  - "异步任务缺少任务标识、重试次数、死信或补偿观察方式"
+  - "使用敏感原文日志替代结构化观测设计"
+
+checks:
+  - "spec.md 已记录日志点、关键字段、metrics/告警或观察窗口"
+  - "关键链路、异步任务和外部依赖失败路径的观测信号可定位"
+  - "脱敏策略、request id/trace id 和发布后观察要求已检查"
+
+rules:
+  constraint_levels:
+    mandatory: "违反则停止执行"
+    warning: "触发时需人工确认或补充说明"
+    verification: "完成后必须检查"
+
+  scope:
+    - "新增或修改关键业务主链路"
+    - "新增异步任务、定时任务、消费者、Worker"
+    - "修改错误处理、重试、降级、超时行为"
+    - "涉及发布后需要监控成功率、延迟或错误率的能力"
+
+  principles:
+    - "可观测性不是'多打几行日志'，而是保证问题发生后能定位入口、上下文、失败原因和影响范围"
+    - "cc-propose 时必须明确本次变更需要哪些日志点、指标或告警观察项"
+    - "对关键链路，至少要有请求入口、关键分支、外部依赖失败、最终结果这几类可定位信息"
+    - "cc-review 必须检查：spec 中声明的可观测性方案与实际实现是否一致"
+
+  mandatory:
+    - "禁止关键运行路径完全没有日志、trace 或等价定位信息"
+    - "禁止错误只返回不记录上下文，或只记录日志但不返回可处理错误"
+    - "禁止在异步任务、消费者、重试逻辑中丢失任务标识、请求标识或关键业务标识"
+    - "禁止用日志打印敏感原文代替可观测性设计"
+
+  warning_scenarios:
+    items:
+      - "新增关键日志点"
+      - "新增或修改 metrics"
+      - "新增或依赖 trace / request id"
+      - "新增告警、阈值、观察窗口"
+      - "异步任务的重试、死信、补偿链路"
+    minimum_explanation:
+      - "日志点位置和目的"
+      - "关键字段"
+      - "metrics / 告警观察项"
+      - "发布后观察窗口"
+
+  recommendations:
+    - "日志字段至少包含请求或任务标识、关键业务标识、错误原因和阶段信息"
+    - "外部依赖调用失败时，要能从日志或 metrics 看出调用对象、错误类型和超时/重试状态"
+    - "对异步任务，记录 enqueue / start / retry / success / fail 等关键阶段"
+    - "若项目有 tracing 体系，优先复用已有 trace id / span 约定，而不是另起一套字段"
+
+  minimum_verification:
+    - "spec.md 已记录日志点、关键字段、metrics/告警观察项"
+    - ".cc/context/project-context.md 已反映项目真实日志与观测方案"
+    - "关键链路的日志或等价可观测信号可定位"
+    - "若涉及异步任务，已说明任务标识、重试与失败观察方式"
+    - "若涉及发布观察，已说明观察窗口或回归指标"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_touches_observability
+    - when_finding_touches_observability
+    - when_change_touches_observability
+    - when_observability_facts_are_enriched
+    - when_observability_mechanism_is_explained
+

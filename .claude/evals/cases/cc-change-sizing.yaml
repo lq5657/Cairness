@@ -3,8 +3,8 @@ input: "cc-propose Add auth, billing export, database migration, release rollout
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-propose.yaml
-  - .claude/rules/change-sizing.md
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/change-sizing.yaml
+  - .claude/runtime/topic-rules/verification.yaml
 forbidden_actions:
   - create_oversized_or_mixed_scope_change
   - defer_task_scope_split_to_cc_apply

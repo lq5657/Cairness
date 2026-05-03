@@ -1,0 +1,74 @@
+id: source_driven_development
+description: "当变更依赖外部库、SDK、CLI、云服务、框架 API 或版本敏感知识时应用本规则"
+
+trigger:
+  - "变更引入、升级、配置或依赖第三方库、SDK、框架、CLI、云服务、协议或外部 API"
+  - "命令做出版本敏感声明，如 API 可用性、配置键行为、迁移语法、生成代码行为或运行时兼容性"
+  - "review/fix/test 决策依赖于不同依赖版本间可能不同的行为"
+  - "cc-propose 触发成熟替代方案检查——本地复用不明确且自建可能带来实现、运维或维护风险"
+
+skip:
+  - "不要为纯本地代码变更加载本规则——其行为完全由仓库内文件决定"
+  - "当本地锁定源、生成代码、go.mod、lockfile、vendor 或官方文档已足够时，不要广泛浏览"
+
+process:
+  - "识别外部或版本敏感声明"
+  - "优先使用本地证据：go.mod、lockfile、生成文件、vendor 目录、现有封装、代码注释或测试"
+  - "本地证据不足时，查阅官方文档、上游源码、发布说明或 API 参考"
+  - "将有来源支撑的决策记录到 spec.md / tasks.md / log.md / review.md 或 Finding 证据中"
+  - "未知或未验证的声明必须显式标记，不得当作事实呈现"
+  - "成熟替代方案检查：识别成熟本地模式、官方标准或成熟开源方案；记录适配条件和采纳/拒绝理由；不要把外部调研变成大范围重设计"
+
+anti_rationalization:
+  - claim: "我记得这个 API"
+    reality: "模型记忆可能过时或版本不匹配"
+  - claim: "这个包很流行，配置很明显"
+    reality: "流行库也会改变选项和默认值"
+  - claim: "小改动不需要查文档"
+    reality: "小改动仍可能依赖错误的 API 名称或语义"
+  - claim: "自建比查替代方案更快"
+    reality: "成熟问题域往往有隐藏的运维和维护陷阱"
+
+red_flags:
+  - "新增依赖或 SDK 调用没有 go.mod / 源码 / 文档证据"
+  - "凭记忆添加配置键或 CLI 标志"
+  - "review 通过了版本敏感实现但未检查锁定版本"
+  - "编辑生成代码或迁移语法但未验证生成器/工具预期"
+  - "cc-propose 在成熟问题域选择自建但未记录本地模式、外部选项和拒绝理由"
+
+checks:
+  - "变更为每个外部/版本敏感声明记录了证据位置"
+  - "无法验证的证据记录为待确认、blocked、partial 或 Finding，而非当作已确认继续推进"
+
+rules:
+  source_priority:
+    - priority: 1
+      source: "本地仓库证据"
+      notes: "go.mod、lockfile、vendor、封装、生成代码、现有测试"
+    - priority: 2
+      source: "官方上游文档或 API 参考"
+      notes: "优先使用版本化文档"
+    - priority: 3
+      source: "官方上游源码或发布说明"
+      notes: "文档未覆盖行为或迁移细节时使用"
+    - priority: 4
+      source: "可信二手来源"
+      notes: "仅作为兜底；记录较低信心等级"
+
+  command_integration:
+    cc-propose: "选择依赖外部 API 或版本特定行为的方案时使用"
+    cc-apply: "实现外部 API、SDK、CLI、生成代码或配置变更前使用"
+    cc-review: "检查外部契约、依赖用法或版本敏感声明时使用"
+    cc-fix: "修复假设依赖于库/工具行为时使用"
+    cc-test: "测试工具、mock、fixture 或集成命令依赖外部文档或版本行为时使用"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_depends_on_external_or_version_sensitive_technology
+    - when_fix_depends_on_external_or_version_sensitive_technology
+    - when_change_depends_on_external_or_version_sensitive_technology
+    - when_external_or_version_sensitive_claims_are_in_scope
+    - when_test_depends_on_external_tooling_or_version_sensitive_behavior
+    - when_project_research_uses_external_or_version_sensitive_sources
+    - when_mature_alternative_check_is_triggered

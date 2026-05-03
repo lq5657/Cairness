@@ -1,0 +1,109 @@
+id: security
+description: "安全红线规则，强制执行"
+
+trigger:
+  - "变更触及认证、鉴权、密钥、凭证、敏感数据、资金、账户状态或对外可见状态流转"
+  - "审查/审计发现可能的权限绕过、数据泄露、不安全日志或不安全资金/状态逻辑"
+
+skip:
+  - "不要用本规则阻止已确认不涉及敏感边界的纯文本变更"
+  - "不要把安全 Finding 降级为风格评论"
+
+process:
+  - "识别安全边界和受影响的 actor/resource/action"
+  - "检查写路径是否在状态变更前强制执行校验"
+  - "检查代码、配置、测试和日志中的密钥与敏感数据处理"
+  - "资金影响变更要求人工审查标记"
+  - "将证据和未解决风险记录为 Finding 或阻塞项"
+
+anti_rationalization:
+  - claim: "只有 handler 检查了权限"
+    reality: "Service/Repo 路径可能绕过 handler 被直接调用"
+  - claim: "这个值只在测试里"
+    reality: "测试夹具仍可能泄露真实密钥或个人数据"
+  - claim: "日志是内部的"
+    reality: "内部日志会被复制、索引和长期保留"
+
+red_flags:
+  - "资金逻辑没有 REQ-HUMAN-REVIEW 标记"
+  - "权限检查之前就执行了状态写入"
+  - "敏感流程中记录完整请求/响应体"
+  - "源码或测试夹具中包含真实 token、密钥、个人数据或卡号"
+
+checks:
+  - "安全敏感变更已记录检查的边界、证据位置和是否需要人工审查"
+
+rules:
+  constraint_levels:
+    mandatory: "禁止违反，违反则停止执行"
+    warning: "触发时需人工确认"
+    verification: "完成后必须检查"
+
+  scope:
+    - "新增或修改认证、鉴权、权限控制逻辑"
+    - "新增或修改资金、余额、授信、扣款、退款、冻结、解冻相关逻辑"
+    - "新增或修改用户敏感信息、密钥、凭证、配置读取、日志输出"
+    - "新增或修改状态流转且该状态流转影响资金、权限或对外可见结果"
+
+  code_security:
+    mandatory:
+      - "禁止在代码、配置模板、测试夹具中硬编码密钥、AK/SK、数据库密码、Token、证书私钥"
+      - "禁止提交包含真实用户个人信息的测试数据"
+      - "禁止在日志中打印手机号、身份证、银行卡、完整邮箱、Token、Cookie、密码等敏感信息"
+    clarification:
+      - "硬编码包括直接字面量写入源码、测试文件、shell 脚本、示例配置"
+      - "允许使用占位符或假值，例如 example-secret、<TOKEN>"
+      - "日志允许打印脱敏后的必要信息，例如手机号后四位、订单号尾号、哈希后的标识"
+    minimum_evidence:
+      - "配置和密钥来源已说明（环境变量、密钥管理系统、部署注入）"
+      - "日志样例已检查，无敏感原文输出"
+
+  business_security:
+    mandatory:
+      description: "资金类逻辑未经人工确认直接推进"
+      rules:
+        - "涉及资金变更的逻辑，必须在 spec.md §4 或 §8 中明确标注 REQ-HUMAN-REVIEW"
+        - "未看到人工确认记录前，禁止提交可执行实现"
+    fund_change_scope:
+      - "余额增加、减少、冻结、解冻"
+      - "退款、扣款、支付、清结算、授信、手续费计算"
+      - "影响用户可用额度、应收应付、账户状态的金额相关操作"
+    not_fund_change:
+      - "纯展示格式调整"
+      - "不影响账务结果的文案修改"
+      - "离线报表字段重命名且不改变计算逻辑"
+    state_and_permission_warning:
+      - "涉及状态流转：必须说明前置条件、触发事件、失败回滚或拒绝路径"
+      - "涉及权限变更：必须显式校验操作者身份、资源归属和操作权限，且校验在写操作前"
+    state_transition_minimum:
+      - "可以是显式状态机组件，也可以是集中封装的合法性校验函数"
+      - "仅使用枚举常量但没有转换校验，不视为满足要求"
+    permission_check_minimum:
+      - "不能只依赖前端按钮隐藏"
+      - "不能在数据写入后再补校验"
+      - "需要有代码级证据说明谁可以对什么资源做什么操作"
+
+  common_anti_patterns:
+    - "余额字段使用 float64"
+    - "Handler 校验了角色，但 Service/Repo 可被绕过直接调用"
+    - "状态字段直接赋值为目标值，没有合法迁移判断"
+    - "错误日志直接打印完整请求体，其中包含手机号或证件号"
+    - "测试数据使用真实手机号、真实身份证、真实卡号"
+
+  verification_checklist:
+    - "敏感信息是否来自安全配置，而非硬编码"
+    - "日志是否未打印敏感原文"
+    - "涉及资金变更时，spec.md 是否有 REQ-HUMAN-REVIEW 标记和人工确认记录"
+    - "状态流转是否有合法性说明或集中校验入口"
+    - "权限变更是否有显式校验代码，且校验发生在写操作前"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_touches_security_boundary
+    - when_finding_touches_security_boundary
+    - when_change_touches_security_boundary
+    - when_security_lens_is_triggered
+    - when_project_touches_security_boundary
+    - when_security_or_auth_boundary_facts_are_enriched
+    - when_security_or_auth_mechanism_is_explained

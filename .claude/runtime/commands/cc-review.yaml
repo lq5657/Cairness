@@ -69,25 +69,25 @@ interaction_contract:
 
 topic_rules:
   always:
-    - .claude/rules/verification.md
+    - .claude/runtime/topic-rules/verification.yaml
   when_test_boundary_or_substitution_is_in_question:
-    - .claude/rules/testing-strategy.md
+    - .claude/runtime/topic-rules/testing-strategy.yaml
   when_change_touches_database:
-    - .claude/rules/database-changes.md
+    - .claude/runtime/topic-rules/database-changes.yaml
   when_change_touches_external_contract:
-    - .claude/rules/api-compatibility.md
+    - .claude/runtime/topic-rules/api-compatibility.yaml
   when_change_touches_configuration:
-    - .claude/rules/configuration.md
+    - .claude/runtime/topic-rules/configuration.yaml
   when_change_touches_observability:
-    - .claude/rules/observability.md
+    - .claude/runtime/topic-rules/observability.yaml
   when_release_lens_is_triggered:
-    - .claude/rules/release.md
+    - .claude/runtime/topic-rules/release.yaml
   when_security_lens_is_triggered:
-    - .claude/rules/security.md
+    - .claude/runtime/topic-rules/security.yaml
   when_external_or_version_sensitive_claims_are_in_scope:
-    - .claude/rules/source-driven-development.md
+    - .claude/runtime/topic-rules/source-driven-development.yaml
   when_dependency_or_wave_order_is_in_dispute:
-    - .claude/rules/git-workflow.md
+    - .claude/runtime/topic-rules/git-workflow.yaml
 
 subagents:
   enabled: true

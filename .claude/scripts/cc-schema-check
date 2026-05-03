@@ -74,6 +74,7 @@ TOPIC_RULE_REQUIRED_SECTIONS = [
     "**Verification**",
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
+TOPIC_RULE_YAML_REQUIRED_KEYS = ["id", "description", "trigger", "skip", "process", "anti_rationalization", "red_flags", "checks"]
 RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "next_action"}
 RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
 SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
@@ -1129,21 +1130,45 @@ def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues:
         checked.append(str(path))
         if not path.exists():
             continue
-        text = read(path)
-        if schema is not None:
-            validate_against_schema(parse_frontmatter(text), schema, schema, [], path, issues)
 
-        previous_position = -1
-        for marker in TOPIC_RULE_REQUIRED_SECTIONS:
-            position = text.find(marker)
-            if position == -1:
-                add(issues, "E_SCHEMA137", path, f"topic rule {topic_key} missing skill-like section {marker}")
+        if declared_path.endswith(".yaml"):
+            data = load_yaml_file(path, issues)
+            if data is None:
                 continue
-            if position < previous_position:
-                add(issues, "E_SCHEMA138", path, f"topic rule {topic_key} has section out of order: {marker}")
-            previous_position = position
-        if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
-            add(issues, "E_SCHEMA139", path, f"topic rule {topic_key} missing anti-rationalization table")
+            for rk in TOPIC_RULE_YAML_REQUIRED_KEYS:
+                if rk not in data:
+                    add(issues, "E_SCHEMA137", path, f"topic rule {topic_key} missing required key: {rk}")
+            ar = data.get("anti_rationalization")
+            if isinstance(ar, list):
+                for i, entry in enumerate(ar):
+                    if isinstance(entry, dict) and ("claim" not in entry or "reality" not in entry):
+                        add(issues, "E_SCHEMA139", path, f"topic rule {topic_key} anti_rationalization[{i}] missing claim/reality")
+            rel = data.get("relevance")
+            if rel is not None:
+                if not isinstance(rel, dict):
+                    add(issues, "E_SCHEMA140", path, f"topic rule {topic_key} relevance must be a mapping")
+                else:
+                    cat = rel.get("category")
+                    if cat not in ("always", "change_type", "default_skip"):
+                        add(issues, "E_SCHEMA140", path, f"topic rule {topic_key} relevance.category must be always|change_type|default_skip, got {cat}")
+                    trigs = rel.get("triggers")
+                    if not isinstance(trigs, list) or len(trigs) == 0:
+                        add(issues, "E_SCHEMA140", path, f"topic rule {topic_key} relevance.triggers must be a non-empty list")
+        else:
+            text = read(path)
+            if schema is not None:
+                validate_against_schema(parse_frontmatter(text), schema, schema, [], path, issues)
+            previous_position = -1
+            for marker in TOPIC_RULE_REQUIRED_SECTIONS:
+                position = text.find(marker)
+                if position == -1:
+                    add(issues, "E_SCHEMA137", path, f"topic rule {topic_key} missing skill-like section {marker}")
+                    continue
+                if position < previous_position:
+                    add(issues, "E_SCHEMA138", path, f"topic rule {topic_key} has section out of order: {marker}")
+                previous_position = position
+            if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
+                add(issues, "E_SCHEMA139", path, f"topic rule {topic_key} missing anti-rationalization table")
     return checked
 
 

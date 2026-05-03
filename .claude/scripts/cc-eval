@@ -284,8 +284,10 @@ def validate_case_semantics(
         corpus_paths.append(resolved)
         if item.startswith(".claude/runtime/commands/") and item not in registered_runtime_commands:
             issues.append(Issue("E_EVAL024", str(path), f"runtime command read is not registered in runtime/core.yaml: {item}"))
-        if item.startswith(".claude/rules/") and item not in registered_topic_rules and item not in GOVERNANCE_RULE_READS:
+        if item.startswith(".claude/runtime/topic-rules/") and item not in registered_topic_rules:
             issues.append(Issue("E_EVAL025", str(path), f"topic rule read is not registered in runtime/core.yaml: {item}"))
+        if item.startswith(".claude/rules/") and item not in GOVERNANCE_RULE_READS:
+            issues.append(Issue("E_EVAL025", str(path), f"rules/ read is not a governance rule: {item}"))
 
     command = concrete_command(case)
     if command:

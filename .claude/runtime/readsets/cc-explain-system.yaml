@@ -19,13 +19,13 @@ conditional_reads:
   when_writing_system_overview:
   - .claude/templates/context/system-overview.md
   when_testing_or_verification_is_explained:
-  - .claude/rules/testing-strategy.md
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/testing-strategy.yaml
+  - .claude/runtime/topic-rules/verification.yaml
   when_configuration_mechanism_is_explained:
-  - .claude/rules/configuration.md
+  - .claude/runtime/topic-rules/configuration.yaml
   when_observability_mechanism_is_explained:
-  - .claude/rules/observability.md
+  - .claude/runtime/topic-rules/observability.yaml
   when_security_or_auth_mechanism_is_explained:
-  - .claude/rules/security.md
+  - .claude/runtime/topic-rules/security.yaml
   when_external_or_version_sensitive_mechanism_is_claimed:
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml

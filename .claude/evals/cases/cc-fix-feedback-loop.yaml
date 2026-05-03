@@ -3,7 +3,7 @@ input: "cc-fix <change-id> for an open finding where the root cause is not prove
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-fix.yaml
-  - .claude/rules/debugging-workflow.md
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
 forbidden_actions:
   - skip_feedback_loop_because_patch_seems_obvious
   - leave_temporary_debug_instrumentation_in_final_patch

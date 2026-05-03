@@ -13,7 +13,7 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/changes/<change-id>/review.md
 - .cc/changes/task-board.md
-- .claude/rules/verification.md
+- .claude/runtime/topic-rules/verification.yaml
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/context/dev-map.md
@@ -24,25 +24,25 @@ conditional_reads:
   when_fix_requires_existing_execution_history:
   - .cc/changes/<change-id>/log.md
   when_reproduction_or_failure_localization_is_required:
-  - .claude/rules/debugging-workflow.md
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
   when_test_boundary_or_substitution_is_in_question:
-  - .claude/rules/testing-strategy.md
+  - .claude/runtime/topic-rules/testing-strategy.yaml
   when_finding_touches_database:
-  - .claude/rules/database-changes.md
+  - .claude/runtime/topic-rules/database-changes.yaml
   when_finding_touches_external_contract:
-  - .claude/rules/api-compatibility.md
+  - .claude/runtime/topic-rules/api-compatibility.yaml
   when_finding_touches_configuration:
-  - .claude/rules/configuration.md
+  - .claude/runtime/topic-rules/configuration.yaml
   when_finding_touches_observability:
-  - .claude/rules/observability.md
+  - .claude/runtime/topic-rules/observability.yaml
   when_finding_touches_release_or_rollback:
-  - .claude/rules/release.md
+  - .claude/runtime/topic-rules/release.yaml
   when_finding_touches_security_boundary:
-  - .claude/rules/security.md
+  - .claude/runtime/topic-rules/security.yaml
   when_fix_depends_on_external_or_version_sensitive_technology:
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml
   when_finding_touches_dependency_or_wave_order:
-  - .claude/rules/git-workflow.md
+  - .claude/runtime/topic-rules/git-workflow.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml

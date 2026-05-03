@@ -114,7 +114,7 @@
         "uniqueItems": true,
         "items": {
           "type": "string",
-          "pattern": "^\\.claude/rules/.+\\.md$"
+          "pattern": "^\\.claude/(rules|runtime/topic-rules)/.+\\.(md|yaml)$"
         }
       }
     },

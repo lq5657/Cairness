@@ -1,0 +1,66 @@
+id: change_sizing
+description: "变更粒度与拆分策略，创建 proposal、冻结 scope 或拆分 tasks 时应用"
+
+trigger:
+  - "cc-propose 创建或更新 spec.md / tasks.md"
+  - "需求混合了多个目标、模块、验证等级、发布窗口、负责人或回滚计划"
+  - "无法用一个小的内聚单元解释变更意图、验证路径和回滚方式"
+  - "需要拆分 task 以支持有界子 agent、单 task 执行或独立审查"
+
+skip:
+  - "不要仅因为触及多个文件就拆分——当变更只有一条验收路径、一条回滚路径和一个验证集群时"
+  - "不要通过创建无 depends_on、无排序、无冲突边界的独立 task 来隐藏依赖"
+  - "不要用粒度标签绕过验证、安全、发布或源证据要求"
+
+process:
+  - "按范围轴分类需求：用户目标、领域/模块、数据模型、外部契约、配置、安全、发布/回滚、验证等级"
+  - "定义最小变更：一个清晰的用户/业务结果、一个主要验收故事、一个内聚的验证策略"
+  - "当需求包含独立目标、无关模块、不同发布/回滚路径、不同风险等级或无法独立审查验证的 task 时拆分"
+  - "为每个 task 声明目标文件/模块、验收标准、验证映射 ID、回滚、完成状态、依赖顺序和是否可并行"
+  - "若 task 仍然过宽，在 HARD-GATE 前再次拆分，不要依赖 cc-apply 发现边界"
+
+anti_rationalization:
+  - claim: "用户要求全部做完，一个 change 就行"
+    reality: "宽泛需求仍可能需要分阶段 spec 或独立 change；按目标、风险、发布或验证边界拆分"
+  - claim: "apply 时再细化 task 范围"
+    reality: "cc-apply 依赖冻结的 task 范围和验证映射；必须在 HARD-GATE 前冻结或停止"
+  - claim: "文件相关，一个 task 就够"
+    reality: "相关文件仍可能有不同的验收或回滚路径；验证或回滚不同时必须拆分"
+  - claim: "只是文档/基础设施，大小无所谓"
+    reality: "大型文档/基础设施变更仍可能不可审查和不可验证；保持 task 可审查并映射到证据"
+
+red_flags:
+  - "spec 包含无法映射到单一验收故事的'另外还要'需求"
+  - "task 写入 internal/**、pkg/**、cmd/** 等宽泛目录而未指定具体文件/模块"
+  - "单个 task 混合 schema 迁移、API 兼容、安全、配置和发布变更"
+  - "验证 ID 无法映射到具体 task"
+  - "无法用一句话解释提议单元的回滚方式"
+  - "子 agent 需要重叠写入范围才能完成 task"
+
+checks:
+  - "spec.md 记录了范围内/范围外、拆分理由、依赖、并行安全性和最低验证等级"
+  - "tasks.md 将每个 task 映射到具体验收标准、声明的文件/模块范围、验证 ID、回滚和完成状态"
+  - "过大或混合范围的工作在 HARD-GATE 前被停止、拆分或记录为人工批准的例外"
+
+rules:
+  粒度启发:
+    - 大小: S
+      形态: "单模块或文档区域，单验收路径，通常 L1-L2 证据"
+      处理: "一个 change 含一到两个 task 通常可接受"
+    - 大小: M
+      形态: "同一领域内两到五个文件/模块，单主要目标，清晰验证集群"
+      处理: "若 task 可独立审查，一个 change 可接受"
+    - 大小: L
+      形态: "跨领域、多风险等级、迁移/发布/安全影响或回滚不清晰"
+      处理: "优先在 HARD-GATE 前分阶段 change 或独立 proposal"
+
+  命令集成:
+    cc-propose: "写最终 spec.md 和 tasks.md 前必须应用本规则"
+    cc-apply: "依赖本规则产出的有界、已声明 task；task 范围过宽或过期时停止"
+    cc-review: "当过大或混合范围导致证据、回滚或审查结论不可靠时标记"
+
+relevance:
+  category: always
+  triggers:
+    - always_loaded_by_cc_propose
+    - when_backlog_split_or_change_bridge_is_defined

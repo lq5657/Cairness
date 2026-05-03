@@ -19,12 +19,12 @@ optional_reads:
 - .cc/context/project-summary.md
 conditional_reads:
   when_testing_facts_are_enriched:
-  - .claude/rules/testing-strategy.md
+  - .claude/runtime/topic-rules/testing-strategy.yaml
   when_configuration_facts_are_enriched:
-  - .claude/rules/configuration.md
+  - .claude/runtime/topic-rules/configuration.yaml
   when_observability_facts_are_enriched:
-  - .claude/rules/observability.md
+  - .claude/runtime/topic-rules/observability.yaml
   when_security_or_auth_boundary_facts_are_enriched:
-  - .claude/rules/security.md
+  - .claude/runtime/topic-rules/security.yaml
   when_external_or_version_sensitive_facts_are_claimed:
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml

@@ -3,8 +3,8 @@ input: "cc-fix order-retry-fix"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-fix.yaml
-  - .claude/rules/verification.md
-  - .claude/rules/debugging-workflow.md
+  - .claude/runtime/topic-rules/verification.yaml
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
 forbidden_actions:
   - treat_unclear_finding_as_confirmed
   - mark_finding_accepted_without_user_choice

@@ -3,8 +3,8 @@ input: "cc-test <change-id> --mode supplement and close an apply minimum verific
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-test.yaml
-  - .claude/rules/testing-strategy.md
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/testing-strategy.yaml
+  - .claude/runtime/topic-rules/verification.yaml
 forbidden_actions:
   - use_cc_test_as_default_apply_minimum_verification
   - mark_mapping_closed_without_evidence

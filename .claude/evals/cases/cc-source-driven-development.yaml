@@ -3,11 +3,11 @@ input: "cc-apply <change-id> using a new third-party SDK API"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-apply.yaml
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml
 forbidden_actions:
   - use_external_api_from_memory_without_source
   - record_unverified_version_claim_as_fact
 expected_checks:
-  - verify local pinned version or official docs
+  - 本地证据不足时，查阅官方文档
   - record source-backed decision in change evidence
 rubric: default

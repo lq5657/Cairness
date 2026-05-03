@@ -1,0 +1,102 @@
+id: testing_strategy
+description: "测试设计、回归验证与测试分层选择规范"
+
+trigger:
+  - "变更新增或修改业务逻辑、数据访问、传输映射或异步行为"
+  - "缺陷修复需要复现或回归证明"
+  - "cc-test、cc-apply、cc-fix 或 cc-review 评估测试层级或验证缺口"
+
+skip:
+  - "不得用本规则在已声明 task/Finding 范围外添加无关测试"
+  - "不得用低层测试规避已要求的链路、集成或手工验证等级"
+
+process:
+  - "识别必须证明已覆盖的风险"
+  - "选择直接覆盖该风险的最低测试层级"
+  - "缺陷修复优先 Red/Green；无法安全产生 Red 时记录例外"
+  - "将每个测试/证据项映射回验证 ID"
+  - "记录跳过的更高层测试和剩余风险"
+
+anti_rationalization:
+  - claim: "已有覆盖率足够了"
+    reality: "已有覆盖可能未覆盖本次变更的风险；必须识别具体变更风险和证据"
+  - claim: "单测更好写"
+    reality: "好写不能证明 handler、repo 或集成风险；必须选择匹配风险的层级"
+  - claim: "手工检查就行"
+    reality: "手工证据需要环境、输入、输出和观察结果；必须记录可复现的手工证据块"
+
+red_flags:
+  - "缺陷修复没有回归证明"
+  - "测试证据无法追溯到验证 ID"
+  - "高风险接口、数据库或异步变更仅靠无关单测关闭"
+
+checks:
+  - "test-spec.md 或 log.md 记录了选择的层级、命令/证据、Red/Green 或例外、剩余风险"
+
+rules:
+  约束等级:
+    强制: "违反则停止执行"
+    警告: "触发时需人工确认或补充说明"
+    验证: "完成后必须检查"
+
+  使用范围:
+    - "新增或修改业务逻辑"
+    - "缺陷修复与回归验证"
+    - "接口链路、数据库访问、异步任务、外部依赖相关变更"
+    - "需要明确测试层级和验证证据的变更"
+
+  基本原则:
+    - "测试目标不是'补几个 case'，而是选择最能证明风险被覆盖的测试层"
+    - "测试层级选择必须能回溯到 spec.md 中对应的需求项或风险点，不能只因为'更好写'就默认选低层测试"
+    - "cc-test 必须说明为什么选择单测、repo 测试、链路回归、集成验证或手工验证"
+    - "bugfix 默认至少要有一个能证明问题已被回收的测试或回归证据"
+    - "cc-review 必须检查测试层级是否与本次风险匹配，而不是只看测试数量"
+
+  推荐分层:
+    - 层级: unit
+      适用场景: "纯业务规则、纯函数、可隔离 service 逻辑"
+      典型对象: "service / domain / util"
+    - 层级: repo
+      适用场景: "SQL 语义、查询条件、事务与持久化行为"
+      典型对象: "repository / dao"
+    - 层级: transport
+      适用场景: "HTTP/gRPC 参数校验、协议映射、错误码"
+      典型对象: "handler / controller / transport"
+    - 层级: chain
+      适用场景: "handler-service-repo 主链路回归"
+      典型对象: "关键业务流程"
+    - 层级: integration
+      适用场景: "外部依赖、消息、真实环境联调"
+      典型对象: "RPC / MQ / 第三方集成"
+    - 层级: manual
+      适用场景: "只能通过人工或平台能力验证的场景"
+      典型对象: "联调、灰度、发布后观察"
+
+  选择规则:
+    - "纯业务规则优先 unit"
+    - "SQL、索引、事务语义优先 repo"
+    - "参数校验、协议映射、错误码优先 transport"
+    - "跨层主链路调整至少补 chain"
+    - "外部依赖、异步投递、消息消费默认至少补 integration 或明确手工回归证据"
+    - "bugfix 若无法写 Red→Green，也必须在 test-spec.md 说明为什么只能选择 chain/integration/manual"
+
+  强制规则:
+    - "禁止只补与风险无关的低层测试来替代关键链路验证"
+    - "禁止 bugfix 完全没有回归证据"
+    - "禁止用'已有测试很多'代替本次变更的层级选择说明"
+    - "禁止将纯手工验证伪装成自动化测试结果"
+
+  最低验证要求:
+    - "test-spec.md 已说明本次选择的测试层级及原因"
+    - "test-spec.md 的测试层级与 spec.md 的需求项/风险点映射一致"
+    - "若为 bugfix，已说明复现方式或回归路径"
+    - "若跳过更高层测试，已说明为什么当前层级足够"
+    - "cc-review 可从测试证据看出风险覆盖边界"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_touches_logic_bug_chain_or_data_access
+    - when_test_boundary_or_substitution_is_in_question
+    - when_testing_facts_are_enriched
+    - when_testing_or_verification_is_explained

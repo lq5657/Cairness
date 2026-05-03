@@ -1,0 +1,92 @@
+id: release
+description: "当变更涉及上线策略、灰度、回滚路径、发布观察窗口时应用本规则"
+
+trigger:
+  - "变更影响 schema、配置、对外契约、feature flag、发布顺序、回滚成本或发布后观察"
+  - "cc-propose / cc-review / cc-archive 需要判断发布方案是否足够安全"
+
+skip:
+  - "不要为已确认的纯内部低风险代码清理强加重型发布方案"
+  - "不要把 git revert 当作充分回滚手段——数据、配置、客户端、开关可能需要额外恢复"
+
+process:
+  - "分类发布风险和受影响的运行时表面"
+  - "定义发布机制、启用/关闭策略、回滚路径和观察窗口"
+  - "检查回滚是否对称；若不对称，记录前滚或补偿方案"
+  - "将观察信号绑定到具体指标、日志或业务检查"
+  - "高风险变更缺少发布/回滚证据时阻止归档"
+
+anti_rationalization:
+  - claim: "直接 revert 就行"
+    reality: "数据/配置/契约变更可能在代码回滚后仍然存在"
+  - claim: "已经有 feature flag 了"
+    reality: "没有负责人和关闭条件的 flag 不算回滚方案"
+  - claim: "监控会发现问题"
+    reality: "监控必须指定具体信号和阈值"
+
+red_flags:
+  - "schema 或契约变更没有兼容窗口"
+  - "单向迁移被描述为可直接回滚"
+  - "依赖 feature flag 但没有 kill-switch 行为"
+  - "归档时发布证据不是最新的"
+
+checks:
+  - "spec.md / review.md / log.md 已记录发布方式、回滚路径、观察窗口和剩余风险"
+
+rules:
+  constraint_levels:
+    mandatory: "违反则停止执行"
+    warning: "触发时需人工确认或补充说明"
+    verification: "完成后必须检查"
+
+  scope:
+    - "数据库 schema、回填、配置、接口契约等高风险变更"
+    - "需要灰度、开关、分批放量的能力"
+    - "涉及回滚成本高或回滚路径不对称的实现"
+    - "发布后必须重点观察成功率、延迟、错误率或业务指标的变更"
+
+  principles:
+    - "变更交付边界不止是代码合并，还包括上线策略可执行、回滚路径可说明、观察窗口可验证"
+    - "cc-propose 时必须明确发布方式和回滚方式"
+    - "回滚不能默认等于 git revert；数据库、配置、接口和开关往往需要额外恢复动作"
+    - "cc-review 必须检查 spec 中声明的发布与回滚方案是否与实际实现、依赖和风险匹配"
+
+  mandatory_rules:
+    - "禁止高风险变更完全没有回滚路径说明"
+    - "禁止依赖 feature flag 或灰度开关却不说明启用/关闭策略"
+    - "禁止把数据库不可逆变更、breaking contract 变更当作随时可直接回滚的普通发布"
+    - "禁止发布观察窗口完全缺失，尤其涉及资金、状态、配置、消息、异步任务的变更"
+
+  warning_scenarios:
+    items:
+      - "灰度发布、分批放量、地域切换、租户分批"
+      - "feature flag / kill switch / 降级开关"
+      - "数据库 expand / migrate / contract"
+      - "接口 breaking change 或客户端迁移窗口"
+      - "回滚需要数据修复、开关回拨、配置恢复、脚本补偿"
+    minimum_explanation:
+      - "发布方式"
+      - "启用/关闭条件"
+      - "回滚路径"
+      - "发布后观察窗口"
+      - "失败触发条件"
+
+  recommendations:
+    - "高风险变更优先采用先兼容、再切流、后清理的渐进式上线方式"
+    - "回滚路径要区分：代码回滚、配置回滚、数据回滚、开关回拨"
+    - "若只能前滚（roll-forward），必须明确说明原因和止损手段"
+    - "发布后观察窗口至少绑定一组可量化信号：成功率、延迟、错误率或关键业务指标"
+
+  verification_checklist:
+    - "spec.md 已记录发布方式、开关策略、回滚路径、观察窗口"
+    - "log.md 可记录发布决策与回滚动作"
+    - "若涉及高风险变更，已说明为什么当前发布方式足够安全"
+    - "若无法直接回滚，已说明前滚/补偿方案"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_touches_release_or_rollback
+    - when_finding_touches_release_or_rollback
+    - when_change_touches_release_or_rollback
+    - when_release_lens_is_triggered

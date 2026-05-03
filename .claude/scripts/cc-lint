@@ -121,6 +121,7 @@ TOPIC_RULE_REQUIRED_MARKERS = [
     "**Verification**",
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
+TOPIC_RULE_YAML_REQUIRED_KEYS = ["id", "description", "trigger", "skip", "process", "anti_rationalization", "red_flags", "checks"]
 RESULT_CONTRACT_FIELDS = ["status", "summary", "writes", "evidence", "risks", "next_action"]
 INTERACTION_CONTRACT_MARKERS = {
     "cc-propose": [
@@ -651,23 +652,42 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
         if not path.exists():
             errors.append(f"{path}: missing topic rule {topic_key}")
             continue
-        text = read(path)
-        if not text.startswith("---\n"):
-            errors.append(f"{path}: topic rule {topic_key} missing YAML frontmatter")
-        for key in ("alwaysApply:", "description:"):
-            if key not in text:
-                errors.append(f"{path}: topic rule {topic_key} missing frontmatter key {key.rstrip(':')}")
-        previous_position = -1
-        for marker in TOPIC_RULE_REQUIRED_MARKERS:
-            position = text.find(marker)
-            if position == -1:
-                errors.append(f"{path}: topic rule {topic_key} missing skill-like section {marker}")
+        if declared.endswith(".yaml"):
+            try:
+                import yaml
+                data = yaml.safe_load(read(path))
+            except Exception:
+                errors.append(f"{path}: topic rule {topic_key} is not valid YAML")
                 continue
-            if position < previous_position:
-                errors.append(f"{path}: topic rule {topic_key} has section out of order {marker}")
-            previous_position = position
-        if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
-            errors.append(f"{path}: topic rule {topic_key} missing anti-rationalization table")
+            if not isinstance(data, dict):
+                errors.append(f"{path}: topic rule {topic_key} YAML root is not a mapping")
+                continue
+            for rk in TOPIC_RULE_YAML_REQUIRED_KEYS:
+                if rk not in data:
+                    errors.append(f"{path}: topic rule {topic_key} missing required key {rk}")
+            ar = data.get("anti_rationalization")
+            if isinstance(ar, list):
+                for i, entry in enumerate(ar):
+                    if isinstance(entry, dict) and ("claim" not in entry or "reality" not in entry):
+                        errors.append(f"{path}: topic rule {topic_key} anti_rationalization[{i}] missing claim/reality")
+        else:
+            text = read(path)
+            if not text.startswith("---\n"):
+                errors.append(f"{path}: topic rule {topic_key} missing YAML frontmatter")
+            for key in ("alwaysApply:", "description:"):
+                if key not in text:
+                    errors.append(f"{path}: topic rule {topic_key} missing frontmatter key {key.rstrip(':')}")
+            previous_position = -1
+            for marker in TOPIC_RULE_REQUIRED_MARKERS:
+                position = text.find(marker)
+                if position == -1:
+                    errors.append(f"{path}: topic rule {topic_key} missing skill-like section {marker}")
+                    continue
+                if position < previous_position:
+                    errors.append(f"{path}: topic rule {topic_key} has section out of order {marker}")
+                previous_position = position
+            if TOPIC_RULE_RATIONALIZATION_HEADER not in text:
+                errors.append(f"{path}: topic rule {topic_key} missing anti-rationalization table")
 
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:

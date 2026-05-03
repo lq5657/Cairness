@@ -1,99 +1,99 @@
 # Subagent Model
 
-## Goal
+## 目标
 
-Use subagents only where they reduce coupling or improve independent verification without weakening the Harness lifecycle.
+仅在能降低耦合或提升独立验证能力、且不削弱 Harness 生命周期的场景下使用 subagent。
 
-The main command flow remains the owner of:
+主命令流程始终拥有以下职责：
 
-- command routing
-- state transitions
-- final file writes
-- task-board and dev-map synchronization
-- validation execution and pass/fail claims
+- 命令路由
+- 状态迁移
+- 最终文件写入
+- task-board 与 dev-map 同步
+- 验证执行与通过/失败判定
 
-Subagents provide bounded evidence, review fragments, verification notes, or scoped patches. Their output is input to the main flow, not an automatic final decision.
+Subagent 提供有界的证据、审查片段、验证备注或限定范围的补丁。其输出是主流程的输入，而非自动生效的最终决策。
 
-## Global Rules
+## 全局规则
 
-- A subagent must not expand the parent command write scope.
-- A subagent must receive a concrete role, input set, output schema, and allowed write scope.
-- A subagent role must be registered in `.claude/rules/role-contracts.md`.
-- Runtime manifests must declare `write_scope_policy: parent_writes_subset`.
-- Runtime manifests must declare `parallel_policy: read_only_parallel_only` for read-only subagent sets, or `parallel_policy: disjoint_writes_only` when any scoped writer exists.
-- Runtime manifests must declare each subagent `output_contract` as `structured_subagent_result`.
-- Runtime manifests must declare `output_contract.evidence_quality` with concrete evidence and risk minimums.
-- Read-only subagents must not edit files.
-- Worker subagents may write only when the task or finding declares a concrete, disjoint write set.
-- Scoped writers may not write final command artifacts such as `review.md`, `test-spec.md`, audit reports, `task-board.md`, or `dev-map.md`; the main flow owns those writes.
-- The main flow must merge, review, and record subagent output before claiming completion.
-- The main flow must run the command's deterministic checks after merging subagent output.
-- Do not run subagents for missing required arguments. Stop first and ask for the required input.
+- Subagent 不得扩大父命令的写权限范围。
+- Subagent 必须接收明确的角色、输入集合、输出 schema 和允许的写范围。
+- Subagent 角色必须在 `.claude/rules/role-contracts.md` 中注册。
+- 运行时 manifest 必须声明 `write_scope_policy: parent_writes_subset`。
+- 运行时 manifest 必须为只读 subagent 集合声明 `parallel_policy: read_only_parallel_only`，或在存在限定范围写入者时声明 `parallel_policy: disjoint_writes_only`。
+- 运行时 manifest 必须将每个 subagent 的 `output_contract` 声明为 `structured_subagent_result`。
+- 运行时 manifest 必须在 `output_contract.evidence_quality` 中声明具体的证据和风险最低要求。
+- 只读 subagent 不得编辑文件。
+- Worker subagent 仅在 task 或 finding 声明了具体且不重叠的写集合时才可写入。
+- 限定范围的写入者不得写入最终命令产物，如 `review.md`、`test-spec.md`、审计报告、`task-board.md` 或 `dev-map.md`；这些写入由主流程负责。
+- 主流程必须在声称完成之前合并、审核并记录 subagent 输出。
+- 主流程必须在合并 subagent 输出后运行命令的确定性检查。
+- 缺少必需参数时不得启动 subagent，应先停止并要求用户提供所需输入。
 
-## Priority Commands
+## 优先命令
 
 ### `cc-review`
 
-Recommended subagents:
+推荐 subagent：
 
-- `spec-reviewer`: read-only Stage 1 compliance review.
-- `code-quality-reviewer`: read-only Stage 2 quality review, only after Stage 1 pass.
+- `spec-reviewer`：只读 Stage 1 合规性审查。
+- `code-quality-reviewer`：只读 Stage 2 代码质量审查，仅在 Stage 1 通过后执行。
 
-The main flow writes `review.md`, `log.md`, and task-board updates.
+主流程负责写入 `review.md`、`log.md` 和 task-board 更新。
 
 ### `cc-inspect-codebase`
 
-Recommended subagents:
+推荐 subagent：
 
-- `mode-audit-reviewer`: read-only evidence collection for the requested mode and scope.
-- Optional scope-split reviewers when the scope is large and can be divided without overlapping conclusions.
+- `mode-audit-reviewer`：针对请求的模式和范围进行只读证据收集。
+- 当范围较大且可在结论不重叠的前提下拆分时，可选用范围拆分审查者。
 
-The main flow deduplicates findings, sets severity, and writes `.cc/audits/<audit-id>/report.md`.
+主流程负责去重 finding、设定严重等级，并写入 `.cc/audits/<audit-id>/report.md`。
 
 ### `cc-test`
 
-Recommended subagents:
+推荐 subagent：
 
-- `test-verifier`: test design, Red/Green evidence collection, and validation mapping recommendations.
+- `test-verifier`：测试设计、Red/Green 证据收集和验证映射建议。
 
-The main flow updates `test-spec.md`, `spec.md`, `log.md`, and task-board records.
+主流程负责更新 `test-spec.md`、`spec.md`、`log.md` 和 task-board 记录。
 
 ### `cc-fix`
 
-Recommended subagents:
+推荐 subagent：
 
-- `root-cause-reviewer`: read-only confirmation that the finding still applies.
-- `fix-worker`: scoped patch worker for the selected finding.
-- `test-verifier`: verification evidence for the fix.
+- `root-cause-reviewer`：只读确认 finding 是否仍然适用。
+- `fix-worker`：针对选定 finding 的限定范围补丁工作者。
+- `test-verifier`：修复的验证证据。
 
-The main flow updates finding status only after fresh verification evidence.
+主流程仅在获得新鲜验证证据后才更新 finding 状态。
 
 ### `cc-apply`
 
-Recommended subagents:
+推荐 subagent：
 
-- `task-worker`: scoped implementation for one selected task or a disjoint file subset of that task.
-- `test-verifier`: verification evidence for the selected task.
-- `context-curator`: dev-map update proposal when module boundaries or verification entrypoints changed.
+- `task-worker`：针对一个选定 task 或该 task 不重叠文件子集的限定范围实现。
+- `test-verifier`：选定 task 的验证证据。
+- `context-curator`：当模块边界或验证入口发生变化时，提出 dev-map 更新建议。
 
-The main flow must keep the one-task-in-progress rule. Do not execute multiple formal tasks in parallel by default.
+主流程必须遵守单 task 进行中规则。默认不得并行执行多个正式 task。
 
-## Merge Requirements
+## 合并要求
 
-For every subagent result, the main flow must record or incorporate:
+对于每个 subagent 结果，主流程必须记录或纳入：
 
-- subagent name and role
-- input scope
-- output summary
-- files changed, or explicit read-only
-- evidence or commands used
-- residual risks or rejected findings
+- subagent 名称和角色
+- 输入范围
+- 输出摘要
+- 变更的文件，或明确标注只读
+- 使用的证据或命令
+- 残余风险或被拒绝的 finding
 
-When a subagent result conflicts with spec, tasks, or another subagent, the main flow must stop and resolve the conflict before writing final command artifacts.
+当 subagent 结果与 spec、tasks 或其他 subagent 冲突时，主流程必须停止并解决冲突，然后才能写入最终命令产物。
 
-## Output Contract
+## 输出契约
 
-Subagent output must not be freeform prose. Every subagent result must provide these fields before the parent merge:
+Subagent 输出不得为自由格式文本。每个 subagent 结果在父流程合并前必须提供以下字段：
 
 - `summary`
 - `scope`
@@ -102,24 +102,24 @@ Subagent output must not be freeform prose. Every subagent result must provide t
 - `risks`
 - `merge_notes`
 
-The main flow must reject freeform subagent output, omitted evidence, or output that cannot explain scope and risks. For read-only agents, `writes` must explicitly say read-only or empty. For scoped writers, `writes` must match the declared scoped write targets.
+主流程必须拒绝自由格式的 subagent 输出、缺失的证据，或无法说明范围和风险的输出。对于只读 agent，`writes` 必须明确标注只读或为空。对于限定范围的写入者，`writes` 必须与声明的限定写入目标一致。
 
-Every subagent result must satisfy the runtime `evidence_quality` declaration:
+每个 subagent 结果必须满足运行时 `evidence_quality` 声明：
 
-- `evidence` must contain at least one concrete file, command, artifact, or observed result.
-- `risks` must contain at least one explicit residual risk or `none` with rationale.
-- Evidence must be traceable; freeform-only summaries are not acceptable evidence.
+- `evidence` 必须包含至少一个具体的文件、命令、产物或观察到的结果。
+- `risks` 必须包含至少一个明确的残余风险，或标注 `none` 并附带理由。
+- 证据必须可追溯；仅有自由格式摘要不构成可接受的证据。
 
-## Deterministic Enforcement
+## 确定性执行
 
-`.claude/scripts/cc-schema-check` validates the runtime subagent contract:
+`.claude/scripts/cc-schema-check` 校验运行时 subagent 契约：
 
-- subagent roles are registered in `.claude/rules/role-contracts.md`
-- scoped writes are a subset of parent command `writes`
-- scoped writer targets are disjoint
-- read-only and proposal-only agents declare no writes
-- final artifacts remain owned by `main_flow`
-- merge requirements record main-flow ownership and disjoint parallel write handling where needed
-- output contracts use `structured_subagent_result`
-- output required fields include `summary`, `scope`, `writes`, `evidence`, `risks`, and `merge_notes`
-- output evidence quality requires concrete references and rejects freeform-only results
+- subagent 角色已在 `.claude/rules/role-contracts.md` 中注册
+- 限定范围的写入是父命令 `writes` 的子集
+- 限定范围写入者的目标互不重叠
+- 只读和仅提案 agent 声明无写入
+- 最终产物仍由 `main_flow` 拥有
+- 合并要求记录了主流程所有权和必要时的不重叠并行写入处理
+- 输出契约使用 `structured_subagent_result`
+- 输出必需字段包括 `summary`、`scope`、`writes`、`evidence`、`risks` 和 `merge_notes`
+- 输出证据质量要求具体引用，拒绝仅有自由格式的结果

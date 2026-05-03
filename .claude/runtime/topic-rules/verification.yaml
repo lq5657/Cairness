@@ -1,0 +1,141 @@
+id: verification
+description: "验证等级与证据规范，声明完成/通过/归档前必须满足"
+
+trigger:
+  - "任何命令声称 done、fixed、pass、test-covered、apply-covered 或 archive"
+  - "变更声明了验证映射、最低验证等级、baseline/delta 或 fresh evidence"
+  - "子 agent 产出验证证据需由主流程合并"
+
+skip:
+  - "不得用本规则在当前 spec/task 映射之外发明新要求"
+  - "不得将旧验证输出直接复用为当前证据，除非显式重跑或标注为历史背景"
+
+process:
+  - "读取声明的验证映射和要求的证据等级"
+  - "对当前 task、Finding 或归档决策运行或检查 fresh evidence"
+  - "将证据类型与等级矩阵比对"
+  - "将缺口记录为 blocked、partial、gap 或 Finding，不得静默放行"
+  - "在声称完成前运行命令的确定性检查"
+
+anti_rationalization:
+  - claim: "代码很简单，build 就够了"
+    reality: "简单不能降低已声明的 L2+ 要求；必须达到声明等级或先更新 spec"
+  - claim: "我改之前测试就通过了"
+    reality: "旧证据不是当前实现的 fresh evidence；必须重跑或记录 blocked/partial"
+  - claim: "子 agent 已经验证了"
+    reality: "子 agent 输出是证据输入，不是最终完成；主流程必须合并证据并运行必要检查"
+
+red_flags:
+  - "done/fixed/pass/archive 没有命令输出或显式替代证据"
+  - "用 cc-test supplement 补做 cc-apply 缺失的最低证据"
+  - "L2 映射到 manual 或 chain，或 L3+ 仅有 package test"
+
+checks:
+  - "证据命令、范围、结果和剩余风险已记录在相关 change 文档中"
+  - "cc-verify 和所需 baseline/delta 检查通过或已记录为阻塞项"
+
+rules:
+  核心原则:
+    - "变更完成的最低标准不是'代码写完'，而是'达到本次声明的最低验证等级'"
+    - "go build ./... 只是最小编译校验，不自动等于'可交付'"
+    - "cc-propose 必须为每个 change 声明最低验证等级和证据要求"
+    - "cc-apply 必须实际执行并闭合当前 task 的最低验证要求，不能只写文档状态"
+    - "cc-propose 必须将主要需求项和风险点映射到验证等级与证据类型"
+    - "cc-test 必须基于映射补强证据或在恢复模式下补齐缺口，不得独立重定义验证目标"
+    - "cc-review 必须检查实际验证是否达到声明等级且与风险匹配"
+    - "没有 fresh verification evidence，不得声称完成/通过/已修复/可归档"
+    - "cc-test 默认只补更高等级或环境型验证；仅在 cc-apply 记录 blocked/partial 时才允许补齐最低缺口"
+
+  fresh_evidence约束:
+    - "fresh verification evidence 指当前实现/修复/结论之后重新获得的验证证据"
+    - "旧验证结果可作为背景，不能直接复用为 done/fixed/pass/archive 结论"
+    - "证据必须直接覆盖当前 task、Finding 或归档结论对应的风险点"
+    - "若无法覆盖全部风险，必须说明替代证据、剩余风险和继续理由"
+
+  自动harness校验:
+    auto_run默认: true
+    fail_on_error默认: true
+    verify_command默认: ".claude/scripts/cc-verify"
+    harness_only选项: "--harness-only 可只检查 Harness 文档闭环"
+    触发点:
+      cc-propose: "生成 spec.md/tasks.md 后，HARD-GATE 前运行 cc-verify --harness-only"
+      cc-apply: "实现前保存 pre-apply baseline；task 文档同步后运行 cc-verify 并执行 cc-delta-check；全部 task 完成切 review 前再次运行"
+      cc-fix: "每轮 Finding 修复和文档同步后运行 cc-verify"
+      cc-test: "更新 test-spec.md、测试证据和映射状态后运行 cc-verify"
+      cc-review: "写入或更新 review.md 后运行 cc-verify --harness-only"
+      cc-archive: "归档前必须运行 cc-verify；切换 spec.status=done 后应再次运行"
+    默认命令: ".claude/scripts/cc-verify --change <change-id>"
+    脚本缺失处理: "记录为 blocked/partial 或 preflight 问题，不得静默跳过"
+    baseline要求: "cc-apply 必须将开发前后验证报告写入 .cc/changes/<change-id>/baseline/，用 cc-delta-check 区分历史失败与新增失败；存在 new-failure 时不得标 done"
+
+  验证等级:
+    - 等级: L1
+      名称: Build
+      最低要求: "go build ./... 成功"
+      适用场景: "纯重构、注释、低风险小改"
+    - 等级: L2
+      名称: Unit/Package
+      最低要求: "受影响 package 的 go test 成功"
+      适用场景: "纯业务逻辑、局部实现单元"
+    - 等级: L3
+      名称: Chain Regression
+      最低要求: "关键调用链回归验证通过"
+      适用场景: "handler-service-repo 链路调整"
+    - 等级: L4
+      名称: Integration/Manual Evidence
+      最低要求: "集成验证或手工验证证据齐全"
+      适用场景: "外部依赖、真实环境联调"
+    - 等级: L5
+      名称: Migration/Release Safety
+      最低要求: "迁移、灰度、回滚验证已说明"
+      适用场景: "schema 变更、高风险上线项"
+
+  证据类型矩阵:
+    说明: "spec.md 中的证据类型必须与最低验证等级匹配，避免把人工说明或链路说明包装成低等级自动化证据"
+    映射:
+      - 等级: L1
+        允许: "build / doc-check"
+        典型错配: "用 manual 代替构建结果或文档检查"
+      - 等级: L2
+        允许: "package / unit"
+        典型错配: "写成 chain 或仅靠 review 人工确认"
+      - 等级: L3
+        允许: "chain"
+        典型错配: "仅有 package test 却声称链路回归"
+      - 等级: L4
+        允许: "integration / manual"
+        典型错配: "缺少环境、输入输出或关键日志证据"
+      - 等级: L5
+        允许: "migration-safety / release-safety"
+        典型错配: "只有测试通过但没有兼容窗口、回滚或观察说明"
+
+  选择规则:
+    - "默认从 L2 起步；仅在确认为纯低风险改动时可降为 L1"
+    - "涉及数据库 schema、回填、兼容窗口、灰度发布时，默认至少 L5"
+    - "涉及外部依赖、消息投递、跨服务联调时，默认至少 L4"
+    - "涉及关键业务主链路调整时，默认至少 L3"
+    - "若无法达到目标等级，必须在 test-spec.md 或 log.md 说明原因、替代证据和剩余风险"
+
+  证据要求:
+    L1: "构建命令与结果；纯文档或审查记录更新可使用 doc-check 并说明检查内容"
+    L2: "受影响 package 的测试命令、结果、失败重现与恢复说明"
+    L3: "调用链回归步骤、输入输出、关键断言"
+    L4: "手工验证步骤、环境信息、关键日志/返回结果"
+    L5: "迁移步骤、兼容性窗口、回滚方案、上线观察项"
+
+  与命令的关系:
+    cc-apply: "按 task 展示已完成验证证据；不得跳过声明的最低等级，不得用 go build ./... 代替 L2+ 证据"
+    cc-fix: "没有针对当前 Finding 的新鲜验证证据，不得将其改为 fixed"
+    cc-test: "默认补强验证计划与证据；recovery 模式必须引用 cc-apply 的 blocked/partial 记录，不得伪造 Red/Green 或手工验证结果"
+    cc-review: "验证等级或证据不足时，应在 Findings 中记录'验证不足'"
+    cc-archive: "没有本轮最新验证证据，不得仅因旧 review 结论存在就直接归档"
+
+relevance:
+  category: always
+  triggers:
+    - always_loaded_by_cc_apply
+    - always_loaded_by_cc_fix
+    - always_loaded_by_cc_review
+    - always_loaded_by_cc_test
+    - when_verification_level_hint_is_needed
+    - when_validation_boundary_is_unclear

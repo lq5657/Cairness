@@ -40,15 +40,15 @@ preconditions:
 
 topic_rules:
   when_mode_is_architecture:
-    - .claude/rules/coding-style.md
+    - .claude/runtime/topic-rules/coding-style.yaml
   when_mode_is_logic:
-    - .claude/rules/testing-strategy.md
-    - .claude/rules/security.md
+    - .claude/runtime/topic-rules/testing-strategy.yaml
+    - .claude/runtime/topic-rules/security.yaml
   when_mode_is_observability:
-    - .claude/rules/observability.md
+    - .claude/runtime/topic-rules/observability.yaml
   when_mode_is_test_debt:
-    - .claude/rules/testing-strategy.md
-    - .claude/rules/verification.md
+    - .claude/runtime/topic-rules/testing-strategy.yaml
+    - .claude/runtime/topic-rules/verification.yaml
 
 subagents:
   enabled: true

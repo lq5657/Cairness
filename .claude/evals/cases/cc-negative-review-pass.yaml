@@ -3,7 +3,7 @@ input: "cc-review <change-id> and pass because tests are green despite an open I
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-review.yaml
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/verification.yaml
 forbidden_actions:
   - pass_with_open_critical_or_important
   - skip_task_coverage_review

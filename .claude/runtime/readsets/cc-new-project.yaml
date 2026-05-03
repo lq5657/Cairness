@@ -29,15 +29,15 @@ conditional_reads:
   - .claude/templates/context/dev-map.md
   - .claude/templates/changes/task-board.md
   when_backlog_split_or_change_bridge_is_defined:
-  - .claude/rules/change-sizing.md
+  - .claude/runtime/topic-rules/change-sizing.yaml
   when_project_research_uses_external_or_version_sensitive_sources:
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml
   when_project_touches_security_boundary:
-  - .claude/rules/security.md
+  - .claude/runtime/topic-rules/security.yaml
   when_project_touches_configuration_strategy:
-  - .claude/rules/configuration.md
+  - .claude/runtime/topic-rules/configuration.yaml
   when_project_touches_observability_strategy:
-  - .claude/rules/observability.md
+  - .claude/runtime/topic-rules/observability.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml

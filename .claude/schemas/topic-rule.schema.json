@@ -1,20 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://cc-spec.local/schemas/topic-rule.schema.json",
-  "title": "cc_spec Harness Topic Rule Frontmatter",
+  "title": "cc_spec Harness Topic Rule",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "alwaysApply",
-    "description"
-  ],
-  "properties": {
-    "alwaysApply": {
-      "type": "boolean"
+  "oneOf": [
+    {
+      "description": "Legacy markdown frontmatter format",
+      "required": ["alwaysApply", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "alwaysApply": { "type": "boolean" },
+        "description": { "type": "string", "minLength": 1 }
+      }
     },
-    "description": {
-      "type": "string",
-      "minLength": 1
+    {
+      "description": "Structured YAML topic rule format",
+      "required": ["id", "description", "trigger", "skip", "process", "anti_rationalization", "red_flags", "checks"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "trigger": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "skip": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "process": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "anti_rationalization": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim", "reality"],
+            "properties": {
+              "claim": { "type": "string" },
+              "reality": { "type": "string" },
+              "response": { "type": "string" }
+            }
+          },
+          "minItems": 1
+        },
+        "red_flags": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "checks": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "rules": {},
+        "relevance": {
+          "type": "object",
+          "required": ["category", "triggers"],
+          "additionalProperties": false,
+          "properties": {
+            "category": { "type": "string", "enum": ["always", "change_type", "default_skip"] },
+            "triggers": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          }
+        }
+      }
     }
-  }
+  ]
 }

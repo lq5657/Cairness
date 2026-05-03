@@ -1,12 +1,12 @@
-# Technology Decision Model
+# 技术决策模型
 
-## Purpose
+## 目的
 
-Technology decisions are project or change constraints that affect architecture, dependencies, verification, deployment, or long-term maintenance.
+技术决策是影响架构、依赖、验证、部署或长期维护的项目级或变更级约束。
 
-The Harness keeps the decision protocol language-neutral and moves language-specific options into runtime technology catalogs.
+Harness 将决策协议保持语言无关，并将语言特定选项移入运行时技术目录。
 
-## Runtime Assets
+## 运行时资产
 
 ```text
 .claude/runtime/protocol.yaml
@@ -15,51 +15,51 @@ The Harness keeps the decision protocol language-neutral and moves language-spec
 .claude/schemas/technology-decision-catalog.schema.json
 ```
 
-`protocol.yaml` defines the generic behavior:
+`protocol.yaml` 定义通用行为：
 
-- Resolve the active language profile before loading a technology catalog.
-- Load the catalog declared by the active language profile.
-- Ask only decisions triggered by the current project or change context.
-- Present a recommendation, alternatives, adoption reasons, rejection reasons, and pending risks.
-- Require explicit user confirmation for blocking `P0` decisions.
-- Record unresolved choices as pending, not as final architecture.
+- 在加载技术目录之前，先解析当前活跃的语言 profile。
+- 加载活跃语言 profile 声明的目录。
+- 仅询问由当前项目或变更上下文触发的决策。
+- 展示推荐方案、备选方案、采纳理由、排除理由和待定风险。
+- 对阻断性 `P0` 决策要求用户显式确认。
+- 将未解决的选择记录为 pending，而非最终架构。
 
-`runtime/languages/<language>.yaml` points to the active catalog:
+`runtime/languages/<language>.yaml` 指向活跃目录：
 
 ```yaml
 technology_decisions:
   catalog: .claude/runtime/technology/<language>.yaml
 ```
 
-`runtime/technology/<language>.yaml` contains the language-specific decision groups and options. Go can mention `chi`, Gin, GORM, `sqlc`, NATS, Kafka, and `slog`; another language profile should provide its own equivalent choices without changing the generic protocol.
+`runtime/technology/<language>.yaml` 包含语言特定的决策组和选项。Go 可以涉及 `chi`、Gin、GORM、`sqlc`、NATS、Kafka 和 `slog`；其他语言 profile 应提供各自的等价选项，而不改变通用协议。
 
-## Language Profile Resolution
+## 语言 Profile 解析
 
-The active language profile is resolved before technology decisions:
+活跃语言 profile 在技术决策之前解析：
 
-1. Read explicit project state from `.cc/context/project-definition.md` or `.cc/context/project-context.md`.
-2. If project state is missing, inspect repository markers declared by each language profile.
-3. If multiple profiles match or no profile matches, ask the user to choose.
-4. For a new project without code facts, always ask the user to confirm the language / ecosystem, even when only one profile is installed.
-5. After confirmation, load the selected profile's technology catalog.
+1. 从 `.cc/context/project-definition.md` 或 `.cc/context/project-context.md` 读取显式项目状态。
+2. 如果项目状态缺失，检查各语言 profile 声明的仓库标记文件。
+3. 如果多个 profile 匹配或没有 profile 匹配，询问用户选择。
+4. 对于没有代码事实的新项目，即使只安装了一个 profile，也必须询问用户确认语言/生态系统。
+5. 确认后，加载所选 profile 的技术目录。
 
-`language_profile.default` is only the bundled default profile for this Harness package. It must not silently decide the language for a new project.
+`language_profile.default` 仅是本 Harness 包的内置默认 profile。它不得在新项目中静默决定语言。
 
-## Command Behavior
+## 命令行为
 
-`cc-new-project` uses the catalog for project-level choices. It should ask `P0` decisions that affect the initial architecture, dependency set, or MVP route. It may defer non-blocking `P1` decisions when they do not affect the first change.
+`cc-new-project` 使用目录进行项目级选择。它应询问影响初始架构、依赖集或 MVP 路线的 `P0` 决策。当非阻断性 `P1` 决策不影响第一个变更时，可以延后处理。
 
-`cc-propose` uses the catalog for change-level choices. It should ask only the decision groups triggered by the current change. For example, adding an MQ consumer may trigger `async_messaging`; changing a simple handler should not reopen the entire project technology stack.
+`cc-propose` 使用目录进行变更级选择。它应仅询问由当前变更触发的决策组。例如，添加 MQ 消费者可能触发 `async_messaging`；修改一个简单 handler 不应重新打开整个项目技术栈。
 
-Runtime readsets model this as on-demand input: `cc-propose` does not include the language technology catalog in `always_reads`; it exposes it under `conditional_reads.when_technology_decision_is_required`. A proposal must first classify whether the requested change actually requires a new or changed technology decision. If not, it should rely on project context, dev map, existing code, and topic rules instead of reading the catalog.
+运行时 readset 将此建模为按需输入：`cc-propose` 不将语言技术目录包含在 `always_reads` 中；而是在 `conditional_reads.when_technology_decision_is_required` 下暴露它。提案必须先判断所请求的变更是否确实需要新的或变更的技术决策。如果不需要，应依赖项目上下文、dev map、现有代码和 topic rules，而非读取目录。
 
-Mature alternative checks are related but distinct. A technology catalog provides curated project or language options; a mature alternative check asks whether the current problem already has a mature local pattern, official standard, or established open-source approach worth comparing before custom implementation. It is triggered only when local reuse is unclear and custom build cost, operational risk, dependency impact, or long-term maintenance cost is meaningful. Results are recorded in the existing `spec.md` mature alternative, solution comparison, and technology decision sections.
+成熟替代方案检查与此相关但有所不同。技术目录提供经过筛选的项目或语言选项；成熟替代方案检查则询问当前问题是否已有成熟的本地模式、官方标准或成熟的开源方案值得在自定义实现之前进行比较。仅当本地复用不明确且自建成本、运维风险、依赖影响或长期维护成本有实质意义时才触发。结果记录在现有 `spec.md` 的成熟替代方案、方案对比和技术决策章节中。
 
-`cc-init` does not load the catalog by default. It should record directly observed project facts and unresolved unknowns from context files and low-cost repository evidence. A future `cc-enrich-context` mode may use the catalog only as an explicit fact-finding aid for existing projects; it must record observed choices and unresolved facts, not ask the user to reselect technology unless the user explicitly wants a redesign.
+`cc-init` 默认不加载目录。它应从上下文文件和低成本仓库证据中记录直接观察到的项目事实和未解决的未知项。未来的 `cc-enrich-context` 模式可能仅将目录作为现有项目的显式事实发现辅助工具；它必须记录观察到的选择和未解决的事实，而非要求用户重新选择技术——除非用户明确希望重新设计。
 
-## Project State Outputs
+## 项目状态输出
 
-Project-level decisions are recorded in:
+项目级决策记录在：
 
 ```text
 .cc/context/project-definition.md
@@ -68,22 +68,22 @@ Project-level decisions are recorded in:
 .cc/context/dev-map.md
 ```
 
-Change-level decisions are recorded in:
+变更级决策记录在：
 
 ```text
 .cc/changes/<change-id>/spec.md
 .cc/changes/<change-id>/log.md
 ```
 
-## Confirmation Standard
+## 确认标准
 
-A blocking technology decision is resolved only when the output includes:
+阻断性技术决策仅在输出包含以下内容时视为已解决：
 
-- Selected option.
-- Alternatives considered.
-- Why the selected option fits this project or change.
-- Why rejected options are not used now.
-- Remaining risk or pending follow-up.
-- User confirmation or an explicit pending status.
+- 选定方案。
+- 已考虑的备选方案。
+- 为什么选定方案适合本项目或本变更。
+- 为什么被排除的方案当前不采用。
+- 剩余风险或待跟进事项。
+- 用户确认或显式的 pending 状态。
 
-If user confirmation is missing, the command must keep the decision pending and avoid presenting downstream work as ready.
+如果缺少用户确认，命令必须将决策保持为 pending，并避免将下游工作呈现为就绪状态。

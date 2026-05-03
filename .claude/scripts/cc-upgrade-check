@@ -44,8 +44,10 @@ def check_version_docs(claude_root: Path, issues: list[Issue]) -> dict[str, str]
     require(changelog_path, "file", issues)
     require(upgrade_path, "file", issues)
     version = read(version_path).strip() if version_path.exists() else ""
-    if version and upgrade_path.exists() and f"Upgrade To {version}" not in read(upgrade_path):
-        add(issues, "E_UPGRADE002", upgrade_path, f"missing upgrade section for current version {version}")
+    if version and upgrade_path.exists():
+        content = read(upgrade_path)
+        if f"Upgrade To {version}" not in content and f"升级到 {version}" not in content:
+            add(issues, "E_UPGRADE002", upgrade_path, f"missing upgrade section for current version {version}")
     if version and changelog_path.exists() and version not in read(changelog_path):
         add(issues, "E_UPGRADE003", changelog_path, f"missing changelog entry for current version {version}")
     return {"version": version}

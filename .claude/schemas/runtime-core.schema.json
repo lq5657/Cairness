@@ -185,7 +185,7 @@
       },
       "additionalProperties": {
         "type": "string",
-        "pattern": "^\\.claude/rules/.+\\.md$"
+        "pattern": "^\\.claude/runtime/topic-rules/.+\\.(md|yaml)$"
       }
     },
     "default_runtime_rules": {

@@ -61,9 +61,9 @@ interaction_contract:
 
 topic_rules:
   when_verification_level_hint_is_needed:
-    - .claude/rules/verification.md
+    - .claude/runtime/topic-rules/verification.yaml
   when_test_level_hint_is_needed:
-    - .claude/rules/testing-strategy.md
+    - .claude/runtime/topic-rules/testing-strategy.yaml
 
 steps:
   - select_findings_for_this_change

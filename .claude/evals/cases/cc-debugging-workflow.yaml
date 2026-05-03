@@ -3,8 +3,8 @@ input: "cc-fix <change-id> for an open finding"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-fix.yaml
-  - .claude/rules/debugging-workflow.md
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
+  - .claude/runtime/topic-rules/verification.yaml
 forbidden_actions:
   - treat_reviewer_text_as_proven_root_cause
   - skip_feedback_loop_because_patch_seems_obvious

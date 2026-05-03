@@ -14,28 +14,28 @@ always_reads:
 - .cc/changes/<change-id>/spec.md
 - .cc/changes/<change-id>/tasks.md
 - .cc/changes/task-board.md
-- .claude/rules/testing-strategy.md
-- .claude/rules/verification.md
+- .claude/runtime/topic-rules/testing-strategy.yaml
+- .claude/runtime/topic-rules/verification.yaml
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/changes/<change-id>/log.md
 conditional_reads:
   when_change_touches_database:
-  - .claude/rules/database-changes.md
+  - .claude/runtime/topic-rules/database-changes.yaml
   when_change_touches_external_contract:
-  - .claude/rules/api-compatibility.md
+  - .claude/runtime/topic-rules/api-compatibility.yaml
   when_change_touches_configuration:
-  - .claude/rules/configuration.md
+  - .claude/runtime/topic-rules/configuration.yaml
   when_change_touches_observability:
-  - .claude/rules/observability.md
+  - .claude/runtime/topic-rules/observability.yaml
   when_change_touches_release_or_rollback:
-  - .claude/rules/release.md
+  - .claude/runtime/topic-rules/release.yaml
   when_change_touches_security_boundary:
-  - .claude/rules/security.md
+  - .claude/runtime/topic-rules/security.yaml
   when_recovery_requires_debugging_a_failure:
-  - .claude/rules/debugging-workflow.md
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
   when_test_depends_on_external_tooling_or_version_sensitive_behavior:
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml

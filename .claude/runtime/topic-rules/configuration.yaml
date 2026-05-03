@@ -1,0 +1,105 @@
+id: configuration
+description: "当变更涉及配置项、环境变量、开关、密钥来源或环境差异时应用本规则"
+
+trigger:
+  - "变更新增、删除、重命名或修改配置项、环境变量、feature flag、密钥来源"
+  - "默认值、必填性、解析方式、作用域或不同环境行为发生变化"
+  - "cc-review 需要核对配置契约、代码读取点和部署环境影响"
+
+skip:
+  - "不涉及运行期配置或部署输入的普通业务逻辑不加载本规则"
+  - "不用它替代安全规则；敏感值、凭证和脱敏风险仍需加载 security"
+  - "不把测试常量或局部函数参数误判为部署配置"
+
+process:
+  - "列出配置名、默认值、必填性、作用域、来源和环境差异"
+  - "检查读取点是否集中，是否存在业务深处散读环境变量"
+  - "评估默认值、密钥来源、开关启停和回滚影响"
+  - "将配置契约写入 spec 或 project-context，并用验证证据闭合"
+
+anti_rationalization:
+  - claim: "本地默认值方便启动。"
+    reality: "本地便利默认值可能成为生产不安全默认值。"
+    response: "标明环境差异和生产安全默认行为。"
+  - claim: "只新增一个环境变量。"
+    reality: "未记录的环境变量会让部署、回滚和排障失效。"
+    response: "记录名称、默认值、必填性和注入来源。"
+  - claim: "Secret 在示例里是假值。"
+    reality: "示例和 fixture 容易被复制到真实环境。"
+    response: "使用占位符并说明来源与脱敏策略。"
+
+red_flags:
+  - "生产敏感值进入源码、模板、fixture 或日志"
+  - "配置默认值变化但未说明各环境影响"
+  - "业务逻辑深处新增 os.Getenv 或等价散读"
+  - "删除配置但未确认旧部署流程、任务或回滚版本不再依赖"
+
+checks:
+  - "spec.md 或 .cc/context/project-context.md 已记录配置契约和环境差异"
+  - "配置读取、注入、校验和默认值路径可定位"
+  - "开关启停、密钥来源和回滚影响已验证或记录为风险"
+
+rules:
+  constraint_levels:
+    mandatory: "违反则停止执行"
+    warning: "触发时需人工确认或补充说明"
+    verification: "完成后必须检查"
+
+  scope:
+    - "新增、删除、重命名配置项或环境变量"
+    - "修改配置默认值、必填性、解析方式或作用域"
+    - "新增 feature flag、灰度开关、降级开关"
+    - "修改密钥、凭证、连接串、第三方接入配置来源"
+    - "依赖不同环境（dev、test、staging、prod）出现差异化行为"
+
+  principles:
+    - "配置项必须被显式声明，不能只存在于代码读取逻辑里"
+    - "默认值必须说明是否安全；'方便本地跑起来'不等于'适合生产默认值'"
+    - "配置读取应集中在启动期或依赖注入层，不应在业务深处散落读取环境变量"
+    - "cc-review 必须检查：spec 中声明的配置契约、实际代码读取点和默认行为是否一致"
+
+  mandatory:
+    - "禁止新增配置项但不在 spec.md 中记录名称、默认值、必填性和影响范围"
+    - "禁止在业务逻辑深处直接散读 os.Getenv 或等价环境读取"
+    - "禁止将生产敏感值写入源码、模板、测试夹具或示例配置"
+    - "禁止修改关键配置默认值而不说明对现网或各环境的影响"
+    - "禁止删除仍被旧部署流程、旧任务或回滚版本依赖的配置项"
+
+  warning_scenarios:
+    items:
+      - "配置默认值变化"
+      - "配置从可选变必填，或从必填变可选"
+      - "配置作用域变化：全局到局部，或局部到全局"
+      - "不同环境行为分叉"
+      - "feature flag、新开关、灰度参数"
+      - "密钥来源、轮转方式、注入方式变化"
+    minimum_explanation:
+      - "配置名"
+      - "默认值与是否安全"
+      - "必填性"
+      - "生效范围"
+      - "环境差异"
+      - "回滚影响"
+
+  recommendations:
+    - "在配置结构体、加载函数或启动模块集中完成解析和校验"
+    - "新增配置项时，优先提供显式默认值或启动期失败策略，不要隐式兜底"
+    - "feature flag 要说明启用条件、关闭条件和清理计划"
+    - "若依赖平台注入（Kubernetes Secret、CI/CD 变量、Vault 等），应在 spec 或 project-context 中记录来源"
+
+  minimum_verification:
+    - "spec.md 已记录新增或变更配置项及其默认值、必填性、环境差异"
+    - ".cc/context/project-context.md 的'配置管理'约定已反映当前项目真实做法"
+    - "配置读取点、注入点、校验点可定位"
+    - "若涉及敏感配置，来源与脱敏策略已说明"
+    - "若涉及开关，已说明启用/关闭策略与回滚影响"
+
+relevance:
+  category: change_type
+  triggers:
+    - when_task_touches_configuration
+    - when_finding_touches_configuration
+    - when_change_touches_configuration
+    - when_configuration_facts_are_enriched
+    - when_configuration_mechanism_is_explained
+

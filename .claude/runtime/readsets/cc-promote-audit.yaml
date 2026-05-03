@@ -17,6 +17,6 @@ optional_reads:
 - .claude/runtime/commands/cc-propose.yaml
 conditional_reads:
   when_verification_level_hint_is_needed:
-  - .claude/rules/verification.md
+  - .claude/runtime/topic-rules/verification.yaml
   when_test_level_hint_is_needed:
-  - .claude/rules/testing-strategy.md
+  - .claude/runtime/topic-rules/testing-strategy.yaml

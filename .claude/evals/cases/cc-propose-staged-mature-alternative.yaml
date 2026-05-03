@@ -3,7 +3,7 @@ input: "cc-propose 为通用任务调度能力设计实现方案"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-propose.yaml
-  - .claude/rules/source-driven-development.md
+  - .claude/runtime/topic-rules/source-driven-development.yaml
 forbidden_actions:
   - treat_stage_confirmation_as_final_hard_gate_confirmation
   - use_micro_spec_for_change_with_external_contract_or_release_risk
