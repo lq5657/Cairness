@@ -23,10 +23,12 @@ After the common skill flow, read the command and checkpoint for the literal com
 
 ## Verification
 
-For Harness-only context changes, run:
+When maintaining Harness context-command contracts, docs, templates, or validation assets, run:
 
 ```bash
 .claude/scripts/cc-verify --harness-only
 ```
+
+Do not use `.cc/context/*` to record Harness maintenance context. `.cc/context/*` is reserved for the target project that adopts this Harness.
 
 If the command contract says no file writes are allowed, report the check result without modifying files.

@@ -2,7 +2,7 @@
 
 AI 驱动的软件开发生命周期治理框架。本仓库包含一个面向多语言项目的 Claude Code Spec-driven Harness。
 
-Go 是首个支持的语言 profile。框架根目录即仓库根目录：`.claude/` 存放可升级的 Harness 资产，`.cc/` 存放项目状态。
+框架根目录即仓库根目录：`.claude/` 存放可升级的 Harness 资产，`.cc/` 是使用本框架的目标项目状态目录。
 
 ## 语言支持
 
@@ -78,7 +78,7 @@ AI 和用户生成的项目状态位于：
 .cc/knowledge/*
 ```
 
-`.claude/` 是可升级的框架状态。`.cc/` 是项目状态，框架升级时不得覆盖。
+`.claude/` 是可升级的框架资产。`.cc/` 是使用本框架的目标项目状态，框架升级和 Harness 自身维护时不得覆盖或写入 Harness 维护事实。
 
 `.cc/context/domain-language.md` 是 spec、tasks、review、test 和系统讲解共享的领域词汇表。仅在需要时按业务上下文拆分，不按编程语言拆分。
 

@@ -7,6 +7,8 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 长期记忆只能保存能提升后续准确性的事实、导航和决策。单次执行细节、未确认猜测、敏感信息和临时调试输出不得沉淀。
 
+本策略中的 `.cc/*` 记忆层只适用于使用本 Harness 的目标项目。维护 `cc_spec` Harness 自身时，维护事实应进入 `.claude/CHANGELOG.md`、`.claude/UPGRADE.md`、`.claude/docs/maintenance/*`、runtime manifest、schema、eval、脚本或提交记录，不得写入 `.cc/*`。
+
 #### 1. 记忆分层
 
 | 层级 | 文件 | 内容 | 主要写入命令 |
