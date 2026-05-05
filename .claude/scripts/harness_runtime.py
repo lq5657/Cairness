@@ -29,6 +29,8 @@ LANGUAGE_ALIASES = {
     "cxx": "cpp",
     "go": "golang",
     "golang": "golang",
+    "java": "java",
+    "jvm": "java",
     "py": "python",
     "python": "python",
     "python3": "python",

@@ -44,6 +44,7 @@ conditional_reads:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md

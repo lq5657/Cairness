@@ -42,13 +42,16 @@ conditional_reads:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
   when_technology_decision_is_required:
   - .claude/runtime/protocol/technology-decisions.yaml
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
   - .claude/runtime/technology/cpp.yaml
   - .claude/runtime/technology/golang.yaml
+  - .claude/runtime/technology/java.yaml
   - .claude/runtime/technology/python.yaml

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added Java runtime support with a language profile, technology decision catalog, Maven/Gradle/script-aware verification entrypoints, default fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added C++ runtime support with a `cpp` language profile, technology decision catalog, Makefile-backed fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added Python runtime support with a language profile, technology decision catalog, default fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added a shared domain language context asset at `.cc/context/domain-language.md` with matching template, runtime reads, preflight coverage, and memory policy guidance that splits by bounded context rather than programming language.

@@ -1,0 +1,261 @@
+version: 1
+language: java
+summary: Java technology decision catalog for project-level and change-level clarification.
+
+decision_policy:
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  confirmation_required_levels:
+    - P0
+  default_behavior:
+    - offer_recommendation_with_alternatives
+    - explain_adoption_and_rejection_reasons
+    - record_unresolved_choices_as_pending
+    - never_write_recommendation_as_user_decision_without_confirmation
+
+decision_groups:
+  - id: runtime_shape
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - runtime_shape_not_selected
+    question: Select the Java runtime shape.
+    default_recommendation: spring_boot_service
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: spring_boot_service
+        label: Spring Boot service
+        recommended_when:
+          - http_api_or_worker_service_is_expected
+          - team_wants_mature_java_defaults
+        tradeoffs:
+          - Strong ecosystem for web, config, data, observability, and deployment conventions
+          - Framework surface is broad and requires disciplined module and configuration boundaries
+      - id: library
+        label: Library
+        recommended_when:
+          - reusable_jvm_component_is_primary
+          - no_runtime_process_needed
+        tradeoffs:
+          - Smallest runtime surface and easiest dependency boundary
+          - Consumers own lifecycle, configuration, and integration testing
+      - id: cli
+        label: CLI
+        recommended_when:
+          - operator_or_batch_invoked_tool
+          - service_runtime_not_required
+        tradeoffs:
+          - Simple execution model for tools and one-off workflows
+          - Packaging, argument parsing, and distribution conventions must be explicit
+      - id: worker
+        label: Worker
+        recommended_when:
+          - queue_or_scheduled_processing_is_primary
+          - asynchronous_flow_dominates
+        tradeoffs:
+          - Fits message consumers, schedulers, and long-running processors
+          - Requires retry, idempotency, dead-letter, and operational visibility decisions
+
+  - id: build_tool
+    level: P0
+    scope: project
+    applies_when:
+      - new_java_project
+      - build_entrypoint_not_selected
+    question: Select the Java build tool.
+    default_recommendation: maven_wrapper
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: maven_wrapper
+        label: Maven Wrapper
+        recommended_when:
+          - reproducible_standard_build_is_needed
+          - team_prefers_convention_over_configuration
+        tradeoffs:
+          - Stable conventions and predictable CI entrypoints through mvnw
+          - Less flexible than Gradle for complex custom build logic
+      - id: gradle_wrapper
+        label: Gradle Wrapper
+        recommended_when:
+          - multi_module_or_custom_build_logic_expected
+          - team_already_uses_gradle
+        tradeoffs:
+          - Flexible build model and strong multi-module support
+          - Build scripts can become complex without governance
+      - id: maven_global
+        label: Global Maven
+        recommended_when:
+          - platform_ci_provides_maven
+          - wrapper_files_are_not_allowed
+        tradeoffs:
+          - Simple for controlled enterprise CI images
+          - Local and CI Maven version drift must be managed explicitly
+      - id: gradle_global
+        label: Global Gradle
+        recommended_when:
+          - platform_ci_provides_gradle
+          - wrapper_files_are_not_allowed
+        tradeoffs:
+          - Avoids checked-in wrapper files
+          - Higher risk of version drift across machines
+
+  - id: application_framework
+    level: P0
+    scope: both
+    applies_when:
+      - java_application_framework_required
+      - application_framework_not_selected
+    question: Select the Java application framework.
+    default_recommendation: spring_boot
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: spring_boot
+        label: Spring Boot
+        recommended_when:
+          - mainstream_enterprise_service_defaults_are_desired
+          - broad_integrations_are_expected
+        tradeoffs:
+          - Mature defaults for HTTP, data, config, metrics, and deployment
+          - Requires attention to auto-configuration, bean boundaries, and startup profile drift
+      - id: quarkus
+        label: Quarkus
+        recommended_when:
+          - fast_startup_or_native_image_is_important
+          - cloud_native_jvm_runtime_is_preferred
+        tradeoffs:
+          - Strong fit for fast startup and container-native services
+          - Extension and native-image compatibility must be verified per dependency
+      - id: micronaut
+        label: Micronaut
+        recommended_when:
+          - compile_time_di_and_fast_startup_are_priorities
+          - lightweight_service_framework_preferred
+        tradeoffs:
+          - Lower reflection overhead and clear service ergonomics
+          - Smaller ecosystem than Spring in many organizations
+      - id: no_framework
+        label: No application framework
+        recommended_when:
+          - library_or_small_cli
+          - framework_overhead_not_justified
+        tradeoffs:
+          - Minimal dependency and runtime surface
+          - HTTP, configuration, dependency injection, and observability must be designed explicitly if needed
+
+  - id: test_stack
+    level: P0
+    scope: both
+    applies_when:
+      - java_tests_required
+      - test_stack_not_selected
+    question: Select the Java test stack.
+    default_recommendation: junit5
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: junit5
+        label: JUnit 5
+        recommended_when:
+          - modern_java_tests_are_needed
+          - ecosystem_integration_is_important
+        tradeoffs:
+          - Strong default for modern Java unit and integration tests
+          - Requires dependency and build plugin alignment
+      - id: junit5_mockito
+        label: JUnit 5 + Mockito
+        recommended_when:
+          - service_logic_has_collaborators
+          - unit_tests_need_test_doubles
+        tradeoffs:
+          - Efficient unit feedback for layered services
+          - Mock-heavy tests can hide contract and wiring failures
+      - id: testcontainers
+        label: JUnit 5 + Testcontainers
+        recommended_when:
+          - database_or_broker_integration_is_risky
+          - realistic_dependency_behavior_is_needed
+        tradeoffs:
+          - Strong integration evidence for stateful dependencies
+          - Slower tests and Docker availability become validation constraints
+      - id: testng
+        label: TestNG
+        recommended_when:
+          - existing_project_uses_testng
+          - suite_or_group_semantics_are_required
+        tradeoffs:
+          - Useful for legacy or suite-heavy test organizations
+          - Less common default for new mainstream Java services than JUnit 5
+
+  - id: data_access
+    level: P0
+    scope: both
+    applies_when:
+      - persistence_required
+      - java_data_access_not_selected
+    question: Select the Java data access approach.
+    default_recommendation: spring_data_jpa
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: spring_data_jpa
+        label: Spring Data JPA
+        recommended_when:
+          - spring_boot_selected
+          - relational_crud_dominates
+        tradeoffs:
+          - Productive repository abstraction and broad documentation
+          - Requires care around lazy loading, transaction boundaries, and query performance
+      - id: jdbi
+        label: Jdbi
+        recommended_when:
+          - explicit_sql_control_is_desired
+          - domain_queries_are_specific
+        tradeoffs:
+          - Clear SQL ownership and lighter abstraction
+          - More manual mapping and transaction convention work
+      - id: mybatis
+        label: MyBatis
+        recommended_when:
+          - xml_or_mapper_sql_style_is_team_standard
+          - explicit_query_mapping_is_preferred
+        tradeoffs:
+          - Good control over SQL and mapping behavior
+          - Mapper sprawl and runtime query coverage need governance
+      - id: jdbc_only
+        label: JDBC only
+        recommended_when:
+          - dependency_footprint_must_stay_minimal
+          - data_access_surface_is_small
+        tradeoffs:
+          - Minimal dependency and maximum transparency
+          - Boilerplate and error handling conventions must be handled manually
+      - id: no_database
+        label: No database
+        recommended_when:
+          - stateless_service_or_library
+          - persistence_owned_by_downstream
+        tradeoffs:
+          - Keeps MVP lighter and avoids premature storage choices
+          - Later persistence introduction will require schema, migration, and rollback decisions

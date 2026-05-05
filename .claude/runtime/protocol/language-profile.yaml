@@ -21,4 +21,5 @@ language_profile:
   profiles:
     cpp: .claude/runtime/languages/cpp.yaml
     golang: .claude/runtime/languages/golang.yaml
+    java: .claude/runtime/languages/java.yaml
     python: .claude/runtime/languages/python.yaml

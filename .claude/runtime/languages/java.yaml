@@ -1,0 +1,49 @@
+version: 1
+language: java
+
+project_detection:
+  module_file: pom.xml
+  module_files:
+    - pom.xml
+    - build.gradle
+    - build.gradle.kts
+    - settings.gradle
+    - settings.gradle.kts
+    - mvnw
+    - gradlew
+  source_globs:
+    - "**/*.java"
+  lockfiles:
+    - gradle.lockfile
+    - gradle/libs.versions.toml
+  confidence:
+    module_file: high
+    source_globs: medium
+    lockfiles: medium
+
+verification:
+  unit:
+    command:
+      - sh
+      - -c
+      - "if [ -x ./mvnw ]; then ./mvnw test; elif [ -f pom.xml ] && command -v mvn >/dev/null 2>&1; then mvn test; elif [ -x ./gradlew ]; then ./gradlew test; elif { [ -f build.gradle ] || [ -f build.gradle.kts ]; } && command -v gradle >/dev/null 2>&1; then gradle test; elif [ -f scripts/test.sh ]; then sh scripts/test.sh; else echo 'No Java test entrypoint found; expected mvnw, Maven pom.xml, gradlew, Gradle build file, or scripts/test.sh' >&2; exit 1; fi"
+    evidence: unit
+  static:
+    command:
+      - sh
+      - -c
+      - "if [ -x ./mvnw ]; then ./mvnw -q -DskipTests compile; elif [ -f pom.xml ] && command -v mvn >/dev/null 2>&1; then mvn -q -DskipTests compile; elif [ -x ./gradlew ]; then ./gradlew classes; elif { [ -f build.gradle ] || [ -f build.gradle.kts ]; } && command -v gradle >/dev/null 2>&1; then gradle classes; elif [ -f scripts/compile.sh ]; then sh scripts/compile.sh; else echo 'No Java compile entrypoint found; expected mvnw, Maven pom.xml, gradlew, Gradle build file, or scripts/compile.sh' >&2; exit 1; fi"
+    evidence: build
+  lint:
+    command:
+      - sh
+      - -c
+      - "if [ -x ./mvnw ]; then ./mvnw -q checkstyle:check; elif [ -f pom.xml ] && command -v mvn >/dev/null 2>&1; then mvn -q checkstyle:check; elif [ -x ./gradlew ]; then ./gradlew check; elif { [ -f build.gradle ] || [ -f build.gradle.kts ]; } && command -v gradle >/dev/null 2>&1; then gradle check; else echo 'No Java lint entrypoint found; configure Maven Checkstyle, Gradle check, or a project-specific lint command' >&2; exit 1; fi"
+    evidence: build
+    optional: true
+
+fixtures:
+  default: .claude/fixtures/java-tooling-service
+
+technology_decisions:
+  catalog: .claude/runtime/technology/java.yaml
