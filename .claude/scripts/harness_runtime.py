@@ -25,6 +25,9 @@ PENDING_LANGUAGE_VALUES = {
 LANGUAGE_ALIASES = {
     "go": "golang",
     "golang": "golang",
+    "py": "python",
+    "python": "python",
+    "python3": "python",
 }
 
 

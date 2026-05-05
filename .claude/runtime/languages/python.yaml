@@ -1,0 +1,54 @@
+version: 1
+language: python
+
+project_detection:
+  module_file: pyproject.toml
+  module_files:
+    - pyproject.toml
+    - setup.py
+    - setup.cfg
+    - requirements.txt
+    - Pipfile
+  source_globs:
+    - "**/*.py"
+  lockfiles:
+    - uv.lock
+    - poetry.lock
+    - Pipfile.lock
+    - requirements.lock
+  confidence:
+    module_file: high
+    source_globs: medium
+    lockfiles: medium
+
+verification:
+  unit:
+    command:
+      - python3
+      - -m
+      - unittest
+      - discover
+      - -s
+      - tests
+    evidence: unit
+  static:
+    command:
+      - python3
+      - -m
+      - compileall
+      - -q
+      - .
+    evidence: build
+  lint:
+    command:
+      - ruff
+      - check
+      - .
+    evidence: build
+    optional: true
+
+fixtures:
+  default: .claude/fixtures/python-cli-package
+
+technology_decisions:
+  catalog: .claude/runtime/technology/python.yaml

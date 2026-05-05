@@ -1,0 +1,245 @@
+version: 1
+language: python
+summary: Python technology decision catalog for project-level and change-level clarification.
+
+decision_policy:
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  confirmation_required_levels:
+    - P0
+  default_behavior:
+    - offer_recommendation_with_alternatives
+    - explain_adoption_and_rejection_reasons
+    - record_unresolved_choices_as_pending
+    - never_write_recommendation_as_user_decision_without_confirmation
+
+decision_groups:
+  - id: runtime_shape
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - runtime_shape_not_selected
+    question: Select the Python runtime shape.
+    default_recommendation: cli_or_library
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: cli_or_library
+        label: CLI or library
+        recommended_when:
+          - local_tooling_or_reusable_package
+          - no_long_running_service_required
+        tradeoffs:
+          - Simple packaging and verification path for automation or reusable modules
+          - HTTP lifecycle, background jobs, and deployment health checks must be added explicitly later
+      - id: http_api
+        label: HTTP API
+        recommended_when:
+          - external_or_browser_clients_call_service
+          - request_response_contract_needed
+        tradeoffs:
+          - Clear integration boundary and familiar deployment model
+          - Requires routing, request validation, error response, and runtime process conventions
+      - id: worker
+        label: Worker
+        recommended_when:
+          - primary_flow_is_async_processing
+          - queue_or_batch_jobs_are_core
+        tradeoffs:
+          - Fits scheduled jobs, consumers, and data processing flows
+          - Requires retry, idempotency, dead-letter, and observability decisions
+      - id: data_app
+        label: Data app
+        recommended_when:
+          - notebooks_or_pipelines_drive_value
+          - data_transformation_is_primary
+        tradeoffs:
+          - Matches analytics, ETL, and ML-oriented workflows
+          - Needs stricter decisions for reproducibility, data contracts, and environment isolation
+
+  - id: packaging_tool
+    level: P0
+    scope: project
+    applies_when:
+      - new_python_project
+      - dependency_entrypoint_not_selected
+    question: Select the Python packaging and dependency entrypoint.
+    default_recommendation: pyproject_uv
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: pyproject_uv
+        label: pyproject.toml + uv
+        recommended_when:
+          - fast_reproducible_local_workflows
+          - modern_python_packaging_preferred
+        tradeoffs:
+          - Fast dependency resolution and a standard project metadata entrypoint
+          - Team and CI images must have uv installed or explicitly bootstrap it
+      - id: poetry
+        label: Poetry
+        recommended_when:
+          - team_already_uses_poetry
+          - package_publishing_is_expected
+        tradeoffs:
+          - Mature dependency and packaging workflow with lockfile support
+          - Adds Poetry-specific commands and environment management conventions
+      - id: setuptools_pip
+        label: setuptools + pip
+        recommended_when:
+          - existing_project_uses_setup_files
+          - minimal_tooling_change_required
+        tradeoffs:
+          - Broad compatibility with legacy Python projects and CI images
+          - Reproducibility depends on explicit lock or constraints files
+      - id: requirements_only
+        label: requirements.txt only
+        recommended_when:
+          - small_application_not_packaged
+          - deployment_platform_installs_requirements_directly
+        tradeoffs:
+          - Very simple adoption path
+          - Weak package metadata and harder dependency grouping
+
+  - id: web_framework
+    level: P0
+    scope: both
+    applies_when:
+      - http_api_selected
+      - web_framework_not_selected
+    question: Select the Python HTTP framework.
+    default_recommendation: fastapi
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: fastapi
+        label: FastAPI
+        recommended_when:
+          - typed_request_response_models_are_useful
+          - async_or_openapi_contract_needed
+        tradeoffs:
+          - Strong fit for typed APIs and generated OpenAPI documentation
+          - Requires decisions for validation model ownership and async boundary discipline
+      - id: flask
+        label: Flask
+        recommended_when:
+          - small_service_or_existing_flask_codebase
+          - minimal_framework_surface_preferred
+        tradeoffs:
+          - Lightweight and familiar
+          - Larger systems need explicit conventions for validation, dependency injection, and response shape
+      - id: django
+        label: Django
+        recommended_when:
+          - admin_database_and_full_stack_patterns_are_needed
+          - product_crud_surface_is_large
+        tradeoffs:
+          - Batteries-included stack for ORM, admin, auth, and migrations
+          - Heavier framework boundary and stronger project layout assumptions
+      - id: no_web_framework
+        label: No web framework
+        recommended_when:
+          - python_is_library_or_worker
+          - http_boundary_not_required
+        tradeoffs:
+          - Avoids unnecessary service dependencies
+          - HTTP integration must be revisited if API requirements appear
+
+  - id: test_runner
+    level: P0
+    scope: both
+    applies_when:
+      - python_tests_required
+      - test_runner_not_selected
+    question: Select the Python test runner.
+    default_recommendation: pytest
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: pytest
+        label: pytest
+        recommended_when:
+          - team_wants_rich_fixtures
+          - broad_plugin_ecosystem_is_useful
+        tradeoffs:
+          - Strong default for application and library tests
+          - Adds pytest dependency and plugin version decisions
+      - id: unittest
+        label: unittest
+        recommended_when:
+          - standard_library_only_is_required
+          - dependency_footprint_must_be_minimal
+        tradeoffs:
+          - No external dependency and works in constrained environments
+          - Less ergonomic fixtures and parametrization than pytest
+      - id: integration_first
+        label: Integration-first pytest
+        recommended_when:
+          - external_contracts_or_data_flows_dominate
+          - unit_boundaries_are_thin
+        tradeoffs:
+          - Better evidence for end-to-end behavior
+          - Slower feedback unless test data and service doubles are managed carefully
+
+  - id: static_quality
+    level: P0
+    scope: both
+    applies_when:
+      - python_quality_gate_required
+      - static_quality_not_selected
+    question: Select the Python static quality gate.
+    default_recommendation: ruff_plus_compileall
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: ruff_plus_compileall
+        label: ruff + compileall
+        recommended_when:
+          - fast_lint_and_syntax_gate_needed
+          - team_wants_low_ci_overhead
+        tradeoffs:
+          - Fast linting and syntax validation with small operational overhead
+          - Type correctness still needs a separate mypy or pyright decision
+      - id: mypy
+        label: mypy
+        recommended_when:
+          - type_annotations_are_project_standard
+          - domain_logic_benefits_from_static_types
+        tradeoffs:
+          - Catches important interface drift in typed code
+          - Requires sustained annotation discipline and dependency stub management
+      - id: pyright
+        label: pyright
+        recommended_when:
+          - strict_type_feedback_is_required
+          - editor_type_workflow_already_uses_pyright
+        tradeoffs:
+          - Fast and strict type analysis
+          - Adds Node-based tooling unless provided by the platform
+      - id: compileall_only
+        label: compileall only
+        recommended_when:
+          - minimal_bootstrap_before_lint_policy
+          - legacy_code_has_large_lint_debt
+        tradeoffs:
+          - Validates syntax with no external dependency
+          - Does not enforce style, imports, typing, or common bug patterns

@@ -48,4 +48,6 @@ conditional_reads:
   - .claude/runtime/protocol/technology-decisions.yaml
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/languages/python.yaml
   - .claude/runtime/technology/golang.yaml
+  - .claude/runtime/technology/python.yaml

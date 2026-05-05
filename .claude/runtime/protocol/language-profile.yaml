@@ -20,3 +20,4 @@ language_profile:
       - .cc/context/project-context.md
   profiles:
     golang: .claude/runtime/languages/golang.yaml
+    python: .claude/runtime/languages/python.yaml

@@ -43,6 +43,7 @@ conditional_reads:
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/golang.yaml
+  - .claude/runtime/languages/python.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-apply.yaml

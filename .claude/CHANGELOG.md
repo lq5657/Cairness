@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added Python runtime support with a language profile, technology decision catalog, default fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added a shared domain language context asset at `.cc/context/domain-language.md` with matching template, runtime reads, preflight coverage, and memory policy guidance that splits by bounded context rather than programming language.
 - Strengthened the `cc-fix` diagnostic workflow with a required feedback loop, falsifiable hypotheses, temporary instrumentation cleanup, and expanded debug log fields before marking findings fixed.
 - Added staged `cc-propose` interaction guidance, `micro` proposal profile constraints, and on-demand mature alternative checks that write into existing change artifacts instead of creating new documents.
