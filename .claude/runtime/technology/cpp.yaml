@@ -1,0 +1,245 @@
+version: 1
+language: cpp
+summary: C++ technology decision catalog for project-level and change-level clarification.
+
+decision_policy:
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  confirmation_required_levels:
+    - P0
+  default_behavior:
+    - offer_recommendation_with_alternatives
+    - explain_adoption_and_rejection_reasons
+    - record_unresolved_choices_as_pending
+    - never_write_recommendation_as_user_decision_without_confirmation
+
+decision_groups:
+  - id: runtime_shape
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - runtime_shape_not_selected
+    question: Select the C++ runtime shape.
+    default_recommendation: library_or_cli
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: library_or_cli
+        label: Library or CLI
+        recommended_when:
+          - local_tool_or_reusable_native_component
+          - deployment_surface_should_stay_small
+        tradeoffs:
+          - Simple runtime boundary and low service-operation overhead
+          - API, process lifecycle, and packaging conventions must be added when integration expands
+      - id: long_running_service
+        label: Long-running service
+        recommended_when:
+          - native_performance_required_for_online_requests
+          - process_lifecycle_and_observability_are_known
+        tradeoffs:
+          - Good fit for latency-sensitive native services
+          - Requires explicit decisions for config, signal handling, health checks, and deployment safety
+      - id: worker
+        label: Worker
+        recommended_when:
+          - compute_or_io_pipeline_is_async
+          - queue_or_batch_boundary_is_primary
+        tradeoffs:
+          - Fits consumers, batch processors, and native compute pipelines
+          - Requires decisions for idempotency, retries, checkpoints, and failure recovery
+      - id: embedded_component
+        label: Embedded component
+        recommended_when:
+          - code_runs_inside_host_process
+          - abi_or_platform_constraints_dominate
+        tradeoffs:
+          - Keeps native code close to host integration needs
+          - Requires strict ABI, toolchain, and platform compatibility governance
+
+  - id: build_system
+    level: P0
+    scope: project
+    applies_when:
+      - new_cpp_project
+      - build_entrypoint_not_selected
+    question: Select the C++ build system.
+    default_recommendation: cmake
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: cmake
+        label: CMake
+        recommended_when:
+          - cross_platform_builds_are_needed
+          - broad_tooling_compatibility_is_important
+        tradeoffs:
+          - Widely supported by IDEs, CI images, package managers, and native toolchains
+          - Project quality depends on disciplined target modeling and preset conventions
+      - id: makefile
+        label: Makefile
+        recommended_when:
+          - small_project_or_fixture
+          - simple_unix_like_build_is_enough
+        tradeoffs:
+          - Transparent and easy to inspect for small native projects
+          - Cross-platform dependency modeling and larger target graphs become hard to maintain
+      - id: meson
+        label: Meson
+        recommended_when:
+          - fast_incremental_builds_are_important
+          - team_accepts_meson_ninja_tooling
+        tradeoffs:
+          - Clean build definitions and strong speed profile
+          - Smaller ecosystem than CMake in some enterprise and embedded environments
+      - id: bazel
+        label: Bazel
+        recommended_when:
+          - monorepo_or_remote_cache_required
+          - hermetic_builds_are_a_goal
+        tradeoffs:
+          - Strong reproducibility and cache behavior for large codebases
+          - Higher onboarding and rule maintenance cost
+
+  - id: dependency_management
+    level: P0
+    scope: both
+    applies_when:
+      - external_native_dependencies_required
+      - dependency_management_not_selected
+    question: Select the C++ dependency management approach.
+    default_recommendation: vcpkg_or_conan
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: vcpkg_or_conan
+        label: vcpkg or Conan
+        recommended_when:
+          - third_party_native_libraries_are_expected
+          - reproducible_dependency_resolution_is_needed
+        tradeoffs:
+          - Provides a managed dependency entrypoint and lock-oriented workflows
+          - Requires choosing one ecosystem and documenting binary cache or build-from-source policy
+      - id: system_packages
+        label: System packages
+        recommended_when:
+          - platform_image_controls_dependencies
+          - dependency_set_is_small_and_stable
+        tradeoffs:
+          - Simple runtime images when OS packages are centrally managed
+          - Version drift across developer machines and CI must be controlled explicitly
+      - id: vendored_sources
+        label: Vendored sources
+        recommended_when:
+          - supply_chain_or_air_gap_constraints_apply
+          - dependency_count_is_low
+        tradeoffs:
+          - High control over reviewed dependency source
+          - Increases repository size and manual update responsibility
+      - id: no_external_dependencies
+        label: No external dependencies
+        recommended_when:
+          - standard_library_is_sufficient
+          - bootstrap_speed_is_more_important_than_ecosystem_reuse
+        tradeoffs:
+          - Minimal supply-chain and build complexity
+          - More custom implementation may be needed if requirements expand
+
+  - id: test_framework
+    level: P0
+    scope: both
+    applies_when:
+      - cpp_tests_required
+      - test_framework_not_selected
+    question: Select the C++ test framework.
+    default_recommendation: googletest
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: googletest
+        label: GoogleTest
+        recommended_when:
+          - team_wants_common_cpp_testing_standard
+          - ci_reporting_and_fixtures_are_needed
+        tradeoffs:
+          - Mature, widely understood, and integrates well with CMake and CI
+          - Adds dependency and target wiring overhead
+      - id: catch2
+        label: Catch2
+        recommended_when:
+          - lightweight_test_binary_preferred
+          - readable_test_cases_are_important
+        tradeoffs:
+          - Good ergonomics with lighter project setup
+          - Ecosystem conventions may differ from enterprise GoogleTest defaults
+      - id: doctest
+        label: doctest
+        recommended_when:
+          - very_fast_header_only_tests_are_desired
+          - small_library_needs_low_friction_tests
+        tradeoffs:
+          - Minimal setup and fast compile profile
+          - Less standard in some large C++ organizations
+      - id: custom_main
+        label: Custom test main
+        recommended_when:
+          - fixture_or_tiny_project
+          - no_test_dependency_allowed
+        tradeoffs:
+          - No external test framework dependency
+          - Reporting, fixtures, parametrization, and failure diagnostics stay minimal
+
+  - id: language_standard
+    level: P0
+    scope: both
+    applies_when:
+      - cpp_standard_not_selected
+      - compiler_compatibility_affects_scope
+    question: Select the C++ language standard baseline.
+    default_recommendation: cpp20
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: cpp17
+        label: C++17
+        recommended_when:
+          - older_compiler_compatibility_required
+          - dependency_ecosystem_targets_cpp17
+        tradeoffs:
+          - Conservative baseline for broad compiler and platform support
+          - Misses newer standard library and language features that reduce custom code
+      - id: cpp20
+        label: C++20
+        recommended_when:
+          - modern_compilers_are_available
+          - stronger_language_features_reduce_complexity
+        tradeoffs:
+          - Good modern default for new native projects
+          - Requires confirming compiler versions in CI and deployment images
+      - id: cpp23
+        label: C++23
+        recommended_when:
+          - toolchain_is_current_and_controlled
+          - project_benefits_from_latest_standard_features
+        tradeoffs:
+          - Access to newer language and library features
+          - Higher compatibility risk across compilers, platforms, and dependencies

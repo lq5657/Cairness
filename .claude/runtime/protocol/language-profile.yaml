@@ -19,5 +19,6 @@ language_profile:
       - .cc/context/project-summary.md
       - .cc/context/project-context.md
   profiles:
+    cpp: .claude/runtime/languages/cpp.yaml
     golang: .claude/runtime/languages/golang.yaml
     python: .claude/runtime/languages/python.yaml

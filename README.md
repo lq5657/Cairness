@@ -10,6 +10,7 @@ Go 是首个支持的语言 profile。框架根目录即仓库根目录：`.clau
 |------|-----------------|--------------------|----|
 | Go | `.claude/runtime/languages/golang.yaml` | `.claude/runtime/technology/golang.yaml` | 可用 |
 | Python | `.claude/runtime/languages/python.yaml` | `.claude/runtime/technology/python.yaml` | 可用 |
+| C++ | `.claude/runtime/languages/cpp.yaml` | `.claude/runtime/technology/cpp.yaml` | 可用 |
 
 新语言应作为 runtime language profile 和 technology catalog 添加，而非新建顶层语言目录。
 

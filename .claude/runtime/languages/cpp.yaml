@@ -1,0 +1,50 @@
+version: 1
+language: cpp
+
+project_detection:
+  module_file: CMakeLists.txt
+  module_files:
+    - CMakeLists.txt
+    - Makefile
+    - meson.build
+    - BUILD.bazel
+    - conanfile.txt
+    - conanfile.py
+    - vcpkg.json
+  source_globs:
+    - "**/*.cpp"
+    - "**/*.cc"
+    - "**/*.cxx"
+    - "**/*.hpp"
+    - "**/*.h"
+  lockfiles:
+    - conan.lock
+    - vcpkg-configuration.json
+  confidence:
+    module_file: high
+    source_globs: medium
+    lockfiles: medium
+
+verification:
+  unit:
+    command:
+      - make
+      - test
+    evidence: unit
+  static:
+    command:
+      - make
+      - build
+    evidence: build
+  lint:
+    command:
+      - clang-tidy
+      - --version
+    evidence: build
+    optional: true
+
+fixtures:
+  default: .claude/fixtures/cpp-library
+
+technology_decisions:
+  catalog: .claude/runtime/technology/cpp.yaml

@@ -23,6 +23,10 @@ PENDING_LANGUAGE_VALUES = {
     "(待填充)",
 }
 LANGUAGE_ALIASES = {
+    "c++": "cpp",
+    "cplusplus": "cpp",
+    "cpp": "cpp",
+    "cxx": "cpp",
     "go": "golang",
     "golang": "golang",
     "py": "python",
@@ -376,7 +380,8 @@ def canonical_language_name(raw: str, known_profiles: set[str]) -> str:
     if not normalized or normalized in PENDING_LANGUAGE_VALUES:
         return ""
     if not re.fullmatch(r"[a-z][a-z0-9_-]*", normalized):
-        return ""
+        alias = LANGUAGE_ALIASES.get(normalized)
+        return alias if alias and alias in known_profiles else ""
     alias = LANGUAGE_ALIASES.get(normalized)
     if alias and alias in known_profiles:
         return alias

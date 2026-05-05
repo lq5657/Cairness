@@ -20,3 +20,5 @@ jobs:
         run: .claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
       - name: Verify Python Fixture
         run: .claude/scripts/cc-verify --fixture .claude/fixtures/python-cli-package --verbose
+      - name: Verify C++ Fixture
+        run: .claude/scripts/cc-verify --fixture .claude/fixtures/cpp-library --verbose
