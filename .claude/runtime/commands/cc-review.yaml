@@ -92,6 +92,8 @@ topic_rules:
     - .claude/runtime/topic-rules/source-driven-development.yaml
   when_dependency_or_wave_order_is_in_dispute:
     - .claude/runtime/topic-rules/git-workflow.yaml
+  when_code_intelligence_available:
+    - .claude/runtime/topic-rules/code-intelligence.yaml
 
 subagents:
   enabled: true

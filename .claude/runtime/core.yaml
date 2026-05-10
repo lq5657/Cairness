@@ -80,6 +80,7 @@ topic_rules:
   security: .claude/runtime/topic-rules/security.yaml
   source_driven_development: .claude/runtime/topic-rules/source-driven-development.yaml
   git_workflow: .claude/runtime/topic-rules/git-workflow.yaml
+  code_intelligence: .claude/runtime/topic-rules/code-intelligence.yaml
 
 default_runtime_rules:
   - keep_cc_literals

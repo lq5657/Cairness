@@ -43,6 +43,10 @@ runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
 
+topic_rules:
+  when_code_intelligence_available:
+    - .claude/runtime/topic-rules/code-intelligence.yaml
+
 preconditions:
   - claude_scaffold_exists
   - confirm_goal_is_basic_fact_initialization
@@ -56,6 +60,7 @@ steps:
   - identify_project_identity_and_runtime_shape
   - identify_dependency_build_and_start_entries
   - identify_key_directories_configuration_and_test_entries
+  - check_code_intelligence_tooling_availability
   - identify_low_cost_domain_terms_or_leave_pending
   - record_unknowns_for_unconfirmed_high_cost_context
   - load_context_artifact_templates_before_writing

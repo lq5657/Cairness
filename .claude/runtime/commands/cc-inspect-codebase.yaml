@@ -53,6 +53,8 @@ topic_rules:
   when_mode_is_test_debt:
     - .claude/runtime/topic-rules/testing-strategy.yaml
     - .claude/runtime/topic-rules/verification.yaml
+  when_code_intelligence_available:
+    - .claude/runtime/topic-rules/code-intelligence.yaml
 
 subagents:
   enabled: true

@@ -27,5 +27,7 @@ conditional_reads:
   when_mode_is_test_debt:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   - .claude/runtime/topic-rules/verification.yaml
+  when_code_intelligence_available:
+  - .claude/runtime/topic-rules/code-intelligence.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
