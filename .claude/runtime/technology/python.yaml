@@ -243,3 +243,42 @@ decision_groups:
         tradeoffs:
           - Validates syntax with no external dependency
           - Does not enforce style, imports, typing, or common bug patterns
+
+  - id: logging
+    level: P1
+    scope: project
+    applies_when:
+      - python_project
+      - logging_not_selected
+    question: Select the Python logging library.
+    default_recommendation: loguru
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/project-context.md
+    options:
+      - id: loguru
+        label: loguru
+        recommended_when:
+          - modern_python_logging_needed
+          - ergonomic_api_preferred
+        tradeoffs:
+          - Zero-boilerplate setup with structured logging, rotation, and serialization built-in
+          - Adds an external dependency; not available in standard library
+      - id: stdlib_logging
+        label: logging (stdlib)
+        recommended_when:
+          - standard_library_only_is_required
+          - dependency_footprint_must_be_minimal
+        tradeoffs:
+          - No external dependency and available everywhere
+          - Requires explicit configuration for handlers, formatters, and structured output
+      - id: structlog
+        label: structlog
+        recommended_when:
+          - structured_logging_is_primary_requirement
+          - observability_pipeline_already_uses_key_value_logs
+        tradeoffs:
+          - Excellent structured logging with renderer flexibility
+          - Steeper adoption curve and additional configuration compared to loguru
