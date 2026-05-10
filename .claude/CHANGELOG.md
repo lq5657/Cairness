@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added a `code-intelligence` topic rule that integrates with [code-review-graph](https://github.com/tirth8205/code-review-graph) (MCP-based, SQLite knowledge graph, 24-language tree-sitter parsing) to reduce token consumption in `cc-review`, `cc-inspect-codebase`, and `cc-explain-system`. The rule loads conditionally when code-review-graph MCP tools are detected, enforces a SHA-256 freshness gate before trusting graph results, supports automatic incremental update of stale indexes, and falls back silently to standard full-file reading when unavailable. `cc-init` gains a tooling check that suggests `code-review-graph build` when the CLI is installed but no graph database exists.
+- Added `loguru` as the default Python logging library in the Python technology decision catalog (`logging` decision group, P1, auto-selected). Python projects created through the framework now default to loguru for structured logging with rotation and serialization, with `stdlib logging` and `structlog` as alternatives.
 - Added Java runtime support with a language profile, technology decision catalog, Maven/Gradle/script-aware verification entrypoints, default fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added C++ runtime support with a `cpp` language profile, technology decision catalog, Makefile-backed fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added Python runtime support with a language profile, technology decision catalog, default fixture, protocol registration, readset coverage, and CI fixture verification.
