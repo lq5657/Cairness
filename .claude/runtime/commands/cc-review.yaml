@@ -136,6 +136,7 @@ steps:
 auto_validation:
   - .claude/scripts/cc-role-check --command cc-review --change <change-id>
   - .claude/scripts/cc-verify --harness-only --change <change-id>
+  - .claude/scripts/cc-budget-check
 
 result_contract:
   profile: .claude/runtime/result-contracts/standard-command.yaml

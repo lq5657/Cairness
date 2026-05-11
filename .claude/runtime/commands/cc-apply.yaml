@@ -136,6 +136,7 @@ auto_validation:
   - .claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>
+  - .claude/scripts/cc-budget-check
 
 result_contract:
   profile: .claude/runtime/result-contracts/standard-command.yaml

@@ -110,11 +110,14 @@ validation:
       - cc-verify --harness-only
     apply:
       - cc-verify
+      - cc-budget-check
     fix:
       - cc-verify
+      - cc-budget-check
     test:
       - cc-verify
     review:
       - cc-verify --harness-only
+      - cc-budget-check
     archive:
       - cc-verify
