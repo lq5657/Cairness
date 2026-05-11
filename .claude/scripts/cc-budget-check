@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""cc-budget-check — token 和 duration 预算检查。
+
+从 events.jsonl 遥测数据中读取最近事件的 token_count 和 duration_ms，
+与 harness.config.yaml 中的 budget 限制对比，超限时输出警告。
+
+用法:
+  cc-budget-check              检查最近事件是否超预算
+  cc-budget-check --all        检查所有事件
+  cc-budget-check --json       JSON 格式输出
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def load_harness_config(project_root: Path) -> dict[str, Any]:
+    path = project_root / ".claude" / "harness.config.yaml"
+    if not path.exists():
+        return {}
+    try:
+        import yaml
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+
+def discover_events(project_root: Path) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    changes_dir = project_root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return events
+    for event_file in sorted(changes_dir.rglob("events.jsonl")):
+        if ".claude" in event_file.parts:
+            continue
+        for line in event_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return events
+
+
+def check_budgets(events: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, Any]:
+    budgets = config.get("budgets", {})
+    if not budgets:
+        return {"status": "no_budgets_configured", "warnings": [], "violations": []}
+
+    token_cfg = budgets.get("token", {})
+    dur_cfg = budgets.get("duration", {})
+    limits = token_cfg.get("limits", {})
+    warn_ratio = token_cfg.get("warn_ratio", 0.7)
+    block_ratio = token_cfg.get("block_ratio", 0.95)
+    warn_sec = dur_cfg.get("warn_seconds", 300)
+    block_sec = dur_cfg.get("block_seconds", 600)
+
+    warnings: list[dict[str, Any]] = []
+    violations: list[dict[str, Any]] = []
+    by_command: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for e in events:
+        cmd = e.get("command", "unknown")
+        tokens = e.get("token_count", 0)
+        duration = e.get("duration_ms", 0)
+        if isinstance(tokens, (int, float)) and tokens > 0:
+            by_command[cmd].append({"tokens": int(tokens), "duration_ms": int(duration) if isinstance(duration, (int, float)) else 0,
+                                    "event_id": e.get("event_id", "?"), "change_id": e.get("change_id", "?")})
+
+    for cmd, entries in by_command.items():
+        limit = limits.get(cmd.replace("cc-", ""))
+        if not limit:
+            continue
+        for entry in entries:
+            t = entry["tokens"]
+            d = entry["duration_ms"]
+            if t >= limit * block_ratio:
+                violations.append({
+                    "command": cmd, "event_id": entry["event_id"], "change_id": entry["change_id"],
+                    "tokens": t, "limit": limit, "ratio": round(t / limit, 2),
+                    "message": f"{cmd} consumed {t} tokens ({t * 100 // limit}% of {limit} limit)"
+                })
+            elif t >= limit * warn_ratio:
+                warnings.append({
+                    "command": cmd, "event_id": entry["event_id"], "change_id": entry["change_id"],
+                    "tokens": t, "limit": limit, "ratio": round(t / limit, 2),
+                    "message": f"{cmd} approaching token limit: {t}/{limit} ({t * 100 // limit}%)"
+                })
+            if d > 0 and d >= block_sec * 1000:
+                violations.append({
+                    "command": cmd, "event_id": entry["event_id"], "change_id": entry["change_id"],
+                    "duration_ms": d, "limit_seconds": block_sec,
+                    "message": f"{cmd} took {d / 1000:.0f}s (limit: {block_sec}s)"
+                })
+            elif d > 0 and d >= warn_sec * 1000:
+                warnings.append({
+                    "command": cmd, "event_id": entry["event_id"], "change_id": entry["change_id"],
+                    "duration_ms": d, "limit_seconds": warn_sec,
+                    "message": f"{cmd} approaching duration limit: {d / 1000:.0f}s (warn: {warn_sec}s)"
+                })
+
+    # Per-command stats
+    stats: dict[str, dict[str, Any]] = {}
+    for cmd, entries in by_command.items():
+        if not entries:
+            continue
+        tokens_list = [e["tokens"] for e in entries if e["tokens"] > 0]
+        durations = [e["duration_ms"] for e in entries if e["duration_ms"] > 0]
+        limit = limits.get(cmd.replace("cc-", ""))
+        stats[cmd] = {
+            "count": len(entries),
+            "avg_tokens": sum(tokens_list) // len(tokens_list) if tokens_list else 0,
+            "max_tokens": max(tokens_list) if tokens_list else 0,
+            "avg_duration_ms": sum(durations) // len(durations) if durations else 0,
+            "max_duration_ms": max(durations) if durations else 0,
+            "limit": limit,
+            "within_budget": all(t < limit * warn_ratio for t in tokens_list) if limit and tokens_list else True,
+        }
+
+    status = "violations_found" if violations else ("warnings_found" if warnings else "ok")
+    return {
+        "status": status,
+        "total_events_checked": len(events),
+        "warnings": warnings,
+        "violations": violations,
+        "per_command_stats": stats,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Token and duration budget checker")
+    parser.add_argument("--all", action="store_true", help="Check all events (default: recent only)")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+    args = parser.parse_args()
+
+    root = project_root()
+    config = load_harness_config(root)
+    events = discover_events(root)
+
+    # Default: only check last 20 events for relevance
+    if not args.all:
+        events = events[-20:]
+
+    result = check_budgets(events, config)
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return
+
+    if result["status"] == "no_budgets_configured":
+        print("cc-budget-check: no budgets configured in harness.config.yaml")
+        return
+
+    print(f"cc-budget-check: {result['status']} ({result['total_events_checked']} events checked)")
+    for w in result["warnings"]:
+        print(f"  WARN  {w['message']}")
+    for v in result["violations"]:
+        print(f"  BLOCK {v['message']}")
+
+    if result["per_command_stats"]:
+        print("\n  Per-command token averages:")
+        for cmd, s in sorted(result["per_command_stats"].items()):
+            flag = " !" if not s["within_budget"] else ""
+            limit_str = f"/{s['limit']}" if s.get("limit") else ""
+            print(f"    {cmd:<20} avg={s['avg_tokens']:>6,} tokens{limit_str}  "
+                  f"max={s['max_tokens']:>6,}  n={s['count']}{flag}")
+
+
+if __name__ == "__main__":
+    main()

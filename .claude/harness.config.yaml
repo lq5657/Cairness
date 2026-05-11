@@ -61,6 +61,28 @@ interaction:
     enabled: true
     reset_on_new: "当同类问题出现新选项或参数变化时重置计数器"
 
+budgets:
+  token:
+    warn_ratio: 0.7
+    block_ratio: 0.95
+    limits:
+      propose: 50000
+      apply: 200000
+      review: 150000
+      fix: 100000
+      test: 100000
+      archive: 30000
+      inspect: 150000
+      explain: 100000
+      init: 30000
+      enrich: 30000
+  duration:
+    warn_seconds: 300
+    block_seconds: 600
+  auto_check:
+    enabled: true
+    min_events_for_baseline: 5
+
 validation:
   auto_run: true
   fail_on_error: true

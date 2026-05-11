@@ -168,6 +168,9 @@
         },
         "knowledge-check": {
           "type": "string"
+        },
+        "budget-check": {
+          "type": "string"
         }
       }
     },
