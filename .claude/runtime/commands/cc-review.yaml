@@ -73,6 +73,8 @@ interaction_contract:
       - next_action_must_be_choose_finding_disposition
 
 topic_rules:
+  when_interaction_fatigue_detection_applies:
+    - .claude/runtime/topic-rules/interaction-guidance.yaml
   always:
     - .claude/runtime/topic-rules/verification.yaml
   when_test_boundary_or_substitution_is_in_question:

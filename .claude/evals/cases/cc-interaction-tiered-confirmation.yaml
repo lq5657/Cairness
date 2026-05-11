@@ -1,0 +1,17 @@
+id: cc-interaction-tiered-confirmation
+input: "Configure interaction.confirmation_tiers in harness.config.yaml — Tier 1 always confirms, Tier 2 auto-accepts after 3 consecutive defaults"
+expected_reads:
+  - .claude/harness.config.yaml
+  - .claude/runtime/topic-rules/interaction-guidance.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - downgrade_tier1_confirmation_to_notification
+  - skip_fatigue_detection_reset_when_options_change
+  - auto_accept_tier1_without_explicit_user_choice
+expected_checks:
+  - tier1_blocks include hard_gate_confirm and finding_accepted
+  - tier2 auto-accept triggers after 3 consecutive defaults
+  - fatigue counter resets on option change
+  - interaction topic rule registered in core.yaml
+rubric: default

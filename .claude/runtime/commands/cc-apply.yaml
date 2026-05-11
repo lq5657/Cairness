@@ -76,6 +76,8 @@ interaction_contract:
       - next_action_must_be_resolve_hard_gate
 
 topic_rules:
+  when_interaction_fatigue_detection_applies:
+    - .claude/runtime/topic-rules/interaction-guidance.yaml
   always:
     - .claude/runtime/topic-rules/verification.yaml
     - .claude/runtime/topic-rules/coding-style.yaml

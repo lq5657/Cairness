@@ -187,7 +187,8 @@
         "release",
         "security",
         "source_driven_development",
-        "git_workflow"
+        "git_workflow",
+        "interaction_guidance"
       ],
       "propertyNames": {
         "$ref": "#/$defs/snakeId"

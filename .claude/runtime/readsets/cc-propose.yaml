@@ -26,6 +26,8 @@ conditional_reads:
   - .claude/templates/changes/spec.md
   - .claude/templates/changes/tasks.md
   - .claude/templates/changes/log.md
+  when_interaction_fatigue_detection_applies:
+  - .claude/runtime/topic-rules/interaction-guidance.yaml
   when_validation_boundary_is_unclear:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   when_change_touches_database:

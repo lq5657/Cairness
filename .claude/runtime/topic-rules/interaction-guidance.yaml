@@ -1,0 +1,67 @@
+id: interaction_guidance
+description: "交互疲劳控制 — Tier 1 始终确认，Tier 2 支持疲劳检测和自动降级"
+
+trigger:
+  - "任何需要用户确认的交互点（hard_gate、finding 处置、技术选型、task 拆分、knowledge compounding）"
+  - "harness.config.yaml 中 interaction.confirmation_tiers 已配置"
+
+skip:
+  - "profile 为 strict 时，疲劳检测仍生效但降级策略收紧（Tier 2 改为 min 5 次）"
+  - "profile 为 minimal 时，Tier 2 首次即自动接受默认值"
+
+process:
+  - "读取 harness.config.yaml interaction 段确定当前 tier 配置"
+  - "Tier 1 确认点：hard_gate_confirm、finding_accepted、archive_done → 始终交互，不降级"
+  - "Tier 2 确认点：technology_selection、task_split、knowledge_compounding → 跟踪同类确认历史"
+  - "若同类问题连续 3 次接受默认推荐值 → 第 4 次起自动接受并降级为简短通知"
+  - "若用户某次选择了非默认值 → 重置该类型计数器"
+  - "若问题选项发生变化（新增选项、参数调整）→ 重置计数器，恢复交互确认"
+  - "疲劳检测状态记录在 log.md 中以保持跨会话连续性"
+
+anti_rationalization:
+  - claim: "用户每次都点确认，说明他们需要控制感。"
+    reality: "重复确认产生疲劳，导致用户无脑点击而错过真正重要的决策。"
+    response: "启用 fatigue_detection，真正重要的 Tier 1 确认保持警觉。"
+  - claim: "跳过确认更快。"
+    reality: "跳过关键确认（hard_gate、finding_accepted）会绕过安全门禁。"
+    response: "Tier 1 永远不降级；只降级已验证的 Tier 2 决策。"
+  - claim: "计数器清零会打扰用户。"
+    reality: "选项变化时重置是必要的 — 旧模式的接受不代表新模式也安全。"
+    response: "通知用户'选项已变化，恢复交互确认'并提供变更摘要。"
+
+red_flags:
+  - "Tier 1 确认点被降级或跳过"
+  - "疲劳检测计数器未在选项变化时重置"
+  - "自动接受后未记录通知（用户不知道 AI 做了默认选择）"
+  - "profile strict 下 Tier 2 降级阈值低于 5"
+
+checks:
+  - "harness.config.yaml 中 interaction 段格式正确"
+  - "Tier 1 列表包含 hard_gate_confirm、finding_accepted、archive_done"
+  - "fatigue_detection 配置完整（enabled、reset_on_new）"
+  - "log.md 中记录了疲劳检测状态（当前计数器、最近自动接受记录）"
+
+rules:
+  tier1_blocks:
+    hard_gate_confirm:
+      description: "cc-propose/cc-apply 的 scope 冻结确认"
+      reason: "范围变更直接影响实现边界，必须人工确认"
+    finding_accepted:
+      description: "cc-review 中接受 finding（不修复）"
+      reason: "接受风险是安全决策，必须人工确认并记录"
+    archive_done:
+      description: "cc-archive 标记 done"
+      reason: "归档是不可逆的状态迁移，必须人工确认"
+  tier2_blocks:
+    technology_selection:
+      description: "cc-propose 中的技术选型确认"
+      default_behavior: "接受推荐默认值"
+      triggers_fatigue_detection: true
+    task_split:
+      description: "cc-propose 中的 task 拆分方案确认"
+      default_behavior: "接受建议的拆分粒度"
+      triggers_fatigue_detection: true
+    knowledge_compounding:
+      description: "cc-archive 中的知识沉淀目标确认"
+      default_behavior: "沉淀到推荐的 knowledge 子目录"
+      triggers_fatigue_detection: true

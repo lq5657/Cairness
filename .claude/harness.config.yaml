@@ -41,6 +41,26 @@ docs:
   adoption_dir: ".claude/docs/adoption"
   maintenance_dir: ".claude/docs/maintenance"
 
+interaction:
+  confirmation_tiers:
+    tier1:
+      description: "始终要求用户显式确认的阻塞点"
+      blocks:
+        - hard_gate_confirm
+        - finding_accepted
+        - archive_done
+    tier2:
+      description: "可批量确认或自动降级的决策点"
+      blocks:
+        - technology_selection
+        - task_split
+        - knowledge_compounding
+      auto_accept_after_consecutive_defaults: 3
+      on_auto_accept: "降级为通知，告知用户已自动接受默认值"
+  fatigue_detection:
+    enabled: true
+    reset_on_new: "当同类问题出现新选项或参数变化时重置计数器"
+
 validation:
   auto_run: true
   fail_on_error: true
