@@ -51,6 +51,7 @@ preconditions:
   - branch_matches_change_and_is_not_main
   - save_pre_apply_baseline_before_first_code_edit
   - only_one_task_may_be_in_progress
+  - run_deterministic_topic_rule_detection
 
 interaction_contract:
   mode: interactive_required

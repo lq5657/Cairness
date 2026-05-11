@@ -1,0 +1,167 @@
+version: 1
+description: >-
+  确定性 topic rule 触发模式。基于文件路径和代码内容自动判定哪些 topic rule 应该触发，
+  作为 LLM 自判的补充，降低漏判概率。
+  cc-topic-trigger 脚本读取本文件，对变更文件做模式匹配，输出触发的 rule 列表。
+
+patterns:
+  database_changes:
+    file_globs:
+      - "**/migrations/**"
+      - "**/migration/**"
+      - "**/*.sql"
+      - "**/db/**"
+      - "**/schema/**"
+    content_regex:
+      - "CREATE\\s+(TABLE|INDEX|SEQUENCE|TYPE)"
+      - "ALTER\\s+TABLE"
+      - "DROP\\s+(TABLE|INDEX|COLUMN)"
+      - "migrate\\.(Up|Down|Steps)"
+      - "AddMigration|NewMigration"
+      - "AutoMigrate|CreateTable|AddColumn|DropColumn"
+      - "golang-migrate"
+    import_regex:
+      - "database/sql"
+      - "github\\.com/golang-migrate"
+      - "github\\.com/pressly/goose"
+      - "gorm\\.io/gorm"
+      - "github\\.com/sqlc-dev/sqlc"
+      - "github\\.com/jmoiron/sqlx"
+      - "entgo\\.io/ent"
+
+  api_compatibility:
+    file_globs:
+      - "**/*.proto"
+      - "**/*.openapi.*"
+      - "**/*.swagger.*"
+      - "**/openapi/**"
+    content_regex:
+      - "func\\s+\\w+\\s*\\(.*http\\.ResponseWriter"
+      - "gin\\.(HandlerFunc|Context)"
+      - "echo\\.(HandlerFunc|Context)"
+      - "grpc\\.(UnaryHandler|StreamHandler|ClientConn)"
+      - "\\.Handle\\(|\\.HandleFunc\\("
+      - "@app\\.route|@router\\."
+      - "protobuf|proto\\.Marshal|proto\\.Unmarshal"
+    import_regex:
+      - "github\\.com/gin-gonic/gin"
+      - "github\\.com/labstack/echo"
+      - "google\\.golang\\.org/grpc"
+      - "github\\.com/go-chi/chi"
+      - "net/http"
+      - "github\\.com/gorilla/mux"
+
+  configuration:
+    file_globs:
+      - "**/.env*"
+      - "**/*.config.*"
+      - "**/config/**"
+      - "**/configs/**"
+      - "**/*.properties"
+      - "**/*.ini"
+      - "**/*.cfg"
+    content_regex:
+      - "os\\.Getenv|os\\.LookupEnv"
+      - "viper\\.(Get|Set|Bind|Read|Write)"
+      - "godotenv\\.(Load|Read|Parse)"
+      - "envconfig\\.(Process|Usage)"
+      - "flag\\.(String|Int|Bool|Parse)"
+    import_regex:
+      - "github\\.com/spf13/viper"
+      - "github\\.com/joho/godotenv"
+      - "github\\.com/kelseyhightower/envconfig"
+      - "github\\.com/caarlos0/env"
+
+  observability:
+    file_globs:
+      - "**/log/**"
+      - "**/logging/**"
+      - "**/metrics/**"
+      - "**/tracing/**"
+    content_regex:
+      - "slog\\.(Info|Error|Warn|Debug|Log|With)"
+      - "logrus\\.(Info|Error|Warn|Debug|WithField|WithFields)"
+      - "zap\\.(Info|Error|Warn|Debug|L\\(\\)|S\\(\\))"
+      - "prometheus\\.(Counter|Gauge|Histogram|Summary)"
+      - "metrics\\.(Inc|Add|Set|Observe)"
+      - "opentelemetry|otel\\."
+      - "span\\.(Start|End|SetAttributes|AddEvent)"
+    import_regex:
+      - "log/slog"
+      - "github\\.com/sirupsen/logrus"
+      - "go\\.uber\\.org/zap"
+      - "github\\.com/prometheus/client_golang"
+      - "go\\.opentelemetry\\.io/otel"
+
+  security:
+    file_globs:
+      - "**/auth/**"
+      - "**/authz/**"
+      - "**/middleware/*auth*"
+      - "**/security/**"
+      - "**/permission/**"
+    content_regex:
+      - "jwt\\.(New|Sign|Parse|Validate|Token)"
+      - "bcrypt\\.(GenerateFromPassword|CompareHashAndPassword)"
+      - "oauth2?\\.(Config|Token|Client)"
+      - "password\\.(Hash|Verify|Check|Validate)"
+      - "rbac\\.|casbin\\."
+      - "auth\\.(Sign|Verify|Login|Register|Token)"
+    import_regex:
+      - "github\\.com/golang-jwt/jwt"
+      - "golang\\.org/x/crypto/bcrypt"
+      - "golang\\.org/x/oauth2"
+      - "github\\.com/casbin"
+      - "github\\.com/go-casbin"
+
+  source_driven_development:
+    file_globs: []
+    content_regex:
+      - "github\\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+"
+      - "go\\.google\\.golang\\.org/"
+      - "cloud\\.google\\.com/go/"
+      - "github\\.com/aws/"
+      - "github\\.com/Azure/"
+      - "k8s\\.io/"
+    import_regex: []
+
+  testing_strategy:
+    file_globs:
+      - "**/*_test.*"
+      - "**/test/**"
+      - "**/tests/**"
+      - "**/testing/**"
+      - "**/*.test.*"
+      - "**/*_spec.*"
+      - "**/*Spec.*"
+    content_regex:
+      - "func\\s+Test\\w+\\("
+      - "func\\s+Benchmark\\w+\\("
+      - "func\\s+Fuzz\\w+\\("
+      - "describe\\(|it\\(|test\\(|expect\\("
+      - "Suite\\("
+      - "t\\.(Run|Parallel|Error|Fail|Log)"
+    import_regex:
+      - "\"testing\""
+      - "github\\.com/stretchr/testify"
+      - "github\\.com/onsi/ginkgo"
+
+  release:
+    file_globs:
+      - "**/CHANGELOG*"
+      - "**/VERSION"
+      - "**/version.*"
+      - "**/Dockerfile"
+      - "**/Makefile"
+      - "**/docker-compose*"
+      - "**/.goreleaser*"
+      - "**/deploy/**"
+      - "**/k8s/**"
+      - "**/helm/**"
+      - "**/*.yaml.ci"
+      - "**/Taskfile*"
+    content_regex:
+      - "version\\s*=\\s*[\"']?\\d+\\.\\d+"
+      - "VERSION\\s*=\\s*\\d+"
+      - "app\\.Version|BuildVersion"
+    import_regex: []

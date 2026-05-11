@@ -159,6 +159,9 @@
         },
         "upgrade": {
           "type": "string"
+        },
+        "topic-trigger": {
+          "type": "string"
         }
       }
     },

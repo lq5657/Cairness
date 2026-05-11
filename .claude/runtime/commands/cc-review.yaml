@@ -45,6 +45,7 @@ preconditions:
   - spec_status_is_review
   - read_validation_mapping_and_existing_evidence
   - confirm_review_not_inspect_codebase
+  - run_deterministic_topic_rule_detection
   - select_risk_lenses_from_spec_signals
   - select_default_and_triggered_review_lenses
   - select_domain_language_lens_when_terms_states_or_user_concepts_are_in_scope

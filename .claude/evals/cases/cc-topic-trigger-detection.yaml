@@ -1,0 +1,16 @@
+id: cc-topic-trigger-detection
+input: "Run cc-apply or cc-review — run_deterministic_topic_rule_detection before lens selection"
+expected_reads:
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/scripts/cc-topic-trigger
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - select_topic_rules_based_solely_on_human_language_description_without_code_pattern_check
+  - discard_deterministic_detection_output_when_conditional_topic_rules_are_being_loaded
+expected_checks:
+  - cc-topic-trigger runs before lens selection in cc-review
+  - cc-topic-trigger is registered as a script in runtime/core.yaml
+  - detection output augments but does not replace LLM judgment
+  - triggered_rules include evidence with file paths and patterns
+rubric: default
