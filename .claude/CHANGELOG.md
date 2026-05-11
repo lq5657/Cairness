@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added deterministic topic rule trigger detection (`cc-topic-trigger`) with `detection-patterns.yaml` — code pattern matching replaces sole LLM judgment for conditional topic rule selection in `cc-apply` and `cc-review`.
+- Added mandatory verification closure loop to `cc-fix` — pre-fix L2 baseline capture, post-fix L2 rerun, and verification comparison must be recorded in log.md before any finding can be marked fixed.
+- Added gradual adoption profiles — `minimal`, `standard`, and `strict` profiles control topic rule loading depth, subagent enabling, validation strictness, and interaction confirmation frequency via `harness.config.yaml` `profile` field.
+- Extended `events.jsonl` schema to v2 with optional telemetry fields (`duration_ms`, `token_count`, `subagent_count`, `verification_status`, `files_changed`, `findings_summary`) and added `cc-stats` command for project observability (command usage, verification pass rate, finding trends, token consumption).
+- Added knowledge freshness check (`cc-knowledge-check`) that scans `.cc/knowledge/` entries for stale file path references — wired into `cc-archive` as a precondition so decayed knowledge is flagged before compounding.
+- Added tiered confirmation system to reduce interaction fatigue — Tier 1 (hard_gate_confirm, finding_accepted, archive_done) always requires explicit confirmation; Tier 2 (technology_selection, task_split, knowledge_compounding) auto-accepts after 3 consecutive defaults with reset on option changes.
+- Expanded Python technology decision catalog from 6 to 16 decision groups — added async_mode, database, orm, project_structure, cache, configuration, validation, dependency_injection, async_task_queue, and observability.
+- Added token and duration budget enforcement (`cc-budget-check`) with per-command limits in `harness.config.yaml` — auto-triggered after `cc-apply`, `cc-review`, and `cc-fix`.
 - Added `loguru` as the default Python logging library in the Python technology decision catalog (`logging` decision group, P1, auto-selected). Python projects created through the framework now default to loguru for structured logging with rotation and serialization, with `stdlib logging` and `structlog` as alternatives.
 - Added Java runtime support with a language profile, technology decision catalog, Maven/Gradle/script-aware verification entrypoints, default fixture, protocol registration, readset coverage, and CI fixture verification.
 - Added C++ runtime support with a `cpp` language profile, technology decision catalog, Makefile-backed fixture, protocol registration, readset coverage, and CI fixture verification.
