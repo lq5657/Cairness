@@ -282,3 +282,376 @@ decision_groups:
         tradeoffs:
           - Excellent structured logging with renderer flexibility
           - Steeper adoption curve and additional configuration compared to loguru
+
+  - id: async_mode
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+    question: Select the async execution model.
+    default_recommendation: asyncio
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: asyncio
+        label: asyncio (async/await)
+        recommended_when:
+          - io_bound_service_with_concurrent_requests
+          - use_fastapi_or_modern_async_libs
+        tradeoffs:
+          - High concurrency I/O performance with cooperative scheduling
+          - Requires async-aware drivers (DB driver, HTTP client) throughout
+      - id: sync
+        label: Synchronous (threaded/multi-process)
+        recommended_when:
+          - cpu_bound_or_simple_service
+          - use_flask_django_or_sync_only_libs
+        tradeoffs:
+          - Lower mental overhead, simpler debugging
+          - Requires multi-process/thread scaling for high concurrency
+      - id: hybrid
+        label: Hybrid (sync + async mixed)
+        recommended_when:
+          - gradual_migration_to_async
+          - mix_of_sync_and_async_dependencies
+        tradeoffs:
+          - Flexible but error-prone (blocking calls in async context)
+          - Requires explicit sync-in-async boundary management
+
+  - id: database
+    level: P0
+    scope: project
+    applies_when:
+      - new_project_needs_persistence
+    question: Select the primary database.
+    default_recommendation: postgresql
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: postgresql
+        label: PostgreSQL
+        recommended_when:
+          - production_service_with_relational_data
+          - need_jsonb_full_text_or_advanced_indexing
+        tradeoffs:
+          - Most capable open-source relational database
+          - Operations overhead compared to SQLite
+      - id: mysql
+        label: MySQL / MariaDB
+        recommended_when:
+          - existing_mysql_infrastructure
+          - team_mysql_experience
+        tradeoffs:
+          - Widely available with mature managed services
+          - Some advanced features behind PostgreSQL
+      - id: sqlite
+        label: SQLite
+        recommended_when:
+          - prototype_or_local_dev
+          - embedded_or_edge_deployment
+        tradeoffs:
+          - Zero configuration, file-level deployment
+          - Not suitable for concurrent write-heavy workloads
+      - id: none
+        label: No database
+        recommended_when:
+          - stateless_service_or_external_data_source
+        tradeoffs:
+          - Simple, no persistence to manage
+          - Adding later requires migration work
+
+  - id: orm
+    level: P0
+    scope: project
+    applies_when:
+      - database_is_relational
+    question: Select the ORM or data access layer.
+    default_recommendation: sqlalchemy
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/dev-map.md
+    options:
+      - id: sqlalchemy
+        label: SQLAlchemy 2.0
+        recommended_when:
+          - want_mature_orm_with_async_support
+          - need_connection_pooling_and_raw_sql_escape_hatch
+        tradeoffs:
+          - Feature-complete, 2.0 adds native async support
+          - Steeper learning curve than simpler ORMs
+      - id: django_orm
+        label: Django ORM
+        recommended_when:
+          - use_django_framework
+        tradeoffs:
+          - Deep integration with Django ecosystem
+          - Not suitable outside Django projects
+      - id: peewee
+        label: Peewee
+        recommended_when:
+          - simple_crud_lightweight_needs
+        tradeoffs:
+          - Lightweight, low learning cost
+          - Lacks async support and some advanced features
+      - id: raw_sql
+        label: Raw SQL (psycopg/asyncpg)
+        recommended_when:
+          - complex_queries_not_suited_for_orm
+          - team_prefers_direct_sql_control
+        tradeoffs:
+          - Full SQL control
+          - No migration or query builder out of the box
+
+  - id: project_structure
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+    question: Select the project directory structure.
+    default_recommendation: simple_layered
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/dev-map.md
+    options:
+      - id: simple_layered
+        label: Simple layered (router/service/repo)
+        recommended_when:
+          - small_to_medium_service
+          - team_prefers_flat_structure
+        tradeoffs:
+          - Clear and easy to understand for new contributors
+          - May need restructuring as project grows
+      - id: modular
+        label: Modular / domain-split
+        recommended_when:
+          - multiple_business_domains
+          - want_clear_module_boundaries_for_parallel_work
+        tradeoffs:
+          - Good for parallel development and module independence
+          - Requires early domain boundary design
+      - id: django_app
+        label: Django app structure
+        recommended_when:
+          - use_django_framework
+        tradeoffs:
+          - Follows Django conventions
+          - Cross-app coupling requires active management
+
+  - id: cache
+    level: P1
+    scope: project
+    applies_when:
+      - service_needs_caching
+    question: Select the caching solution.
+    default_recommendation: redis
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: redis
+        label: Redis (redis-py)
+        recommended_when:
+          - production_distributed_cache
+          - also_need_rate_limiting_or_queue
+        tradeoffs:
+          - High performance, versatile data structures
+          - Requires separate service or managed instance
+      - id: in_memory
+        label: In-memory (cachetools / functools.lru_cache)
+        recommended_when:
+          - single_process_or_prototype
+          - small_cache_size
+        tradeoffs:
+          - Zero dependencies, simple
+          - Cache not shared across processes
+      - id: none
+        label: No cache
+        recommended_when:
+          - no_performance_concerns_yet
+        tradeoffs:
+          - Simple, can add later when needed
+
+  - id: configuration
+    level: P1
+    scope: project
+    applies_when:
+      - new_project
+    question: Select the configuration management approach.
+    default_recommendation: pydantic_settings
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: pydantic_settings
+        label: Pydantic Settings
+        recommended_when:
+          - use_fastapi_or_pydantic
+          - want_type_safe_config_with_env_file_support
+        tradeoffs:
+          - Type-safe, supports .env files and secret directories
+          - Adds Pydantic dependency if not already present
+      - id: python_decouple
+        label: python-decouple
+        recommended_when:
+          - simple_env_and_ini_config
+          - lightweight_needs
+        tradeoffs:
+          - Lightweight and framework-agnostic
+          - No type validation
+      - id: stdlib_env
+        label: os.environ / os.getenv
+        recommended_when:
+          - minimal_dependencies
+          - simple_configuration_needs
+        tradeoffs:
+          - Zero dependencies, always available
+          - No validation, manual type conversion
+
+  - id: validation
+    level: P1
+    scope: project
+    applies_when:
+      - new_project_with_data_models
+    question: Select the data validation approach.
+    default_recommendation: pydantic_v2
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: pydantic_v2
+        label: Pydantic v2
+        recommended_when:
+          - use_fastapi_or_want_runtime_type_validation
+          - need_json_schema_generation
+        tradeoffs:
+          - Type-safe, fast (Rust core in v2), JSON Schema generation
+          - Default dependency of FastAPI
+      - id: attrs
+        label: attrs / cattrs
+        recommended_when:
+          - want_lightweight_dataclass_alternative
+          - need_unstructuring
+        tradeoffs:
+          - Lightweight and flexible
+          - Smaller ecosystem than Pydantic
+      - id: dataclasses
+        label: stdlib dataclasses
+        recommended_when:
+          - minimal_dependencies_simple_models
+        tradeoffs:
+          - Standard library, zero dependencies
+          - No runtime validation built in
+
+  - id: dependency_injection
+    level: P1
+    scope: project
+    applies_when:
+      - new_project_with_moderate_complexity
+    question: Select the dependency injection approach.
+    default_recommendation: fastapi_depends
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/dev-map.md
+    options:
+      - id: fastapi_depends
+        label: FastAPI Depends
+        recommended_when:
+          - use_fastapi
+        tradeoffs:
+          - Built-in, clean, composable
+          - Only available in FastAPI request context
+      - id: dependency_injector
+        label: dependency-injector
+        recommended_when:
+          - complex_dependency_graph
+          - non_fastapi_project
+        tradeoffs:
+          - Full-featured IoC container
+          - Learning curve for teams unfamiliar with DI containers
+      - id: manual
+        label: Manual / constructor injection
+        recommended_when:
+          - simple_dependencies
+          - prefer_framework_free_approach
+        tradeoffs:
+          - Simple and transparent
+          - Maintenance cost grows with project complexity
+
+  - id: async_task_queue
+    level: P1
+    scope: project
+    applies_when:
+      - need_background_or_async_task_processing
+    question: Select the async task queue.
+    default_recommendation: celery
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: celery
+        label: Celery
+        recommended_when:
+          - production_task_queue_with_retries_and_scheduling
+        tradeoffs:
+          - Feature-complete (retries, scheduling, monitoring)
+          - Requires broker (Redis/RabbitMQ) and worker process
+      - id: arq
+        label: ARQ
+        recommended_when:
+          - async_native_python_project
+          - want_simple_redis_backed_queue
+        tradeoffs:
+          - Async native, simple API
+          - Fewer features than Celery
+      - id: background_tasks
+        label: FastAPI BackgroundTasks
+        recommended_when:
+          - lightweight_in_process_tasks
+          - no_need_for_persistence_or_retry
+        tradeoffs:
+          - Zero configuration, built into FastAPI
+          - Tasks lost on process restart
+      - id: none
+        label: No task queue
+        recommended_when:
+          - no_background_processing_needed
+        tradeoffs:
+          - Simple, can add later
+
+  - id: observability
+    level: P1
+    scope: project
+    applies_when:
+      - production_service
+    question: Select the observability approach.
+    default_recommendation: opentelemetry
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+    options:
+      - id: opentelemetry
+        label: OpenTelemetry
+        recommended_when:
+          - production_distributed_tracing
+          - vendor_neutral_observability
+        tradeoffs:
+          - Industry-standard protocol, multi-backend support
+          - Configuration and instrumentation overhead
+      - id: prometheus
+        label: Prometheus client
+        recommended_when:
+          - metrics_only_needs
+          - existing_prometheus_stack
+        tradeoffs:
+          - Focused on metrics, well-understood
+          - Need separate solution for tracing and structured logging
+      - id: custom
+        label: Custom / log-based
+        recommended_when:
+          - small_service_or_prototype
+        tradeoffs:
+          - Zero additional dependencies
+          - Will need upgrade as service scales
