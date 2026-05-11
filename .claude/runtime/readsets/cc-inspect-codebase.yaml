@@ -6,12 +6,14 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/context/project-summary.md
+- .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cc/context/project-context.md
 conditional_reads:

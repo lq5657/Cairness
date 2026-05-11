@@ -6,6 +6,7 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-test.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
@@ -16,6 +17,7 @@ always_reads:
 - .cc/changes/task-board.md
 - .claude/runtime/topic-rules/testing-strategy.yaml
 - .claude/runtime/topic-rules/verification.yaml
+- .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cc/changes/<change-id>/test-spec.md
 - .cc/changes/<change-id>/log.md

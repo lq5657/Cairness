@@ -1,0 +1,35 @@
+id: minimal
+description: >-
+  最小模式 — 适合原型、个人项目、学习探索、<1000 行代码库。
+  只保留核心状态机和最少的 topic rule，关闭 subagent，
+  验证仅做 harness-only，交互确认降到最低。
+
+topic_rules:
+  always:
+    - verification
+  conditional: all
+  disabled: []
+
+subagents:
+  enabled: false
+
+validation:
+  mode: harness_only
+  run_on:
+    propose:
+      - cc-verify --harness-only
+    apply:
+      - cc-verify --harness-only
+    fix:
+      - cc-verify --harness-only
+    test:
+      - cc-verify --harness-only
+    review:
+      - cc-verify --harness-only
+    archive:
+      - cc-verify --harness-only
+
+interaction:
+  skip_technology_confirmations: true
+  skip_task_split_confirmations: true
+  accept_recommended_defaults: true

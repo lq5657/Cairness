@@ -1,6 +1,8 @@
 # cc_spec Harness runtime policy.
 # Relative paths are interpreted from the project root.
 
+profile: standard
+
 paths:
   framework_root: ".claude"
   state_root: ".cc"

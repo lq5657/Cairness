@@ -1,0 +1,56 @@
+id: strict
+description: >-
+  严格模式 — 适合合规、金融、安全敏感项目。
+  所有 topic rule 始终加载，subagent 启用额外校验，
+  所有命令执行完整验证，交互确认不降级，
+  finding 接受需书面风险签名。
+
+topic_rules:
+  always:
+    - verification
+    - change_sizing
+    - coding_style
+    - testing_strategy
+    - security
+    - database_changes
+    - api_compatibility
+    - configuration
+    - observability
+    - release
+    - source_driven_development
+    - debugging_workflow
+    - git_workflow
+  conditional: []
+  disabled: []
+
+subagents:
+  enabled: true
+  extra_validation: true
+
+validation:
+  mode: full
+  run_on:
+    propose:
+      - cc-verify --harness-only
+      - cc-verify
+    apply:
+      - cc-verify
+      - cc-verify --changed-only
+    fix:
+      - cc-verify
+      - cc-verify --changed-only
+    test:
+      - cc-verify
+      - cc-verify --changed-only
+    review:
+      - cc-verify --harness-only
+      - cc-verify
+    archive:
+      - cc-verify
+      - cc-verify --changed-only
+
+interaction:
+  skip_technology_confirmations: false
+  skip_task_split_confirmations: false
+  accept_recommended_defaults: false
+  require_written_risk_acceptance_for_accepted_findings: true

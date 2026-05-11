@@ -6,6 +6,7 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-explain-system.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
@@ -13,6 +14,7 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cc/context/project-context.md
 - .cc/context/dev-map.md
+- .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cc/context/domain-language.md
 conditional_reads:

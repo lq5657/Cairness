@@ -6,6 +6,7 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-apply.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
@@ -18,6 +19,7 @@ always_reads:
 - .claude/harness.config.yaml
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/coding-style.yaml
+- .claude/runtime/profiles/standard.yaml
 optional_reads: []
 conditional_reads:
   when_creating_test_spec_artifact:

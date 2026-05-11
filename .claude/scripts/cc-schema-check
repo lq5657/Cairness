@@ -745,6 +745,29 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
     return [str(workflow_path)]
 
 
+HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
+
+
+def load_harness_config(project_root: Path, issues: list[Issue]) -> dict[str, Any]:
+    """读取 harness.config.yaml，失败时返回空 dict。"""
+    path = project_root / HARNESS_CONFIG_PATH
+    loaded = load_yaml_file(path, issues)
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def resolve_active_profile_path(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> str:
+    """从 harness.config.yaml 的 profile 字段解析活跃 profile 文件路径。"""
+    harness_config = load_harness_config(project_root, issues)
+    profile_name = harness_config.get("profile")
+    if not isinstance(profile_name, str) or not profile_name:
+        profiles_cfg = core.get("profiles") if isinstance(core, dict) and isinstance(core.get("profiles"), dict) else {}
+        profile_name = profiles_cfg.get("default", "standard")
+    if not isinstance(profile_name, str):
+        profile_name = "standard"
+    profiles_dir = ".claude/runtime/profiles"
+    return f"{profiles_dir}/{profile_name}.yaml"
+
+
 def runtime_readset_config(core: dict[str, Any] | None) -> dict[str, str]:
     config = core.get("runtime_readsets") if isinstance(core, dict) and isinstance(core.get("runtime_readsets"), dict) else {}
     return {
@@ -927,6 +950,7 @@ def derive_command_readset(
         ])
     protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
     result_profile_reads = result_contract_profile_reads(manifest)
+    active_profile_path = resolve_active_profile_path(project_root, core, issues)
     always_reads = [
         ".claude/runtime/core.yaml",
         *protocol_reads,
@@ -934,6 +958,7 @@ def derive_command_readset(
         *result_profile_reads,
         *string_list(manifest.get("required_reads")),
         *string_list(topic_rules.get("always")),
+        *([active_profile_path] if active_profile_path else []),
     ]
 
     return {
@@ -945,6 +970,7 @@ def derive_command_readset(
             *protocol_reads,
             manifest_path,
             *result_profile_reads,
+            *([active_profile_path] if active_profile_path else []),
         ],
         "always_reads": ordered_unique(always_reads),
         "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),

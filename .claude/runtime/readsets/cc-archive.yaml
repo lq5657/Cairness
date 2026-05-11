@@ -6,6 +6,7 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-archive.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
@@ -15,6 +16,7 @@ always_reads:
 - .cc/changes/<change-id>/log.md
 - .cc/changes/task-board.md
 - .claude/rules/memory-policy.md
+- .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cc/knowledge/index.md
 conditional_reads:

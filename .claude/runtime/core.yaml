@@ -82,6 +82,11 @@ topic_rules:
   source_driven_development: .claude/runtime/topic-rules/source-driven-development.yaml
   git_workflow: .claude/runtime/topic-rules/git-workflow.yaml
 
+profiles:
+  dir: .claude/runtime/profiles
+  default: standard
+  active_resolution: harness_config_profile_field
+
 default_runtime_rules:
   - keep_cc_literals
   - runtime_first_for_migrated_commands

@@ -1,0 +1,37 @@
+id: standard
+description: >-
+  标准模式（默认）— 适合团队项目、生产代码。
+  加载核心 topic rule，启用 subagent，完整验证链路，
+  所有交互确认点生效。
+
+topic_rules:
+  always:
+    - verification
+    - change_sizing
+    - coding_style
+  conditional: all
+  disabled: []
+
+subagents:
+  enabled: true
+
+validation:
+  mode: full
+  run_on:
+    propose:
+      - cc-verify --harness-only
+    apply:
+      - cc-verify
+    fix:
+      - cc-verify
+    test:
+      - cc-verify
+    review:
+      - cc-verify --harness-only
+    archive:
+      - cc-verify
+
+interaction:
+  skip_technology_confirmations: false
+  skip_task_split_confirmations: false
+  accept_recommended_defaults: false

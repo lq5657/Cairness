@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/profile.schema.json",
+  "title": "cc_spec Harness Runtime Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "description", "topic_rules", "subagents", "validation", "interaction"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "enum": ["minimal", "standard", "strict"]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10
+    },
+    "topic_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["always", "conditional", "disabled"],
+      "properties": {
+        "always": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "conditional": {
+          "oneOf": [
+            {"type": "string", "const": "all"},
+            {"type": "array", "items": {"type": "string"}}
+          ]
+        },
+        "disabled": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "subagents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "extra_validation": {"type": "boolean"}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "run_on"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["harness_only", "full"]
+        },
+        "run_on": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skip_technology_confirmations",
+        "skip_task_split_confirmations",
+        "accept_recommended_defaults"
+      ],
+      "properties": {
+        "skip_technology_confirmations": {"type": "boolean"},
+        "skip_task_split_confirmations": {"type": "boolean"},
+        "accept_recommended_defaults": {"type": "boolean"},
+        "require_written_risk_acceptance_for_accepted_findings": {"type": "boolean"}
+      }
+    }
+  }
+}

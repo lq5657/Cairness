@@ -6,6 +6,7 @@ generated_from:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-enrich-context.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
+- .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - .claude/runtime/protocol.yaml
@@ -15,6 +16,7 @@ always_reads:
 - .cc/context/domain-language.md
 - .cc/context/dev-map.md
 - .claude/rules/memory-policy.md
+- .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cc/context/project-summary.md
 conditional_reads:

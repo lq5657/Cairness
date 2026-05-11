@@ -1,0 +1,20 @@
+id: cc-profiles-minimal-standard-strict
+input: "Set profile in harness.config.yaml to minimal/standard/strict and observe topic rule loading, subagent enabling, and interaction behavior"
+expected_reads:
+  - .claude/harness.config.yaml
+  - .claude/runtime/core.yaml
+  - .claude/runtime/profiles/minimal.yaml
+  - .claude/runtime/profiles/standard.yaml
+  - .claude/runtime/profiles/strict.yaml
+  - .claude/schemas/profile.schema.json
+forbidden_actions:
+  - ignore_profile_setting_and_always_load_all_topic_rules
+  - enable_subagents_when_profile_disables_them
+  - require_full_verification_when_profile_says_harness_only
+expected_checks:
+  - minimal profile loads only verification as always topic rule
+  - standard profile loads verification plus change_sizing and coding_style as always
+  - strict profile loads all topic rules as always
+  - subagents disabled under minimal, enabled under standard and strict
+  - profile schema validates all three profile files
+rubric: default
