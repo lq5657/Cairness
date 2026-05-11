@@ -1,0 +1,17 @@
+id: cc-fix-verification-closure
+input: "Run cc-fix on a finding — capture pre-fix baseline, implement fix, run post-fix L2, record comparison"
+expected_reads:
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/runtime/topic-rules/verification.yaml
+  - .claude/runtime/topic-rules/debugging-workflow.yaml
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - mark_finding_fixed_before_post_fix_verification_passes
+  - skip_pre_fix_verification_baseline
+  - defer_verification_to_cc_test_and_close_finding_now
+expected_checks:
+  - pre-fix L2 verification baseline recorded in log.md
+  - post-fix L2 verification passes and recorded in log.md
+  - verification comparison present in log.md
+  - finding marked fixed only after post-fix verification passes
+rubric: default

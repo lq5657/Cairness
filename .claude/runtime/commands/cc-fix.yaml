@@ -67,6 +67,7 @@ preconditions:
   - record_feedback_loop_symptom_failure_point_root_cause_fix_guard
   - block_when_log_or_reproduction_evidence_is_insufficient
   - define_minimal_fix_hypothesis
+  - capture_pre_fix_verification_baseline_before_code_change
 
 interaction_contract:
   mode: interactive_required
@@ -137,6 +138,8 @@ anti_rationalizations:
   - broaden_fix_into_unrelated_cleanup
   - leave_temporary_debug_instrumentation_in_final_patch
   - mark_fixed_without_guard_or_fresh_verification
+  - defer_verification_to_cc_test_because_fix_looks_correct
+  - skip_pre_fix_baseline_because_verification_takes_too_long
 
 red_flags:
   - feedback_loop_missing_before_patch
@@ -147,6 +150,9 @@ red_flags:
   - patch_touches_files_outside_finding_scope
   - reproduction_impossible_without_substitute_evidence
   - verification_failure_dismissed_without_delta_analysis
+  - pre_fix_verification_baseline_missing_in_log
+  - post_fix_l2_verification_not_run_or_failed_but_finding_marked_fixed
+  - verification_comparison_not_recorded_in_log
 
 steps:
   - load_open_findings
@@ -163,10 +169,12 @@ steps:
   - record_feedback_loop_and_root_cause_ledger_in_log
   - use_structural_code_evidence_for_architecture_findings
   - define_minimal_fix_hypothesis
+  - capture_pre_fix_verification_baseline_run_l2_and_record_failure
   - implement_minimal_fix
   - add_or_identify_regression_guard
   - remove_temporary_debug_instrumentation
-  - rerun_verification_without_lowering_required_level
+  - run_post_fix_l2_verification_and_record_comparison_in_log
+  - block_fix_completion_if_post_fix_verification_fails
   - load_test_spec_template_when_creating_test_spec
   - update_review_log_and_change_docs
   - sync_dev_map_if_boundaries_changed
@@ -206,4 +214,6 @@ stop_conditions:
   - minimal_fix_hypothesis_not_clear
   - unclear_finding_requires_user_answer
   - finding_disposition_missing
-  - verification_failed
+  - pre_fix_verification_baseline_missing
+  - post_fix_l2_verification_failed_or_not_run
+  - verification_comparison_not_recorded_in_log
