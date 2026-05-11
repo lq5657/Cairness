@@ -1,0 +1,17 @@
+id: cc-stats-observability
+input: "Run cc-stats to view project observability metrics including command usage, verification pass rate, finding trends, and token consumption"
+expected_reads:
+  - .claude/scripts/cc-stats
+  - .claude/schemas/command-event.schema.json
+  - .claude/scripts/cc-event-check
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - report_empty_stats_when_event_logs_exist
+  - skip_discovering_events_from_all_changes
+expected_checks:
+  - cc-stats outputs command usage distribution
+  - cc-stats outputs verification pass rate
+  - cc-stats outputs finding statistics from review.md files
+  - cc-stats --json produces machine-readable output
+  - cc-event-check validates schema_version 2 events with telemetry fields
+rubric: default

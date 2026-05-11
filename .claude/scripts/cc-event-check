@@ -15,6 +15,8 @@ CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
 VALID_FROM = {"none", "propose", "apply", "review", "done", "unchanged"}
 VALID_TO = {"unchanged", "propose", "apply", "review", "done"}
+VALID_VERIFICATION_STATUS = {"passed", "failed", "partial", "not_run"}
+VALID_SCHEMA_VERSIONS = {1, 2}
 COMMAND_TO = {
     "cc-propose": "propose",
     "cc-apply": "review",
@@ -60,8 +62,8 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
     missing = sorted(required - set(event))
     if missing:
         add(issues, "E_EVENT002", path, f"line {line_no}: missing {missing}")
-    if event.get("schema_version") != 1:
-        add(issues, "E_EVENT003", path, f"line {line_no}: schema_version must be 1")
+    if event.get("schema_version") not in VALID_SCHEMA_VERSIONS:
+        add(issues, "E_EVENT003", path, f"line {line_no}: schema_version must be 1 or 2")
     if not isinstance(event.get("event_id"), str) or not CHANGE_ID_RE.match(event.get("event_id", "")):
         add(issues, "E_EVENT004", path, f"line {line_no}: invalid event_id")
     command = event.get("command")
@@ -88,6 +90,23 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
     evidence = event.get("evidence")
     if not isinstance(evidence, list) or not evidence or not all(isinstance(item, str) and item for item in evidence):
         add(issues, "E_EVENT012", path, f"line {line_no}: evidence must be a non-empty string list")
+    if event.get("schema_version") == 2:
+        for field in ("duration_ms", "token_count", "subagent_count", "files_changed"):
+            val = event.get(field)
+            if val is not None and (not isinstance(val, int) or val < 0):
+                add(issues, "E_EVENT016", path, f"line {line_no}: {field} must be a non-negative integer")
+        vs = event.get("verification_status")
+        if vs is not None and vs not in VALID_VERIFICATION_STATUS:
+            add(issues, "E_EVENT017", path, f"line {line_no}: invalid verification_status {vs}")
+        fs = event.get("findings_summary")
+        if fs is not None:
+            if not isinstance(fs, dict):
+                add(issues, "E_EVENT018", path, f"line {line_no}: findings_summary must be an object")
+            else:
+                for fk in ("total_open", "total_fixed", "total_accepted"):
+                    fv = fs.get(fk)
+                    if fv is not None and (not isinstance(fv, int) or fv < 0):
+                        add(issues, "E_EVENT019", path, f"line {line_no}: findings_summary.{fk} must be a non-negative integer")
 
 
 def validate_log(path: Path, issues: list[Issue]) -> None:

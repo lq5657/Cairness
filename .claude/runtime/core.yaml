@@ -66,6 +66,7 @@ scripts:
   behavior: .claude/scripts/cc-behavior-check
   upgrade: .claude/scripts/cc-upgrade-check
   topic-trigger: .claude/scripts/cc-topic-trigger
+  stats: .claude/scripts/cc-stats
 
 topic_rules:
   verification: .claude/runtime/topic-rules/verification.yaml

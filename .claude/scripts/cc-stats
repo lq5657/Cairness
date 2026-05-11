@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""cc-stats — 项目可观测性统计。
+
+从 events.jsonl 和 review.md 中提取遥测数据，输出：
+  - 命令使用分布
+  - 验证门禁通过率
+  - Finding 趋势（按严重程度、lens、状态）
+  - Token 消耗趋势
+  - 子 agent 调度统计
+
+用法:
+  cc-stats                    默认输出可读摘要
+  cc-stats --findings         仅输出 finding 统计
+  cc-stats --trend            输出时间趋势
+  cc-stats --json             JSON 格式输出
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+
+CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    if not path.exists():
+        return events
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return events
+
+
+def discover_events(project_root: Path) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    changes_dir = project_root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return events
+    for event_file in sorted(changes_dir.rglob("events.jsonl")):
+        if ".claude" in event_file.parts:
+            continue
+        events.extend(read_jsonl(event_file))
+    return events
+
+
+def discover_reviews(project_root: Path) -> list[dict[str, Any]]:
+    """从 review.md 中提取 finding 统计。"""
+    reviews: list[dict[str, Any]] = []
+    changes_dir = project_root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return reviews
+    for review_file in sorted(changes_dir.rglob("review.md")):
+        if ".claude" in review_file.parts:
+            continue
+        review = parse_review(review_file)
+        if review:
+            reviews.append(review)
+    return reviews
+
+
+def parse_review(path: Path) -> dict[str, Any] | None:
+    """从 review.md 提取结构化 finding 数据。"""
+    content = path.read_text(encoding="utf-8")
+    change_id = path.parent.name
+    result: dict[str, Any] = {
+        "change_id": change_id,
+        "findings": [],
+        "stage1_status": "unknown",
+        "stage2_status": "unknown",
+        "final_status": "unknown",
+    }
+    # Extract YAML frontmatter
+    m = re.search(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+    if m:
+        try:
+            import yaml
+            fm = yaml.safe_load(m.group(1))
+            if isinstance(fm, dict):
+                result["stage1_status"] = fm.get("stage1_status", "unknown")
+                result["stage2_status"] = fm.get("stage2_status", "unknown")
+                result["final_status"] = fm.get("final_status", "unknown")
+        except Exception:
+            pass
+    # Count findings by parsing markdown
+    finding_ids = set()
+    for m in re.finditer(r'^###\s+(F\d+):\s*(.+)', content, re.MULTILINE):
+        fid = m.group(1)
+        title = m.group(2)
+        if fid not in finding_ids:
+            finding_ids.add(fid)
+            # Try to extract severity
+            sev_match = re.search(r'\b(critical|important|minor|cosmetic)\b', title.lower())
+            status_match = re.search(r'\b(open|fixed|accepted)\b', title.lower())
+            # Scan following lines for status/severity markers
+            rest = content[m.end():m.end() + 500]
+            sev2 = re.search(r'(?:severity|level)[:\s]*[`"]*(critical|important|minor|cosmetic)', rest, re.IGNORECASE)
+            status2 = re.search(r'(?:status)[:\s]*[`"]*(open|fixed|accepted)', rest, re.IGNORECASE)
+            lens_match = re.search(r'(?:lens)[:\s]*[`"]*([a-z_]+)', rest, re.IGNORECASE)
+            result["findings"].append({
+                "id": fid,
+                "severity": (sev_match.group(1) if sev_match else (sev2.group(1).lower() if sev2 else "unknown")),
+                "status": (status_match.group(1) if status_match else (status2.group(1).lower() if status2 else "open")),
+                "lens": lens_match.group(1) if lens_match else "unknown",
+            })
+    return result
+
+
+def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -> dict[str, Any]:
+    # Command usage
+    cmd_counts: Counter = Counter()
+    verification_results: Counter = Counter()
+    total_duration_ms = 0
+    total_tokens = 0
+    total_subagents = 0
+    total_files = 0
+    events_with_telemetry = 0
+    events_by_date: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for e in events:
+        cmd = e.get("command", "unknown")
+        if isinstance(cmd, str) and COMMAND_RE.match(cmd):
+            cmd_counts[cmd] += 1
+
+        vs = e.get("verification_status")
+        if isinstance(vs, str):
+            verification_results[vs] += 1
+
+        d = e.get("duration_ms")
+        t = e.get("token_count")
+        s = e.get("subagent_count")
+        f = e.get("files_changed")
+        if isinstance(d, (int, float)) and isinstance(t, (int, float)) and d >= 0:
+            total_duration_ms += int(d)
+            total_tokens += int(t)
+            total_subagents += int(s) if isinstance(s, (int, float)) else 0
+            total_files += int(f) if isinstance(f, (int, float)) else 0
+            events_with_telemetry += 1
+
+        occurred = e.get("occurred_at", "")
+        if isinstance(occurred, str) and occurred:
+            date_key = occurred[:10]  # YYYY-MM-DD
+            events_by_date[date_key].append(e)
+
+    # Finding stats
+    all_findings: list[dict[str, Any]] = []
+    for r in reviews:
+        all_findings.extend(r["findings"])
+    finding_severity: Counter = Counter(f["severity"] for f in all_findings)
+    finding_status: Counter = Counter(f["status"] for f in all_findings)
+    finding_lens: Counter = Counter(f["lens"] for f in all_findings)
+
+    # Time trend
+    date_cmd_trend = {d: dict(Counter(e.get("command") for e in el)) for d, el in sorted(events_by_date.items())}
+
+    return {
+        "total_events": len(events),
+        "total_changes_with_reviews": len(reviews),
+        "command_counts": dict(cmd_counts.most_common()),
+        "verification_results": dict(verification_results),
+        "telemetry": {
+            "events_with_telemetry": events_with_telemetry,
+            "total_duration_ms": total_duration_ms,
+            "total_tokens": total_tokens,
+            "total_subagents": total_subagents,
+            "total_files_changed": total_files,
+            "avg_duration_ms": total_duration_ms // events_with_telemetry if events_with_telemetry else 0,
+            "avg_tokens_per_event": total_tokens // events_with_telemetry if events_with_telemetry else 0,
+        },
+        "findings": {
+            "total": len(all_findings),
+            "by_severity": dict(finding_severity),
+            "by_status": dict(finding_status),
+            "by_lens": dict(finding_lens),
+        },
+        "trends": {
+            "by_date": date_cmd_trend,
+        },
+    }
+
+
+def print_readable(stats: dict[str, Any]) -> None:
+    print("=== cc_spec 项目可观测性报告 ===\n")
+
+    print("── 命令使用分布 ──")
+    for cmd, count in sorted(stats["command_counts"].items()):
+        bar = "█" * min(count, 40)
+        print(f"  {cmd:<22} {count:>4}  {bar}")
+
+    print(f"\n── 验证门禁通过率 ──")
+    vr = stats["verification_results"]
+    total = sum(vr.values())
+    if total:
+        for status, count in sorted(vr.items()):
+            pct = count * 100 // total
+            print(f"  {status:<10} {count:>4}  ({pct}%)")
+
+    t = stats["telemetry"]
+    print(f"\n── Token 与性能 ──")
+    print(f"  有遥测数据的事件数: {t['events_with_telemetry']}")
+    if t["events_with_telemetry"]:
+        print(f"  总 token 消耗:       {t['total_tokens']:,}")
+        print(f"  总耗时:              {t['total_duration_ms'] / 1000:.1f}s")
+        print(f"  平均 token/事件:     {t['avg_tokens_per_event']:,}")
+        print(f"  平均耗时/事件:       {t['avg_duration_ms'] / 1000:.1f}s")
+        print(f"  总调度子 agent:      {t['total_subagents']}")
+        print(f"  总修改文件数:        {t['total_files_changed']}")
+
+    f = stats["findings"]
+    print(f"\n── Finding 统计 ──")
+    print(f"  总 findings: {f['total']}")
+    if f["by_severity"]:
+        print(f"  按严重程度: {f['by_severity']}")
+    if f["by_status"]:
+        print(f"  按状态:     {f['by_status']}")
+    if f["by_lens"]:
+        print(f"  按审查维度: {f['by_lens']}")
+
+    print(f"\n── 每日命令趋势 ──")
+    for date, cmds in sorted(stats["trends"]["by_date"].items()):
+        summary = " ".join(f"{c}x{n}" for c, n in sorted(cmds.items()))
+        print(f"  {date}:  {summary}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Harness observability statistics")
+    parser.add_argument("--json", action="store_true", help="JSON 格式输出")
+    parser.add_argument("--findings", action="store_true", help="仅输出 finding 统计")
+    parser.add_argument("--trend", action="store_true", help="输出时间趋势")
+    args = parser.parse_args()
+
+    root = project_root()
+    events = discover_events(root)
+    reviews = discover_reviews(root)
+    stats = compute_stats(events, reviews)
+
+    if args.json:
+        if args.findings:
+            print(json.dumps(stats["findings"], indent=2, ensure_ascii=False))
+        elif args.trend:
+            print(json.dumps(stats["trends"], indent=2, ensure_ascii=False))
+        else:
+            print(json.dumps(stats, indent=2, ensure_ascii=False))
+    else:
+        if args.findings:
+            f = stats["findings"]
+            print("=== Finding 统计 ===")
+            print(f"总 findings: {f['total']}")
+            print(f"按严重程度: {f['by_severity']}")
+            print(f"按状态: {f['by_status']}")
+            print(f"按审查维度: {f['by_lens']}")
+        elif args.trend:
+            print("=== 每日命令趋势 ===")
+            for date, cmds in sorted(stats["trends"]["by_date"].items()):
+                summary = " ".join(f"{c}x{n}" for c, n in sorted(cmds.items()))
+                print(f"{date}: {summary}")
+        else:
+            print_readable(stats)
+
+
+if __name__ == "__main__":
+    main()
