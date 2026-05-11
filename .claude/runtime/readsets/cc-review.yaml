@@ -41,8 +41,6 @@ conditional_reads:
   - .claude/runtime/topic-rules/source-driven-development.yaml
   when_dependency_or_wave_order_is_in_dispute:
   - .claude/runtime/topic-rules/git-workflow.yaml
-  when_code_intelligence_available:
-  - .claude/runtime/topic-rules/code-intelligence.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-review.yaml

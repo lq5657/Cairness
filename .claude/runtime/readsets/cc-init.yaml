@@ -23,8 +23,6 @@ conditional_reads:
   - .claude/templates/context/project-context.md
   - .claude/templates/context/domain-language.md
   - .claude/templates/context/dev-map.md
-  when_code_intelligence_available:
-  - .claude/runtime/topic-rules/code-intelligence.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

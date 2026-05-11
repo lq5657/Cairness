@@ -70,8 +70,6 @@ topic_rules:
     - .claude/runtime/topic-rules/security.yaml
   when_external_or_version_sensitive_mechanism_is_claimed:
     - .claude/runtime/topic-rules/source-driven-development.yaml
-  when_code_intelligence_available:
-    - .claude/runtime/topic-rules/code-intelligence.yaml
 
 anti_rationalizations:
   - turn_system_explanation_into_findings_report
