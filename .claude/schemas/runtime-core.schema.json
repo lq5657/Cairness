@@ -165,6 +165,9 @@
         },
         "stats": {
           "type": "string"
+        },
+        "knowledge-check": {
+          "type": "string"
         }
       }
     },

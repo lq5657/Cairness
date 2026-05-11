@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""cc-knowledge-check — 知识条目新鲜度检测。
+
+扫描 .cc/knowledge/ 中的所有条目，提取文件路径引用，
+验证引用路径在代码库中是否仍然存在。过期引用自动标记为
+candidate（需重新确认），防止腐烂知识误导 AI 决策。
+
+用法:
+  cc-knowledge-check               检查所有 knowledge 条目
+  cc-knowledge-check --json        JSON 格式输出
+  cc-knowledge-check --stale-only  仅输出过期条目
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+
+PATH_PATTERNS = [
+    # Backtick-wrapped paths: `src/handler/user.go`, `.cc/context/dev-map.md`
+    re.compile(r'`((?:\.?/)?[\w./-]+\.[\w]+)`'),
+    # Relative paths: src/module/file.go
+    re.compile(r'(?<!\w)((?:src|pkg|cmd|internal|api|lib|app|tests?|docs?|config)/[\w./-]+)'),
+    # .cc/ paths
+    re.compile(r'(?<!\w)(\.cc/[\w./-]+)'),
+    # .claude/ paths (for refinement candidates)
+    re.compile(r'(?<!\w)(\.claude/(?:runtime|scripts|schemas|templates|docs|fixtures)/[\w./-]+)'),
+]
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def extract_paths(content: str) -> list[str]:
+    paths: set[str] = set()
+    for pattern in PATH_PATTERNS:
+        for m in pattern.finditer(content):
+            p = m.group(1)
+            # Filter out common non-path patterns
+            if p.endswith(('.go', '.py', '.java', '.cpp', '.yaml', '.md', '.json',
+                          '.sql', '.proto', '.toml', '.mod', '.sum', '.ts', '.js')):
+                paths.add(p)
+            elif '/' in p and not p.startswith(('http:', 'https:')):
+                paths.add(p)
+    return sorted(paths)
+
+
+def check_knowledge_freshness(project_root: Path) -> dict[str, Any]:
+    knowledge_dir = project_root / ".cc" / "knowledge"
+    if not knowledge_dir.exists():
+        return {"entries": {}, "stale_count": 0, "fresh_count": 0, "total_entries": 0}
+
+    entries: dict[str, dict[str, Any]] = {}
+    stale_count = 0
+    fresh_count = 0
+
+    for md_file in sorted(knowledge_dir.rglob("*.md")):
+        rel_path = str(md_file.relative_to(project_root))
+        if md_file.name == "index.md":
+            continue
+
+        content = md_file.read_text(encoding="utf-8")
+        refs = extract_paths(content)
+        stale_refs: list[str] = []
+
+        for ref in refs:
+            ref_path = project_root / ref
+            if not ref_path.exists():
+                stale_refs.append(ref)
+
+        status = "fresh" if not stale_refs else "stale"
+        if stale_refs:
+            stale_count += 1
+        else:
+            fresh_count += 1
+
+        entry = {
+            "path": rel_path,
+            "status": status,
+            "referenced_paths": refs,
+            "stale_paths": stale_refs,
+        }
+        # Extract frontmatter status if present
+        fm_match = re.search(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+        if fm_match:
+            try:
+                import yaml
+                fm = yaml.safe_load(fm_match.group(1))
+                if isinstance(fm, dict):
+                    entry["frontmatter"] = fm
+                    entry["fm_status"] = fm.get("status", "unknown")
+            except Exception:
+                pass
+
+        entries[md_file.name] = entry
+
+    return {
+        "entries": entries,
+        "stale_count": stale_count,
+        "fresh_count": fresh_count,
+        "total_entries": len(entries),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Knowledge freshness checker")
+    parser.add_argument("--json", action="store_true", help="JSON 格式输出")
+    parser.add_argument("--stale-only", action="store_true", help="仅输出过期条目")
+    args = parser.parse_args()
+
+    root = project_root()
+    result = check_knowledge_freshness(root)
+
+    if args.json:
+        if args.stale_only:
+            stale_entries = {k: v for k, v in result["entries"].items() if v["status"] == "stale"}
+            print(json.dumps({"stale_entries": stale_entries, "stale_count": result["stale_count"]},
+                             indent=2, ensure_ascii=False))
+        else:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        return
+
+    if args.stale_only:
+        stale = {k: v for k, v in result["entries"].items() if v["status"] == "stale"}
+        if not stale:
+            print("cc-knowledge-check: ok (no stale entries)")
+        else:
+            print(f"Stale knowledge entries ({len(stale)}):")
+            for name, entry in sorted(stale.items()):
+                print(f"  {entry['path']}")
+                for sp in entry["stale_paths"]:
+                    print(f"    ! {sp} (not found)")
+        return
+
+    print(f"cc-knowledge-check: {result['fresh_count']} fresh, {result['stale_count']} stale "
+          f"(total: {result['total_entries']})")
+    if result["stale_count"] > 0:
+        print()
+        for name, entry in sorted(result["entries"].items()):
+            if entry["status"] == "stale":
+                print(f"  STALE  {entry['path']}")
+                for sp in entry["stale_paths"]:
+                    print(f"         ! {sp}")
+                fm_status = entry.get("fm_status")
+                if fm_status and fm_status == "confirmed":
+                    print(f"         → status was 'confirmed', should be re-evaluated")
+
+
+if __name__ == "__main__":
+    main()

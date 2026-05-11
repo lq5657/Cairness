@@ -1,0 +1,16 @@
+id: cc-knowledge-freshness-check
+input: "Run cc-archive — check knowledge freshness before compounding; run cc-knowledge-check standalone to audit entries"
+expected_reads:
+  - .claude/runtime/commands/cc-archive.yaml
+  - .claude/scripts/cc-knowledge-check
+  - .claude/templates/knowledge/entry.md
+  - .claude/runtime/core.yaml
+forbidden_actions:
+  - archive_without_checking_knowledge_referenced_paths
+  - leave_stale_knowledge_as_confirmed_when_referenced_paths_no_longer_exist
+expected_checks:
+  - cc-knowledge-check is registered in runtime core scripts
+  - cc-archive precondition includes run_knowledge_freshness_check_before_compounding
+  - cc-knowledge-check outputs fresh and stale counts
+rubric: default
+rubric: default

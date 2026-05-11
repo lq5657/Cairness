@@ -47,6 +47,7 @@ preconditions:
   - no_open_findings_or_blocked_tasks
   - no_unexplained_gap
   - fresh_verification_evidence_exists
+  - run_knowledge_freshness_check_before_compounding
   - classify_project_knowledge_vs_harness_refinement_candidate
   - do_not_convert_refinement_candidate_to_rule_without_maintenance_change
   - knowledge_compounding_decision_is_explicit
