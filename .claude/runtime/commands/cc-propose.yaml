@@ -56,7 +56,8 @@ preconditions:
   - distinguish_resolved_vs_blocking_clarifications
   - check_request_terms_against_domain_language_when_present
   - distinguish_user_decision_risks_vs_residual_risks
-  - check_change_conflicts_and_depends_on
+  - check_change_conflicts_and_depends_on_with_cc_deps
+  - run_cc_deps_conflict_detection_against_existing_changes
   - classify_change_size_and_split_boundaries
   - freeze_scope_before_final_tasks
   - map_major_requirements_and_risks_to_validation_ids
@@ -191,6 +192,7 @@ red_flags:
   - technology_catalog_read_without_change_level_decision_trigger
 
 auto_validation:
+  - .claude/scripts/cc-deps conflicts --change <change-id>
   - .claude/scripts/cc-verify --harness-only --change <change-id>
 
 result_contract:

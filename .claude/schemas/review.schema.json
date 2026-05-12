@@ -40,6 +40,43 @@
           "status": {
             "type": "string",
             "enum": ["open", "fixed", "accepted", "无", "-"]
+          },
+          "root_cause_tag": {
+            "type": "string",
+            "enum": [
+              "missing_error_handling",
+              "missing_validation",
+              "missing_test",
+              "incorrect_state_transition",
+              "incorrect_amount_type",
+              "incorrect_time_type",
+              "missing_timeout",
+              "missing_auth_check",
+              "race_condition",
+              "api_contract_break",
+              "database_schema_mismatch",
+              "config_drift",
+              "observability_gap",
+              "security_vulnerability",
+              "performance_regression",
+              "spec_implementation_gap",
+              "dependency_order_error",
+              "other"
+            ]
+          },
+          "detected_by": {
+            "type": "object",
+            "required": ["gate"],
+            "properties": {
+              "gate": {
+                "type": "string",
+                "description": "审查 lens、topic rule 或 validation script 标识"
+              },
+              "was_real_error": {
+                "type": "boolean",
+                "description": "cc-fix 根因分析确认是否为真实错误"
+              }
+            }
           }
         }
       }

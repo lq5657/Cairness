@@ -1,0 +1,42 @@
+id: change-dependencies
+description: "跨 Change 依赖管理——依赖图可视化、文件冲突检测、拓扑排序"
+
+trigger:
+  - "cc-propose 声明 depends_on 或 parallel_safe"
+  - "cc-apply 的 depends_on_satisfied 检查"
+  - "cc-deps conflicts 检测到文件重叠"
+  - "cc-deps check 返回非 ready 状态"
+  - "两个及以上 change 处于 apply/review 状态"
+
+skip:
+  - "不得在单 change 项目中要求依赖分析"
+  - "不得将 conflict 检测结果直接当作 block——需区分 conflict 和 warning"
+
+process:
+  - "cc-propose: 声明 depends_on 后，运行 cc-deps conflicts --change <id> 检测与已有 change 的文件冲突"
+  - "cc-propose: 若检测到文件冲突，在 hard_gate 前向用户展示冲突详情和建议"
+  - "cc-apply: 运行 cc-deps check --change <id> 验证所有 depends_on 已满足"
+  - "cc-apply: 若 depends_on 中有未完成的 change，block 并说明等待条件"
+  - "cc-deps graph: 提供 ascii/dot/json 三种输出格式"
+  - "cc-deps conflicts: 若两个 change 显式声明 parallel_safe 且有 depends_on 关系，则降级为 warning"
+  - "cc-deps order: 拓扑排序输出安全执行顺序，检测循环依赖"
+  - "cc-deps check: 返回 ready / not ready + 具体阻塞原因"
+
+anti_rationalization:
+  - claim: "这两个 change 改的文件相似但不是同一个，不冲突"
+    reality: "文件级冲突检测只是第一层；即使文件不重叠，API/契约变更也可能间接冲突。cc-deps 只做确定性文件检测，语义级冲突仍需 LLM 判断"
+  - claim: "先做 A 再做 B 太慢了，可以并行"
+    reality: "parallel_safe: false 或存在 depends_on 关系的 change 并行执行会导致 merge conflict 和顺序错误。除非显式更新 spec 声明为 parallel_safe"
+  - claim: "cc-deps 说没冲突，所以可以放心并行"
+    reality: "cc-deps 只检测文件级重叠和声明的 depends_on。语义冲突（修改同一函数的签名/行为但不同文件）需要 code review 发现"
+
+red_flags:
+  - "cc-deps check 返回 not ready 但仍进入 cc-apply"
+  - "cc-deps conflicts 检测到 severity=conflict 但未在 hard_gate 中解决"
+  - "循环依赖未在 cc-propose 阶段被检测到"
+  - "parallel_safe: false 的 change 与其他 change 并行执行"
+
+checks:
+  - "cc-deps check --change <change-id>"
+  - "cc-deps conflicts"
+  - "cc-deps graph"

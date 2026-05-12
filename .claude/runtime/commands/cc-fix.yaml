@@ -68,6 +68,8 @@ preconditions:
   - block_when_log_or_reproduction_evidence_is_insufficient
   - define_minimal_fix_hypothesis
   - capture_pre_fix_verification_baseline_before_code_change
+  - record_root_cause_tag_and_detected_by_gate_for_closed_finding
+  - record_gate_effectiveness_event_when_finding_disposition_is_decided
 
 interaction_contract:
   mode: interactive_required
@@ -124,6 +126,8 @@ topic_rules:
     - .claude/runtime/topic-rules/source-driven-development.yaml
   when_finding_touches_dependency_or_wave_order:
     - .claude/runtime/topic-rules/git-workflow.yaml
+  when_gate_effectiveness_should_be_recorded:
+    - .claude/runtime/topic-rules/gate-effectiveness.yaml
 
 subagents:
   enabled: true
@@ -175,6 +179,7 @@ steps:
   - remove_temporary_debug_instrumentation
   - run_post_fix_l2_verification_and_record_comparison_in_log
   - block_fix_completion_if_post_fix_verification_fails
+  - record_gate_attribution_in_review_finding
   - load_test_spec_template_when_creating_test_spec
   - update_review_log_and_change_docs
   - sync_dev_map_if_boundaries_changed

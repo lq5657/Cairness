@@ -171,6 +171,12 @@
         },
         "budget-check": {
           "type": "string"
+        },
+        "deps": {
+          "type": "string"
+        },
+        "gate-stats": {
+          "type": "string"
         }
       }
     },

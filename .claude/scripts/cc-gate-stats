@@ -1,0 +1,503 @@
+#!/usr/bin/env python3
+"""cc-gate-stats — 门禁有效性度量与框架退化检测。
+
+从 review.md 和 events.jsonl 中提取门禁有效性数据，输出：
+  - 各 gate 的触发次数、真实错误拦截率、精确率
+  - 退化候选（连续 N 次未拦截真实错误的 gate）
+  - 根因聚类分布
+  - 时间趋势
+
+用法:
+  cc-gate-stats                    默认输出可读摘要
+  cc-gate-stats --gates            各 gate 的有效性指标
+  cc-gate-stats --degraded         仅输出退化候选
+  cc-gate-stats --root-causes      根因聚类分布
+  cc-gate-stats --trend            随时间变化的有效性趋势
+  cc-gate-stats --json             JSON 格式输出
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+
+ROOT_CAUSE_TAG_RE = re.compile(
+    r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
+    re.IGNORECASE,
+)
+DETECTED_BY_GATE_RE = re.compile(
+    r'(?:detected_by|gate)[:\s]*[`"]*([a-z0-9_-]+)',
+    re.IGNORECASE,
+)
+WAS_REAL_ERROR_RE = re.compile(
+    r'(?:was_real_error)[:\s]*[`"]*(true|false|yes|no)',
+    re.IGNORECASE,
+)
+
+
+@dataclass
+class GateMetric:
+    gate_id: str
+    trigger_count: int = 0
+    real_error_count: int = 0
+    false_positive_count: int = 0
+    finding_ids: list[str] = field(default_factory=list)
+    change_ids: set[str] = field(default_factory=set)
+    recent_results: list[bool] = field(default_factory=list)
+
+    @property
+    def precision(self) -> float:
+        if self.trigger_count == 0:
+            return 0.0
+        return self.real_error_count / self.trigger_count
+
+    @property
+    def degradation_streak(self) -> int:
+        """连续未拦截真实错误的次数（从最近往前数）。"""
+        streak = 0
+        for r in reversed(self.recent_results):
+            if not r:
+                streak += 1
+            else:
+                break
+        return streak
+
+
+@dataclass
+class RootCauseCluster:
+    tag: str
+    count: int = 0
+    gates: set[str] = field(default_factory=set)
+    change_ids: set[str] = field(default_factory=set)
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def load_config(root: Path) -> dict[str, Any]:
+    config_path = root / ".claude" / "harness.config.yaml"
+    if not config_path.exists():
+        return {}
+    try:
+        import yaml
+
+        return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+
+def get_gate_config(config: dict[str, Any]) -> dict[str, Any]:
+    ge = config.get("gate_effectiveness", {})
+    return {
+        "degradation_window": ge.get("degradation_window", 20),
+        "degradation_threshold": ge.get("degradation_threshold", 0.0),
+        "min_samples_before_judge": ge.get("min_samples_before_judge", 10),
+    }
+
+
+def parse_review_gates(path: Path) -> dict[str, Any]:
+    """从 review.md 提取 finding 的 gate attribution 和 root_cause_tag。"""
+    content = path.read_text(encoding="utf-8")
+    change_id = path.parent.name
+    findings: list[dict[str, Any]] = []
+
+    for m in re.finditer(r"^###\s+(F\d+):\s*(.+)", content, re.MULTILINE):
+        fid = m.group(1)
+        rest = content[m.end() : m.end() + 800]
+
+        rc_match = ROOT_CAUSE_TAG_RE.search(rest)
+        gate_match = DETECTED_BY_GATE_RE.search(rest)
+        err_match = WAS_REAL_ERROR_RE.search(rest)
+
+        was_real = None
+        if err_match:
+            was_real = err_match.group(1).lower() in ("true", "yes")
+
+        findings.append(
+            {
+                "id": fid,
+                "root_cause_tag": rc_match.group(1) if rc_match else None,
+                "detected_by_gate": gate_match.group(1) if gate_match else None,
+                "was_real_error": was_real,
+            }
+        )
+
+    # Extract stage status from frontmatter
+    stage1_status = "unknown"
+    stage2_status = "unknown"
+    fm = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+    if fm:
+        try:
+            import yaml
+
+            fm_data = yaml.safe_load(fm.group(1))
+            if isinstance(fm_data, dict):
+                stage1_status = fm_data.get("stage1_status", "unknown")
+                stage2_status = fm_data.get("stage2_status", "unknown")
+        except Exception:
+            pass
+
+    return {
+        "change_id": change_id,
+        "findings": findings,
+        "stage1_status": stage1_status,
+        "stage2_status": stage2_status,
+    }
+
+
+def discover_reviews(root: Path) -> list[dict[str, Any]]:
+    reviews: list[dict[str, Any]] = []
+    changes_dir = root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return reviews
+    for review_file in sorted(changes_dir.rglob("review.md")):
+        if ".claude" in review_file.parts:
+            continue
+        reviews.append(parse_review_gates(review_file))
+    return reviews
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    if not path.exists():
+        return events
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return events
+
+
+def discover_events(root: Path) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    changes_dir = root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return events
+    for event_file in sorted(changes_dir.rglob("events.jsonl")):
+        if ".claude" in event_file.parts:
+            continue
+        events.extend(read_jsonl(event_file))
+    return events
+
+
+def compute_gate_metrics(
+    reviews: list[dict[str, Any]],
+    events: list[dict[str, Any]],
+) -> dict[str, GateMetric]:
+    gates: dict[str, GateMetric] = {}
+
+    # From review.md findings
+    for review in reviews:
+        change_id = review["change_id"]
+        for f in review["findings"]:
+            gate_id = f.get("detected_by_gate")
+            if not gate_id:
+                continue
+
+            if gate_id not in gates:
+                gates[gate_id] = GateMetric(gate_id=gate_id)
+
+            g = gates[gate_id]
+            g.trigger_count += 1
+            g.change_ids.add(change_id)
+            g.finding_ids.append(f["id"])
+
+            if f.get("was_real_error") is True:
+                g.real_error_count += 1
+                g.recent_results.append(True)
+            elif f.get("was_real_error") is False:
+                g.false_positive_count += 1
+                g.recent_results.append(False)
+            # None means unconfirmed — count as trigger but not in results
+
+    # From events.jsonl gate_effectiveness records
+    for e in events:
+        ge = e.get("gate_effectiveness")
+        if not ge or not isinstance(ge, dict):
+            continue
+        for gt in ge.get("gates_triggered", []):
+            gate_id = gt.get("gate_id")
+            if not gate_id:
+                continue
+
+            if gate_id not in gates:
+                gates[gate_id] = GateMetric(gate_id=gate_id)
+
+            g = gates[gate_id]
+            g.trigger_count += 1
+            g.change_ids.add(e.get("change_id", "unknown"))
+            if gt.get("finding_ids"):
+                g.finding_ids.extend(gt["finding_ids"])
+
+            if gt.get("was_real_error") is True:
+                g.real_error_count += 1
+                g.recent_results.append(True)
+            elif gt.get("was_real_error") is False:
+                g.false_positive_count += 1
+                g.recent_results.append(False)
+
+    return gates
+
+
+def compute_root_cause_clusters(
+    reviews: list[dict[str, Any]],
+) -> dict[str, RootCauseCluster]:
+    clusters: dict[str, RootCauseCluster] = {}
+
+    for review in reviews:
+        change_id = review["change_id"]
+        for f in review["findings"]:
+            tag = f.get("root_cause_tag")
+            if not tag:
+                continue
+
+            if tag not in clusters:
+                clusters[tag] = RootCauseCluster(tag=tag)
+
+            c = clusters[tag]
+            c.count += 1
+            c.change_ids.add(change_id)
+            gate = f.get("detected_by_gate")
+            if gate:
+                c.gates.add(gate)
+
+    return clusters
+
+
+def find_degraded(
+    gates: dict[str, GateMetric],
+    config: dict[str, Any],
+) -> list[tuple[str, GateMetric, str]]:
+    """返回退化候选列表: (gate_id, metric, recommendation)。"""
+    window = config["degradation_window"]
+    min_samples = config["min_samples_before_judge"]
+
+    degraded: list[tuple[str, GateMetric, str]] = []
+    for gate_id, g in sorted(gates.items()):
+        if g.trigger_count < min_samples:
+            continue
+
+        if g.degradation_streak >= window:
+            degraded.append((gate_id, g, "candidate_for_removal"))
+        elif g.degradation_streak >= window // 2:
+            degraded.append((gate_id, g, "watch"))
+        elif g.precision < 0.1 and g.trigger_count >= min_samples:
+            degraded.append((gate_id, g, "watch"))
+
+    return degraded
+
+
+def print_gates(gates: dict[str, GateMetric]) -> None:
+    print("=== 门禁有效性指标 ===\n")
+    if not gates:
+        print("  (无数据)")
+        return
+
+    print(f"  {'Gate':<35} {'触发':>5} {'真错':>5} {'误报':>5} {'精确率':>7} {'退化链':>6}")
+    print(f"  {'─' * 35} {'─' * 5} {'─' * 5} {'─' * 5} {'─' * 7} {'─' * 6}")
+    for gate_id, g in sorted(gates.items()):
+        label = gate_id if len(gate_id) <= 33 else gate_id[:30] + "..."
+        print(
+            f"  {label:<35} {g.trigger_count:>5} {g.real_error_count:>5} "
+            f"{g.false_positive_count:>5} {g.precision:>6.1%} {g.degradation_streak:>6}"
+        )
+
+
+def print_degraded(
+    degraded: list[tuple[str, GateMetric, str]],
+) -> None:
+    print("=== 退化候选 ===\n")
+    if not degraded:
+        print("  ✓ 当前无退化候选（所有门禁均在有效运行）")
+        return
+
+    for gate_id, g, recommendation in degraded:
+        rec_label = {"candidate_for_removal": "⚠ 建议降级/移除", "watch": "👁 观察中"}.get(
+            recommendation, recommendation
+        )
+        print(f"  {gate_id}")
+        print(f"    状态: {rec_label}")
+        print(
+            f"    连续 {g.degradation_streak} 次触发未拦截真实错误 "
+            f"(共触发 {g.trigger_count} 次, 精确率 {g.precision:.1%})"
+        )
+        print(f"    涉及 change: {', '.join(sorted(g.change_ids)[-5:])}")
+        print()
+
+
+def print_root_causes(
+    clusters: dict[str, RootCauseCluster],
+) -> None:
+    print("=== 根因聚类分布 ===\n")
+    if not clusters:
+        print("  (无数据 — 需要 cc-fix 记录 root_cause_tag)")
+        return
+
+    sorted_clusters = sorted(clusters.items(), key=lambda x: -x[1].count)
+    for tag, c in sorted_clusters:
+        bar = "█" * min(c.count, 40)
+        gate_list = ", ".join(sorted(c.gates)) if c.gates else "未标记"
+        print(f"  {tag}")
+        print(f"    次数: {c.count}  {bar}")
+        print(f"    涉及 change: {len(c.change_ids)} 个")
+        print(f"    关联门禁: {gate_list}")
+        print()
+
+
+def print_trend(
+    reviews: list[dict[str, Any]],
+) -> None:
+    """按时间输出 gate 有效性趋势（基于 review 的 change 分组）。"""
+    print("=== 门禁有效性趋势 ===\n")
+
+    # Group findings by change_id and gate
+    gate_by_change: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for review in reviews:
+        change_id = review["change_id"]
+        for f in review["findings"]:
+            gate = f.get("detected_by_gate")
+            if gate:
+                gate_by_change[change_id][gate].append(f)
+
+    if not gate_by_change:
+        print("  (无数据)")
+        return
+
+    for change_id in sorted(gate_by_change):
+        gates_for_change = gate_by_change[change_id]
+        real = sum(
+            1
+            for gfs in gates_for_change.values()
+            for f in gfs
+            if f.get("was_real_error") is True
+        )
+        fp = sum(
+            1
+            for gfs in gates_for_change.values()
+            for f in gfs
+            if f.get("was_real_error") is False
+        )
+        total = real + fp
+        print(
+            f"  {change_id}: {len(gates_for_change)} gates triggered, "
+            f"{total} findings ({real} real, {fp} fp)"
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="门禁有效性度量与框架退化检测"
+    )
+    parser.add_argument("--json", action="store_true", help="JSON 格式输出")
+    parser.add_argument(
+        "--gates", action="store_true", help="各 gate 的有效性指标"
+    )
+    parser.add_argument(
+        "--degraded", action="store_true", help="仅输出退化候选"
+    )
+    parser.add_argument(
+        "--root-causes", action="store_true", help="根因聚类分布"
+    )
+    parser.add_argument("--trend", action="store_true", help="时间趋势")
+    args = parser.parse_args()
+
+    root = project_root()
+    config = load_config(root)
+    gate_config = get_gate_config(config)
+
+    reviews = discover_reviews(root)
+    events = discover_events(root)
+    gates = compute_gate_metrics(reviews, events)
+    clusters = compute_root_cause_clusters(reviews)
+    degraded = find_degraded(gates, gate_config)
+
+    if args.json:
+        output: dict[str, Any] = {
+            "gates": {
+                gid: {
+                    "trigger_count": g.trigger_count,
+                    "real_error_count": g.real_error_count,
+                    "false_positive_count": g.false_positive_count,
+                    "precision": round(g.precision, 4),
+                    "degradation_streak": g.degradation_streak,
+                    "change_ids": sorted(g.change_ids),
+                }
+                for gid, g in sorted(gates.items())
+            },
+            "degraded": [
+                {
+                    "gate_id": gid,
+                    "recommendation": rec,
+                    "degradation_streak": g.degradation_streak,
+                    "precision": round(g.precision, 4),
+                }
+                for gid, g, rec in degraded
+            ],
+            "root_causes": {
+                tag: {
+                    "count": c.count,
+                    "gates": sorted(c.gates),
+                    "change_count": len(c.change_ids),
+                }
+                for tag, c in sorted(
+                    clusters.items(), key=lambda x: -x[1].count
+                )
+            },
+            "config": gate_config,
+        }
+        if args.gates:
+            print(json.dumps(output["gates"], indent=2, ensure_ascii=False))
+        elif args.degraded:
+            print(json.dumps(output["degraded"], indent=2, ensure_ascii=False))
+        elif args.root_causes:
+            print(
+                json.dumps(output["root_causes"], indent=2, ensure_ascii=False)
+            )
+        else:
+            print(json.dumps(output, indent=2, ensure_ascii=False))
+    else:
+        if args.gates:
+            print_gates(gates)
+        elif args.degraded:
+            print_degraded(degraded)
+        elif args.root_causes:
+            print_root_causes(clusters)
+        elif args.trend:
+            print_trend(reviews)
+        else:
+            print("=== cc_spec 门禁有效性报告 ===\n")
+            print(
+                f"  分析范围: {len(reviews)} 个 change, "
+                f"{sum(len(r['findings']) for r in reviews)} 个 finding\n"
+            )
+            print_gates(gates)
+            print()
+            print_degraded(degraded)
+            print_root_causes(clusters)
+
+            if degraded:
+                print(
+                    "── 建议 ──\n\n"
+                    "  退化候选门禁可考虑:\n"
+                    "  1. 在 harness.config.yaml 中降级其 topic rule 加载条件\n"
+                    "  2. 在 profile 中将该检查移至 stricter profile\n"
+                    "  3. 若确已无效，从 workflow 中移除对应 validates/gate\n"
+                )
+
+
+if __name__ == "__main__":
+    main()

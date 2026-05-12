@@ -1,0 +1,526 @@
+#!/usr/bin/env python3
+"""cc-deps — 跨 Change 依赖管理。
+
+解析 .cc/changes/*/spec.md 的 depends_on 和 tasks.md 的文件声明，
+提供依赖图可视化、文件冲突检测、拓扑排序和安全执行顺序。
+
+用法:
+  cc-deps graph [--format dot|ascii|json]   依赖图可视化
+  cc-deps conflicts [--change <id>]          文件级冲突检测
+  cc-deps order [--from <status>]            拓扑排序输出安全执行顺序
+  cc-deps check --change <id>                检查目标 change 的依赖是否满足
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+
+@dataclass
+class ChangeInfo:
+    change_id: str
+    status: str = "propose"
+    depends_on: list[str] = field(default_factory=list)
+    parallel_safe: bool = True
+    branch: str = ""
+    files: set[str] = field(default_factory=set)
+    dir_path: Path | None = None
+
+    def __hash__(self) -> int:
+        return hash(self.change_id)
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def parse_spec(spec_path: Path) -> dict[str, Any] | None:
+    """解析 spec.md 的 YAML frontmatter。"""
+    content = spec_path.read_text(encoding="utf-8")
+    m = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+    if not m:
+        return None
+    try:
+        import yaml
+
+        return yaml.safe_load(m.group(1)) or {}
+    except Exception:
+        return None
+
+
+def parse_task_files(tasks_path: Path) -> set[str]:
+    """从 tasks.md 中提取涉及文件路径。"""
+    content = tasks_path.read_text(encoding="utf-8")
+    files: set[str] = set()
+
+    # Pattern 1: **涉及文件**: followed by file paths
+    for m in re.finditer(
+        r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", content, re.DOTALL
+    ):
+        block = m.group(1).strip()
+        for line in block.splitlines():
+            line = line.strip().lstrip("-* ").strip().strip("`")
+            if line and not line.startswith("("):
+                files.add(line)
+
+    # Pattern 2: File change table (| 文件 | 操作 | ...)
+    in_table = False
+    for line in content.splitlines():
+        if "| 文件 |" in line and "操作" in line:
+            in_table = True
+            continue
+        if in_table:
+            if line.startswith("|") and not line.startswith("|--"):
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 2:
+                    fname = parts[1].strip().strip("`")
+                    if fname and not fname.startswith("-"):
+                        files.add(fname)
+            elif not line.startswith("|"):
+                in_table = False
+
+    # Clean up: remove empty entries and normalize
+    return {f for f in files if f and not f.isspace()}
+
+
+def discover_changes(root: Path) -> dict[str, ChangeInfo]:
+    """扫描 .cc/changes/ 下所有 change。"""
+    changes: dict[str, ChangeInfo] = {}
+    changes_dir = root / ".cc" / "changes"
+    if not changes_dir.exists():
+        return changes
+
+    for spec_file in sorted(changes_dir.rglob("spec.md")):
+        if ".claude" in spec_file.parts:
+            continue
+
+        spec = parse_spec(spec_file)
+        if not spec:
+            continue
+
+        change_id = spec.get("change_id", spec_file.parent.name)
+        if not change_id:
+            continue
+
+        ci = ChangeInfo(
+            change_id=change_id,
+            status=spec.get("status", "propose"),
+            depends_on=spec.get("depends_on", []) or [],
+            parallel_safe=spec.get("parallel_safe", True),
+            branch=spec.get("branch", ""),
+            dir_path=spec_file.parent,
+        )
+
+        # Parse task files
+        tasks_path = spec_file.parent / "tasks.md"
+        if tasks_path.exists():
+            ci.files = parse_task_files(tasks_path)
+
+        changes[change_id] = ci
+
+    return changes
+
+
+def build_dependency_graph(
+    changes: dict[str, ChangeInfo],
+) -> dict[str, set[str]]:
+    """构建邻接表: change_id → {下游 change_ids}。"""
+    graph: dict[str, set[str]] = defaultdict(set)
+    for cid in changes:
+        graph.setdefault(cid, set())
+
+    for cid, ci in changes.items():
+        for dep in ci.depends_on:
+            if dep in changes:
+                graph[dep].add(cid)
+            # 即使 dep 不在 changes 中也记录（可能是外部依赖或已归档）
+            graph.setdefault(dep, set()).add(cid)
+            if cid not in graph[dep]:
+                graph[dep].add(cid)
+
+    return dict(graph)
+
+
+def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
+    """DFS 检测图中的所有环。"""
+    cycles: list[list[str]] = []
+    visited: set[str] = set()
+    rec_stack: list[str] = []
+
+    def dfs(node: str) -> None:
+        visited.add(node)
+        rec_stack.append(node)
+        for neighbor in graph.get(node, set()):
+            if neighbor in rec_stack:
+                idx = rec_stack.index(neighbor)
+                cycles.append(rec_stack[idx:] + [neighbor])
+            elif neighbor not in visited:
+                dfs(neighbor)
+        rec_stack.pop()
+
+    for node in graph:
+        if node not in visited:
+            dfs(node)
+
+    return cycles
+
+
+def topological_sort(
+    graph: dict[str, set[str]],
+    changes: dict[str, ChangeInfo],
+) -> list[str]:
+    """拓扑排序，返回安全执行顺序。"""
+    in_degree: dict[str, int] = defaultdict(int)
+    for node in graph:
+        in_degree.setdefault(node, 0)
+    for node, deps in graph.items():
+        for dep in deps:
+            in_degree[dep] += 1
+
+    queue: deque[str] = deque(
+        n for n, d in in_degree.items() if d == 0 and n in changes
+    )
+    result: list[str] = []
+
+    while queue:
+        node = queue.popleft()
+        result.append(node)
+        for neighbor in graph.get(node, set()):
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0 and neighbor in changes:
+                queue.append(neighbor)
+
+    return result
+
+
+def detect_file_conflicts(
+    changes: dict[str, ChangeInfo],
+    target_change: str | None = None,
+) -> list[dict[str, Any]]:
+    """检测两个 change 是否声明了重叠的文件写入。"""
+    conflicts: list[dict[str, Any]] = []
+
+    change_list = list(changes.values())
+    if target_change:
+        change_list = [
+            c for c in change_list if c.change_id == target_change
+        ]
+        if not change_list:
+            return conflicts
+
+    for i, ci in enumerate(change_list):
+        for cj in change_list[i + 1 :]:
+            if not ci.files or not cj.files:
+                continue
+            overlap = ci.files & cj.files
+            if overlap:
+                # 如果显式标记 parallel_safe 且无 depends_on 关系则降级为 warning
+                has_dep_relation = (
+                    cj.change_id in ci.depends_on
+                    or ci.change_id in cj.depends_on
+                )
+                severity = (
+                    "warning"
+                    if (ci.parallel_safe and cj.parallel_safe and has_dep_relation)
+                    else "conflict"
+                )
+                conflicts.append(
+                    {
+                        "change_a": ci.change_id,
+                        "change_b": cj.change_id,
+                        "overlapping_files": sorted(overlap),
+                        "severity": severity,
+                        "recommendation": (
+                            "merge into one change or split by sub-module"
+                            if severity == "conflict"
+                            else "dependency declared — sequential execution recommended"
+                        ),
+                    }
+                )
+
+    return conflicts
+
+
+def check_dependencies(
+    change_id: str,
+    changes: dict[str, ChangeInfo],
+) -> dict[str, Any]:
+    """检查目标 change 的依赖是否满足执行条件。"""
+    ci = changes.get(change_id)
+    if not ci:
+        return {
+            "change_id": change_id,
+            "status": "unknown",
+            "error": f"change '{change_id}' not found",
+        }
+
+    unsatisfied: list[str] = []
+    blocked: list[str] = []
+    not_done: list[str] = []
+
+    for dep in ci.depends_on:
+        dep_ci = changes.get(dep)
+        if not dep_ci:
+            unsatisfied.append(dep)
+            continue
+        if dep_ci.status in ("review", "done"):
+            continue
+        if dep_ci.status == "apply":
+            blocked.append(dep)
+        else:
+            not_done.append(dep)
+
+    all_blocking = unsatisfied + blocked + not_done
+    ready = len(all_blocking) == 0
+
+    return {
+        "change_id": change_id,
+        "status": ci.status,
+        "depends_on": ci.depends_on,
+        "ready": ready,
+        "unsatisfied": unsatisfied,
+        "blocked": blocked,
+        "not_done": not_done,
+        "recommendation": (
+            "all dependencies satisfied — safe to proceed"
+            if ready
+            else f"{len(all_blocking)} dependency(s) not satisfied"
+        ),
+    }
+
+
+def format_graph_ascii(
+    graph: dict[str, set[str]],
+    changes: dict[str, ChangeInfo],
+) -> str:
+    """生成 ASCII 依赖图。"""
+    lines: list[str] = []
+    status_icon = {
+        "propose": "[P]",
+        "apply": "[A]",
+        "review": "[R]",
+        "done": "[D]",
+    }
+
+    # Find root nodes (no incoming edges)
+    has_incoming: set[str] = set()
+    for node, deps in graph.items():
+        for d in deps:
+            has_incoming.add(d)
+
+    roots = sorted(n for n in graph if n not in has_incoming)
+    leaves = sorted(n for n in graph if not graph.get(n))
+
+    for cid in roots:
+        ci = changes.get(cid)
+        if ci:
+            icon = status_icon.get(ci.status, "[?]")
+            deps = sorted(graph.get(cid, set()))
+            if deps:
+                deps_str = " → ".join(
+                    f"{d} {status_icon.get(changes.get(d, ChangeInfo(d)).status, '[?]')}"
+                    for d in deps
+                )
+                lines.append(f"  {icon} {cid} ──► {deps_str}")
+            else:
+                lines.append(f"  {icon} {cid} (leaf, no dependents)")
+
+    # Orphan nodes (not roots, not showing as root's children)
+    shown = set()
+    for cid in roots:
+        shown.add(cid)
+        for d in graph.get(cid, set()):
+            shown.add(d)
+
+    orphans = sorted(n for n in graph if n not in shown)
+    if orphans:
+        lines.append("\n  ── Orphans / External ──")
+        for cid in orphans:
+            if cid in changes:
+                ci = changes[cid]
+                icon = status_icon.get(ci.status, "[?]")
+                lines.append(f"  {icon} {cid} (depends_on: {ci.depends_on})")
+
+    return "\n".join(lines) if lines else "  (no dependency graph data)"
+
+
+def format_graph_dot(
+    graph: dict[str, set[str]],
+    changes: dict[str, ChangeInfo],
+) -> str:
+    """生成 DOT 格式依赖图（可渲染为 PNG/SVG）。"""
+    lines = ["digraph cc_deps {", '  rankdir="LR";', '  node [shape=box];']
+
+    status_color = {
+        "propose": "#f0f0f0",
+        "apply": "#ffffcc",
+        "review": "#ccffcc",
+        "done": "#cccccc",
+    }
+
+    for cid, ci in changes.items():
+        color = status_color.get(ci.status, "#ffffff")
+        label = f"{cid}\\n[{ci.status}]"
+        lines.append(f'  "{cid}" [label="{label}", style=filled, fillcolor="{color}"];')
+
+    for src, targets in graph.items():
+        for tgt in sorted(targets):
+            lines.append(f'  "{src}" -> "{tgt}";')
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def print_graph(
+    graph: dict[str, set[str]],
+    changes: dict[str, ChangeInfo],
+    fmt: str,
+) -> None:
+    if fmt == "dot":
+        print(format_graph_dot(graph, changes))
+    elif fmt == "json":
+        output = {}
+        for node, deps in graph.items():
+            ci = changes.get(node)
+            output[node] = {
+                "status": ci.status if ci else "external",
+                "depends_on": ci.depends_on if ci else [],
+                "dependents": sorted(deps),
+                "parallel_safe": ci.parallel_safe if ci else None,
+            }
+        print(json.dumps(output, indent=2, ensure_ascii=False))
+    else:
+        print("=== Change 依赖图 ===\n")
+        print(format_graph_ascii(graph, changes))
+
+        cycles = detect_cycles(graph)
+        if cycles:
+            print("\n⚠ 检测到循环依赖:")
+            for cycle in cycles:
+                print(f"  {' → '.join(cycle)}")
+
+
+def print_conflicts(
+    conflicts: list[dict[str, Any]],
+) -> None:
+    print("=== 文件冲突检测 ===\n")
+    if not conflicts:
+        print("  ✓ 无文件冲突")
+        return
+
+    for c in conflicts:
+        icon = "⚠" if c["severity"] == "conflict" else "ℹ"
+        print(f"  {icon} {c['change_a']} ↔ {c['change_b']} [{c['severity']}]")
+        for f in c["overlapping_files"]:
+            print(f"       {f}")
+        print(f"     → {c['recommendation']}\n")
+
+
+def print_order(
+    order: list[str],
+    changes: dict[str, ChangeInfo],
+) -> None:
+    print("=== 安全执行顺序 ===\n")
+    if not order:
+        print("  (无可排序的 change)")
+        return
+
+    for i, cid in enumerate(order, 1):
+        ci = changes.get(cid)
+        if not ci:
+            continue
+        deps_str = (
+            f" (waits for: {', '.join(ci.depends_on)})"
+            if ci.depends_on
+            else " (no deps)"
+        )
+        print(f"  {i:>2}. {cid:<30} [{ci.status}]{deps_str}")
+
+
+def print_check(result: dict[str, Any]) -> None:
+    print(f"=== 依赖检查: {result['change_id']} ===\n")
+    print(f"  当前状态: {result['status']}")
+    print(f"  依赖项: {result['depends_on'] or '(none)'}")
+
+    if result.get("error"):
+        print(f"\n  ✗ {result['error']}")
+        return
+
+    if result["ready"]:
+        print(f"\n  ✓ {result['recommendation']}")
+    else:
+        print(f"\n  ✗ {result['recommendation']}")
+        if result["unsatisfied"]:
+            print(f"    未找到: {', '.join(result['unsatisfied'])}")
+        if result["blocked"]:
+            print(f"    仍在实现: {', '.join(result['blocked'])}")
+        if result["not_done"]:
+            print(f"    尚未完成: {', '.join(result['not_done'])}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="跨 Change 依赖管理"
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    graph_p = sub.add_parser("graph", help="依赖图可视化")
+    graph_p.add_argument(
+        "--format",
+        choices=["ascii", "dot", "json"],
+        default="ascii",
+        help="输出格式",
+    )
+
+    conflicts_p = sub.add_parser("conflicts", help="文件冲突检测")
+    conflicts_p.add_argument("--change", type=str, help="仅检查指定 change")
+
+    sub.add_parser("order", help="拓扑排序输出执行顺序")
+
+    check_p = sub.add_parser("check", help="检查依赖是否满足")
+    check_p.add_argument("--change", type=str, required=True, help="目标 change ID")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    root = project_root()
+    changes = discover_changes(root)
+
+    if args.command == "graph":
+        graph = build_dependency_graph(changes)
+        print_graph(graph, changes, args.format)
+
+    elif args.command == "conflicts":
+        conflicts = detect_file_conflicts(changes, args.change)
+        print_conflicts(conflicts)
+
+    elif args.command == "order":
+        graph = build_dependency_graph(changes)
+        cycles = detect_cycles(graph)
+        if cycles:
+            print("✗ 检测到循环依赖，无法排序:")
+            for cycle in cycles:
+                print(f"  {' → '.join(cycle)}")
+            sys.exit(1)
+        order = topological_sort(graph, changes)
+        print_order(order, changes)
+
+    elif args.command == "check":
+        result = check_dependencies(args.change, changes)
+        print_check(result)
+        if not result.get("ready"):
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

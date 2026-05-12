@@ -22,6 +22,8 @@ optional_reads:
 conditional_reads:
   when_writing_knowledge_entry:
   - .claude/templates/knowledge/entry.md
+  when_gate_degradation_detected:
+  - .claude/runtime/topic-rules/gate-effectiveness.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

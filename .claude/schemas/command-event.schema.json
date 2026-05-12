@@ -104,6 +104,38 @@
           "additionalProperties": {"type": "integer", "minimum": 0}
         }
       }
+    },
+    "gate_effectiveness": {
+      "type": "object",
+      "description": "门禁有效性度量 — cc-review/cc-fix 时记录",
+      "properties": {
+        "gates_triggered": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["gate_id", "blocked"],
+            "properties": {
+              "gate_id": {
+                "type": "string",
+                "description": "门禁标识 (lens name / topic rule / script)"
+              },
+              "blocked": {
+                "type": "boolean",
+                "description": "是否阻止了命令继续"
+              },
+              "was_real_error": {
+                "type": "boolean",
+                "description": "cc-fix 确认是否为真实错误"
+              },
+              "finding_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "关联的 finding ID 列表"
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

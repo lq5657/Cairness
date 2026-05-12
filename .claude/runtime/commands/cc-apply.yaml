@@ -47,11 +47,12 @@ runtime_protocol_reads:
 preconditions:
   - spec_and_tasks_exist
   - hard_gate_confirmed_for_current_revisions
-  - depends_on_satisfied
+  - depends_on_satisfied_verified_by_cc_deps_check
   - branch_matches_change_and_is_not_main
   - save_pre_apply_baseline_before_first_code_edit
   - only_one_task_may_be_in_progress
   - run_deterministic_topic_rule_detection
+  - run_cc_deps_check_before_first_task
 
 interaction_contract:
   mode: interactive_required
@@ -133,6 +134,7 @@ steps:
   - promote_change_to_review
 
 auto_validation:
+  - .claude/scripts/cc-deps check --change <change-id>
   - .claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>

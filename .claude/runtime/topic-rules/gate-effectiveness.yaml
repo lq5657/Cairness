@@ -1,0 +1,42 @@
+id: gate-effectiveness
+description: "门禁有效性度量——记录归因数据、检测退化、建议降级"
+
+trigger:
+  - "cc-fix 关闭 finding 时，应记录 root_cause_tag 和 detected_by.gate"
+  - "cc-archive 前检测到退化候选门禁"
+  - "cc-gate-stats --degraded 返回非空结果"
+
+skip:
+  - "不得在无 review.md finding 数据的情况下运行 cc-gate-stats"
+  - "不得在退化候选未达 min_samples_before_judge 时建议移除"
+  - "退化检测结果仅作为建议，最终降级/移除需用户显式确认"
+
+process:
+  - "cc-fix: 在关闭 finding 时，将 root_cause_tag 和 detected_by 写回 review.md 对应 finding 区块"
+  - "cc-fix: 若 finding 指向真实错误，设置 was_real_error: true"
+  - "cc-fix: 若 finding 是误报（规则过严或模型已不再犯此类错误），设置 was_real_error: false"
+  - "cc-fix: 将 gate_effectiveness 事件追加到 events.jsonl"
+  - "cc-archive: 运行 cc-gate-stats --degraded 检测退化候选"
+  - "cc-archive: 若存在 candidate_for_removal 候选，在 knowledge_decision 前向用户展示"
+  - "退化判定: 连续 degradation_window (默认20) 次触发未拦截真实错误 → candidate_for_removal"
+  - "退化判定: 连续 degradation_window/2 次 → watch"
+  - "退化判定: precision < 0.1 且 trigger_count >= min_samples → watch"
+
+anti_rationalization:
+  - claim: "先删除这个 gate，需要时再加回来"
+    reality: "退化数据只是信号；移除前应确认该 gate 对应的 topic rule 加载条件和触发场景是否仍然有效"
+  - claim: "这个 gate 没触发过，说明代码质量好"
+    reality: "可能是 gate 的条件触发表达式太窄或过时，也可能是模型已超越该检查。需要区分'不触发'和'触发了但总 pass'"
+  - claim: "这个 gate 正在退化，应该立即删除"
+    reality: "退化可能是样本不足或最近 changes 恰好未涉及该领域。应积累足够样本后再判断"
+
+red_flags:
+  - "标记 fixed 的 finding 缺少 root_cause_tag"
+  - "标记 fixed 的 finding 缺少 detected_by.gate"
+  - "cc-archive 在存在 candidate_for_removal 门禁时未向用户展示"
+  - "gate_effectiveness 事件的 was_real_error 与 root_cause 分析不一致"
+
+checks:
+  - "cc-gate-stats --degraded"
+  - "cc-gate-stats --gates"
+  - "review.md finding root_cause_tag and detected_by fields populated for closed findings"

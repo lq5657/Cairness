@@ -41,6 +41,10 @@ runtime_protocol_reads:
   language_profile: on_demand
   technology_catalog: never
 
+topic_rules:
+  when_gate_degradation_detected:
+    - .claude/runtime/topic-rules/gate-effectiveness.yaml
+
 preconditions:
   - review_exists_and_allows_archive
   - spec_status_is_review
@@ -51,6 +55,7 @@ preconditions:
   - classify_project_knowledge_vs_harness_refinement_candidate
   - do_not_convert_refinement_candidate_to_rule_without_maintenance_change
   - knowledge_compounding_decision_is_explicit
+  - check_gate_degradation_before_archive_and_surface_candidates
 
 interaction_contract:
   mode: interactive_required
@@ -83,6 +88,7 @@ steps:
   - record_refinement_candidate_without_modifying_runtime
   - present_knowledge_decision_options_and_wait_for_choice
   - load_knowledge_entry_template_before_writing
+  - run_gate_degradation_check_and_report_findings
   - rerun_pre_archive_validation
   - mark_spec_done
   - sync_log_and_task_board

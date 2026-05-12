@@ -83,6 +83,19 @@ budgets:
     enabled: true
     min_events_for_baseline: 5
 
+gate_effectiveness:
+  degradation_window: 20
+  degradation_threshold: 0.0
+  min_samples_before_judge: 10
+  auto_check_on_archive: true
+
+dependencies:
+  auto_check_on_propose: true
+  auto_check_on_apply: true
+  conflict_detection: strict
+  circular_dependency: block
+  max_parallel_changes: 5
+
 validation:
   auto_run: true
   fail_on_error: true
@@ -92,6 +105,8 @@ validation:
   role_command: ".claude/scripts/cc-role-check"
   eval_command: ".claude/scripts/cc-eval"
   readset_command: ".claude/scripts/cc-readset"
+  deps_command: ".claude/scripts/cc-deps"
+  gate_stats_command: ".claude/scripts/cc-gate-stats"
   baseline_dir: ".cc/changes/<change-id>/baseline"
   fixture_dir: ".claude/fixtures"
   require_structured_hard_gate: true
