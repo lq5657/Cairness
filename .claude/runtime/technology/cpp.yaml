@@ -243,3 +243,142 @@ decision_groups:
         tradeoffs:
           - Access to newer language and library features
           - Higher compatibility risk across compilers, platforms, and dependencies
+
+  - id: logging
+    level: P1
+    scope: both
+    applies_when:
+      - production_native_code
+      - logging_not_selected
+    question: Select the C++ logging library.
+    default_recommendation: spdlog
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: spdlog
+        label: spdlog
+        recommended_when:
+          - modern_cpp_logging_needed
+          - header_only_or_compiled_acceptable
+        tradeoffs:
+          - Fast, fmt-based formatting, multiple sinks, header-only option
+          - Requires C++11 or later, async logging needs thread pool management
+      - id: glog
+        label: glog (Google Log)
+        recommended_when:
+          - existing_glog_integration
+          - google_ecosystem_alignment
+        tradeoffs:
+          - Mature, well-known in Google ecosystem, conditional logging levels
+          - Less modern API than spdlog, fewer sink options
+      - id: boost_log
+        label: Boost.Log
+        recommended_when:
+          - boost_already_in_dependency_tree
+          - highly_customizable_logging_needed
+        tradeoffs:
+          - Extremely flexible, good for complex logging architectures
+          - Heavy compile times, complex configuration, Boost dependency
+      - id: std_cerr
+        label: std::cerr / printf
+        recommended_when:
+          - library_or_minimal_logging
+          - no_logging_library_dependency_desired
+        tradeoffs:
+          - Zero dependency, works everywhere
+          - No structured logging, levels, rotation, or async support
+
+  - id: static_analysis
+    level: P1
+    scope: project
+    applies_when:
+      - production_or_safety_critical_code
+      - static_analysis_not_selected
+    question: Select the C++ static analysis tooling.
+    default_recommendation: clang_tidy
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+    options:
+      - id: clang_tidy
+        label: clang-tidy
+        recommended_when:
+          - cmake_or_clang_based_project
+          - modern_cpp_checks_are_valued
+        tradeoffs:
+          - Broad check coverage, integrates with CMake, auto-fix for many issues
+          - Requires compilation database, check configuration needs curation
+      - id: clang_tidy_cppcheck
+        label: clang-tidy + Cppcheck
+        recommended_when:
+          - broadest_static_coverage_needed
+          - safety_or_security_critical
+        tradeoffs:
+          - Complementary — clang-tidy for style/modernization, Cppcheck for flow-based bugs
+          - Two tools to configure and maintain in CI
+      - id: compiler_warnings
+        label: Compiler warnings only (-Wall -Wextra -Werror)
+        recommended_when:
+          - smaller_project_or_library
+          - minimal_tooling_setup
+        tradeoffs:
+          - Zero additional dependency, always available
+          - Much narrower scope than dedicated static analyzers
+      - id: sonarqube
+        label: SonarQube / Coverity
+        recommended_when:
+          - enterprise_sast_requirements
+          - compliance_or_certification_needed
+        tradeoffs:
+          - Deep analysis, trend tracking, compliance reporting
+          - Commercial tooling, server infrastructure, slower feedback cycle
+
+  - id: http_library
+    level: P2
+    scope: both
+    applies_when:
+      - service_or_client_needs_http
+      - http_library_not_selected
+    question: Select the C++ HTTP library.
+    default_recommendation: cpp_httplib
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: cpp_httplib
+        label: cpp-httplib
+        recommended_when:
+          - simple_http_server_or_client
+          - header_only_is_preferred
+        tradeoffs:
+          - Single header, easy to integrate, supports HTTPS via OpenSSL
+          - Limited to HTTP/1.1, not suitable for high-throughput services
+      - id: boost_beast
+        label: Boost.Beast
+        recommended_when:
+          - boost_already_in_tree
+          - low_level_http_control_needed
+        tradeoffs:
+          - Builds on Boost.Asio, HTTP/1.1 and WebSocket support
+          - Low-level API, requires more boilerplate than httplib
+      - id: drogon
+        label: Drogon
+        recommended_when:
+          - full_web_framework_needed
+          - async_high_performance_http
+        tradeoffs:
+          - Fast C++17 coroutine-based framework, built-in ORM and WebSocket
+          - Heavier than library-level solutions, framework lock-in
+      - id: no_http
+        label: No HTTP
+        recommended_when:
+          - library_or_cli
+          - http_is_not_in_scope
+        tradeoffs:
+          - No networking dependency
+          - HTTP capability must be added later if requirements change

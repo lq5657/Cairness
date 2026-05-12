@@ -259,3 +259,212 @@ decision_groups:
         tradeoffs:
           - Keeps MVP lighter and avoids premature storage choices
           - Later persistence introduction will require schema, migration, and rollback decisions
+
+  - id: cache
+    level: P1
+    scope: both
+    applies_when:
+      - caching_required
+      - java_cache_not_selected
+    question: Select the Java caching approach.
+    default_recommendation: caffeine_local
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: caffeine_local
+        label: Caffeine (local cache)
+        recommended_when:
+          - single_instance_or_tolerable_staleness
+          - low_latency_in_process_cache
+        tradeoffs:
+          - Excellent performance, near-optimal eviction, simple integration
+          - No distributed coherence; invalidation across instances must be handled explicitly
+      - id: redis
+        label: Redis (distributed cache)
+        recommended_when:
+          - multi_instance_or_shared_cache_required
+          - cache_survives_restarts
+        tradeoffs:
+          - Shared cache across instances, persistence, pub/sub for invalidation
+          - Adds network hop and Redis operational dependency
+      - id: hazelcast
+        label: Hazelcast (embedded grid)
+        recommended_when:
+          - distributed_cache_without_external_service
+          - jvm_embedded_data_grid
+        tradeoffs:
+          - Embedded distributed cache with near-cache and event listeners
+          - Requires careful cluster and serialization configuration
+      - id: no_cache
+        label: No cache
+        recommended_when:
+          - caching_not_needed_yet
+          - data_is_always_fresh_or_query_volume_is_low
+        tradeoffs:
+          - Keeps architecture simple
+          - Later cache introduction requires invalidation strategy and key design
+
+  - id: observability
+    level: P1
+    scope: project
+    applies_when:
+      - production_service
+      - observability_not_selected
+    question: Select the Java observability stack.
+    default_recommendation: slf4j_logback_micrometer
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: slf4j_logback_micrometer
+        label: SLF4J + Logback + Micrometer
+        recommended_when:
+          - spring_boot_service
+          - standard_jvm_observability_needed
+        tradeoffs:
+          - Spring Boot default, broad ecosystem, Micrometer for metrics abstraction
+          - Requires log configuration discipline and metrics naming conventions
+      - id: log4j2_otel
+        label: Log4j2 + OpenTelemetry
+        recommended_when:
+          - vendor_neutral_telemetry_is_important
+          - otel_collector_already_in_use
+        tradeoffs:
+          - OpenTelemetry standard for traces, metrics, and logs
+          - More setup complexity than Spring Boot auto-configuration
+      - id: slf4j_stdlib
+        label: SLF4J + java.util.logging
+        recommended_when:
+          - library_or_minimal_dependencies
+          - no_structured_logging_required
+        tradeoffs:
+          - Minimal dependency footprint
+          - Limited structured logging, no built-in metrics or tracing
+
+  - id: async_messaging
+    level: P1
+    scope: both
+    applies_when:
+      - async_processing_or_event_driven_required
+      - messaging_not_selected
+    question: Select the async messaging approach.
+    default_recommendation: spring_events
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: spring_events
+        label: Spring Events + @Async
+        recommended_when:
+          - in_process_event_publishing_is_enough
+          - no_external_broker_needed
+        tradeoffs:
+          - Simple, no external dependency, good for moderate async workloads
+          - Lost on restart, no cross-instance delivery
+      - id: kafka
+        label: Apache Kafka
+        recommended_when:
+          - high_throughput_or_event_sourcing_required
+          - cross_service_event_streaming
+        tradeoffs:
+          - Durable, replayable, high throughput, strong partitioning model
+          - Requires Kafka cluster operations and consumer group management
+      - id: rabbitmq
+        label: RabbitMQ
+        recommended_when:
+          - reliable_message_delivery_with_routing
+          - moderate_throughput
+        tradeoffs:
+          - Flexible routing, mature, good operational tooling
+          - Lower throughput than Kafka, more complex clustering
+      - id: no_messaging
+        label: No async messaging
+        recommended_when:
+          - synchronous_flows_are_sufficient
+          - async_not_in_current_scope
+        tradeoffs:
+          - Simplest architecture
+          - Later async introduction requires idempotency, retry, and dead-letter design
+
+  - id: configuration
+    level: P1
+    scope: project
+    applies_when:
+      - externalized_configuration_required
+      - config_approach_not_selected
+    question: Select the configuration management approach.
+    default_recommendation: spring_config
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: spring_config
+        label: Spring Environment + application.yml
+        recommended_when:
+          - spring_boot_service
+          - file_or_env_var_configuration_is_enough
+        tradeoffs:
+          - Profile-based, type-safe binding, environment variable override
+          - No dynamic refresh without Spring Cloud Config
+      - id: env_vars_only
+        label: Environment variables only
+        recommended_when:
+          - platform_orchestration_injects_config
+          - twelve_factor_app_compliance
+        tradeoffs:
+          - Simple, platform-agnostic, good for containerized deployments
+          - No type-safe binding, no hierarchical config, manual validation
+      - id: spring_cloud_config
+        label: Spring Cloud Config
+        recommended_when:
+          - centralized_config_with_dynamic_refresh
+          - multi_service_config_governance
+        tradeoffs:
+          - Git-backed, refreshable, encrypted secrets support
+          - Adds config server operational dependency
+
+  - id: validation
+    level: P1
+    scope: both
+    applies_when:
+      - input_validation_required
+      - validation_approach_not_selected
+    question: Select the validation approach.
+    default_recommendation: bean_validation
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: bean_validation
+        label: Bean Validation (Jakarta Validation)
+        recommended_when:
+          - spring_boot_or_jakarta_ee
+          - declarative_validation_is_preferred
+        tradeoffs:
+          - Standard JVM validation, good framework integration, annotation-driven
+          - Limited to bean-level; cross-field and business rule validation needs custom validators
+      - id: manual_validation
+        label: Manual validation
+        recommended_when:
+          - complex_business_rules
+          - bean_validation_annotations_are_insufficient
+        tradeoffs:
+          - Full control, explicit error paths, works with any framework
+          - More boilerplate, less consistent error format without conventions
+      - id: vavr_validation
+        label: Vavr Validation
+        recommended_when:
+          - functional_programming_style
+          - composable_validation_results_needed
+        tradeoffs:
+          - Composable, accumulates errors, good for domain-driven design
+          - Different paradigm from annotation-driven Bean Validation
