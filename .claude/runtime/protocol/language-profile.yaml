@@ -23,3 +23,4 @@ language_profile:
     golang: .claude/runtime/languages/golang.yaml
     java: .claude/runtime/languages/java.yaml
     python: .claude/runtime/languages/python.yaml
+    typescript: .claude/runtime/languages/typescript.yaml

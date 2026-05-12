@@ -112,6 +112,19 @@
         "requires_user_confirmation": {
           "type": "boolean"
         },
+        "cascading_effects": {
+          "type": "object",
+          "properties": {
+            "constrains": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/snakeId"
+              }
+            }
+          }
+        },
         "outputs": {
           "type": "array",
           "minItems": 1,

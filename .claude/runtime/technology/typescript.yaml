@@ -1,0 +1,567 @@
+version: 1
+language: typescript
+summary: TypeScript/React technology decision catalog for full-stack and frontend project clarification. Decision groups have cascading dependencies — framework choice constrains downstream options.
+
+decision_policy:
+  applies_to_commands:
+    - cc-new-project
+    - cc-propose
+    - cc-init
+    - cc-enrich-context
+  confirmation_required_levels:
+    - P0
+  default_behavior:
+    - offer_recommendation_with_alternatives
+    - explain_adoption_and_rejection_reasons
+    - record_unresolved_choices_as_pending
+    - never_write_recommendation_as_user_decision_without_confirmation
+
+decision_groups:
+  # === P0: Project-level foundational decisions ===
+
+  - id: runtime_shape
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - runtime_shape_not_selected
+    question: Select the frontend runtime shape.
+    default_recommendation: spa
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: spa
+        label: Single Page Application (SPA)
+        recommended_when:
+          - interactive_web_app_with_client_side_routing
+          - backend_api_is_separate
+        tradeoffs:
+          - Simplest deployment model, clear frontend/backend separation
+          - SEO and initial load performance require extra tooling
+      - id: ssr
+        label: Server-Side Rendering (Next.js / Remix)
+        recommended_when:
+          - seo_or_initial_load_performance_is_critical
+          - content_heavy_or_public_facing_site
+        tradeoffs:
+          - Built-in routing, data loading, and deployment conventions
+          - Requires Node.js runtime and server deployment considerations
+      - id: ssg
+        label: Static Site Generation (Astro / Next.js static)
+        recommended_when:
+          - content_site_docs_or_marketing_page
+          - no_dynamic_per_user_content
+        tradeoffs:
+          - Excellent performance and simple CDN deployment
+          - Limited interactivity without hydration islands
+      - id: library
+        label: Library / Design System
+        recommended_when:
+          - reusable_component_package
+          - no_application_runtime
+        tradeoffs:
+          - Minimal runtime surface, easy dependency boundary
+          - Consumers own framework, routing, and deployment
+
+  - id: ui_framework
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - ui_framework_not_selected
+    question: Select the UI framework.
+    default_recommendation: react
+    requires_user_confirmation: true
+    cascading_effects:
+      constrains: [state_management, routing, component_library]
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: react
+        label: React 18+
+        recommended_when:
+          - broad_ecosystem_and_hiring_pool_is_important
+          - team_already_knows_react
+        tradeoffs:
+          - Largest ecosystem, strong TypeScript support, server components in Next.js
+          - Requires explicit state management and routing choices
+      - id: vue
+        label: Vue 3
+        recommended_when:
+          - team_prefers_smaller_framework_surface
+          - incremental_adoption_is_needed
+        tradeoffs:
+          - Built-in reactivity and good defaults reduce decision load
+          - Smaller ecosystem than React, fewer component library options
+      - id: svelte
+        label: Svelte 5
+        recommended_when:
+          - minimal_bundle_size_and_runtime_overhead_is_priority
+          - team_is_small_and_wants_fewer_abstractions
+        tradeoffs:
+          - Compiler-first approach, excellent DX with runes
+          - Smaller hiring pool and ecosystem
+
+  - id: build_tool
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - build_tool_not_selected
+    question: Select the build tool.
+    default_recommendation: vite
+    requires_user_confirmation: true
+    cascading_effects:
+      constrains: [testing_framework]
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: vite
+        label: Vite
+        recommended_when:
+          - spa_or_library
+          - fast_dev_experience_is_important
+        tradeoffs:
+          - Excellent DX, fast HMR, good plugin ecosystem
+          - SSR requires additional framework (Nuxt, SvelteKit) or manual setup
+      - id: nextjs_builtin
+        label: Next.js (built-in)
+        recommended_when:
+          - ssr_or_app_router_is_selected
+          - full_stack_typescript_in_one_project
+        tradeoffs:
+          - Integrated build, routing, data fetching, and deployment
+          - Couples build to framework; harder to swap later
+      - id: turbopack
+        label: Turbopack (Next.js)
+        recommended_when:
+          - nextjs_with_large_codebase
+          - incremental_build_performance_is_critical
+        tradeoffs:
+          - Faster builds for large Next.js projects
+          - Still maturing; some plugins may not be compatible
+
+  # === P0: Styling and state ===
+
+  - id: styling
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - styling_not_selected
+    question: Select the CSS/styling approach.
+    default_recommendation: tailwind
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: tailwind
+        label: Tailwind CSS
+        recommended_when:
+          - utility_first_approach_is_acceptable
+          - design_system_constraints_are_valued
+        tradeoffs:
+          - Productive once learned, strong consistency, good with component libraries
+          - Verbose JSX, learning curve for team unfamiliar with utility CSS
+      - id: css_modules
+        label: CSS Modules
+        recommended_when:
+          - team_prefers_traditional_css
+          - co_location_of_styles_with_components
+        tradeoffs:
+          - Scoped by default, no additional dependency
+          - Less design-system enforcement than Tailwind
+      - id: styled_components
+        label: styled-components / CSS-in-JS
+        recommended_when:
+          - dynamic_styling_based_on_props_is_frequent
+          - component_colocation_is_desired
+        tradeoffs:
+          - Strong React integration, dynamic theming
+          - Runtime overhead, slower than zero-runtime CSS solutions
+      - id: vanilla_extract
+        label: Vanilla Extract
+        recommended_when:
+          - type_safe_css_is_important
+          - zero_runtime_overhead_needed
+        tradeoffs:
+          - Type-safe styles, zero runtime, good with design tokens
+          - Requires build plugin and separate .css.ts files
+
+  - id: state_management
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - state_management_not_selected
+      - ui_framework_is_react
+    question: Select the state management approach (React).
+    default_recommendation: zustand
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: zustand
+        label: Zustand
+        recommended_when:
+          - lightweight_global_state_is_needed
+          - team_wants_minimal_boilerplate
+        tradeoffs:
+          - Tiny API, fast, works outside React components
+          - Less middleware ecosystem than Redux
+      - id: jotai
+        label: Jotai
+        recommended_when:
+          - atomic_state_model_is_preferred
+          - derived_state_is_complex
+        tradeoffs:
+          - Bottom-up state composition, good for performance-sensitive UIs
+          - Different mental model than top-down stores
+      - id: redux_toolkit
+        label: Redux Toolkit
+        recommended_when:
+          - large_team_with_established_redux_patterns
+          - complex_cross_cutting_state_with_middleware
+        tradeoffs:
+          - Predictable state, strong DevTools, large ecosystem
+          - Heavy boilerplate relative to lighter alternatives
+      - id: react_context
+        label: React Context + useReducer
+        recommended_when:
+          - minimal_global_state
+          - no_additional_dependencies_desired
+        tradeoffs:
+          - No extra dependency, built into React
+          - Performance issues with frequent updates, no DevTools
+
+  - id: state_management_vue
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - state_management_not_selected
+      - ui_framework_is_vue
+    question: Select the state management approach (Vue).
+    default_recommendation: pinia
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: pinia
+        label: Pinia
+        recommended_when:
+          - vue3_project
+          - official_vue_store_is_desired
+        tradeoffs:
+          - Official Vue store, TypeScript-first, modular by design
+          - Less middleware ecosystem than Redux
+      - id: vue_reactivity
+        label: Vue Reactivity API
+        recommended_when:
+          - minimal_shared_state
+          - no_store_library_dependency
+        tradeoffs:
+          - Built into Vue 3, composable-based state
+          - No DevTools for state inspection
+
+  # === P0: Routing ===
+
+  - id: routing
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - routing_not_selected
+      - ui_framework_is_react
+    question: Select the routing solution (React).
+    default_recommendation: react_router
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: react_router
+        label: React Router v7
+        recommended_when:
+          - spa_routing_is_needed
+          - data_loading_with_loaders_and_actions
+        tradeoffs:
+          - Standard for React SPAs, strong type safety, data loading built in
+          - Different patterns from Next.js App Router
+      - id: tanstack_router
+        label: TanStack Router
+        recommended_when:
+          - type_safe_routing_is_critical
+          - file_based_routing_not_needed
+        tradeoffs:
+          - Full type safety for params, search, and navigation
+          - Smaller community than React Router
+      - id: nextjs_app_router
+        label: Next.js App Router
+        recommended_when:
+          - nextjs_is_the_framework
+          - server_components_are_used
+        tradeoffs:
+          - Built into Next.js, file-based, supports server components
+          - Coupled to Next.js deployment model
+
+  # === P0: Component library ===
+
+  - id: component_library
+    level: P0
+    scope: project
+    applies_when:
+      - new_project
+      - component_library_not_selected
+    question: Select the component library / primitives.
+    default_recommendation: shadcn_ui
+    requires_user_confirmation: true
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: shadcn_ui
+        label: shadcn/ui (Radix + Tailwind)
+        recommended_when:
+          - ownership_of_component_code_is_important
+          - tailwind_is_already_selected
+        tradeoffs:
+          - Copy-paste components you own, excellent accessibility, beautiful defaults
+          - Manual updates, no npm package to bump
+      - id: radix
+        label: Radix UI primitives only
+        recommended_when:
+          - custom_design_system
+          - unstyled_accessible_primitives_needed
+        tradeoffs:
+          - Battle-tested accessibility, unstyled for full design control
+          - Requires more design work than styled libraries
+      - id: ant_design
+        label: Ant Design
+        recommended_when:
+          - enterprise_admin_or_dashboard
+          - comprehensive_out_of_box_components
+        tradeoffs:
+          - Rich component set with Table, Form, Tree, and data display
+          - Heavy bundle, distinct visual style, harder to customize
+      - id: mui
+        label: MUI (Material UI)
+        recommended_when:
+          - material_design_is_team_standard
+          - extensive_component_coverage_needed
+        tradeoffs:
+          - Very comprehensive, strong docs, large community
+          - Material Design aesthetic, heavy bundle, complex customization
+      - id: none
+        label: No component library
+        recommended_when:
+          - fully_custom_design
+          - team_has_dedicated_design_system_engineers
+        tradeoffs:
+          - Full design control, zero dependency overhead
+          - Accessibility, keyboard navigation, and focus management must be built manually
+
+  # === P1: Data, testing, validation ===
+
+  - id: data_fetching
+    level: P1
+    scope: both
+    applies_when:
+      - project_fetches_data_from_api
+      - data_fetching_not_selected
+    question: Select the data fetching approach.
+    default_recommendation: tanstack_query
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: tanstack_query
+        label: TanStack Query (React Query)
+        recommended_when:
+          - server_state_caching_is_needed
+          - complex_async_state_management
+        tradeoffs:
+          - Excellent cache management, retry, refetch, and optimistic updates
+          - Adds a dependency and learning curve for async state patterns
+      - id: swr
+        label: SWR
+        recommended_when:
+          - simpler_caching_requirements
+          - stale_while_revalidate_is_sufficient
+        tradeoffs:
+          - Lighter than TanStack Query, simpler API
+          - Fewer features for mutation and cache invalidation
+      - id: fetch_or_axios
+        label: fetch / axios (manual)
+        recommended_when:
+          - minimal_data_fetching
+          - no_caching_layer_needed
+        tradeoffs:
+          - No additional dependency
+          - Manual cache invalidation, loading states, and error handling
+
+  - id: testing
+    level: P1
+    scope: both
+    applies_when:
+      - typescript_tests_required
+      - test_framework_not_selected
+    question: Select the test framework.
+    default_recommendation: vitest
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: vitest
+        label: Vitest
+        recommended_when:
+          - vite_is_the_build_tool
+          - fast_unit_and_component_tests
+        tradeoffs:
+          - Native Vite integration, Jest-compatible API, fast
+          - Newer ecosystem than Jest
+      - id: vitest_playwright
+        label: Vitest + Playwright
+        recommended_when:
+          - e2e_or_browser_testing_required
+          - full_stack_verification_needed
+        tradeoffs:
+          - Browser-level testing for real user interaction verification
+          - Slower tests, requires Playwright browser binaries
+      - id: jest
+        label: Jest
+        recommended_when:
+          - existing_jest_configuration
+          - team_already_uses_jest
+        tradeoffs:
+          - Mature ecosystem, large plugin library
+          - Slower than Vitest, needs separate configuration from Vite
+
+  - id: validation
+    level: P1
+    scope: both
+    applies_when:
+      - forms_or_user_input_validation_required
+      - validation_library_not_selected
+    question: Select the validation library.
+    default_recommendation: zod
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: zod
+        label: Zod
+        recommended_when:
+          - runtime_type_validation_needed
+          - api_schema_parsing_alongside_form_validation
+        tradeoffs:
+          - TypeScript-first, infer types from schemas, great ecosystem
+          - Bundle size matters for client-only use
+      - id: valibot
+        label: Valibot
+        recommended_when:
+          - bundle_size_is_critical
+          - tree_shaking_is_important
+        tradeoffs:
+          - Much smaller bundle than Zod, similar API
+          - Newer ecosystem, fewer integrations
+      - id: yup
+        label: Yup
+        recommended_when:
+          - existing_formik_integration
+          - team_already_uses_yup
+        tradeoffs:
+          - Mature, good Formik integration
+          - Less TypeScript-native than Zod
+
+  - id: i18n
+    level: P2
+    scope: project
+    applies_when:
+      - multiple_languages_required
+      - i18n_library_not_selected
+    question: Select the internationalization library.
+    default_recommendation: react_i18next
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: react_i18next
+        label: react-i18next
+        recommended_when:
+          - react_or_react_native
+          - mature_i18n_ecosystem_needed
+        tradeoffs:
+          - Comprehensive, ICU message format, good tooling
+          - Heavy API surface for simple use cases
+      - id: next_intl
+        label: next-intl
+        recommended_when:
+          - nextjs_app_router
+          - server_component_i18n_is_needed
+        tradeoffs:
+          - Built for Next.js App Router with server component support
+          - Next.js-only, not usable in SPAs
+      - id: typesafe_i18n
+        label: typesafe-i18n
+        recommended_when:
+          - type_safety_for_translation_keys_is_important
+          - lightweight_solution_needed
+        tradeoffs:
+          - Compile-time type checking for translation keys
+          - Smaller community than react-i18next
+
+  - id: accessibility
+    level: P2
+    scope: project
+    applies_when:
+      - public_facing_or_compliance_required
+      - accessibility_tooling_not_selected
+    question: Select the accessibility testing approach.
+    default_recommendation: axe_playwright
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/project-context.md
+    options:
+      - id: axe_playwright
+        label: axe-core + Playwright
+        recommended_when:
+          - automated_accessibility_checks_in_ci
+          - e2e_testing_already_selected
+        tradeoffs:
+          - Automated WCAG violation detection in CI pipeline
+          - Only catches ~30% of accessibility issues; manual testing still needed
+      - id: eslint_jsx_a11y
+        label: eslint-plugin-jsx-a11y
+        recommended_when:
+          - static_analysis_is_preferred_first_step
+          - lighter_setup_desired
+        tradeoffs:
+          - Catches common issues during development, low setup cost
+          - Static only; cannot detect runtime accessibility problems
+      - id: none
+        label: No accessibility tooling yet
+        recommended_when:
+          - internal_tool_or_prototype
+          - accessibility_not_in_current_scope
+        tradeoffs:
+          - Quickest start
+          - Accessibility debt accumulates; add tooling before public launch

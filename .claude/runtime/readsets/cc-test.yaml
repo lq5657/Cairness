@@ -46,6 +46,7 @@ conditional_reads:
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
+  - .claude/runtime/languages/typescript.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-test.yaml

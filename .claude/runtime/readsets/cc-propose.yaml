@@ -55,7 +55,9 @@ conditional_reads:
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
+  - .claude/runtime/languages/typescript.yaml
   - .claude/runtime/technology/cpp.yaml
   - .claude/runtime/technology/golang.yaml
   - .claude/runtime/technology/java.yaml
   - .claude/runtime/technology/python.yaml
+  - .claude/runtime/technology/typescript.yaml

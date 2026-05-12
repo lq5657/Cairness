@@ -1,0 +1,56 @@
+version: 1
+language: typescript
+
+project_detection:
+  module_file: package.json
+  module_files:
+    - package.json
+    - tsconfig.json
+    - tsconfig.base.json
+  source_globs:
+    - "**/*.ts"
+    - "**/*.tsx"
+  lockfiles:
+    - package-lock.json
+    - yarn.lock
+    - pnpm-lock.yaml
+    - bun.lockb
+  confidence:
+    module_file: high
+    source_globs: medium
+    lockfiles: medium
+
+verification:
+  unit:
+    command:
+      - npx
+      - vitest
+      - run
+    evidence: unit
+    optional_command:
+      - npx
+      - jest
+      - --passWithNoTests
+  static:
+    command:
+      - npx
+      - -p
+      - typescript
+      - tsc
+      - --noEmit
+    evidence: build
+  lint:
+    command:
+      - npx
+      - eslint
+      - .
+      - --ext
+      - .ts,.tsx
+    evidence: build
+    optional: true
+
+fixtures:
+  default: .claude/fixtures/typescript-react-spa
+
+technology_decisions:
+  catalog: .claude/runtime/technology/typescript.yaml

@@ -30,3 +30,4 @@ conditional_reads:
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
+  - .claude/runtime/languages/typescript.yaml
