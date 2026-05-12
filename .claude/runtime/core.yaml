@@ -89,6 +89,7 @@ topic_rules:
   interaction_guidance: .claude/runtime/topic-rules/interaction-guidance.yaml
   gate_effectiveness: .claude/runtime/topic-rules/gate-effectiveness.yaml
   change_dependencies: .claude/runtime/topic-rules/change-dependencies.yaml
+  spec_code_sync: .claude/runtime/topic-rules/spec-code-sync.yaml
 
 profiles:
   dir: .claude/runtime/profiles

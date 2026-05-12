@@ -44,6 +44,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/source-driven-development.yaml
   when_change_has_dependency_or_parallelism_constraints:
   - .claude/runtime/topic-rules/git-workflow.yaml
+  when_spec_boundary_divergence_detected_during_implementation:
+  - .claude/runtime/topic-rules/spec-code-sync.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

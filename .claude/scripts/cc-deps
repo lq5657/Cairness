@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""cc-deps — 跨 Change 依赖管理。
+"""cc-deps — 跨 Change 依赖管理与孤儿变更检测。
 
 解析 .cc/changes/*/spec.md 的 depends_on 和 tasks.md 的文件声明，
-提供依赖图可视化、文件冲突检测、拓扑排序和安全执行顺序。
+提供依赖图可视化、文件冲突检测、拓扑排序、孤儿变更检测和安全执行顺序。
 
 用法:
   cc-deps graph [--format dot|ascii|json]   依赖图可视化
   cc-deps conflicts [--change <id>]          文件级冲突检测
   cc-deps order [--from <status>]            拓扑排序输出安全执行顺序
   cc-deps check --change <id>                检查目标 change 的依赖是否满足
+  cc-deps orphans [--staged|--working]       检测未被任何 change 声明的变更文件
 """
 
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
+import subprocess
 import sys
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -465,6 +468,131 @@ def print_check(result: dict[str, Any]) -> None:
             print(f"    尚未完成: {', '.join(result['not_done'])}")
 
 
+def _get_git_diff_files(root: Path, staged: bool = True) -> list[str]:
+    """获取 git diff 中的变更文件列表。"""
+    args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+    if not staged:
+        args = ["diff", "--name-only", "--diff-filter=ACMR"]
+    try:
+        result = subprocess.run(
+            ["git"] + args,
+            capture_output=True,
+            text=True,
+            cwd=str(root),
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return []
+        return [f.strip() for f in result.stdout.splitlines() if f.strip()]
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+
+
+def _file_matches_declared(git_file: str, declared_files: set[str]) -> bool:
+    """检查 git 文件是否匹配 change 中声明的任何文件路径。"""
+    for df in declared_files:
+        # Exact match
+        if git_file == df:
+            return True
+        # Suffix match (declared as relative path, git gives full path)
+        if git_file.endswith("/" + df) or git_file.endswith(df):
+            return True
+        # Glob match
+        if fnmatch.fnmatch(git_file, df):
+            return True
+        # Git file is a suffix of declared (declared has full path)
+        if df.endswith("/" + git_file) or df.endswith(git_file):
+            return True
+    return False
+
+
+def detect_orphans(
+    root: Path,
+    staged: bool = True,
+    changes: dict[str, ChangeInfo] | None = None,
+) -> dict[str, Any]:
+    """检测未被任何 change 声明的变更文件。"""
+    if changes is None:
+        changes = discover_changes(root)
+
+    git_files = _get_git_diff_files(root, staged=staged)
+
+    # Collect all declared files across all changes
+    all_declared: dict[str, set[str]] = {}
+    for cid, ci in changes.items():
+        if ci.files:
+            all_declared[cid] = ci.files
+
+    if not git_files:
+        return {
+            "staged": staged,
+            "total_git_files": 0,
+            "orphan_files": [],
+            "matched_files": [],
+            "matched_by_change": {},
+            "has_orphans": False,
+            "total_changes": len(changes),
+            "changes_with_files": len(all_declared),
+        }
+
+    orphan_files: list[str] = []
+    matched_files: list[str] = []
+    matched_by_change: dict[str, list[str]] = defaultdict(list)
+
+    for gf in git_files:
+        matched = False
+        for cid, declared in all_declared.items():
+            if _file_matches_declared(gf, declared):
+                matched_files.append(gf)
+                matched_by_change[cid].append(gf)
+                matched = True
+                break
+        if not matched:
+            orphan_files.append(gf)
+
+    return {
+        "staged": staged,
+        "total_git_files": len(git_files),
+        "orphan_files": orphan_files,
+        "matched_files": matched_files,
+        "matched_by_change": dict(matched_by_change),
+        "has_orphans": len(orphan_files) > 0,
+        "total_changes": len(changes),
+        "changes_with_files": len(all_declared),
+    }
+
+
+def print_orphans(result: dict[str, Any]) -> int:
+    """打印孤儿检测结果。返回 exit code (0=clean, 1=has orphans)。"""
+    scope = "staged" if result["staged"] else "working tree"
+
+    print(f"=== 孤儿变更检测 ({scope}) ===\n")
+    print(f"  变更文件总数: {result['total_git_files']}")
+    print(f"  已声明 change: {result['changes_with_files']}/{result['total_changes']}")
+    print(f"  孤儿文件数: {len(result['orphan_files'])}")
+
+    if result["matched_files"]:
+        print(f"\n  ✓ 已关联文件 ({len(result['matched_files'])}):")
+        for cid, files in sorted(result["matched_by_change"].items()):
+            for f in files:
+                print(f"    {f}  →  {cid}")
+
+    if result["orphan_files"]:
+        print(f"\n  ✗ 孤儿文件 ({len(result['orphan_files'])}) — 未被任何 change 声明:")
+        for f in result["orphan_files"]:
+            print(f"    {f}")
+        print(
+            "\n  ── 处置选项 ──\n"
+            "  1. cc-propose <描述> → 为此工作创建 retro spec\n"
+            "  2. 编辑 .cc/changes/<id>/tasks.md → 添加到已有 change 的文件声明\n"
+            "  3. 记录为 intentional 例外 → 写入 .cc/changes/task-board.md 的例外清单\n"
+        )
+        return 1
+
+    print("\n  ✓ 所有变更文件均已关联到 change")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="跨 Change 依赖管理"
@@ -486,6 +614,26 @@ def main() -> None:
 
     check_p = sub.add_parser("check", help="检查依赖是否满足")
     check_p.add_argument("--change", type=str, required=True, help="目标 change ID")
+
+    orphans_p = sub.add_parser("orphans", help="孤儿变更检测")
+    orphans_p.add_argument(
+        "--staged",
+        action="store_true",
+        default=True,
+        help="检查 staged 变更 (默认)",
+    )
+    orphans_p.add_argument(
+        "--working",
+        action="store_true",
+        default=False,
+        help="检查 working tree 变更 (未 staged)",
+    )
+    orphans_p.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="JSON 格式输出",
+    )
 
     args = parser.parse_args()
 
@@ -520,6 +668,18 @@ def main() -> None:
         print_check(result)
         if not result.get("ready"):
             sys.exit(1)
+
+    elif args.command == "orphans":
+        staged = not args.working
+        result = detect_orphans(root, staged=staged, changes=changes)
+        if args.working:
+            result["staged"] = False
+
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            exit_code = print_orphans(result)
+            sys.exit(exit_code)
 
 
 if __name__ == "__main__":

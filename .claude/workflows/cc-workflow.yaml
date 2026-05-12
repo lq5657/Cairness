@@ -124,7 +124,7 @@ commands:
     outputs: [business_code_changes, change_docs_update, dev_map_update_if_needed, task_board_update, optional_commits]
     writes: [task_declared_code_files, test_files, .cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/log.md, .cc/changes/<change-id>/test-spec.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync, hard_gate_resolution_choice]
-    forbids: [out_of_scope_change, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge, start_apply_with_stale_or_missing_hard_gate, treat_missing_hard_gate_as_user_confirmation]
+    forbids: [out_of_scope_change_without_spec_review_flag, silently_expand_implementation_beyond_spec_boundary, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge, start_apply_with_stale_or_missing_hard_gate, treat_missing_hard_gate_as_user_confirmation]
     auto_validation: ["cc-deps check --change <change-id>", "cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>", "cc-delta-check --before <before-report> --after <after-report>", "cc-verify --change <change-id>", "cc-budget-check"]
 
   cc-review:

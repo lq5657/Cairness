@@ -1,0 +1,46 @@
+id: spec-code-sync
+description: "Spec ↔ Code 双向同步——孤儿变更检测、retro spec 生成、cc-apply 内边界发现"
+
+trigger:
+  - "git commit 前检测到孤儿文件"
+  - "cc-apply 实现过程中发现 spec 未覆盖的边界"
+  - "cc-deps orphans 返回非零退出码"
+  - "cc-propose 从 orphan diff 反向生成 spec"
+
+skip:
+  - "不得在无 git diff 变更时运行 orphans 检测"
+  - "不得将 orphan 检测结果当作 spec —— 它只是文件级信号"
+  - "retro spec 必须经过 cc-propose 的 hard_gate 确认，不能自动生成后直接 apply"
+
+process:
+  - "commit 前: 运行 cc-deps orphans，若有孤儿文件按 orphan_policy 处理"
+  - "orphan_policy = strict: block commit，必须 disposition"
+  - "orphan_policy = warn: 展示孤儿文件 + 处置选项，不 block commit"
+  - "orphan_policy = minimal: 静默跳过"
+  - "处置选项 1: 创建 retro spec —— 从 git diff 提取变更摘要 → cc-propose 生成 spec"
+  - "处置选项 2: 添加到已有 change —— 编辑 tasks.md 将孤儿文件归入对应 change"
+  - "处置选项 3: 标记 intentional —— 写入 task-board.md 例外清单（记录原因和范围）"
+  - "cc-apply 场景 B: 实现中发现 spec 未覆盖的边界时，不直接 block"
+  - "cc-apply 场景 B: 改为记录 spec_review_flag 到 log.md，继续在声明范围内实现"
+  - "cc-apply 场景 B: 超出部分记录为 deferred_to_spec_review，不在本次实现"
+  - "cc-review 时: 检查 log.md 中有无 spec_review_flag，作为待确认项展示"
+  - "cc-review 时: spec_review_flag 中的边界应由 spec-reviewer 评估是否需要更新 spec"
+
+anti_rationalization:
+  - claim: "这些文件改动很简单，不需要 spec"
+    reality: "简单不等于不需要记录。即使一行改动，也应该关联到某个 change 以便 audit trail。如果确实 trivial，用 intentional 例外记录——不要静默"
+  - claim: "我先 commit，spec 后面补"
+    reality: "commit 后 spec 几乎永远不会补。孤儿检测的目的就是在副作用发生前拦住。如果必须立刻 commit，至少记录 intentional 例外"
+  - claim: "cc-apply 发现 spec 不一致，我应该直接扩大实现范围"
+    reality: "扩大范围意味着绕过 cc-propose 的 hard_gate。记录 spec_review_flag，在声明范围内完成 task，让 cc-review 统一处理反向同步"
+
+red_flags:
+  - "commit 时有孤儿文件但未展示处置选项"
+  - "cc-apply 发现 spec 不一致时静默扩大了实现范围"
+  - "spec_review_flag 在 cc-review 时被忽略"
+  - "孤儿文件被反复标记为 intentional 但同一文件模式再次出现"
+
+checks:
+  - "cc-deps orphans"
+  - "cc-deps orphans --working"
+  - "log.md spec_review_flag entries reviewed during cc-review"

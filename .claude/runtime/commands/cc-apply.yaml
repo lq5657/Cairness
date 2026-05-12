@@ -22,7 +22,8 @@ writes:
   - .cc/changes/task-board.md
 
 forbids:
-  - out_of_scope_change
+  - out_of_scope_change_without_spec_review_flag
+  - silently_expand_implementation_beyond_spec_boundary
   - defer_minimum_verification_to_cc_test
   - mark_done_without_evidence
   - auto_push_or_merge
@@ -100,6 +101,8 @@ topic_rules:
     - .claude/runtime/topic-rules/source-driven-development.yaml
   when_change_has_dependency_or_parallelism_constraints:
     - .claude/runtime/topic-rules/git-workflow.yaml
+  when_spec_boundary_divergence_detected_during_implementation:
+    - .claude/runtime/topic-rules/spec-code-sync.yaml
 
 subagents:
   enabled: true
@@ -111,12 +114,16 @@ anti_rationalizations:
   - mark_task_done_before_fresh_evidence
   - defer_apply_minimum_verification_to_cc_test
   - let_subagent_output_bypass_main_flow_merge
+  - silently_expand_scope_because_boundary_discovery_feels_obvious
+  - skip_spec_review_flag_because_change_seems_trivial
 
 red_flags:
   - dirty_worktree_contains_out_of_scope_files
   - task_write_scope_is_not_declared
   - validation_mapping_would_close_without_evidence
   - baseline_delta_contains_new_failure
+  - spec_boundary_discovered_but_spec_review_flag_not_recorded_in_log
+  - implementation_expanded_beyond_declared_scope_without_flag_or_user_choice
 
 steps:
   - verify_hard_gate_current_or_present_resolution_choices
@@ -124,6 +131,8 @@ steps:
   - select_one_ready_task
   - review_task_goal_scope_acceptance_and_verification
   - implement_only_declared_scope
+  - when_spec_boundary_discovered_record_spec_review_flag_in_log
+  - when_spec_boundary_discovered_defer_out_of_scope_to_flag_not_implement
   - load_test_spec_template_when_creating_test_spec
   - sync_change_docs_and_governance_assets
   - run_post_task_validation
@@ -170,3 +179,4 @@ stop_conditions:
   - minimum_verification_missing
   - delta_reports_new_failure
   - final_validation_failed
+  - spec_boundary_discovered_user_choice_required_for_flag_or_scope_update

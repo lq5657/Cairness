@@ -51,6 +51,7 @@ preconditions:
   - select_domain_language_lens_when_terms_states_or_user_concepts_are_in_scope
   - summarize_review_lens_matrix_for_user
   - distinguish_fix_required_findings_vs_user_acceptance_candidates
+  - check_log_for_spec_review_flags_from_cc_apply_boundary_discovery
 
 interaction_contract:
   mode: interactive_required
@@ -95,6 +96,8 @@ topic_rules:
     - .claude/runtime/topic-rules/source-driven-development.yaml
   when_dependency_or_wave_order_is_in_dispute:
     - .claude/runtime/topic-rules/git-workflow.yaml
+  when_spec_review_flags_present_in_log:
+    - .claude/runtime/topic-rules/spec-code-sync.yaml
 
 subagents:
   enabled: true
@@ -118,6 +121,7 @@ red_flags:
   - review_lens_triggered_but_not_recorded
   - finding_reported_without_lens_and_evidence
   - accepted_finding_missing_user_confirmation_record
+  - spec_review_flag_in_log_not_reviewed_or_addressed
 
 steps:
   - read_change_artifacts
@@ -126,6 +130,7 @@ steps:
   - perform_stage1_spec_compliance
   - if_stage1_pass_then_perform_stage2_triggered_lenses
   - evaluate_task_coverage_and_mapping_closure
+  - review_spec_review_flags_and_propose_spec_updates_as_findings
   - deduplicate_findings_by_root_cause_and_lens
   - present_acceptance_choices_and_wait_for_user_selection_when_needed
   - load_review_template_before_writing_review
@@ -166,3 +171,4 @@ stop_conditions:
   - open_critical_or_important_without_acceptance
   - finding_acceptance_choice_missing
   - harness_validation_failed
+  - spec_review_flags_present_but_not_addressed_in_review
