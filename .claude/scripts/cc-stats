@@ -4,13 +4,14 @@
 从 events.jsonl 和 review.md 中提取遥测数据，输出：
   - 命令使用分布
   - 验证门禁通过率
-  - Finding 趋势（按严重程度、lens、状态）
+  - Finding 趋势（按严重程度、lens、状态、根因聚类）
   - Token 消耗趋势
   - 子 agent 调度统计
 
 用法:
   cc-stats                    默认输出可读摘要
   cc-stats --findings         仅输出 finding 统计
+  cc-stats --root-causes      根因聚类与改进建议
   cc-stats --trend            输出时间趋势
   cc-stats --json             JSON 格式输出
 """
@@ -29,6 +30,31 @@ from typing import Any
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+ROOT_CAUSE_TAG_RE = re.compile(
+    r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
+    re.IGNORECASE,
+)
+
+ROOT_CAUSE_SUGGESTIONS: dict[str, str] = {
+    "missing_error_handling": "建议在 code review checklist 中增加错误处理检查项，或引入 errcheck/linter 规则",
+    "missing_validation": "建议引入输入校验层（middleware/decorator），统一参数校验逻辑",
+    "missing_test": "建议在 cc-propose 阶段提高最低测试覆盖率要求，或增加 task-level test_requirement",
+    "incorrect_state_transition": "建议引入集中式状态机校验，禁止直接赋值 status 字段",
+    "incorrect_amount_type": "建议在 code review 中增加金额类型检查（int64/分），或引入 domain-rules lint",
+    "incorrect_time_type": "建议统一使用 time.Time 类型，在 code review 中检查时间戳裸用",
+    "missing_timeout": "建议在 harness.config.yaml 中开启默认超时检查，或引入 context.WithTimeout lint",
+    "missing_auth_check": "建议将 auth middleware 纳入 cc-propose security lens 默认检查项",
+    "race_condition": "建议在 CI 中开启 race detector，或对共享状态访问增加 review lens",
+    "api_contract_break": "建议在 cc-review 中强制 api-compatibility topic rule，或在 CI 中增加契约测试",
+    "database_schema_mismatch": "建议在 cc-apply 的 database topic rule 中增加 schema diff 检查",
+    "config_drift": "建议将配置项变更纳入 cc-propose configuration lens，强制环境差异检查",
+    "observability_gap": "建议在 cc-propose 中为每个 change 要求日志/metrics 计划",
+    "security_vulnerability": "建议在 cc-review 中启用 security lens 作为默认（非条件触发）",
+    "performance_regression": "建议在 CI 中增加 benchmark 对比，或对关键路径增加性能断言",
+    "spec_implementation_gap": "建议加强 cc-review stage1 spec compliance 检查深度",
+    "dependency_order_error": "建议在 cc-propose 中强制运行 cc-deps check，验证 depends_on 和 parallel_safe",
+    "other": "建议在 cc-fix 中细化 root_cause_tag 分类，避免使用 other 标签",
+}
 
 
 def project_root() -> Path:
@@ -115,11 +141,13 @@ def parse_review(path: Path) -> dict[str, Any] | None:
             sev2 = re.search(r'(?:severity|level)[:\s]*[`"]*(critical|important|minor|cosmetic)', rest, re.IGNORECASE)
             status2 = re.search(r'(?:status)[:\s]*[`"]*(open|fixed|accepted)', rest, re.IGNORECASE)
             lens_match = re.search(r'(?:lens)[:\s]*[`"]*([a-z_]+)', rest, re.IGNORECASE)
+            rc_match = ROOT_CAUSE_TAG_RE.search(rest)
             result["findings"].append({
                 "id": fid,
                 "severity": (sev_match.group(1) if sev_match else (sev2.group(1).lower() if sev2 else "unknown")),
                 "status": (status_match.group(1) if status_match else (status2.group(1).lower() if status2 else "open")),
                 "lens": lens_match.group(1) if lens_match else "unknown",
+                "root_cause_tag": rc_match.group(1) if rc_match else None,
             })
     return result
 
@@ -171,6 +199,27 @@ def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -
     # Time trend
     date_cmd_trend = {d: dict(Counter(e.get("command") for e in el)) for d, el in sorted(events_by_date.items())}
 
+    # Root cause clustering
+    root_cause_counter: Counter = Counter()
+    root_cause_gates: dict[str, set[str]] = defaultdict(set)
+    root_cause_changes: dict[str, set[str]] = defaultdict(set)
+    for f in all_findings:
+        rc = f.get("root_cause_tag")
+        if rc:
+            root_cause_counter[rc] += 1
+            gate = f.get("lens", "unknown")
+            root_cause_gates[rc].add(gate)
+            root_cause_changes[rc].add(f.get("id", ""))
+    root_causes_sorted = [
+        {
+            "tag": tag,
+            "count": count,
+            "associated_gates": sorted(root_cause_gates.get(tag, set())),
+            "suggestion": ROOT_CAUSE_SUGGESTIONS.get(tag, ""),
+        }
+        for tag, count in root_cause_counter.most_common()
+    ]
+
     return {
         "total_events": len(events),
         "total_changes_with_reviews": len(reviews),
@@ -190,11 +239,47 @@ def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -
             "by_severity": dict(finding_severity),
             "by_status": dict(finding_status),
             "by_lens": dict(finding_lens),
+            "root_causes": root_causes_sorted,
         },
         "trends": {
             "by_date": date_cmd_trend,
         },
     }
+
+
+def print_root_causes(stats: dict[str, Any]) -> None:
+    """打印根因聚类与改进建议。"""
+    print("=== Finding 根因聚类与改进建议 ===\n")
+    root_causes = stats["findings"].get("root_causes", [])
+    if not root_causes:
+        print("  (无数据 — 需要 cc-fix 记录 root_cause_tag)")
+        return
+
+    total = sum(rc["count"] for rc in root_causes)
+    print(f"  根因标签总数: {len(root_causes)} 种, 覆盖 {total} 个 finding\n")
+
+    for rc in root_causes:
+        pct = rc["count"] * 100 // total if total else 0
+        bar = "█" * min(rc["count"], 30)
+        gates_str = ", ".join(rc["associated_gates"]) if rc["associated_gates"] else "未标记"
+        print(f"  ▸ {rc['tag']}")
+        print(f"    出现 {rc['count']} 次 ({pct}%)  {bar}")
+        print(f"    关联门禁: {gates_str}")
+        if rc["suggestion"]:
+            print(f"    💡 {rc['suggestion']}")
+        print()
+
+    # Top systemic weakness
+    if root_causes:
+        top = root_causes[0]
+        if top["count"] >= 3:
+            print(f"  ── 系统性弱项 ──\n")
+            print(f"  最频繁根因: {top['tag']} ({top['count']} 次)")
+            print(f"  建议优先处理: {top['suggestion']}")
+            # Find second distinct weakness
+            if len(root_causes) >= 2:
+                second = root_causes[1]
+                print(f"  次频繁根因: {second['tag']} ({second['count']} 次)")
 
 
 def print_readable(stats: dict[str, Any]) -> None:
@@ -239,11 +324,15 @@ def print_readable(stats: dict[str, Any]) -> None:
         summary = " ".join(f"{c}x{n}" for c, n in sorted(cmds.items()))
         print(f"  {date}:  {summary}")
 
+    print()
+    print_root_causes(stats)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Harness observability statistics")
     parser.add_argument("--json", action="store_true", help="JSON 格式输出")
     parser.add_argument("--findings", action="store_true", help="仅输出 finding 统计")
+    parser.add_argument("--root-causes", action="store_true", help="根因聚类与改进建议")
     parser.add_argument("--trend", action="store_true", help="输出时间趋势")
     args = parser.parse_args()
 
@@ -255,6 +344,8 @@ def main() -> None:
     if args.json:
         if args.findings:
             print(json.dumps(stats["findings"], indent=2, ensure_ascii=False))
+        elif args.root_causes:
+            print(json.dumps(stats["findings"]["root_causes"], indent=2, ensure_ascii=False))
         elif args.trend:
             print(json.dumps(stats["trends"], indent=2, ensure_ascii=False))
         else:
@@ -267,6 +358,8 @@ def main() -> None:
             print(f"按严重程度: {f['by_severity']}")
             print(f"按状态: {f['by_status']}")
             print(f"按审查维度: {f['by_lens']}")
+        elif args.root_causes:
+            print_root_causes(stats)
         elif args.trend:
             print("=== 每日命令趋势 ===")
             for date, cmds in sorted(stats["trends"]["by_date"].items()):
