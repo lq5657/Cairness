@@ -2,48 +2,14 @@
 
 ## Unreleased
 
-- Added deterministic topic rule trigger detection (`cc-topic-trigger`) with `detection-patterns.yaml` — code pattern matching replaces sole LLM judgment for conditional topic rule selection in `cc-apply` and `cc-review`.
-- Added mandatory verification closure loop to `cc-fix` — pre-fix L2 baseline capture, post-fix L2 rerun, and verification comparison must be recorded in log.md before any finding can be marked fixed.
-- Added gradual adoption profiles — `minimal`, `standard`, and `strict` profiles control topic rule loading depth, subagent enabling, validation strictness, and interaction confirmation frequency via `harness.config.yaml` `profile` field.
-- Extended `events.jsonl` schema to v2 with optional telemetry fields (`duration_ms`, `token_count`, `subagent_count`, `verification_status`, `files_changed`, `findings_summary`) and added `cc-stats` command for project observability (command usage, verification pass rate, finding trends, token consumption).
-- Added knowledge freshness check (`cc-knowledge-check`) that scans `.cc/knowledge/` entries for stale file path references — wired into `cc-archive` as a precondition so decayed knowledge is flagged before compounding.
-- Added tiered confirmation system to reduce interaction fatigue — Tier 1 (hard_gate_confirm, finding_accepted, archive_done) always requires explicit confirmation; Tier 2 (technology_selection, task_split, knowledge_compounding) auto-accepts after 3 consecutive defaults with reset on option changes.
-- Expanded Python technology decision catalog from 6 to 16 decision groups — added async_mode, database, orm, project_structure, cache, configuration, validation, dependency_injection, async_task_queue, and observability.
-- Added token and duration budget enforcement (`cc-budget-check`) with per-command limits in `harness.config.yaml` — auto-triggered after `cc-apply`, `cc-review`, and `cc-fix`.
-- Added `loguru` as the default Python logging library in the Python technology decision catalog (`logging` decision group, P1, auto-selected). Python projects created through the framework now default to loguru for structured logging with rotation and serialization, with `stdlib logging` and `structlog` as alternatives.
-- Added Java runtime support with a language profile, technology decision catalog, Maven/Gradle/script-aware verification entrypoints, default fixture, protocol registration, readset coverage, and CI fixture verification.
-- Added C++ runtime support with a `cpp` language profile, technology decision catalog, Makefile-backed fixture, protocol registration, readset coverage, and CI fixture verification.
-- Added Python runtime support with a language profile, technology decision catalog, default fixture, protocol registration, readset coverage, and CI fixture verification.
-- Added a shared domain language context asset at `.cc/context/domain-language.md` with matching template, runtime reads, preflight coverage, and memory policy guidance that splits by bounded context rather than programming language.
-- Strengthened the `cc-fix` diagnostic workflow with a required feedback loop, falsifiable hypotheses, temporary instrumentation cleanup, and expanded debug log fields before marking findings fixed.
-- Added staged `cc-propose` interaction guidance, `micro` proposal profile constraints, and on-demand mature alternative checks that write into existing change artifacts instead of creating new documents.
-- Expanded change task templates with dependency/wave overview, impact mapping, upstream/downstream context, progressive verification, and spec coverage tables.
-- Strengthened `cc-fix` root-cause gates so fixes must record symptom, failure point, root cause, fix hypothesis, and verification guard before code changes.
-- Added `cc-review` lens matrix guidance for spec, verification, robustness, performance, security, API contract, database/release, and standards feedback without exposing raw reviewer noise.
-- Expanded project knowledge guidance with typed knowledge entries, candidate/confirmed/deprecated/conflict states, and refinement candidates that must not directly modify Harness runtime assets during archive.
-- Migrated `cc-new-project`, `cc-enrich-context`, and `cc-explain-system` to runtime-first command manifests and generated readsets while preserving exploratory discovery, discussion, and convergence gates for project definition flows.
-- Compacted high-traffic runtime command manifests by moving detailed subagent contracts for `cc-apply`, `cc-fix`, `cc-review`, and `cc-test` into conditional runtime subagent assets.
-- Optimized `cc-propose` runtime startup by moving language technology catalogs to on-demand conditional reads for change-level technology decisions.
-- Reduced default runtime readsets by omitting language technology catalogs from commands that do not make technology decisions and by making subagent policy conditional on actual delegation.
-- Optimized `cc-fix` runtime startup by allowing command manifests to omit language technology catalogs from protocol readsets.
-- Clarified `cc-fix <change-id>` defaults to one eligible open finding and only asks for disposition when accepting, reframing, or expanding scope is needed.
-- Moved the Harness project root from the previous language-specific top-level directory to the repository root so `.claude/` and `.cc/` are top-level multi-language framework assets.
-- Added an Agent-native command protocol at `.claude/runtime/protocol.yaml` to standardize command resolution, input validation, path roles, error taxonomy, and result rendering without adding a user-facing CLI.
-- Added a Go language profile at `.claude/runtime/languages/golang.yaml` for Go module detection, verification commands, and default fixture metadata.
-- Added protocol schema validation and readset integration so migrated commands include protocol/profile reads and `cc-schema-check` rejects protocol drift.
-- Changed explicit `cc-verify --fixture <path>` Go module misses from skipped to failed so invalid fixture paths cannot silently pass.
-- Added structured `cc-verify` diagnoses with cause, fix hint, and doc reference for failed or skipped steps.
-- Added `cc-doctor-check` and wired it into `cc-verify --harness-only` as a doctor-style adoption readiness gate.
-- Added optional lifecycle event log infrastructure with `command-event.schema.json`, `events.jsonl` template, and `cc-event-check`.
-- Added subagent output evidence quality gates requiring concrete evidence, explicit risks, and no freeform-only subagent results.
-- Added `cc-behavior-check` and behavior replay cases for command-level regression checks.
-- Added `cc-verify --changed-only` for smaller local deterministic check sets based on Git changes.
-- Added `language-profile.schema.json` and moved `cc-verify` Go command selection to the Go language profile.
-- Added `cc-upgrade-check` for upgrade boundary checks and JSON upgrade reports.
-- Added a Harness optimization roadmap under `.claude/docs/maintenance/`.
-- Added creation templates for long-lived `.cc` state documents: `project-context.md` and `knowledge/index.md`.
-- Added a language-extensible technology decision catalog for Go backend project choices.
-- Added language profile resolution rules so new projects require user-confirmed language selection before loading a technology catalog.
+- Added gate effectiveness metrics (`cc-gate-stats`) with per-gate precision tracking, degradation detection (candidate_for_removal after N consecutive zero-real-error triggers), and root cause clustering across all review findings. Extended `review.schema.json` findings with `root_cause_tag` (18 enumerated tags) and `detected_by` gate attribution, and `command-event.schema.json` with `gate_effectiveness` telemetry. Wired gate attribution recording into `cc-fix` steps and degradation checking into `cc-archive` preconditions.
+- Added cross-change dependency management (`cc-deps`) with dependency graph visualization (ascii/dot/json), file-level conflict detection between concurrent changes, topological sort for safe execution order, and deterministic `depends_on` satisfaction checking. Integrated into `cc-propose` (conflict detection) and `cc-apply` (dependency verification) as auto-validation steps.
+- Added spec-code bidirectional sync with commit-time orphan change detection (`cc-deps orphans`). Compares staged git files against all change file declarations to detect unrecorded modifications. Relaxed `cc-apply` `out_of_scope_change` from hard block to record+flag pattern — spec boundary discoveries now record `spec_review_flag` in `log.md` instead of blocking, enabling an exploratory-coding-to-spec-formalization bridge. Extended `cc-review` to surface `spec_review_flag` entries as spec update candidates.
+- Added root cause clustering to `cc-stats` with `--root-causes` flag — parses `root_cause_tag` from review findings, groups by systemic weakness patterns, and generates actionable improvement suggestions per root cause (e.g., "missing_error_handling → 建议在 code review checklist 中增加错误处理检查项").
+- Added TypeScript/React language profile and technology decision catalog — 12 decision groups covering runtime shape (SPA/SSR/SSG/library), UI framework (React/Vue/Svelte), build tool, styling, state management (React and Vue), routing, component library, data fetching, testing, validation, i18n, and accessibility. Introduced `cascading_effects` on decision groups to model frontend framework choice constraining downstream options. Includes default fixture (`typescript-react-spa`) with tsc and vitest verification.
+- Expanded Java technology decision catalog from 5 to 10 groups — added cache (Caffeine/Redis/Hazelcast), observability (SLF4J/Micrometer/OpenTelemetry), async_messaging (Spring Events/Kafka/RabbitMQ), configuration (Spring/Cloud Config/env), and validation (Bean Validation/Vavr/manual).
+- Expanded C++ technology decision catalog from 5 to 8 groups — added logging (spdlog/glog/Boost.Log), static_analysis (clang-tidy/Cppcheck/SonarQube), and http_library (cpp-httplib/Boost.Beast/Drogon).
+- Extended `language-profile.schema.json` with `optional_command` on verification capabilities and `technology-decision-catalog.schema.json` with `cascading_effects` on decision groups.
 
 ## 0.20.0 - 2026-04-25
 
