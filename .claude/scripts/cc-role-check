@@ -9,8 +9,11 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+BASELINE_FILENAME = "role-baseline.json"
 
 
 ABSTRACT_WRITE_PATTERNS = {
@@ -55,6 +58,38 @@ def dirty_paths(project_root: Path) -> list[str]:
         for path in run_git(project_root, args):
             paths.add(path)
     return sorted(paths)
+
+
+def baseline_path(project_root: Path, change_id: str) -> Path:
+    return project_root / ".cc" / "changes" / change_id / "baseline" / BASELINE_FILENAME
+
+
+def load_baseline(path: Path) -> list[str]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return []
+    if not isinstance(data, dict) or "dirty_paths" not in data:
+        return []
+    return [str(p) for p in data["dirty_paths"]]
+
+
+def save_baseline(path: Path, dirty: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"dirty_paths": dirty, "saved_at": datetime.now().isoformat()}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def reset_baseline(path: Path) -> bool:
+    try:
+        path.unlink()
+        return True
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
 
 
 def parse_inline_list(raw: str) -> list[str]:
@@ -167,32 +202,68 @@ def build_report(command: str, change_id: str | None, project_root: Path) -> dic
             "violations": [],
         }
     paths = dirty_paths(project_root)
+    previous_paths: list[str] = []
+    if change_id:
+        bp = baseline_path(project_root, change_id)
+        previous_paths = load_baseline(bp)
+    new_paths = [p for p in paths if p not in previous_paths]
     violations = [
         {"code": "E_ROLE002", "path": path, "message": f"{command} may not write this path"}
-        for path in paths
+        for path in new_paths
         if not is_allowed(path, patterns, change_id)
     ]
+    if change_id:
+        save_baseline(baseline_path(project_root, change_id), paths)
     return {
         "tool": "cc-role-check",
         "status": "failed" if violations else "passed",
         "command": command,
         "change_id": change_id or "",
         "allowed": [expand(pattern, change_id) for pattern in patterns],
-        "dirty_paths": paths,
+        "dirty_paths": new_paths,
         "violations": violations,
     }
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Check dirty worktree against cc-* command write scope.")
-    parser.add_argument("--command", required=True, help="cc-* command, for example cc-review.")
+    parser.add_argument("--command", help="cc-* command, for example cc-review.")
     parser.add_argument("--change", help="Formal change-id when the command is change-scoped.")
     parser.add_argument("--project-root", help="Project root. Defaults to parent of .claude.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--reset-baseline", action="store_true", help="Clear the role baseline for --change.")
     args = parser.parse_args(argv)
 
     claude_root = Path(__file__).resolve().parent.parent
     project_root = Path(args.project_root) if args.project_root else claude_root.parent
+
+    if args.reset_baseline:
+        if not args.change:
+            report = {
+                "tool": "cc-role-check",
+                "status": "failed",
+                "reason": "--reset-baseline requires --change",
+                "violations": [{"code": "E_ROLE001", "path": "", "message": "missing --change for --reset-baseline"}],
+            }
+            print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "cc-role-check: --reset-baseline requires --change", file=sys.stderr)
+            return 1
+        bp = baseline_path(project_root, args.change)
+        ok = reset_baseline(bp)
+        if ok:
+            print(f"cc-role-check: baseline reset for {args.change}")
+            return 0
+        print(f"cc-role-check: failed to reset baseline for {args.change}", file=sys.stderr)
+        return 1
+
+    if not args.command:
+        report = {
+            "tool": "cc-role-check",
+            "status": "failed",
+            "reason": "--command is required (unless using --reset-baseline)",
+            "violations": [{"code": "E_ROLE003", "path": "", "message": "missing --command"}],
+        }
+        print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "cc-role-check: --command is required", file=sys.stderr)
+        return 1
     try:
         report = build_report(args.command, args.change, project_root)
     except RuntimeError as exc:
