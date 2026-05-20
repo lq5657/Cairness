@@ -27,9 +27,6 @@ runtime:
   readset_dir: ".claude/runtime/readsets"
   readset_schema: ".claude/schemas/runtime-readset.schema.json"
   topic_rule_schema: ".claude/schemas/topic-rule.schema.json"
-  legacy_command_dir: ".claude/commands"
-  legacy_checkpoint_dir: ".claude/checkpoints"
-
 memory:
   project_summary: ".cc/context/project-summary.md"
   project_context: ".cc/context/project-context.md"
