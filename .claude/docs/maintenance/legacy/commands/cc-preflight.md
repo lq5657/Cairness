@@ -53,7 +53,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-preflight` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-preflight` 行为准：
 - 状态机定位：Harness 接入自检命令，不创建也不改变 change 状态
 - 输入：无
 - 输出：结构化接入前自检结果
@@ -90,8 +90,8 @@
 - `.claude/` 脚手架目录结构
 - `.claude/docs/adoption/integration-preflight-checklist.md`
 - 必要的 `commands/`、`checkpoints/`、`.cc/context/`、`.claude/templates/changes/`、`.claude/templates/audits/`、`schemas/`、`scripts/`
-- `.claude/harness.config.yaml`、`workflows/cc-workflow.yaml`、`rules/lifecycle-state-machine.md` 与 `rules/command-contracts.md`
-- `rules/role-contracts.md`、`rules/memory-policy.md`、`.cc/context/dev-map.md` 与 `.cc/changes/task-board.md`
+- `.claude/harness.config.yaml`、`workflows/cc-workflow.yaml`、`docs/maintenance/legacy/rules/lifecycle-state-machine.md` 与 `docs/maintenance/legacy/rules/command-contracts.md`
+- `docs/maintenance/legacy/rules/role-contracts.md`、`rules/memory-policy.md`、`.cc/context/dev-map.md` 与 `.cc/changes/task-board.md`
 - `harness.config.yaml` 中的 `workflow.definition`、`validation.auto_run`、`validation.fail_on_error` 与 `validation.run_on`
 - `.claude/scripts/cc-verify` 与 `.claude/scripts/cc-delta-check`
 - README / CLAUDE 中与入口、路径和结构相关的说明
@@ -118,7 +118,7 @@
 - 关键模板或命令文件缺失
 - schema、校验脚本、机器可读 workflow、角色/记忆规则、dev-map/task-board 或生命周期状态机缺失
 - 命令契约矩阵缺失，或未覆盖全部 `cc-*` 命令
-- `workflows/cc-workflow.yaml` 的 `roles` 引用了 `rules/role-contracts.md` 未登记的角色
+- `workflows/cc-workflow.yaml` 的 `roles` 引用了 `docs/maintenance/legacy/rules/role-contracts.md` 未登记的角色
 - 自动校验策略缺失，导致 `cc-verify` 无法按命令阶段自动触发
 - 路径解释口径不一致
 - 命令入口冲突导致无法稳定使用 `cc-*`

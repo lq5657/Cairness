@@ -146,7 +146,7 @@
 
 - 每个启用子 agent 的运行时命令必须声明 `write_scope_policy: parent_writes_subset`。
 - 包含有写权限子 agent 的命令必须声明 `parallel_policy: disjoint_writes_only`；仅包含只读子 agent 的命令应声明 `parallel_policy: read_only_parallel_only`。
-- 子 agent 角色必须存在于 `.claude/rules/role-contracts.md` 中。
+- 子 agent 角色必须存在于 `.claude/docs/maintenance/legacy/rules/role-contracts.md` 中。
 - 子 agent 的写范围必须是父命令 `writes` 的子集；最终产物仍由 `main_flow` 拥有。
 
 ## 升级到 0.17.0
@@ -540,7 +540,7 @@
 - `.claude/runtime/commands/cc-test.yaml`
 - `.claude/runtime/commands/cc-fix.yaml`
 - `.claude/runtime/commands/cc-apply.yaml`
-- `.claude/rules/role-contracts.md`
+- `.claude/docs/maintenance/legacy/rules/role-contracts.md`
 - `.claude/skills/cc-harness/SKILL.md`
 - `.claude/scripts/cc-lint`
 - `.claude/docs/maintenance/runtime-model.md`

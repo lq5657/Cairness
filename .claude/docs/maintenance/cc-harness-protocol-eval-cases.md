@@ -117,7 +117,7 @@
 
 期望：
 - `cc-lint` 报错。
-- workflow 中每个角色都必须先在 `rules/role-contracts.md` 登记。
+- workflow 中每个角色都必须先在 `docs/maintenance/legacy/rules/role-contracts.md` 登记。
 
 #### Case 8：命令完成但未自动运行 Harness 校验
 

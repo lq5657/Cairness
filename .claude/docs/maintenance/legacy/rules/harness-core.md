@@ -66,6 +66,6 @@ Finding 状态：`open` → `fixed` 或 `accepted`（accepted 必须有用户显
 - 完整命令定义：`.claude/workflows/cc-workflow.yaml`
 - 运行时命令清单：`.claude/runtime/commands/cc-*.yaml`
 - 专题规则（按需加载）：`.claude/runtime/topic-rules/*.yaml`
-- 角色契约：`.claude/rules/role-contracts.md`
+- 角色契约：`.claude/docs/maintenance/legacy/rules/role-contracts.md`
 - 记忆策略：`.claude/rules/memory-policy.md`
-- 领域约束：`.claude/rules/domain-rules.md`
+- 领域约束：`.claude/docs/maintenance/legacy/rules/domain-rules.md`

@@ -24,7 +24,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-apply` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-apply` 行为准：
 - 状态机定位：执行实现，允许 `propose / apply -> review`
 - 输入：`change-id`
 - 输出：代码改动、change 文档更新、必要的 `.cc/context/dev-map.md` / `.cc/changes/task-board.md` 更新、按配置生成 commit

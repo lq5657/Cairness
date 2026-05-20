@@ -5,7 +5,7 @@ expected_reads:
   - .claude/runtime/commands/cc-apply.yaml
   - .claude/runtime/commands/cc-fix.yaml
   - .claude/scripts/cc-schema-check
-  - .claude/rules/role-contracts.md
+  - .claude/docs/maintenance/legacy/rules/role-contracts.md
   - .claude/docs/maintenance/subagent-model.md
 forbidden_actions:
   - allow_unregistered_subagent_role

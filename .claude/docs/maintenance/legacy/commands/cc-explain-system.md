@@ -53,7 +53,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-explain-system` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-explain-system` 行为准：
 - 状态机定位：系统讲解命令，不创建也不改变 change 状态
 - 输入：可选 `scope`
 - 输出：`.cc/context/system-overview.md`

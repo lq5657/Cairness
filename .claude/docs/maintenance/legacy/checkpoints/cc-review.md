@@ -12,7 +12,7 @@
 | `tasks.md` 已读，且已确认当前 task 完成状态 | ✅ / ❌ / ⚠️ / N/A |
 | 若存在 roadmap，已读取阶段目标并确认本次 change 的对齐关系 | ✅ / ❌ / ⚠️ / N/A |
 | 已确定本轮规则装载清单，且至少包含 `rules/verification.md` | ✅ / ❌ / ⚠️ / N/A |
-| 已读取 `rules/role-contracts.md` 和 `.cc/changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `docs/maintenance/legacy/rules/role-contracts.md` 和 `.cc/changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
 | `spec.md` 的“需求-验证映射”编号与闭环状态已读 | ✅ / ❌ / ⚠️ / N/A |
 | `test-spec.md` 若存在，已读取其对映射项的补强结论 | ✅ / ❌ / ⚠️ / N/A |
 | 代码已存在 | ✅ / ❌ / ⚠️ / N/A |

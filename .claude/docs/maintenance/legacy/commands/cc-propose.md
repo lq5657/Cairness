@@ -25,7 +25,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-propose` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-propose` 行为准：
 - 状态机定位：创建或更新正式 change 草案，成功后 `spec.status = propose`
 - 输入：需求描述
 - 输出：`.cc/changes/<change-id>/spec.md`、`tasks.md`、`log.md`、`.cc/changes/task-board.md` 状态摘要

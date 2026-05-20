@@ -23,7 +23,7 @@
 - `spec_reviewer` 和 `code-quality-reviewer` 是 `cc-review` 内部使用的只读 reviewer
 - reviewer 只负责读取材料并输出结构化结果，不直接修改仓库
 - 主流程负责汇总 reviewer 输出，并写入 `review.md`
-- reviewer 和主流程都必须遵守 `rules/role-contracts.md`；reviewer 输出是证据输入，不是自动通过结论
+- reviewer 和主流程都必须遵守 `docs/maintenance/legacy/rules/role-contracts.md`；reviewer 输出是证据输入，不是自动通过结论
 
 展示 checkpoint 表时：
 - 必须把状态写入 `结果` 列
@@ -32,7 +32,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-review` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-review` 行为准：
 - 状态机定位：审查 `review` 阶段 change，成功后仍保持 `review`
 - 输入：`change-id`
 - 输出：`.cc/changes/<change-id>/review.md`、`.cc/changes/task-board.md` 审查状态
@@ -127,7 +127,7 @@
 - 当前 change 的 `test-spec.md`（如存在）
 - 当前 change 的 `review.md`
 - `.cc/changes/task-board.md`
-- `rules/role-contracts.md`
+- `docs/maintenance/legacy/rules/role-contracts.md`
 - `rules/verification.md`
 - 命中专题时读取对应规则：`testing-strategy` / `database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`
 - 相关专题规则

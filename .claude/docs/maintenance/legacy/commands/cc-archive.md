@@ -21,7 +21,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-archive` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-archive` 行为准：
 - 状态机定位：唯一允许执行 `review -> done` 的命令
 - 输入：`change-id`
 - 输出：`spec.status = done`、归档记录、`.cc/changes/task-board.md` 归档状态、必要的知识沉淀

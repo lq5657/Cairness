@@ -57,7 +57,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-enrich-context` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-enrich-context` 行为准：
 - 状态机定位：项目事实补充命令，不创建也不改变 change 状态
 - 输入：无
 - 输出：`.cc/context/project-context.md` 的补充事实层、`.cc/context/dev-map.md` 的开发导航

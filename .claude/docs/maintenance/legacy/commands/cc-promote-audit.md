@@ -20,7 +20,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-promote-audit` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-promote-audit` 行为准：
 - 状态机定位：audit 到 change 的桥接命令，尚未进入正式 change 生命周期
 - 输入：`audit-id`、`change-id`
 - 输出：`.cc/audits/<audit-id>/to-change.md`、`.cc/changes/task-board.md` 的候选摘要

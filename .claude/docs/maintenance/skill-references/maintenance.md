@@ -4,9 +4,9 @@ Use this reference when editing Harness assets under `.claude/`, including skill
 
 ## Synchronization Rules
 
-- Adding or renaming a command requires updates to `workflows/cc-workflow.yaml`, `rules/command-contracts.md`, `commands/<command>.md`, and `checkpoints/<command>.md`.
-- Adding a role requires updating `rules/role-contracts.md` and any workflow `roles` entries.
-- Changing lifecycle states requires updating `workflows/cc-workflow.yaml`, `rules/lifecycle-state-machine.md`, validators, and templates.
+- Adding or renaming a command requires updates to `workflows/cc-workflow.yaml`, `docs/maintenance/legacy/rules/command-contracts.md`, `commands/<command>.md`, and `checkpoints/<command>.md`.
+- Adding a role requires updating `docs/maintenance/legacy/rules/role-contracts.md` and any workflow `roles` entries.
+- Changing lifecycle states requires updating `workflows/cc-workflow.yaml`, `docs/maintenance/legacy/rules/lifecycle-state-machine.md`, validators, and templates.
 - Updating document metadata format requires keeping legacy examples valid until a migration is documented.
 
 ## Validation

@@ -207,7 +207,7 @@ ANTI_RATIONALIZATION_COMMANDS = {
     "cc-test",
 }
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
-ROLE_CONTRACTS_PATH = ".claude/rules/role-contracts.md"
+ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
 FINAL_ARTIFACT_WRITE_PREFIXES = (
     ".cc/changes/",
     ".cc/audits/",

@@ -2,7 +2,7 @@
 
 专职验证代码实现是否符合 spec 规格。只读不写，独立于实现者的上下文。
 该 reviewer 仅输出中间审查材料，不直接修改仓库文件；最终 `review.md` 由 `cc-review` 主流程汇总维护。
-角色权限以 `rules/role-contracts.md` 中的 `spec-reviewer` 为准。
+角色权限以 `docs/maintenance/legacy/rules/role-contracts.md` 中的 `spec-reviewer` 为准。
 核心理念： **不信报告，只信代码**  — reviewer 必须读实际代码独立验证。
 
 #### 🚫 必检项（全部通过才 PASS）

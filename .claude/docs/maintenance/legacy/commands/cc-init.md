@@ -49,7 +49,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-init` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-init` 行为准：
 - 状态机定位：项目基础事实初始化命令，不创建也不改变 change 状态
 - 输入：无
 - 输出：`.cc/context/project-context.md` 的基础事实层、`.cc/context/dev-map.md` 的基础导航

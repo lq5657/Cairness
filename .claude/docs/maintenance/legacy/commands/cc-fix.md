@@ -25,7 +25,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-fix` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-fix` 行为准：
 - 状态机定位：`review` 阶段的 Findings 回收命令，成功后仍保持 `review`
 - 输入：`change-id`，可选修复描述
 - 输出：修复代码、Finding 状态更新、change 文档同步、`.cc/changes/task-board.md` 状态更新

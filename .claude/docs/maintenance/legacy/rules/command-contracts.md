@@ -12,5 +12,5 @@
 - `cc-fix` 只能处理 `review.md` 中已记录的 `open` Findings 或用户明确追加并已记录的问题。
 - `cc-test` 默认是 `supplement`；只有存在 `cc-apply` 的 `blocked` / `partial` 记录时，才能使用 `recovery`。
 - `cc-propose`、`cc-apply`、`cc-fix`、`cc-test`、`cc-review`、`cc-archive` 必须按 `.claude/harness.config.yaml` 的 `validation.auto_run` 和 `validation.run_on` 自动触发 `cc-verify`；`cc-apply` 还必须记录 baseline 并执行 delta 检查。
-- 写入 `.cc/context/dev-map.md`、`.cc/changes/task-board.md` 或 `.cc/knowledge/*` 时，必须遵守 `rules/memory-policy.md`；调用 reviewer 或子角色时，必须遵守 `rules/role-contracts.md`。
+- 写入 `.cc/context/dev-map.md`、`.cc/changes/task-board.md` 或 `.cc/knowledge/*` 时，必须遵守 `rules/memory-policy.md`；调用 reviewer 或子角色时，必须遵守 `docs/maintenance/legacy/rules/role-contracts.md`。
 - 命令中断时，必须把可恢复上下文写入当前命令允许的文档位置，不得用 `spec.status` 表示失败原因。

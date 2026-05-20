@@ -238,9 +238,9 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 - 历史命令的 `.claude/docs/maintenance/legacy/commands/*`
 - 历史命令的 `.claude/docs/maintenance/legacy/checkpoints/*`
-- `.claude/rules/command-contracts.md`
-- `.claude/rules/lifecycle-state-machine.md`
-- `.claude/rules/role-contracts.md`
+- `.claude/docs/maintenance/legacy/rules/command-contracts.md`
+- `.claude/docs/maintenance/legacy/rules/lifecycle-state-machine.md`
+- `.claude/docs/maintenance/legacy/rules/role-contracts.md`
 
 这些文档现在的定位是：
 

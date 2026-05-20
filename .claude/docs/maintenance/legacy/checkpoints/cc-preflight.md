@@ -23,8 +23,8 @@
 | 已检查 checkpoint 展示契约 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `workflows/cc-workflow.yaml` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `workflows/cc-workflow.yaml` 中每个命令的 `roles` 都已登记 | ✅ / ❌ / ⚠️ / N/A |
-| 已检查 `rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
-| 已检查 `rules/role-contracts.md` 与 `rules/memory-policy.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `docs/maintenance/legacy/rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `docs/maintenance/legacy/rules/role-contracts.md` 与 `rules/memory-policy.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `.cc/context/dev-map.md` 与 `.cc/changes/task-board.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `validation.auto_run` / `validation.fail_on_error` / `validation.run_on` 自动校验策略 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `cc-verify` / `cc-delta-check` 脚本存在且可执行 | ✅ / ❌ / ⚠️ / N/A |

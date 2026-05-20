@@ -68,7 +68,7 @@
 
 ## 命令契约
 
-以 `rules/command-contracts.md` 中 `cc-new-project` 行为准：
+以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-new-project` 行为准：
 - 状态机定位：项目级定义命令，不创建正式 change 状态
 - 输入：项目想法
 - 输出：`.cc/context/project-summary.md`、`.cc/context/project-definition.md`、`.cc/context/mvp-roadmap.md`、`.cc/context/architecture-outline.md`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`

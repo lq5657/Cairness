@@ -37,5 +37,5 @@ description: "兼容保留的检查点索引页；运行时优先按命令加载
 
 若你在旧文档或旧习惯中仍看到 “读取 `rules/checkpoints.md`”：
 - 在运行时，应替换为读取对应 `checkpoints/cc-*.md`
-- 在文档中，应更新为 `rules/checkpoint-index.md`
+- 在文档中，应更新为 `docs/maintenance/legacy/rules/checkpoint-index.md`
 - 新的执行细则不要继续写回本页
