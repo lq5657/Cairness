@@ -144,6 +144,8 @@ anti_rationalizations:
   - mark_fixed_without_guard_or_fresh_verification
   - defer_verification_to_cc_test_because_fix_looks_correct
   - skip_pre_fix_baseline_because_verification_takes_too_long
+  - skip_log_update_because_finding_is_already_recorded_in_review
+  - skip_task_board_updated_by_because_governance_is_implicit
 
 red_flags:
   - feedback_loop_missing_before_patch
@@ -157,6 +159,7 @@ red_flags:
   - pre_fix_verification_baseline_missing_in_log
   - post_fix_l2_verification_not_run_or_failed_but_finding_marked_fixed
   - verification_comparison_not_recorded_in_log
+  - task_board_updated_by_not_cc_fix
 
 steps:
   - load_open_findings

@@ -112,6 +112,8 @@ anti_rationalizations:
   - hide_lens_matrix_from_user
   - accept_important_finding_without_reason_impact_and_no_fix_rationale
   - treat_strong_review_rationale_as_user_acceptance
+  - skip_log_update_because_review_is_the_main_output
+  - skip_task_board_updated_by_because_governance_is_implicit
 
 red_flags:
   - open_critical_or_important_with_final_pass
@@ -122,6 +124,8 @@ red_flags:
   - finding_reported_without_lens_and_evidence
   - accepted_finding_missing_user_confirmation_record
   - spec_review_flag_in_log_not_reviewed_or_addressed
+  - task_board_updated_by_not_cc_review
+  - log_missing_review_stage_entry
 
 steps:
   - read_change_artifacts
@@ -135,7 +139,7 @@ steps:
   - present_acceptance_choices_and_wait_for_user_selection_when_needed
   - load_review_template_before_writing_review
   - emit_findings_with_open_fixed_or_accepted_status
-  - sync_review_and_task_board
+  - sync_review_log_and_task_board
   - run_harness_validation
 
 auto_validation:

@@ -101,6 +101,12 @@ anti_rationalizations:
   - treat_project_knowledge_as_framework_rule
   - promote_user_correction_to_runtime_rule_without_maintenance_change
   - mark_done_before_refinement_candidate_disposition
+  - skip_log_update_because_archive_is_the_final_step
+  - skip_task_board_updated_by_because_governance_is_implicit
+
+red_flags:
+  - task_board_updated_by_not_cc_archive
+  - log_missing_archive_stage_entry
 
 result_contract:
   profile: .claude/runtime/result-contracts/standard-command.yaml
@@ -117,6 +123,7 @@ result_contract:
     sources:
       - stop_conditions
       - forbids
+      - red_flags
       - interaction_state
   next_actions:
     - stop_change_complete
