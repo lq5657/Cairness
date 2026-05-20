@@ -148,7 +148,7 @@
 输入：
 
 ```text
-执行 `cc-init` 或 `cc-inspect-codebase architecture` 时优先读取 `.claude/commands/<command>.md` 和 `.claude/checkpoints/<command>.md`。
+执行 `cc-init` 或 `cc-inspect-codebase architecture` 时优先读取 `.claude/docs/maintenance/legacy/commands/<command>.md` 和 `.claude/docs/maintenance/legacy/checkpoints/<command>.md`。
 ```
 
 期望：

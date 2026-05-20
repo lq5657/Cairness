@@ -10,7 +10,7 @@
 - 只读取 readset 的 `always_reads`。
 - 只有触发条件成立时，才读取 `conditional_reads`。
 - `optional_reads` 只作为参考资料，不属于默认上下文。
-- 自定义或未迁移命令才回退读取 `.claude/workflows/cc-workflow.yaml`、`.claude/commands/<command>.md` 与 `.claude/checkpoints/<command>.md`。
+- 自定义或未迁移命令才回退读取 `.claude/workflows/cc-workflow.yaml`、`.claude/docs/maintenance/legacy/commands/<command>.md` 与 `.claude/docs/maintenance/legacy/checkpoints/<command>.md`。
 - `.claude/docs/examples/`、`.claude/docs/adoption/`、`.claude/docs/maintenance/` 不属于默认运行时路径。
 
 ## 已迁移命令

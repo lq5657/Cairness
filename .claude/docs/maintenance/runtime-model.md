@@ -236,8 +236,8 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 ### 仍在 `.claude/` 的 legacy 文档
 
-- 历史命令的 `.claude/commands/*`
-- 历史命令的 `.claude/checkpoints/*`
+- 历史命令的 `.claude/docs/maintenance/legacy/commands/*`
+- 历史命令的 `.claude/docs/maintenance/legacy/checkpoints/*`
 - `.claude/rules/command-contracts.md`
 - `.claude/rules/lifecycle-state-machine.md`
 - `.claude/rules/role-contracts.md`
