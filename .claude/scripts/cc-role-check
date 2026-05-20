@@ -75,11 +75,14 @@ def load_baseline(path: Path) -> list[str]:
 
 
 def save_baseline(path: Path, dirty: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"dirty_paths": dirty, "saved_at": datetime.now().isoformat()}, indent=2),
-        encoding="utf-8",
-    )
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"dirty_paths": dirty, "saved_at": datetime.now().isoformat()}, indent=2),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
 
 
 def reset_baseline(path: Path) -> bool:
