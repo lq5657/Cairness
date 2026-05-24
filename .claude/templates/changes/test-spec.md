@@ -22,7 +22,7 @@ mode: supplement
 |------|----|
 | 主测试层级 | `unit / repo / transport / chain / integration / manual` |
 | 选择原因 | |
-| `cc-test` 模式 | `supplement / recovery` |
+| `cc-test` 模式 | `supplement` |
 | recovery 对应阻塞记录 | |
 | 更高层测试是否跳过 | 是/否 |
 | 跳过原因 | |

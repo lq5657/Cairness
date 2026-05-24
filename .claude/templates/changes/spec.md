@@ -102,9 +102,10 @@ proposal_profile: micro | standard | staged
 
 #### 9.1 需求-验证映射
 
+<!-- 校验要求：每行必须恰好7列，所有列必填，缺列会触发 E_SCHEMA007 -->
 | 编号 | 需求项 / 风险点 | 最低验证等级 | 证据类型 | 建议验证动作 | 对应 Task | 闭环状态 |
 |------|------------------|--------------|----------|--------------|-----------|----------|
-| V1 | | L1-L5 | build / doc-check / package / unit / chain / integration / manual / migration-safety / release-safety | | | todo / apply-covered / test-covered / gap |
+| V1 |（需求或风险描述）| L1 | build |（具体验证动作）| Task N | todo |
 
 #### 9.2 发布与回滚
 

@@ -46,7 +46,7 @@ updated: YYYY-MM-DD
 * **依赖 / Wave**:
 * **回退方式**:
 * **完成后状态**: `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
-* **Baseline / Delta（按需）**:
+* **Baseline / Delta**:
 * **对应 commit（按需）**:
 * **并发注意事项（按需）**:
 * **数据库注意事项（按需）**:

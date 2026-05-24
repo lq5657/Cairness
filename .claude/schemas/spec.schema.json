@@ -50,11 +50,15 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "level", "evidence_type", "task", "status"],
+        "required": ["id", "requirement_item", "level", "evidence_type", "suggested_action", "task", "status"],
         "properties": {
           "id": {
             "type": "string",
             "pattern": "^V[0-9]+$"
+          },
+          "requirement_item": {
+            "type": "string",
+            "description": "需求项 / 风险点"
           },
           "level": {
             "type": "string",
@@ -73,6 +77,10 @@
               "migration-safety",
               "release-safety"
             ]
+          },
+          "suggested_action": {
+            "type": "string",
+            "description": "建议验证动作"
           },
           "task": {
             "type": "string"
