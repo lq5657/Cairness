@@ -1,4 +1,4 @@
-# cc_spec
+# cc_harness_spec
 
 AI 驱动的软件开发生命周期治理框架。本仓库包含一个面向多语言项目的 Claude Code Spec-driven Harness。
 
