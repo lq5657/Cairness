@@ -1,0 +1,17 @@
+id: cc-discuss-assumptions-mode
+input: "cc-discuss --mode assumptions 选型一个适合高并发场景的RPC框架"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-discuss.yaml
+  - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
+forbidden_actions:
+  - present_assumptions_without_research
+  - treat_user_silence_as_confirmation
+  - reject_user_switch_to_interactive_request
+expected_checks:
+  - perform_background_research_before_presenting_assumptions
+  - present_structured_assumptions_with_confidence_and_evidence
+  - each_assumption_has_confidence_level_and_evidence_reference
+  - allow_user_to_switch_to_interactive_mode_at_any_time
+  - do_not_treat_silence_as_confirmation
+rubric: default

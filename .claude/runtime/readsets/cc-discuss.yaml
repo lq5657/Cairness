@@ -36,6 +36,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/api-compatibility.yaml
   when_project_context_has_domain_language_conflicts:
   - .claude/runtime/topic-rules/source-driven-development.yaml
+  when_assumptions_mode_is_activated:
+  - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

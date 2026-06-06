@@ -1,5 +1,37 @@
 # 升级指南
 
+## 升级到 0.21.0
+
+本版本新增 `cc-discuss` 命令。
+
+### 需要创建的新目录
+
+- `.cc/discussions/` — 讨论产出目录（自动创建，无需手动操作）
+
+### 需要重新生成的文件
+
+```bash
+.claude/scripts/cc-readset --write
+```
+
+### 新增文件
+
+- `.claude/runtime/commands/cc-discuss.yaml`
+- `.claude/runtime/subagents/cc-discuss.yaml`
+- `.claude/runtime/readsets/cc-discuss.yaml`
+- `.claude/templates/discussions/brief.md`
+- `.claude/templates/discussions/log.md`
+- `.claude/runtime/topic-rules/discussion-assumptions-mode.yaml`
+- `.claude/evals/cases/cc-discuss-runtime.yaml`
+- `.claude/evals/cases/cc-discuss-interactive-routing.yaml`
+- `.claude/evals/cases/cc-discuss-subagent-contract.yaml`
+
+### 验证
+
+```bash
+.claude/scripts/cc-verify --harness-only
+```
+
 ## 升级到 0.20.0
 
 本版本将可升级的 Harness 资产与项目生成的状态分离。

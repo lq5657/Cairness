@@ -1,0 +1,63 @@
+id: discussion_assumptions_mode
+description: "assumptions-first 讨论模式 — AI 先研究再呈现结构化假设供用户批量确认，适合有经验的用户"
+
+trigger:
+  - "cc-discuss 收到 --mode assumptions 或 discuss_mode: assumptions"
+  - "用户在讨论中说 'switch to assumptions' 或 'assumptions mode'"
+
+skip:
+  - "默认 interactive 模式不受影响"
+  - "profile 为 minimal 时不建议使用（minimal 下默认 interactive 已足够轻量）"
+
+process:
+  - "Phase 1: 执行完整的背景研究（web搜索 + 项目分析），不向用户提问"
+  - "Phase 2: 将研究发现组织为结构化假设列表，每条包含：假设内容、置信度(high/medium/low)、支持证据、推理依据"
+  - "Phase 3: 基于假设呈现推荐方案及替代方案，包含取舍分析"
+  - "Phase 4: 一次性呈现所有假设，要求用户逐条确认、修正或标记为待验证"
+  - "Phase 5: 用户确认后整合为 brief 草稿，执行自检后呈现"
+  - "用户可随时说 'switch to interactive' 回到一问一答模式"
+  - "用户可随时说 'switch to assumptions' 切换到假设模式"
+  - "每条假设必须标注置信度；低置信度假设必须检查来源证据"
+  - "medium/low 置信度的假设必须在 brief 中标注为 '待验证'"
+
+anti_rationalization:
+  - claim: "假设模式更快，不需要用户思考。"
+    reality: "假设模式要求用户逐条审查，反而更需要专注。一次性呈现10+条假设容易导致确认疲劳。"
+    response: "默认使用 interactive 模式；assumptions 模式仅在用户主动指定时启用，且必须逐条确认。"
+  - claim: "先研究再呈现假设，已经验证过了。"
+    reality: "研究输出仍是 AI 推理结果，可能是错的。假设是待验证命题，不是结论。"
+    response: "每条假设必须标注置信度；用户可能纠正任何一条。"
+  - claim: "用户没回复就是默认同意。"
+    reality: "沉默不等同于确认，尤其是在批量假设场景。"
+    response: "每条假设必须等待用户显式确认；未确认的假设在 brief 中记录为 open。"
+  - claim: "假设模式结果更全面，应该作为默认。"
+    reality: "非专业用户面对假设列表可能不知所措，不知道哪些该质疑。交互式一问一答更适合他们。"
+    response: "默认保持 interactive；assumptions 是 opt-in flag。"
+
+red_flags:
+  - "assumptions 模式未先完成研究就开始呈现假设"
+  - "假设列表中没有置信度标注"
+  - "用户要求切换回 interactive 但 AI 拒绝了"
+  - "用户长时间未回复却被标记为确认"
+  - "低置信度假设在 brief 中未标注为待验证"
+
+checks:
+  - "每条假设有置信度和证据引用"
+  - "用户可随时切换模式"
+  - "批量确认不跳过任何一条假设"
+  - "brief 自检包含了假设模式特有的待验证项检查"
+
+rules:
+  max_assumptions_per_round: 5
+  require_confidence_per_assumption: true
+  require_evidence_per_assumption: true
+  allow_mode_switch: true
+  default_mode: interactive
+
+warning_message: >-
+  Assumptions mode presents AI inferences in bulk based on research findings.
+  This mode is suitable for experienced users who can efficiently spot incorrect
+  assumptions. Risk of confirmation fatigue — each assumption requires careful
+  individual review. If you feel unsure about any assumption, reply
+  'switch to interactive' to return to one-question-at-a-time mode.
+  Activate with: cc-discuss --mode assumptions <topic>

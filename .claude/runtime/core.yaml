@@ -102,6 +102,7 @@ topic_rules:
   typescript_performance: .claude/runtime/topic-rules/typescript-performance.yaml
   cpp_concurrency: .claude/runtime/topic-rules/cpp-concurrency.yaml
   cpp_performance: .claude/runtime/topic-rules/cpp-performance.yaml
+  discussion_assumptions_mode: .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
 
 profiles:
   dir: .claude/runtime/profiles

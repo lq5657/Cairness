@@ -1,0 +1,14 @@
+id: cc-discuss-brief-self-review
+input: "cc-discuss 我想加一个日志聚合功能"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-discuss.yaml
+forbidden_actions:
+  - skip_brief_self_review_because_brief_looks_clean
+  - skip_brief_self_review_to_save_tokens_or_time
+  - treat_brief_self_review_as_substitute_for_user_review
+expected_checks:
+  - run_brief_self_review_check_placeholders_consistency_scope_ambiguity
+  - fix_self_review_issues_before_presenting_to_user
+  - brief_presented_to_user_has_no_tbd_or_todo
+rubric: default

@@ -7,6 +7,7 @@ inputs:
   optional:
     - discuss_id
     - research_depth
+    - discuss_mode
     - continue_discussion
 
 state:
@@ -58,6 +59,8 @@ preconditions:
   - identify_and_present_relevant_project_context
   - distinguish_facts_from_uncertainties
   - flag_upstream_or_external_constraints_early
+  - when_assumptions_mode_research_then_present_assumptions_for_confirmation
+  - run_brief_self_review_before_presenting_to_user
 
 interaction_contract:
   mode: interactive_required
@@ -72,10 +75,14 @@ interaction_contract:
       - present_pro_con_comparison_for_key_design_choices
       - periodically_summarize_convergence_progress
       - remind_user_they_can_say_ready_to_consolidate_at_any_time
+      - when_assumptions_mode_present_structured_assumptions_list_with_confidence_and_ask_bulk_confirmation
+      - allow_user_to_switch_between_interactive_and_assumptions_mode
     blocking_behavior:
       - do_not_write_brief_with_unresolved_core_ambiguities
       - continue_discussion_until_user_confirms_ready
       - next_action_must_be_answer_question_or_signal_ready
+      - when_in_assumptions_mode_do_not_proceed_until_assumptions_are_confirmed_or_corrected
+      - when_in_assumptions_mode_do_not_treat_user_silence_as_confirmation
     max_questions_per_round: 3
     resolution_required_before_ready: true
   confirmation:
@@ -125,6 +132,8 @@ topic_rules:
     - .claude/runtime/topic-rules/api-compatibility.yaml
   when_project_context_has_domain_language_conflicts:
     - .claude/runtime/topic-rules/source-driven-development.yaml
+  when_assumptions_mode_is_activated:
+    - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
 
 subagents:
   enabled: true
@@ -146,10 +155,15 @@ steps:
   - wait_for_user_response_or_ready_signal
   - when_user_says_ready_present_consolidated_brief_draft
   - confirm_brief_accuracy_with_user
+  - run_brief_self_review_check_placeholders_consistency_scope_ambiguity
+  - fix_self_review_issues_before_presenting_to_user
   - load_brief_and_log_templates
   - write_brief_md
   - write_log_md
   - present_routing_selection_and_wait_for_user_choice
+  - when_assumptions_mode_present_structured_assumptions_with_confidence_and_rationale
+  - when_assumptions_mode_allow_bulk_confirmation_or_correction_per_assumption
+  - when_assumptions_mode_allow_switch_to_interactive_at_any_time
 
 anti_rationalizations:
   - claim_vague_idea_is_ready_for_spec_without_discussion
@@ -163,6 +177,12 @@ anti_rationalizations:
   - skip_presenting_better_alternatives_when_user_is_fixated
   - write_brief_without_user_confirmation
   - auto_select_routing_path_without_user_choice
+  - skip_brief_self_review_because_brief_looks_clean
+  - skip_brief_self_review_to_save_tokens_or_time
+  - treat_brief_self_review_as_substitute_for_user_review
+  - when_assumptions_mode_present_assumptions_without_research
+  - when_assumptions_mode_treat_silence_as_full_confirmation
+  - when_assumptions_mode_reject_user_switch_to_interactive_request
 
 red_flags:
   - research_subagent_returned_no_evidence
@@ -174,6 +194,11 @@ red_flags:
   - technology_claims_without_source_references_in_brief
   - domain_term_conflict_identified_but_not_recorded
   - routing_selection_not_presented_after_brief_written
+  - brief_self_review_not_performed_before_user_review
+  - brief_self_review_found_unresolved_placeholder_or_inconsistency_not_fixed
+  - brief_presented_to_user_still_contains_tbd_or_todo
+  - when_assumptions_mode_assumptions_presented_without_confidence_levels
+  - when_assumptions_mode_research_not_completed_before_assumptions_presented
 
 auto_validation: []
 
