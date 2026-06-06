@@ -1,0 +1,20 @@
+id: cc-discuss-interactive-routing
+input: "cc-discuss 我想优化数据库查询性能"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-discuss.yaml
+  - .cc/context/project-summary.md
+forbidden_actions:
+  - treat_vague_input_as_ready
+  - skip_challenging_assumptions
+  - skip_routing_selection
+expected_checks:
+  - present_research_findings_before_asking_questions
+  - challenge_user_assumptions_with_evidence_and_alternatives
+  - show_routing_options_with_context
+  - present create_new_project_via_cc_new_project option
+  - present create_change_proposal_via_cc_propose option
+  - present continue_discussing_current_topic option
+  - present park_discussion_and_exit option
+  - do_not_exit_without_routing_decision
+rubric: default

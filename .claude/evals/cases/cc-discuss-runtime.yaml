@@ -1,0 +1,16 @@
+id: cc-discuss-runtime
+input: "cc-discuss 我想做一个实时协作编辑功能"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-discuss.yaml
+  - .claude/templates/discussions/brief.md
+  - .claude/templates/discussions/log.md
+forbidden_actions:
+  - business_code_write
+  - change_creation
+  - auto_enter_propose
+  - auto_enter_new_project
+  - fabricate_research
+expected_checks:
+  - .claude/scripts/cc-verify --harness-only
+rubric: default

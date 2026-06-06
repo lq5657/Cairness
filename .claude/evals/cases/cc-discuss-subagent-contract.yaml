@@ -1,0 +1,14 @@
+id: cc-discuss-subagent-contract
+input: "cc-discuss 调研市面上主流的消息队列方案"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-discuss.yaml
+  - .claude/runtime/subagents/cc-discuss.yaml
+forbidden_actions:
+  - fabricate_research
+  - present_unsupported_claims_as_facts
+expected_checks:
+  - research_subagent_dispatched_for_domain_research
+  - research_findings_have_concrete_source_references
+  - main_flow_synthesizes_research_into_discussion
+rubric: default
