@@ -1,0 +1,22 @@
+id: cc-review-finding-location
+input: "cc-review <change-id> — Important+ findings should include Location and Existing Code for precise fix targeting and position validation"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/topic-rules/verification.yaml
+  - .claude/templates/changes/review.md
+  - .claude/scripts/cc-verify
+forbidden_actions:
+  - skip_location_and_existing_code_in_finding_details
+  - report_finding_at_specific_line_without_verifying_in_diff
+  - rewrite_existing_code_after_code_changes_during_fix
+  - claim_position_accuracy_without_existing_code_anchor
+  - bypass_cc_verify_check_finding_locations
+expected_checks:
+  - "Important and Critical findings include **Location**: field with file:line-line"
+  - "Important and Critical findings include **Existing Code**: code block"
+  - ".claude/scripts/cc-verify --check-finding-locations --change <change-id> runs after review"
+  - "MISMATCH findings are flagged for position drift"
+  - "existing_code is a review-time anchor — cc-fix must not rewrite it"
+  - "cc-review forbids include skip_location_and_existing_code_in_finding_details"
+rubric: default

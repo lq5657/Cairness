@@ -146,6 +146,56 @@ patterns:
       - "github\\.com/stretchr/testify"
       - "github\\.com/onsi/ginkgo"
 
+  go_concurrency:
+    file_globs:
+      - "**/*.go"
+    content_regex:
+      - "sync\\.(Mutex|RWMutex|WaitGroup|Once|Cond|Pool|Map)"
+      - "go\\s+func"
+      - "\\bchan\\s"
+      - "context\\.(WithCancel|WithTimeout|WithDeadline|Background|TODO)"
+      - "atomic\\.(Int32|Int64|Uint32|Uint64|Pointer|Bool|Value)"
+      - "sync/atomic"
+      - "errgroup\\."
+      - "singleflight\\."
+      - "golang\\.org/x/sync"
+      - "goroutine"
+      - "\\.Lock\\(\\)"
+      - "\\.RLock\\(\\)"
+    import_regex:
+      - "\"sync\""
+      - "\"context\""
+      - "\"sync/atomic\""
+      - "golang\\.org/x/sync"
+
+  go_performance:
+    file_globs:
+      - "**/*.go"
+    content_regex:
+      - "func\\s+Benchmark\\w+\\("
+      - "benchstat"
+      - "pprof"
+      - "-benchmem"
+      - "-cpuprofile"
+      - "-memprofile"
+      - "strings\\.Builder"
+      - "sync\\.Pool"
+      - "make\\(\\[\\].*,\\s*0\\s*,\\s*\\d+\\)"
+      - "-gcflags"
+      - "check_bce"
+      - "GOGC"
+      - "GOMEMLIMIT"
+      - "PGO"
+      - "default\\.pgo"
+      - "fieldalignment"
+      - "\\.Grow\\("
+    import_regex:
+      - "\"testing\""
+      - "\"runtime/pprof\""
+      - "\"net/http/pprof\""
+      - "\"strings\""
+      - "\"sync\""
+
   release:
     file_globs:
       - "**/CHANGELOG*"

@@ -30,6 +30,9 @@ forbids:
   - mark_fixed_without_verification
   - treat_unclear_finding_as_confirmed
   - mark_finding_accepted_without_user_choice
+  - remove_or_rewrite_file_review_scope_section_in_review_md
+  - remove_or_rewrite_existing_code_or_location_in_finding_details
+  - alter_risk_triage_section_in_review_md
 
 required_reads:
   - .cc/changes/<change-id>/review.md

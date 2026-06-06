@@ -6,6 +6,7 @@ trigger:
   - "需求混合了多个目标、模块、验证等级、发布窗口、负责人或回滚计划"
   - "无法用一个小的内聚单元解释变更意图、验证路径和回滚方式"
   - "需要拆分 task 以支持有界子 agent、单 task 执行或独立审查"
+  - "cc-review 时变更 diff 超过 200 行（触发 risk_triage，输出风险矩阵指导 lens 选择）"
 
 skip:
   - "不要仅因为触及多个文件就拆分——当变更只有一条验收路径、一条回滚路径和一个验证集群时"
@@ -57,7 +58,18 @@ rules:
   命令集成:
     cc-propose: "写最终 spec.md 和 tasks.md 前必须应用本规则"
     cc-apply: "依赖本规则产出的有界、已声明 task；task 范围过宽或过期时停止"
-    cc-review: "当过大或混合范围导致证据、回滚或审查结论不可靠时标记"
+    cc-review: "当变更超过风险分诊阈值时，在 stage1 之前输出 risk_triage 风险矩阵；当过大或混合范围导致证据、回滚或审查结论不可靠时标记"
+
+risk_triage规则:
+  触发阈值: "变更 diff > 200 行，或 tasks.md 声明 > 5 个文件"
+  输出格式: "review.md 中的 Risk Triage 表（见模板）"
+  输出要求:
+    - "按 Risk Area 列出风险区域（如 Concurrency、API Contract、Data、Security 等）"
+    - "每个区域标注 Severity（HIGH/MEDIUM/LOW）"
+    - "每个区域附 Rationale（为什么判定为该等级）"
+    - "Lens Priority 列指导 stage2 lens 选择：HIGH → 深度审查，MEDIUM → 标准审查，LOW → 抽样审查"
+  与lens选择的关系: "risk_triage 输出的 Lens Priority 补充但不替代 select_risk_lenses_from_spec_signals；两者冲突时 risk_triage 优先（因为它基于实际 diff 而非计划 spec）"
+  skip条件: "变更 ≤ 200 行且 tasks ≤ 5 个文件时跳过 risk_triage"
 
 relevance:
   category: always

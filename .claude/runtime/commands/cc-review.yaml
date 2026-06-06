@@ -22,6 +22,9 @@ forbids:
   - delete_audit_record
   - mark_finding_accepted_without_user_choice
   - treat_reviewer_recommendation_as_user_acceptance
+  - skip_file_review_scope_when_writing_review
+  - skip_risk_triage_when_change_exceeds_200_lines
+  - skip_location_and_existing_code_in_finding_details
 
 required_reads:
   - .cc/changes/<change-id>/spec.md
@@ -46,6 +49,7 @@ preconditions:
   - read_validation_mapping_and_existing_evidence
   - confirm_review_not_inspect_codebase
   - run_deterministic_topic_rule_detection
+  - assess_change_size_for_risk_triage_decision
   - select_risk_lenses_from_spec_signals
   - select_default_and_triggered_review_lenses
   - select_domain_language_lens_when_terms_states_or_user_concepts_are_in_scope
@@ -78,6 +82,8 @@ topic_rules:
     - .claude/runtime/topic-rules/interaction-guidance.yaml
   always:
     - .claude/runtime/topic-rules/verification.yaml
+  when_change_exceeds_triage_threshold:
+    - .claude/runtime/topic-rules/change-sizing.yaml
   when_test_boundary_or_substitution_is_in_question:
     - .claude/runtime/topic-rules/testing-strategy.yaml
   when_change_touches_database:
@@ -130,10 +136,14 @@ red_flags:
   - spec_review_flag_in_log_not_reviewed_or_addressed
   - task_board_updated_by_not_cc_review
   - log_missing_review_stage_entry
+  - file_review_scope_missing_or_empty
+  - file_review_scope_has_unexplained_not_reviewed
+  - risk_triage_missing_when_change_exceeds_200_lines
 
 steps:
   - read_change_artifacts
   - build_review_lens_matrix
+  - when_change_exceeds_triage_threshold_assess_review_risks
   - read_domain_language_when_review_lens_is_triggered
   - perform_stage1_spec_compliance
   - if_stage1_pass_then_perform_stage2_triggered_lenses
@@ -149,6 +159,9 @@ steps:
 auto_validation:
   - .claude/scripts/cc-role-check --command cc-review --change <change-id>
   - .claude/scripts/cc-verify --harness-only --change <change-id>
+  - .claude/scripts/cc-verify --check-review-coverage --change <change-id>
+  - .claude/scripts/cc-verify --check-finding-locations --change <change-id>
+  - .claude/scripts/cc-verify --check-risk-triage --change <change-id>
   - .claude/scripts/cc-budget-check
 
 result_contract:

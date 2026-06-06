@@ -27,6 +27,8 @@ conditional_reads:
   - .claude/templates/changes/review.md
   when_interaction_fatigue_detection_applies:
   - .claude/runtime/topic-rules/interaction-guidance.yaml
+  when_change_exceeds_triage_threshold:
+  - .claude/runtime/topic-rules/change-sizing.yaml
   when_test_boundary_or_substitution_is_in_question:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   when_change_touches_database:

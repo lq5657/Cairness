@@ -1,0 +1,20 @@
+id: cc-review-risk-triage
+input: "cc-review <change-id> where diff exceeds 200 lines — change-sizing topic rule must trigger risk_triage before stage1, populating the Risk Triage table in review.md"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/topic-rules/change-sizing.yaml
+  - .claude/templates/changes/review.md
+forbidden_actions:
+  - skip_risk_triage_when_change_exceeds_200_lines
+  - treat_risk_triage_as_replacement_for_stage1_spec_compliance
+  - ignore_risk_triage_output_when_selecting_stage2_lenses
+  - apply_risk_triage_to_changes_below_threshold_wasting_tokens
+expected_checks:
+  - "change-sizing topic rule includes cc-review risk_triage trigger"
+  - "cc-review topic_rules includes when_change_exceeds_triage_threshold → change-sizing.yaml"
+  - "risk_triage outputs Risk Area, Severity, Rationale, Lens Priority columns"
+  - "risk_triage Severity drives stage2 lens selection priority"
+  - "risk_triage table uses <!-- cc-verify-key: risk_triage --> marker"
+  - "cc-review forbids include skip_risk_triage_when_change_exceeds_200_lines"
+rubric: default

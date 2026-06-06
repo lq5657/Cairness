@@ -137,8 +137,8 @@ commands:
     outputs: [.cc/changes/<change-id>/review.md, .cc/changes/task-board.md]
     writes: [.cc/changes/<change-id>/review.md, .cc/changes/<change-id>/log.md, .cc/changes/task-board.md]
     validates: [task_coverage, verification_evidence, finding_status, evidence_matrix, role_contracts, finding_acceptance_interaction]
-    forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record, mark_finding_accepted_without_user_choice, treat_reviewer_recommendation_as_user_acceptance]
-    auto_validation: ["cc-role-check --command cc-review --change <change-id>", "cc-verify --harness-only --change <change-id>", "cc-budget-check"]
+    forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record, mark_finding_accepted_without_user_choice, treat_reviewer_recommendation_as_user_acceptance, skip_file_review_scope_when_writing_review, skip_location_and_existing_code_in_finding_details, skip_risk_triage_when_change_exceeds_200_lines]
+    auto_validation: ["cc-role-check --command cc-review --change <change-id>", "cc-verify --harness-only --change <change-id>", "cc-verify --check-review-coverage --change <change-id>", "cc-verify --check-finding-locations --change <change-id>", "cc-verify --check-risk-triage --change <change-id>", "cc-budget-check"]
 
   cc-fix:
     category: change
@@ -150,7 +150,7 @@ commands:
     outputs: [fixed_code, updated_findings, synced_change_docs, task_board_update]
     writes: [finding_related_code_files, test_files, .cc/changes/<change-id>/review.md, .cc/changes/<change-id>/log.md, .cc/changes/<change-id>/spec.md, .cc/changes/<change-id>/tasks.md, .cc/changes/<change-id>/test-spec.md, .cc/context/dev-map.md, .cc/changes/task-board.md]
     validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync, finding_clarification_or_disposition_choice]
-    forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification, treat_unclear_finding_as_confirmed, mark_finding_accepted_without_user_choice]
+    forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification, treat_unclear_finding_as_confirmed, mark_finding_accepted_without_user_choice, remove_or_rewrite_file_review_scope_section_in_review_md, remove_or_rewrite_existing_code_or_location_in_finding_details, alter_risk_triage_section_in_review_md]
     auto_validation: ["cc-verify --change <change-id>"]
 
   cc-test:

@@ -1,0 +1,20 @@
+id: cc-fix-review-data-preservation
+input: "cc-fix <change-id> — when updating review.md finding status, must preserve file_review_scope table, existing_code in findings, and risk_triage section unchanged"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/templates/changes/review.md
+forbidden_actions:
+  - remove_or_rewrite_file_review_scope_section_in_review_md
+  - remove_or_rewrite_existing_code_or_location_in_finding_details
+  - alter_risk_triage_section_in_review_md
+  - mark_fixed_without_verification
+  - delete_open_finding_record
+expected_checks:
+  - "cc-fix forbids include all three review data preservation rules"
+  - "fix only modifies finding status, detected_by, and root_cause_tag"
+  - "file_review_scope table remains intact after cc-fix writes review.md"
+  - "existing_code in findings is NOT rewritten after code changes"
+  - "risk_triage section is NOT altered by cc-fix"
+rubric: default

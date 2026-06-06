@@ -291,6 +291,24 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Confirm the project language profile before running project verification, or use --harness-only when only validating Harness assets.",
             "doc_ref": ".claude/runtime/protocol.yaml",
         }
+    if name == "review-coverage":
+        return {
+            "cause": "File review scope validation failed — see stderr for specific gaps.",
+            "fix_hint": "Update the file_review_scope table in review.md: ensure all files are listed, not_reviewed has notes, and out_of_scope_flagged references log.md spec_review_flags.",
+            "doc_ref": ".claude/templates/changes/review.md",
+        }
+    if name == "finding-locations":
+        return {
+            "cause": "Finding location validation failed — existing_code could not be matched in the target file, or Important/Critical findings lack Existing Code.",
+            "fix_hint": "For each MISMATCH: verify the Location path and existing_code against the current source. For missing Existing Code: add the code snippet that the finding refers to. Do not rewrite existing_code (it is a review-time anchor).",
+            "doc_ref": ".claude/templates/changes/review.md",
+        }
+    if name == "risk-triage":
+        return {
+            "cause": "Risk triage section is present but the table is empty — the Agent indicated risk_triage was needed but did not complete it.",
+            "fix_hint": "Populate the Risk Triage table with Risk Area, Severity, Rationale, and Lens Priority columns, or remove the risk_triage marker if risk assessment was determined unnecessary.",
+            "doc_ref": ".claude/templates/changes/review.md",
+        }
     if status == "skipped":
         return {
             "cause": "This check was skipped because its entrypoint was not found or disabled.",
@@ -301,6 +319,341 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
         "cause": "Verification step failed.",
         "fix_hint": "Inspect stdout, stderr, and fingerprints for the failing command.",
         "doc_ref": ".claude/scripts/cc-verify",
+    }
+
+
+def _parse_markdown_table(lines: list[str], start_idx: int) -> tuple[list[dict[str, str]], int]:
+    """Parse a markdown table starting at start_idx. Returns (rows, end_idx)."""
+    rows: list[dict[str, str]] = []
+    if start_idx >= len(lines):
+        return rows, start_idx
+
+    header_line = lines[start_idx].strip()
+    if not header_line.startswith("|") or not header_line.endswith("|"):
+        return rows, start_idx
+    headers = [h.strip() for h in header_line.strip("|").split("|")]
+
+    idx = start_idx + 1
+    # Skip separator line
+    if idx < len(lines) and lines[idx].strip().startswith("|") and "---" in lines[idx]:
+        idx += 1
+
+    while idx < len(lines):
+        line = lines[idx].strip()
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        row: dict[str, str] = {}
+        for i, header in enumerate(headers):
+            row[header] = cells[i] if i < len(cells) else ""
+        rows.append(row)
+        idx += 1
+    return rows, idx
+
+
+def _find_section_marker(lines: list[str], marker: str) -> int:
+    """Find the line index of a <!-- cc-verify-key: ... --> marker."""
+    for i, line in enumerate(lines):
+        if marker in line:
+            return i
+    return -1
+
+
+def _extract_code_block(lines: list[str], start_idx: int) -> tuple[str, int]:
+    """Extract a fenced code block starting after start_idx. Returns (code, end_idx)."""
+    idx = start_idx
+    while idx < len(lines) and not lines[idx].strip().startswith("```"):
+        idx += 1
+    if idx >= len(lines):
+        return "", idx
+    fence = lines[idx].strip()
+    idx += 1
+    code_lines: list[str] = []
+    while idx < len(lines):
+        if lines[idx].strip() == fence.split()[0] if fence else "```":
+            break
+        code_lines.append(lines[idx])
+        idx += 1
+    return "\n".join(code_lines), idx
+
+
+def check_review_coverage(project_root: Path, change_id: str) -> dict[str, object]:
+    """Check that review.md has a complete file_review_scope table."""
+    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
+    log_path = project_root / ".cc" / "changes" / change_id / "log.md"
+
+    if not review_path.exists():
+        return {
+            "name": "review-coverage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "failed",
+            "exit_code": 1,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": f"{review_path} not found",
+            "fingerprints": [f"{review_path} not found"],
+            "warnings": [],
+        }
+
+    lines = review_path.read_text(encoding="utf-8").splitlines()
+
+    marker_idx = _find_section_marker(lines, "cc-verify-key: file_review_scope")
+    if marker_idx < 0:
+        return {
+            "name": "review-coverage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "failed",
+            "exit_code": 1,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": "file_review_scope section not found in review.md",
+            "fingerprints": ["file_review_scope missing"],
+            "warnings": [],
+        }
+
+    # Skip blank and comment lines between marker and table
+    table_start = marker_idx + 1
+    while table_start < len(lines) and (not lines[table_start].strip() or lines[table_start].strip().startswith("<!--")):
+        table_start += 1
+    rows, _ = _parse_markdown_table(lines, table_start)
+    if not rows:
+        return {
+            "name": "review-coverage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "failed",
+            "exit_code": 1,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": "file_review_scope table is empty or unparseable",
+            "fingerprints": ["file_review_scope empty"],
+            "warnings": [],
+        }
+
+    errors: list[str] = []
+    warnings_list: list[str] = []
+
+    # Check for not_reviewed without notes
+    for row in rows:
+        status = row.get("Review Status", row.get("review_status", ""))
+        notes = row.get("Notes", row.get("notes", ""))
+        filename = row.get("File", row.get("file", "unknown"))
+
+        if status == "not_reviewed" and not notes:
+            errors.append(f"{filename}: not_reviewed but no notes explaining why")
+
+        if status == "out_of_scope_flagged" and log_path.exists():
+            log_content = log_path.read_text(encoding="utf-8")
+            if f"spec_review_flag" not in log_content:
+                warnings_list.append(f"{filename}: out_of_scope_flagged but no spec_review_flag found in log.md")
+
+    status = "failed" if errors else "passed"
+    return {
+        "name": "review-coverage",
+        "kind": "harness",
+        "command": [],
+        "cwd": str(project_root),
+        "status": status,
+        "exit_code": 1 if errors else 0,
+        "duration_ms": 0,
+        "stdout": f"files in scope: {len(rows)}" if not errors else "",
+        "stderr": "\n".join(errors + warnings_list),
+        "fingerprints": errors + warnings_list,
+        "warnings": warnings_list,
+    }
+
+
+def check_finding_locations(project_root: Path, change_id: str) -> dict[str, object]:
+    """Check that finding existing_code matches actual file content."""
+    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
+
+    if not review_path.exists():
+        return {
+            "name": "finding-locations",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "failed",
+            "exit_code": 1,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": f"{review_path} not found",
+            "fingerprints": [f"{review_path} not found"],
+            "warnings": [],
+        }
+
+    lines = review_path.read_text(encoding="utf-8").splitlines()
+
+    # Find all location patterns: **Location**: `<path>:<line>-<line>`
+    location_pattern = re.compile(r"\*\*Location\*\*:\s*`([^`]+)`")
+    # Find finding headers: ### Finding #N: ... (level, status)
+    finding_header = re.compile(r"###\s+Finding\s+#\d+.*\(([^,)]+)\s*,?\s*[^)]*\)")
+
+    mismatches: list[str] = []
+    warnings_list: list[str] = []
+    matched: int = 0
+    no_existing_code: int = 0
+    important_with_location_no_code: list[str] = []
+
+    for i, line in enumerate(lines):
+        loc_match = location_pattern.search(line)
+        if not loc_match:
+            continue
+
+        location = loc_match.group(1)
+        # Split path:line-line
+        parts = location.rsplit(":", 1)
+        if len(parts) != 2:
+            continue
+        file_path = parts[0]
+
+        # Find the finding header preceding this location (search backwards)
+        finding_level = "unknown"
+        for j in range(i - 1, max(i - 40, 0), -1):
+            header_match = finding_header.search(lines[j])
+            if header_match:
+                finding_level = header_match.group(1).strip()
+                break
+
+        # Find the following Existing Code block (stop at next finding or next location)
+        code = ""
+        for j in range(i + 1, min(i + 30, len(lines))):
+            # Stop at boundaries: next finding header or another Location
+            if lines[j].strip().startswith("### Finding") or "**Location**:" in lines[j]:
+                break
+            if lines[j].strip().startswith("```") and not lines[j].strip().startswith("```go"):
+                code, _ = _extract_code_block(lines, j)
+                break
+            if "**Existing Code**:" in lines[j]:
+                code, _ = _extract_code_block(lines, j)
+                break
+
+        if not code.strip():
+            no_existing_code += 1
+            if finding_level in ("Critical", "Important"):
+                important_with_location_no_code.append(f"{file_path} ({finding_level}): has Location but no Existing Code")
+            continue
+
+        # Normalize code for matching: strip leading/trailing whitespace, normalize indentation
+        normalized_code = "\n".join(line.strip() for line in code.strip().splitlines() if line.strip())
+
+        # Try to match against the target file
+        target_path = project_root / file_path
+        if not target_path.exists():
+            mismatches.append(f"{file_path}: target file not found")
+            continue
+
+        file_content = target_path.read_text(encoding="utf-8")
+        # Try exact match first, then normalized
+        if code.strip() in file_content:
+            matched += 1
+        elif normalized_code and normalized_code in "\n".join(l.strip() for l in file_content.splitlines()):
+            matched += 1
+        else:
+            # Try first meaningful line as fallback
+            meaningful_lines = [l for l in code.strip().splitlines() if l.strip() and not l.strip().startswith("//")]
+            if meaningful_lines and meaningful_lines[0].strip() in file_content:
+                matched += 1
+            else:
+                first_line = code.strip().split("\n")[0].strip() if code.strip() else ""
+                mismatches.append(f"{file_path}:{parts[1] if len(parts) > 1 else '?'} — existing_code not found in file (first line: {first_line[:80]})")
+
+    status = "failed" if mismatches else "passed"
+    stderr_lines = list(mismatches)
+    if important_with_location_no_code:
+        stderr_lines.append(f"Important/Critical findings with Location but no Existing Code: {len(important_with_location_no_code)}")
+        stderr_lines.extend(f"  - {item}" for item in important_with_location_no_code)
+    return {
+        "name": "finding-locations",
+        "kind": "harness",
+        "command": [],
+        "cwd": str(project_root),
+        "status": status,
+        "exit_code": 1 if mismatches else 0,
+        "duration_ms": 0,
+        "stdout": f"locations checked: {matched + len(mismatches) + no_existing_code} (matched: {matched}, no existing_code: {no_existing_code})",
+        "stderr": "\n".join(stderr_lines),
+        "fingerprints": mismatches + [f"no_existing_code:{item.split(':')[0]}" for item in important_with_location_no_code],
+        "warnings": [f"Important/Critical finding lacking Existing Code: {item}" for item in important_with_location_no_code],
+    }
+
+
+def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
+    """Check that if risk_triage marker exists, the table is populated."""
+    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
+
+    if not review_path.exists():
+        return {
+            "name": "risk-triage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "skipped",
+            "exit_code": 0,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": f"{review_path} not found",
+            "fingerprints": [],
+            "warnings": [],
+        }
+
+    lines = review_path.read_text(encoding="utf-8").splitlines()
+
+    marker_idx = _find_section_marker(lines, "cc-verify-key: risk_triage")
+    if marker_idx < 0:
+        # No risk_triage marker — Agent decided it wasn't needed. OK.
+        return {
+            "name": "risk-triage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "passed",
+            "exit_code": 0,
+            "duration_ms": 0,
+            "stdout": "risk_triage not present (change below threshold or Agent chose to skip)",
+            "stderr": "",
+            "fingerprints": [],
+            "warnings": [],
+        }
+
+    # Skip blank/comment lines
+    table_start = marker_idx + 1
+    while table_start < len(lines) and (not lines[table_start].strip() or lines[table_start].strip().startswith("<!--")):
+        table_start += 1
+
+    rows, _ = _parse_markdown_table(lines, table_start)
+    if not rows:
+        return {
+            "name": "risk-triage",
+            "kind": "harness",
+            "command": [],
+            "cwd": str(project_root),
+            "status": "failed",
+            "exit_code": 1,
+            "duration_ms": 0,
+            "stdout": "",
+            "stderr": "risk_triage marker present but table is empty — risk_triage was indicated but not completed",
+            "fingerprints": ["risk_triage table empty"],
+            "warnings": [],
+        }
+
+    return {
+        "name": "risk-triage",
+        "kind": "harness",
+        "command": [],
+        "cwd": str(project_root),
+        "status": "passed",
+        "exit_code": 0,
+        "duration_ms": 0,
+        "stdout": f"risk_triage populated with {len(rows)} risk area(s)",
+        "stderr": "",
+        "fingerprints": [],
+        "warnings": [],
     }
 
 
@@ -494,6 +847,15 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 command.extend(["--change", args.change])
             results.append(run_step("cc-role-check", "harness", command, project_root))
 
+        if args.check_review_coverage and args.change and change_dir and change_dir.exists():
+            results.append(check_review_coverage(project_root, args.change))
+
+        if args.check_finding_locations and args.change and change_dir and change_dir.exists():
+            results.append(check_finding_locations(project_root, args.change))
+
+        if args.check_risk_triage and args.change and change_dir and change_dir.exists():
+            results.append(check_risk_triage(project_root, args.change))
+
     run_project_checks = not args.harness_only
     if args.changed_only and not args.fixture and not args.project_only:
         run_project_checks = resolution.status == "resolved" and resolution.profile is not None and has_profile_changes(changed_paths, project_root, resolution.profile)
@@ -596,6 +958,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--fixture", help="Run project verification checks from a fixture path relative to the project root.")
     parser.add_argument("--command", help="Run role/write-scope checks for a cc-* command.")
     parser.add_argument("--changed-only", action="store_true", help="Run the smallest deterministic check set for changed files.")
+    parser.add_argument("--check-review-coverage", action="store_true", help="Validate file_review_scope completeness in review.md.")
+    parser.add_argument("--check-finding-locations", action="store_true", help="Validate finding existing_code matches actual file content.")
+    parser.add_argument("--check-risk-triage", action="store_true", help="Validate risk_triage table is populated when present in review.md.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--output", help="Write JSON report to this file.")
     parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")

@@ -29,10 +29,35 @@ red_flags:
   - "done/fixed/pass/archive 没有命令输出或显式替代证据"
   - "用 cc-test supplement 补做 cc-apply 缺失的最低证据"
   - "L2 映射到 manual 或 chain，或 L3+ 仅有 package test"
+  - "file_review_scope 缺失或为空"
+  - "file_review_scope 中存在 not_reviewed 但无 notes 说明的文件"
+  - "file_review_scope 中存在 out_of_scope_flagged 但 log.md 无对应 spec_review_flag"
+  - "finding 声明了 existing_code 但在目标文件中无法子串匹配（cc-verify --check-finding-locations 发现）"
 
 checks:
   - "证据命令、范围、结果和剩余风险已记录在相关 change 文档中"
   - "cc-verify 和所需 baseline/delta 检查通过或已记录为阻塞项"
+  - "cc-verify --check-review-coverage 通过（file_review_scope 完整性已验证）"
+  - "cc-verify --check-finding-locations 通过（existing_code 定位已验证）"
+
+file_review_scope规则:
+  强制:
+    - "cc-review 写入 review.md 时必须包含 file_review_scope 表"
+    - "tasks.md 声明的所有文件必须出现在 file_review_scope 中"
+    - "status 为 not_reviewed 的文件必须在 notes 列填写原因"
+    - "status 为 out_of_scope_flagged 的文件必须关联 log.md 中的 spec_review_flag"
+  警告:
+    - "skipped_generated / skipped_vendored / skipped_trivial 应注明判断依据"
+  验证:
+    - "cc-verify --check-review-coverage --change <change-id>"
+
+finding位置规则:
+  强制: []
+  警告:
+    - "每个 Important 及以上级别的 finding 应附带 **Location** 和 **Existing Code**"
+    - "existing_code 仅作审查锚点；cc-fix 修复后不得改写原始 existing_code"
+  验证:
+    - "cc-verify --check-finding-locations --change <change-id>"
 
 rules:
   核心原则:

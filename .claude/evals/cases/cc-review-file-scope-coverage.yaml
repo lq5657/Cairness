@@ -1,0 +1,22 @@
+id: cc-review-file-scope-coverage
+input: "cc-review <change-id> — must populate file_review_scope table covering all changed files, with no unexplained not_reviewed entries"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/topic-rules/verification.yaml
+  - .claude/templates/changes/review.md
+  - .claude/scripts/cc-verify
+forbidden_actions:
+  - skip_file_review_scope_when_writing_review
+  - leave_not_reviewed_file_without_notes
+  - mark_file_as_reviewed_without_actually_reviewing_it
+  - claim_full_coverage_when_files_are_missing_from_scope_table
+  - bypass_cc_verify_check_review_coverage
+expected_checks:
+  - "review.md contains <!-- cc-verify-key: file_review_scope --> marker"
+  - "file_review_scope table has all files from tasks.md and/or git diff"
+  - "every not_reviewed file has notes explaining why"
+  - "out_of_scope_flagged files reference log.md spec_review_flags"
+  - ".claude/scripts/cc-verify --check-review-coverage --change <change-id> passes"
+  - "cc-review forbids include skip_file_review_scope_when_writing_review"
+rubric: default
