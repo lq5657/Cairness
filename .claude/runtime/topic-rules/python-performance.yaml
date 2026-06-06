@@ -1,0 +1,113 @@
+id: python_performance
+description: "Python 性能分析与优化规则 —— profiling 驱动，数据说话，避免猜测性优化"
+
+trigger:
+  - "变更涉及性能热点路径、数据处理、批量操作或 CPU/内存密集计算"
+  - "cc-review、cc-apply 阶段发现可测量的性能瓶颈"
+  - "用户明确要求 Python 性能优化或 profiling"
+
+skip:
+  - "一次性脚本、工具代码、测试辅助代码"
+  - "没有 profiling 数据或 benchmark 作为分析基础"
+  - "无可测量的性能瓶颈证据"
+
+process:
+  - "要求或定位 profiling 数据（cProfile/py-spy/scalene）作为分析起点"
+  - "识别最热的 1-3 个函数，按 cumtime 排序"
+  - "按优先级优化：算法复杂度 → 数据结构 → 内建函数 → 向量化 → 并发 → 原生编译"
+  - "优化后用相同 benchmark 验证，记录 before/after"
+
+anti_rationalization:
+  - claim: "Python 本身就慢，优化没用"
+    reality: "大部分性能问题来自 I/O 等待、不必要的循环、错误的数据结构选择——这些都可以在 Python 层面解决。"
+  - claim: "用 Cython/Numba 重写就快了"
+    reality: "先 profiling，再确定瓶颈在哪。大多数情况下，算法改进比原生编译收益更大。"
+  - claim: "list comprehension 总是比 for 循环快"
+    reality: "确实更快，但差异通常在微秒级。先修 O(n²) → O(n log n) 的算法问题。"
+
+red_flags:
+  - "循环内字符串 + 拼接（每次分配新字符串）"
+  - "list 用作成员检查（O(n) 而非 set/dict 的 O(1)）"
+  - "循环内重复调用 list.index() 或 list.count()"
+  - "大型列表用 list.pop(0) 或 insert(0, x)（O(n) 而非 deque 的 O(1)）"
+  - "类未使用 __slots__ 且创建大量实例"
+  - "函数被重复调用但结果可缓存（缺失 @lru_cache）"
+  - "DataFrame 循环遍历行（应用向量化操作）"
+  - "全局变量作为缓存无限增长（缺失 LRU 淘汰）"
+  - "import 时执行重计算（应在函数调用时惰性执行）"
+
+checks:
+  - "有 profiling 数据（cProfile/py-spy/scalene 输出）作为分析基础"
+  - "关键路径无 O(n²) 或更高复杂度（n 为实际数据规模时）"
+  - "循环中字符串拼接已替换为 ''.join()"
+  - "成员检查使用 set/dict 而非 list"
+  - "大量实例的类已使用 __slots__ 或 @dataclass(slots=True)"
+  - "纯函数且重复调用已使用 @lru_cache"
+  - "优化前后有 benchmark 对比数据"
+  - "DataFrame 操作已向量化（避免 iterrows/itertuples 循环）"
+
+rules:
+  约束等级:
+    强制: "违反会导致可测量的性能退化或资源浪费"
+    警告: "可能影响性能，应根据 profiling 数据决定是否优化"
+    验证: "完成后自检并用 benchmark 验证"
+
+  性能分析规则:
+    强制:
+      - "声称性能改进必须有 profiling 数据或 benchmark 对比"
+      - "优先修复算法复杂度问题（O(n²) → O(n log n) 或 O(n)）"
+    警告:
+      - "cProfile 按 cumtime 排序定位最耗时函数"
+      - "scalene 可同时分析 CPU + 内存，适合全栈 profiling"
+      - "py-spy 可在生产环境采样运行中进程，无需修改代码"
+    验证:
+      - "是否有 profiling 数据支撑优化决策"
+
+  数据结构规则:
+    强制:
+      - "成员检查使用 set/dict（O(1)）而非 list/tuple（O(n)）"
+      - "FIFO 队列使用 collections.deque 而非 list.pop(0)"
+      - "循环内字符串拼接使用 ''.join(parts) 而非 +="
+    警告:
+      - "collections.Counter 替代手动字典计数"
+      - "collections.defaultdict 替代 dict.get/setdefault 模式"
+      - "@dataclass(slots=True) 减少内存占用和属性访问开销"
+      - "大量小对象使用 __slots__ 或 namedtuple"
+    验证:
+      - "成员检查数据结构是否为 list（应为 set/dict）"
+      - "字符串拼接模式是否高效"
+
+  NumPy/Pandas规则:
+    强制: []
+    警告:
+      - "Pandas 循环遍历行（iterrows/itertuples）替换为向量化操作"
+      - "DataFrame 操作用 Polars（Rust 引擎）替代 Pandas 获得 5-10× 加速"
+      - "NumPy 数组保持 contiguous 和一致 dtype，避免隐式转换"
+    验证:
+      - "是否有 DataFrame 行级循环"
+
+  并发性能规则:
+    强制: []
+    警告:
+      - "I/O 密集型用 asyncio 或 ThreadPoolExecutor"
+      - "CPU 密集型用 ProcessPoolExecutor 或 Numba/Cython"
+      - "线程不绕过 GIL —— 不要指望 threading 加速 CPU 计算"
+    验证:
+      - "并发模型选择是否与任务类型匹配"
+
+  内存优化规则:
+    强制: []
+    警告:
+      - "大型数据集用生成器（yield）而非列表（节省内存）"
+      - "tracemalloc snapshot 对比检测内存泄漏"
+      - "引用循环中避免 __del__（延迟 GC 回收）"
+      - "@lru_cache 设置 maxsize 防止无限增长"
+    验证:
+      - "是否有明显的内存无界增长模式"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".py 文件修改了已确认的热路径函数或关键数据结构"
+    - "变更描述或 spec 提及 profiling/性能/cProfile/scalene/内存/优化"
+    - "review 的 finding 标记为性能相关"

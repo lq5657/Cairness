@@ -1,0 +1,100 @@
+id: cpp_performance
+description: "C++ 性能分析与优化规则 —— profiler 驱动、缓存友好、编译器优化、移动语义"
+
+trigger:
+  - "变更涉及 C++ 性能热点路径、计算密集或内存管理代码"
+  - "cc-review 发现性能反模式（不必要的拷贝、cache miss、虚函数开销）"
+  - "用户要求 C++ 性能优化或 profiling"
+
+skip:
+  - "一次性工具、测试辅助代码"
+  - "没有 profiling 数据或 perf 输出"
+  - "纯文档/构建配置变更"
+
+process:
+  - "要求或定位 perf/valgrind/perf record 输出"
+  - "识别 CPU 热点、cache miss、分支预测失败"
+  - "按优先级优化：算法 → 数据结构布局 → 拷贝消除 → 缓存友好 → 编译器优化"
+
+anti_rationalization:
+  - claim: "编译器 -O2/-O3 会帮我做好优化的"
+    reality: "编译器优化受限于别名分析（aliasing）和可见性。违反 strict aliasing、缺少 const、未声明 noexcept 都可能阻止优化。"
+  - claim: "多几个拷贝不影响性能"
+    reality: "热路径中每次拷贝可能触发堆分配。用移动语义、返回值优化（RVO）和 const& 消除不必要的拷贝。"
+  - claim: "虚函数开销可以忽略"
+    reality: "热路径中虚函数阻止内联，且间接跳转可能导致 branch misprediction 和 I-cache miss。"
+
+red_flags:
+  - "热路径中容器按值传递（应使用 const& 或移动）"
+  - "循环内重复调用 .size() 且编译器可能无法 hoist（C++20 std::ssize 更安全）"
+  - "struct/class 成员变量未按大小降序排列 —— padding 浪费"
+  - "热路径中使用 std::shared_ptr 拷贝（原子引用计数开销）"
+  - "AoS（Array of Structs）在遍历单个字段时 cache 效率低（考虑 SoA）"
+  - "false sharing：多线程写入同一 cache line 不同字段（padding 缺失）"
+  - "循环内 push_back 未 reserve —— 多次 reallocation"
+  - "std::map 用 operator[] 查找（插入默认值）而非 find()"
+  - "std::endl 频繁使用（flush 每次）—— 用 '\\n' 替代"
+  - "virtual 函数在热路径中被频繁调用（阻止内联）"
+
+checks:
+  - "有 perf record/perf stat 或 valgrind --tool=callgrind 输出"
+  - "热路径 pass-by-value 已替换为 const& 或移动语义"
+  - "struct 字段按大小降序排列（用 pahole 或 clang-tidy 检查）"
+  - "循环内 push_back/push 有对应的 reserve"
+  - "std::shared_ptr 在非共享所有权的热路径中替换为 unique_ptr 或裸引用"
+  - "perf stat 确认无异常的 cache-miss 或 branch-miss 率"
+  - "编译选项含 -O2/-O3 -march=native（目标平台确定时）"
+
+rules:
+  约束等级:
+    强制: "违反会导致可测量性能退化或资源浪费"
+    警告: "可能影响性能"
+    验证: "perf + benchmark 验证"
+
+  内存与拷贝规则:
+    强制:
+      - "容器参数传递：不需要拷贝时使用 const&；需要所有权转移时使用移动（&& 或值 + std::move）"
+      - "循环内 push_back/push 前必须 reserve 已知容量"
+    警告:
+      - "返回值依赖 RVO/NRVO（C++17 保证 copy elision）—— 不需要用 std::move 破坏 RVO"
+      - "std::string_view（C++17）替代 const std::string& 避免临时对象分配"
+      - "std::span（C++20）替代指针+长度参数"
+    验证:
+      - "是否有不必要的容器拷贝"
+      - "循环内容器增长是否有 reserve"
+
+  数据结构布局规则:
+    强制: []
+    警告:
+      - "struct 成员按大小降序排列减少 padding（double → int64 → int32 → bool）"
+      - "pahole 工具检测 struct 内部 padding 浪费"
+      - "多线程并发写入的独立字段分散到不同 cache line（padding 64+ 字节）"
+      - "SoA（Structure of Arrays）比 AoS（Array of Structures）对单字段遍历更 cache 友好"
+    验证:
+      - "关键 struct 是否有明显的 padding 浪费"
+
+  编译器优化规则:
+    强制: []
+    警告:
+      - "Release 构建使用至少 -O2（推荐 -O3 -march=native 目标平台确定时）"
+      - "Link-Time Optimization（-flto）启用跨翻译单元内联"
+      - "Profile-Guided Optimization（-fprofile-generate/-fprofile-use）利用实际运行数据优化分支预测和代码布局"
+      - "noexcept 声明移动构造/赋值使容器能使用移动而非拷贝"
+    验证:
+      - "Release 构建编译选项是否合理"
+
+  Profiling工具链:
+    强制: []
+    警告:
+      - "perf record -g → 采样 CPU 热点；perf stat -e cache-misses → 缓存分析"
+      - "perf record -e cpu-clock --call-graph dwarf → 完整调用链"
+      - "FlameGraph 脚本可视化 perf 输出"
+      - "perf stat -e bus-locks → 检测 split lock（性能杀手）"
+    验证:
+      - "是否有 profiling 数据支撑优化决策"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".cpp/.cc/.hpp 文件修改了热路径或关键数据结构"
+    - "变更描述提及 profiling/perf/cache/性能/优化/move semantics/RVO"

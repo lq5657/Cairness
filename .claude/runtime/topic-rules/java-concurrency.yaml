@@ -1,0 +1,97 @@
+id: java_concurrency
+description: "Java 并发代码正确性审查 —— Virtual Threads、synchronized/ReentrantLock、线程安全、死锁检测"
+
+trigger:
+  - "变更涉及的 .java 文件使用了线程、synchronized、Lock、atomic、CompletableFuture、虚拟线程或并发集合"
+  - "cc-review、cc-apply、cc-fix 阶段触及 Java 并发代码"
+  - "线程安全、死锁或 Virtual Thread pinning 信号"
+
+skip:
+  - "变更不涉及任何并发代码"
+  - "纯文档、配置、脚本、生成代码变更"
+
+process:
+  - "扫描 diff 中所有 synchronized、ReentrantLock、volatile、Atomic*、Thread、ExecutorService、CompletableFuture 使用点"
+  - "检查锁顺序一致性、check-then-act 模式、非原子复合操作"
+  - "对 Virtual Thread 环境检查 synchronized pinning 风险（Java 21-23）和 ThreadLocal 滥用"
+  - "建议使用 FindBugs/SpotBugs 或 JFR 做并发分析"
+
+anti_rationalization:
+  - claim: "加了 synchronized 就线程安全了"
+    reality: "synchronized 保护的是临界区，不保护逻辑原子性。check-then-act 在锁外仍会出错。"
+  - claim: "Java 25 的虚拟线程不需要考虑线程安全"
+    reality: "虚拟线程只是更轻量的线程，共享状态的线程安全问题完全不变。"
+  - claim: "用 ConcurrentHashMap 就万事大吉了"
+    reality: "ConcurrentHashMap 只保证单个操作原子性。复合操作（如 containsKey+put）仍需额外同步或用 computeIfAbsent。"
+
+red_flags:
+  - "Java 21-23 环境：synchronized 块内包含阻塞 I/O —— 虚拟线程 pinning 风险"
+  - "非 volatile 字段在多线程间共享且无同步 —— 可见性问题"
+  - "check-then-act 模式未用 computeIfAbsent/merge 等原子方法"
+  - "count++ 在非 AtomicInteger/AtomicLong 上执行"
+  - "double-checked locking 中 instance 字段未声明 volatile"
+  - "锁获取顺序不一致 —— 死锁风险"
+  - "ThreadLocal 在虚拟线程环境下缓存大对象 —— OOM 风险"
+  - "ReentrantReadWriteLock 在读多写少场景下持有 > 65535 个读锁"
+  - "@Async 方法 self-invocation（绕过代理）"
+  - "ExecutorService 未在 finally 中 shutdown"
+
+checks:
+  - "SpotBugs/FindBugs 并发检查通过"
+  - "Java 21-23 + 虚拟线程：synchronized 块内无阻塞 I/O"
+  - "所有共享可变字段有 volatile 或同步保护"
+  - "check-then-act 替换为原子方法（computeIfAbsent、merge、compareAndSet）"
+  - "double-checked locking 中 instance 字段为 volatile"
+  - "所有锁获取顺序一致"
+  - "虚拟线程环境下 ThreadLocal 替换为 ScopedValue（Java 25+）"
+  - "ExecutorService 在 finally 中正确关闭"
+
+rules:
+  约束等级:
+    强制: "违反会导致数据竞争、死锁、可见性错误或虚拟线程 pinning"
+    警告: "性能或可读性不佳"
+    验证: "完成后自检"
+
+  锁使用规则:
+    强制:
+      - "共享可变状态必须同步：synchronized、ReentrantLock 或 Atomic* 类"
+      - "嵌套锁必须统一获取顺序，避免死锁"
+      - "double-checked locking 必须对 instance 字段使用 volatile"
+      - "Java 21-23 + 虚拟线程：synchronized 块内不得有阻塞 I/O（pin carrier thread）"
+      - "ReentrantLock 优先使用 tryLock(timeout) 而非无限等待"
+    警告:
+      - "Java 25+ synchronized pinning 已修复，可安全使用"
+      - "StampedLock 在读多写少场景下优于 ReentrantReadWriteLock"
+    验证:
+      - "是否有未保护的共享字段"
+      - "锁顺序是否一致"
+      - "synchronized 块内是否有 I/O"
+
+  虚拟线程规则:
+    强制:
+      - "虚拟线程不得池化 —— 使用 Executors.newVirtualThreadPerTaskExecutor()"
+      - "Semaphore 限制外部资源的并发访问（替代传统线程池大小限制）"
+    警告:
+      - "ThreadLocal 在虚拟线程下可能导致 OOM —— 用 ScopedValue 替代"
+      - "虚拟线程适合 I/O 密集任务，不适合 CPU 密集"
+    验证:
+      - "虚拟线程是否被池化"
+      - "是否用 Semaphore 保护外部资源"
+
+  线程安全规则:
+    强制:
+      - "非原子 64 位字段（long/double）在多线程访问时必须 volatile"
+      - "count++ 使用 AtomicInteger/AtomicLong 或 LongAdder"
+      - "ConcurrentHashMap 复合操作用原子方法（computeIfAbsent 等）"
+    警告:
+      - "Collections.synchronized* 返回的集合迭代时仍需外部同步"
+      - "volatile 只保证可见性，不保证原子性"
+    验证:
+      - "计数器是否使用原子类"
+      - "ConcurrentHashMap 复合操作是否正确"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".java 文件 diff 匹配 synchronized|ReentrantLock|volatile|Atomic|Thread|ExecutorService|CompletableFuture|virtualThread|StructuredTaskScope"
+    - "变更描述提及 线程安全/并发/死锁/race condition/Virtual Thread"

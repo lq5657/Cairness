@@ -196,6 +196,183 @@ patterns:
       - "\"strings\""
       - "\"sync\""
 
+  python_concurrency:
+    file_globs:
+      - "**/*.py"
+    content_regex:
+      - "async\\s+def"
+      - "await\\s+"
+      - "asyncio\\."
+      - "threading\\.(Thread|Lock|RLock|Event|Condition|Semaphore)"
+      - "multiprocessing\\.(Process|Pool|Queue|Manager)"
+      - "concurrent\\.futures"
+      - "ThreadPoolExecutor|ProcessPoolExecutor"
+      - "asyncio\\.(create_task|gather|Queue|Lock|Semaphore|wait_for)"
+      - "loop\\.run_in_executor"
+      - "asyncio\\.to_thread"
+      - "os\\.fork"
+    import_regex:
+      - "import asyncio"
+      - "import threading"
+      - "import multiprocessing"
+      - "from concurrent"
+
+  python_performance:
+    file_globs:
+      - "**/*.py"
+    content_regex:
+      - "cProfile|profile|pstats"
+      - "scalene|py-spy|pyinstrument|memray"
+      - "tracemalloc"
+      - "time\\.perf_counter"
+      - "@lru_cache|functools\\.lru_cache"
+      - "__slots__"
+      - "@dataclass\\(slots=True\\)"
+      - "numba|numpy|pandas|polars"
+      - "\\.join\\(|''\\.join"
+      - "collections\\.deque"
+      - "yield\\s"
+    import_regex:
+      - "import cProfile"
+      - "import tracemalloc"
+      - "from numba"
+      - "import numpy"
+      - "import polars"
+
+  java_concurrency:
+    file_globs:
+      - "**/*.java"
+    content_regex:
+      - "synchronized\\s*\\("
+      - "ReentrantLock|ReentrantReadWriteLock|StampedLock"
+      - "volatile\\s+"
+      - "AtomicInteger|AtomicLong|AtomicReference|AtomicBoolean"
+      - "Thread\\.(start|sleep|join|interrupt)"
+      - "ExecutorService|Executors\\."
+      - "CompletableFuture"
+      - "virtualThread|newVirtualThreadPerTaskExecutor"
+      - "StructuredTaskScope"
+      - "ConcurrentHashMap"
+      - "CountDownLatch|CyclicBarrier|Semaphore"
+      - "ThreadLocal|ScopedValue"
+    import_regex:
+      - "java\\.util\\.concurrent"
+      - "java\\.util\\.concurrent\\.atomic"
+      - "java\\.util\\.concurrent\\.locks"
+
+  java_performance:
+    file_globs:
+      - "**/*.java"
+    content_regex:
+      - "@Benchmark|@Setup|@TearDown"
+      - "JMH|jmh"
+      - "StringBuilder"
+      - "new\\s+ArrayList<>\\(\\d+\\)"
+      - "new\\s+HashMap<>\\(\\d+\\)"
+      - "System\\.gc\\(\\)"
+      - "finalize\\(\\)"
+      - "@EntityGraph|JOIN\\s+FETCH"
+      - "G1GC|ZGC|-Xmx|-Xms"
+      - "GC\\.|GarbageCollector"
+    import_regex:
+      - "org\\.openjdk\\.jmh"
+      - "java\\.lang\\.ref"
+
+  typescript_concurrency:
+    file_globs:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+    content_regex:
+      - "async\\s+\\("
+      - "await\\s+"
+      - "new\\s+Promise"
+      - "Promise\\.(all|race|allSettled|any)"
+      - "setTimeout|setInterval"
+      - "addEventListener|removeEventListener"
+      - "AbortController|AbortSignal"
+      - "new\\s+Worker\\("
+      - "no-floating-promises"
+      - "forEach.*async"
+      - "for\\s*\\(.*await"
+    import_regex:
+      - "from\\s+['\"].*worker"
+
+  typescript_performance:
+    file_globs:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+    content_regex:
+      - "React\\.lazy|React\\.memo|useMemo|useCallback"
+      - "dynamic\\s*import\\s*\\("
+      - "lazy\\s*\\("
+      - "getBoundingClientRect|getComputedStyle"
+      - "requestAnimationFrame"
+      - "IntersectionObserver"
+      - "performance\\.now|PerformanceObserver"
+      - "react-window|@tanstack/virtual"
+      - "lighthouse|Core\\s+Web\\s+Vitals"
+      - "FCP|LCP|TTI|CLS|INP"
+      - "debounce|throttle"
+      - "WeakMap|WeakSet|WeakRef"
+    import_regex:
+      - "react-window|@tanstack/virtual"
+
+  cpp_concurrency:
+    file_globs:
+      - "**/*.cpp"
+      - "**/*.cc"
+      - "**/*.cxx"
+      - "**/*.hpp"
+      - "**/*.h"
+    content_regex:
+      - "std::thread"
+      - "std::mutex|std::shared_mutex|std::recursive_mutex"
+      - "std::lock_guard|std::scoped_lock|std::unique_lock"
+      - "std::atomic|std::atomic_ref"
+      - "memory_order"
+      - "std::condition_variable"
+      - "std::async|std::future|std::promise"
+      - "std::jthread|std::stop_token"
+      - "std::shared_ptr"
+      - "\\.join\\(\\)|\\.detach\\(\\)"
+    import_regex:
+      - "#include\\s*<thread>"
+      - "#include\\s*<mutex>"
+      - "#include\\s*<atomic>"
+      - "#include\\s*<condition_variable>"
+      - "#include\\s*<future>"
+      - "#include\\s*<shared_mutex>"
+
+  cpp_performance:
+    file_globs:
+      - "**/*.cpp"
+      - "**/*.cc"
+      - "**/*.cxx"
+      - "**/*.hpp"
+      - "**/*.h"
+    content_regex:
+      - "std::move|std::forward"
+      - "std::string_view|std::span"
+      - "\\.reserve\\("
+      - "noexcept"
+      - "\\[\\[nodiscard\\]\\]"
+      - "\\[\\[likely\\]\\]|\\[\\[unlikely\\]\\]"
+      - "constexpr"
+      - "restrict|__restrict"
+      - "alignas"
+      - "-O2|-O3|-march=native|-flto"
+      - "PGO|fprofile-generate|fprofile-use"
+      - "perf\\s+record|perf\\s+stat"
+      - "valgrind.*callgrind"
+      - "cache.line|cache.miss"
+    import_regex:
+      - "#include\\s*<string_view>"
+      - "#include\\s*<span>"
+
   release:
     file_globs:
       - "**/CHANGELOG*"

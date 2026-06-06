@@ -1,0 +1,101 @@
+id: cpp_concurrency
+description: "C++ 并发代码正确性审查 —— std::thread、mutex、atomic、memory order、数据竞争、TSAN"
+
+trigger:
+  - "变更涉及的 .cpp/.cc/.hpp 文件使用了 std::thread、mutex、atomic、condition_variable、future/promise 或并行算法"
+  - "cc-review、cc-apply、cc-fix 阶段触及 C++ 并发代码"
+  - "TSAN 数据竞争或死锁信号"
+
+skip:
+  - "变更不涉及任何并发代码"
+  - "纯文档、构建配置、注释变更"
+
+process:
+  - "扫描 diff 中所有 std::thread、std::mutex、std::atomic、std::condition_variable、std::async 使用点"
+  - "检查 RAII 锁管理、memory order 正确性、共享容器保护、thread join/detach"
+  - "TSAN 在 CI 中运行所有涉及并发的测试"
+
+anti_rationalization:
+  - claim: "用了 std::atomic 就不需要锁"
+    reality: "atomic 只保证单个操作的原子性和顺序，不保证复合操作。memory_order_relaxed 在需要同步的场景是 bug。"
+  - claim: "这个数据结构我自己实现 lock-free 版本更快"
+    reality: "lock-free 编程极易出错（ABA 问题、内存回收）。除非你用 TSAN + perf 证明锁是瓶颈且你的实现正确，否则用锁。"
+  - claim: "relaxed 就够了，不需要 release/acquire"
+    reality: "relaxed 不建立 happens-before 关系。多线程间的数据依赖必须用 release-acquire 或 seq_cst。"
+
+red_flags:
+  - "std::thread 对象析构前未 join 或 detach —— std::terminate"
+  - "std::mutex 手动 lock/unlock 而非 std::lock_guard/std::scoped_lock —— 异常不安全"
+  - "std::condition_variable::wait 使用 if 而非 while（while(!predicate) cv.wait(lk)）—— 虚假唤醒"
+  - "多线程共享 std::vector/map/unordered_map 等容器无 mutex 保护"
+  - "memory_order_relaxed 用于跨线程同步场景 —— 缺少 happens-before"
+  - "裸指针或引用跨线程传递无同步机制"
+  - "double-checked locking 中标志变量不是 std::atomic"
+  - "std::shared_ptr 在多线程中并发修改指向（修改操作非线程安全）"
+  - "析构函数中调用 std::thread::join —— 若析构由异常触发可能死锁"
+  - "多个 mutex 获取顺序不一致 —— 死锁"
+
+checks:
+  - "TSAN（-fsanitize=thread）在 CI 中运行且通过"
+  - "所有 std::thread 在析构前 join 或 detach"
+  - "所有 mutex 使用 RAII（std::lock_guard/std::scoped_lock/std::unique_lock）"
+  - "condition_variable::wait 使用 predicate 重载（或 while 循环）"
+  - "跨线程共享的变量为 std::atomic 或受 mutex 保护"
+  - "memory_order 在同步场景使用至少 acquire/release（非 relaxed）"
+  - "多个 mutex 获取使用 std::scoped_lock 或 std::lock 保证原子性"
+  - "std::shared_ptr 跨线程共享时指向不被修改，或使用 std::atomic<std::shared_ptr>（C++20）"
+
+rules:
+  约束等级:
+    强制: "违反会导致 UB（未定义行为）、数据竞争、deadlock、std::terminate"
+    警告: "性能或可读性不佳"
+    验证: "TSAN + 代码审查"
+
+  线程管理规则:
+    强制:
+      - "std::thread 析构前必须 join（等待完成）或 detach（放弃管理），否则 std::terminate"
+      - "RAII 管理线程生命周期（如 jthread C++20 自动 join）"
+    警告:
+      - "C++20 std::jthread 自动在析构时 join 并支持 stop_token 协作取消"
+    验证:
+      - "每个 std::thread 是否有 join/detach"
+
+  锁使用规则:
+    强制:
+      - "所有 mutex 必须通过 RAII 管理：（std::lock_guard/std::scoped_lock/std::unique_lock）"
+      - "嵌套锁必须统一获取顺序或使用 std::scoped_lock(m1, m2, ...) 原子获取"
+    警告:
+      - "std::shared_mutex（C++17）用于读多写少场景"
+      - "std::unique_lock 比 lock_guard 更灵活但稍重"
+    验证:
+      - "是否有手动 lock/unlock"
+      - "嵌套锁顺序是否一致"
+
+  atomic与memory order规则:
+    强制:
+      - "跨线程共享的非原子变量受 mutex 保护"
+      - "跨线程同步场景 must use at least memory_order_acquire/release —— 禁止 relaxed"
+      - "memory_order_relaxed 仅用于不需要 happens-before 的独立计数器/统计"
+    警告:
+      - "默认 memory_order_seq_cst 虽然是正确的最安全选择，但可能性能略低"
+      - "C++20 std::atomic_ref 可对非原子对象进行临时原子操作"
+      - "C++20 atomic wait/notify 可替代条件变量的某些用法"
+    验证:
+      - "relaxed 是否被用于同步场景"
+      - "共享变量是否都有原子性或锁保护"
+
+  容器线程安全规则:
+    强制:
+      - "std 容器（vector/map/unordered_map/list 等）不是线程安全的 —— 并发访问必须加锁"
+      - "vector::push_back 并发触发 reallocation → 所有迭代器失效 → 崩溃"
+    警告:
+      - "读多写少场景用 std::shared_mutex 替代 std::mutex"
+      - "高并发写考虑 TBB concurrent_hash_map 或 folly ConcurrentHashMap"
+    验证:
+      - "多线程访问的容器是否有 mutex 保护"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".cpp/.cc/.hpp 文件 diff 匹配 std::thread|std::mutex|std::atomic|condition_variable|std::async|std::future|std::jthread|memory_order"
+    - "变更描述提及 线程/并发/数据竞争/TSAN/deadlock/atomic"

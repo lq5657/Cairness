@@ -1,0 +1,98 @@
+id: java_performance
+description: "Java 性能分析与优化规则 —— JVM profiling 驱动，GC 调优，JIT 优化"
+
+trigger:
+  - "变更涉及 Java 性能热点路径、高吞吐服务、GC 敏感或内存密集型代码"
+  - "cc-review 发现性能反模式（N+1 查询、循环内分配、不必要的装箱）"
+  - "用户要求 Java 性能优化或 JVM 调优"
+
+skip:
+  - "一次性脚本、工具代码"
+  - "没有 profiling 数据或 JFR/async-profiler 输出"
+  - "微优化且无可测量影响"
+
+process:
+  - "要求或定位 JFR/async-profiler 输出或 GC 日志"
+  - "识别 CPU 热点（方法/行级）和分配热点"
+  - "按优先级优化：查询合并 → 分配减少 → 数据结构 → 锁竞争 → GC 调优"
+  - "用 JMH 做微基准测试，用生产流量做宏基准验证"
+
+anti_rationalization:
+  - claim: "JIT 会帮我优化好的"
+    reality: "JIT 优化有边界。循环不变量外提、逃逸分析等需要代码满足特定条件。"
+  - claim: "对象创建很便宜，不用在意"
+    reality: "高吞吐下每秒百万次分配会显著增加 GC 压力。减少分配是 Java 性能调优的第一优先级。"
+  - claim: "加个缓存就快了"
+    reality: "缓存引入一致性问题、内存压力、过期策略。没有测量证明缓存命中率够高，不如不缓存。"
+
+red_flags:
+  - "循环内执行数据库查询（N+1 问题）"
+  - "循环内字符串拼接（用 + 而非 StringBuilder）"
+  - "循环内创建大量临时对象（GC 压力）"
+  - "不必要的装箱/拆箱（Integer ↔ int）"
+  - "集合未预分配初始容量（ArrayList/HashMap 多次扩容）"
+  - "synchronized 用于读多写少的热路径（应用 ReadWriteLock 或 StampedLock）"
+  - "System.gc() 显式调用（干扰 GC 自适应策略）"
+  - "finalize() 方法（Java 18+ 已废弃，用 Cleaner 替代）"
+  - "日志级别检查用字符串拼接：log.debug(\"x=\" + x)"
+
+checks:
+  - "有 JMH benchmark 或生产 profiling 数据支撑优化"
+  - "循环中数据库查询已批量处理或移到循环外"
+  - "热路径字符串操作用 StringBuilder 且预分配容量"
+  - "集合初始容量已设置（已知大小时）"
+  - "热路径无不必要的装箱/拆箱"
+  - "读多写少场景使用了合适的锁类型"
+  - "GC 暂停时间和频率在可接受范围"
+
+rules:
+  约束等级:
+    强制: "违反会导致可测量性能退化"
+    警告: "可能影响性能，应根据 profiling 数据决定"
+    验证: "完成后用 JMH 或生产验证"
+
+  内存优化规则:
+    强制:
+      - "已知容量的集合必须预分配：new ArrayList<>(size)、new HashMap<>(size)"
+      - "循环内字符串拼接必须使用 StringBuilder（Java 9+ 部分场景编译器已自动优化，但不保证）"
+    警告:
+      - "大量小对象考虑对象池或 Flyweight 模式"
+      - "用 Primitive 集合库（如 Eclipse Collections、fastutil）减少装箱"
+      - "避免 finalize()，用 Cleaner 或 try-with-resources"
+    验证:
+      - "集合是否预分配"
+      - "热路径是否有不必要的对象创建"
+
+  数据库性能规则:
+    强制:
+      - "禁止循环内执行数据库查询 —— 批量查询或移到循环外"
+      - "大批量数据处理使用分页或游标，禁止一次性加载全部数据到内存"
+    警告:
+      - "JPA/Hibernate 的 N+1 问题（@OneToMany 懒加载）—— 用 @EntityGraph 或 JOIN FETCH"
+    验证:
+      - "循环内是否有数据库查询调用"
+
+  GC调优规则:
+    强制: []
+    警告:
+      - "用 JFR 或 GC 日志分析 GC 暂停和频率"
+      - "G1 GC 是大多数服务端应用的最佳默认选择"
+      - "堆内存不是越大越好 —— 大堆 = 长 GC 暂停"
+      - "JFR OldObjectSample 事件可找出内存泄漏点"
+    验证:
+      - "GC 暂停是否在可接受范围"
+
+  Profiling工具:
+    强制: []
+    警告:
+      - "async-profiler：低开销 CPU/Allocation/Lock profiling"
+      - "JFR（Java Flight Recorder）：生产环境友好，开销 <2%"
+      - "JMH：微基准测试的黄金标准"
+    验证:
+      - "是否有 profiling 数据支撑优化"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".java 文件修改了已确认的热路径或关键数据结构"
+    - "变更描述提及 profiling/JMH/JFR/GC/性能/内存/优化"

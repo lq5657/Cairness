@@ -1,0 +1,99 @@
+id: typescript_performance
+description: "TypeScript/JavaScript 性能分析与优化规则 —— bundle 优化、渲染性能、内存管理"
+
+trigger:
+  - "变更涉及前端渲染路径、bundle 大小、内存敏感或大量 DOM 操作"
+  - "cc-review 发现性能反模式（layout thrashing、未虚拟化长列表、bundle 膨胀）"
+  - "用户要求前端性能优化或 Core Web Vitals 改进"
+
+skip:
+  - "纯类型定义、工具函数（无可测量性能影响）"
+  - "没有 Lighthouse/DevTools profiling 数据"
+
+process:
+  - "要求或定位 Lighthouse、Chrome DevTools Performance/Memory 面板数据"
+  - "识别长任务（>50ms）、layout thrashing、bundle 膨胀、内存泄漏"
+  - "按优先级优化：bundle 拆分 → 渲染优化 → 内存 → 加载策略"
+
+anti_rationalization:
+  - claim: "用户设备很快，不用优化"
+    reality: "移动端和低端设备占总流量 50%+。Core Web Vitals 直接影响 SEO 排名。"
+  - claim: "多加个库没关系，tree shaking 会处理的"
+    reality: "Tree shaking 有边界。动态 import、sideEffects 声明、ESM 格式都是必须的。"
+  - claim: "React.memo 包一下就行了"
+    reality: "memo 有比较成本。滥用 memo 增加代码复杂度而不解决根本问题（如 props 引用不稳定）。"
+
+red_flags:
+  - "长列表（>100 项）未虚拟化 —— 渲染所有 DOM 节点"
+  - "频繁的 getBoundingClientRect/getComputedStyle 调用 —— layout thrashing"
+  - "useEffect 无依赖数组或依赖数组缺失 —— 无限重渲染"
+  - "内联对象/函数作为 props（每次渲染创建新引用 → memo 失效）"
+  - "全局 Map/Object 作为缓存无淘汰策略 —— 内存泄漏"
+  - "Web Worker 未在组件销毁时 terminate"
+  - "动态 import 未使用 —— 大依赖在首屏同步加载"
+  - "resize/scroll 事件处理器未 throttle/debounce"
+  - "console.log 生产环境未移除（含敏感数据风险 + 内存引用）"
+
+checks:
+  - "Lighthouse 评分 ≥ 90（Performance）"
+  - "长列表使用虚拟化（react-window/@tanstack/virtual）"
+  - "无 layout thrashing（读写分离，用 requestAnimationFrame 批量写）"
+  - "useMemo/useCallback 用于稳定昂贵计算和回调引用"
+  - "大依赖使用 dynamic import() 或 React.lazy 延迟加载"
+  - "定时器和事件监听器在组件销毁时正确清理"
+  - "bundle 分析识别出孤岛依赖和重复包"
+  - "生产构建启用 minification + tree shaking + code splitting"
+
+rules:
+  约束等级:
+    强制: "违反会在生产环境导致可测量的性能退化"
+    警告: "优化建议"
+    验证: "Lighthouse + DevTools 验证"
+
+  Bundle优化规则:
+    强制: []
+    警告:
+      - "使用 ESM + named imports 使 tree shaking 生效"
+      - "动态 import() 拆分路由级和功能级代码"
+      - "bundle 分析工具（bundle-analyzer/rollup-plugin-visualizer）定期检查"
+      - "moment.js → date-fns/dayjs；lodash → lodash-es + 按需导入"
+    验证:
+      - "首屏 bundle 大小是否在可接受范围"
+
+  渲染性能规则:
+    强制:
+      - "长列表（>100 项）必须虚拟化"
+      - "避免 layout thrashing：批量读、批量写、requestAnimationFrame"
+    警告:
+      - "React/Vue 组件合理使用 memo/computed 避免不必要渲染"
+      - "useMemo/useCallback 用于昂贵计算和需要引用稳定的回调"
+      - "resize/scroll 事件使用 throttle/debounce（或 passive listener）"
+    验证:
+      - "是否有未虚拟化的长列表"
+      - "Performance 面板是否显示 layout thrashing"
+
+  内存管理规则:
+    强制:
+      - "组件销毁时必须清除 setInterval/setTimeout/事件监听器"
+      - "Web Worker 必须在组件销毁时 terminate"
+    警告:
+      - "WeakMap/WeakSet 替代 Map/Set 做对象级缓存"
+      - "Production 构建中移除 console.log（避免持有对象引用）"
+    验证:
+      - "Memory 面板 heap snapshot 对比是否检测到泄漏"
+
+  加载优化规则:
+    强制: []
+    警告:
+      - "图片懒加载（loading='lazy' 或 IntersectionObserver）"
+      - "关键 CSS 内联，非关键 CSS 延迟加载"
+      - "字体使用 font-display: swap 避免 FOIT"
+      - "资源预连接（preconnect）第三方域名"
+    验证:
+      - "Lighthouse 加载相关指标是否达标"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".tsx/.jsx/.ts/.js 文件修改了渲染组件、bundle 配置或加载策略"
+    - "变更描述提及 Lighthouse/性能/Core Web Vitals/bundle/渲染/内存"

@@ -92,6 +92,14 @@ topic_rules:
   spec_code_sync: .claude/runtime/topic-rules/spec-code-sync.yaml
   go_concurrency: .claude/runtime/topic-rules/go-concurrency.yaml
   go_performance: .claude/runtime/topic-rules/go-performance.yaml
+  python_concurrency: .claude/runtime/topic-rules/python-concurrency.yaml
+  python_performance: .claude/runtime/topic-rules/python-performance.yaml
+  java_concurrency: .claude/runtime/topic-rules/java-concurrency.yaml
+  java_performance: .claude/runtime/topic-rules/java-performance.yaml
+  typescript_concurrency: .claude/runtime/topic-rules/typescript-concurrency.yaml
+  typescript_performance: .claude/runtime/topic-rules/typescript-performance.yaml
+  cpp_concurrency: .claude/runtime/topic-rules/cpp-concurrency.yaml
+  cpp_performance: .claude/runtime/topic-rules/cpp-performance.yaml
 
 profiles:
   dir: .claude/runtime/profiles

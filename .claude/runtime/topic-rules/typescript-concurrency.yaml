@@ -1,0 +1,97 @@
+id: typescript_concurrency
+description: "TypeScript/JavaScript 异步代码正确性审查 —— Promise、async/await、事件循环、竞态条件"
+
+trigger:
+  - "变更涉及的 .ts/.js 文件使用了 async/await、Promise、setTimeout/setInterval、事件监听或 Worker"
+  - "cc-review 阶段触及异步流程、并发请求或状态管理代码"
+  - "未处理的 Promise rejection 或竞态条件信号"
+
+skip:
+  - "同步纯函数、类型定义、纯样式/配置变更"
+  - "不涉及异步操作的代码"
+
+process:
+  - "扫描 diff 中所有 async/await、Promise、定时器、事件监听、AbortController 使用点"
+  - "检查浮动 Promise、forEach+async、竞态条件、内存泄漏模式"
+  - "建议启用 @typescript-eslint/no-floating-promises"
+
+anti_rationalization:
+  - claim: "JS 是单线程的，不会有并发问题"
+    reality: "事件循环的协作式调度在 await 点会产生交错。共享状态在 await 之间可能被其他异步操作修改。"
+  - claim: "加了 try/catch 就不会丢异常"
+    reality: "未 await 的 Promise 和 createTask 类似，异常不会被 try/catch 捕获。"
+  - claim: "Promise.all 跑得快"
+    reality: "无界的 Promise.all 可能压垮下游服务。并发请求需要并发数限制。"
+
+red_flags:
+  - "async 函数调用未 await（浮动 Promise）—— 竞态条件"
+  - "Array.forEach 内使用 async 回调 —— Promise 未被等待"
+  - "check-then-set 懒初始化模式 —— 两次调用可能创建两个实例"
+  - "setInterval/setTimeout 未存储 ID 或未在 cleanup 中清除 —— 内存泄漏"
+  - "事件监听器注册后未 removeEventListener —— detached DOM + 内存泄漏"
+  - "AbortController 未在 finally 中 abort —— 请求泄漏"
+  - "Promise.all 无并发数限制 —— 下游服务过载"
+  - "setTimeout 延迟设为 0 或极小值 —— 忙轮询反模式"
+  - "全局 Map/Object 作为缓存且无淘汰机制 —— 内存无限增长"
+  - "async 函数内未 try/catch 且调用者未处理 rejection —— UnhandledPromiseRejection"
+
+checks:
+  - "@typescript-eslint/no-floating-promises 规则启用"
+  - "所有 async 调用被 await 或 .catch() 处理"
+  - "forEach 中无 async 回调；使用 Promise.all + map 或 for...of"
+  - "定时器在组件销毁/unmount 时清除"
+  - "事件监听器在组件销毁时移除"
+  - "AbortController 在请求完成或取消后 abort"
+  - "并发请求使用信号量/p-limit 控制并发数"
+  - "缓存有淘汰策略（LRU/TTL）"
+
+rules:
+  约束等级:
+    强制: "违反会导致竞态条件、内存泄漏或未处理异常"
+    警告: "性能或可维护性不佳"
+    验证: "完成后自检 + lint"
+
+  Promise规则:
+    强制:
+      - "所有 Promise 必须被 await 或显式 .catch() 处理 —— 不得有浮动 Promise"
+      - "forEach 内禁止使用 async 回调 —— 用 Promise.all(items.map(async ...)) 或 for...of"
+    警告:
+      - "Promise.allSettled 比 Promise.all 更健壮（不会因一个失败而全部失败）"
+      - "Result<T, E> 类型替代裸 try/catch，使错误处理显式化"
+    验证:
+      - "是否有未 await 的 async 调用"
+      - "是否有 forEach + async"
+
+  竞态条件规则:
+    强制:
+      - "懒初始化单例使用单次赋值 Promise 模式：if (!promise) promise = init()"
+      - "搜索/自动完成必须用 AbortController 或请求标记取消旧请求"
+    警告:
+      - "多个 async 操作修改同一共享状态时，考虑用锁/队列保证顺序"
+    验证:
+      - "懒初始化是否有竞态保护"
+      - "搜索类操作是否有请求取消"
+
+  内存泄漏规则:
+    强制:
+      - "setInterval/setTimeout 必须在组件/作用域销毁时清除"
+      - "事件监听器必须在组件/作用域销毁时移除"
+    警告:
+      - "缓存使用 WeakMap/WeakSet（对象 key）或 LRU 淘汰"
+      - "大对象引用在不再需要时置 null 帮助 GC"
+    验证:
+      - "是否有未清除的定时器或监听器"
+
+  并发控制规则:
+    强制: []
+    警告:
+      - "大批量 Promise.all 使用 p-limit 或自实现信号量控制并发数"
+      - "Web Worker 用于 CPU 密集型任务，保持主线程响应"
+    验证:
+      - "并发请求数是否受控"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".ts/.js 文件 diff 匹配 async |await |Promise|setTimeout|setInterval|addEventListener|AbortController|Worker"
+    - "变更描述提及 async/Promise/竞态/race condition/内存泄漏"

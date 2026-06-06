@@ -1,0 +1,100 @@
+id: python_concurrency
+description: "Python 并发代码正确性审查 —— asyncio、threading、multiprocessing、GIL 陷阱"
+
+trigger:
+  - "变更涉及的 .py 文件使用了 asyncio、threading、multiprocessing、concurrent.futures、协程或 async/await"
+  - "cc-review、cc-apply、cc-fix 阶段触及 Python 并发代码"
+  - "asyncio 事件循环错误、死锁或线程安全问题信号"
+
+skip:
+  - "变更不涉及任何并发代码（无 async/await、threading、multiprocessing 使用）"
+  - "纯文档、配置、脚本、生成代码变更"
+
+process:
+  - "扫描 diff 中所有 asyncio、threading、multiprocessing、concurrent.futures 使用点"
+  - "对每类并发原语执行对应陷阱检查"
+  - "检查 async/await 配对、事件循环阻塞、共享状态保护"
+  - "若存在并发 Bug 信号，建议运行 pytest-asyncio 或 stress test"
+
+anti_rationalization:
+  - claim: "Python 有 GIL，不需要担心线程安全"
+    reality: "GIL 只保证单字节码操作原子性，不保证复合操作（如 count += 1）。多线程仍需锁保护共享状态。"
+  - claim: "用了 async/await 就是并发安全的"
+    reality: "asyncio 是协作式调度，await 点之间不会切换，但 await 点处可能任意交错。共享状态在 await 之间仍需保护。"
+  - claim: "加个 asyncio.Lock 就行了"
+    reality: "asyncio.Lock 不是线程安全的，只保护协程之间的交错。跨线程共享需用 threading.Lock。"
+
+red_flags:
+  - "async 函数内调用 time.sleep() 或同步阻塞 I/O（requests.get 等）—— 阻塞事件循环"
+  - "async 函数内使用同步文件 I/O（open/read/write）—— 同理阻塞事件循环"
+  - "asyncio.create_task() 未 await 或未存储引用 —— 异常静默丢失"
+  - "协程调用缺少 await（coro() 而非 await coro()）—— 创建了未执行的协程对象"
+  - "多线程共享变量无 threading.Lock 保护"
+  - "threading.Thread 未 join 或 daemon 设置不当 —— 可能导致僵尸线程"
+  - "multiprocessing 中共享大对象未使用 Manager 或 shared_memory"
+  - "asyncio.Queue 无 maxsize —— 生产者快于消费者时内存爆炸"
+  - "asyncio.wait_for 未设置 timeout —— 可能永久挂起"
+  - "asyncio.gather 未处理异常 —— 一个任务失败默认取消其他所有任务"
+  - "使用 os.fork() 后子进程继承父进程锁状态 —— 死锁风险"
+
+checks:
+  - "asyncio 开发模式下运行：PYTHONASYNCIODEBUG=1 或在 asyncio.run(debug=True)"
+  - "pytest-asyncio 测试通过（涉及异步代码的模块）"
+  - "无 async 函数内调用同步阻塞 I/O 的证据"
+  - "所有 asyncio.create_task 的 task 被存储并最终 await 或 cancel"
+  - "所有 threading.Thread 有明确的 join 或 daemon 设置"
+  - "共享可变状态使用 threading.Lock 或 asyncio.Lock 保护"
+  - "asyncio.Queue 设置了合理的 maxsize"
+  - "asyncio.wait_for 用于所有可能挂起的协程"
+  - "asyncio.gather 使用 return_exceptions=True 或独立处理异常"
+
+rules:
+  约束等级:
+    强制: "违反会导致事件循环阻塞、死锁、数据竞争或内存泄漏"
+    警告: "性能或可读性不佳，但不会导致 Bug"
+    验证: "完成后自检"
+
+  asyncio规则:
+    强制:
+      - "async 函数内禁止调用 time.sleep() —— 用 await asyncio.sleep()"
+      - "async 函数内禁止同步阻塞 I/O —— 用 aiohttp、asyncpg、aiofiles 等异步库"
+      - "无法避免的同步阻塞调用必须用 await asyncio.to_thread() 或 loop.run_in_executor()"
+      - "asyncio.create_task() 必须存储引用，否则异常静默丢失"
+      - "协程必须被 await（或包装为 task），否则代码不执行"
+    警告:
+      - "asyncio.gather 默认 return_exceptions=False —— 一个异常取消所有任务"
+      - "asyncio.Queue 设置 maxsize 防止内存无界增长"
+      - "生产环境必须正确处理 SIGINT/SIGTERM 以优雅关闭事件循环"
+    验证:
+      - "是否有 async 函数内调用同步阻塞操作"
+      - "create_task 返回的 task 是否被存储"
+      - "协程调用是否有 await"
+
+  threading规则:
+    强制:
+      - "共享可变状态必须用 threading.Lock 保护 —— GIL 不保证复合操作原子性"
+      - "threading.Thread 必须 join 或设为 daemon"
+      - "不得假设 GIL 提供线程安全 —— count += 1 是非原子的"
+    警告:
+      - "CPU 密集型任务用 multiprocessing 而非 threading（GIL 限制）"
+      - "I/O 密集型优先用 asyncio 或 ThreadPoolExecutor"
+    验证:
+      - "共享变量是否有锁保护"
+      - "Thread 是否有 join/daemon 设置"
+
+  multiprocessing规则:
+    强制:
+      - "os.fork() 后子进程继承父进程锁状态 —— 死锁风险"
+      - "multiprocessing.Pool/Process 必须在 __main__ 保护下创建（Windows spawn 要求）"
+    警告:
+      - "大对象跨进程传递开销大 —— 考虑 multiprocessing.shared_memory（Python 3.8+）"
+      - "进程池使用后必须在 finally 中 close/join/terminate"
+    验证:
+      - "是否在 if __name__ == '__main__' 中创建进程"
+      - "进程池是否正确关闭"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".py 文件 diff 匹配 async def|await |asyncio\\.|threading\\.|multiprocessing\\.|concurrent\\.futures|ThreadPoolExecutor|ProcessPoolExecutor"
+    - "变更描述或 spec 提及 asyncio/协程/线程/进程/GIL/并发"
