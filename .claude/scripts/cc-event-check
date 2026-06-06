@@ -25,6 +25,7 @@ COMMAND_TO = {
     "cc-test": "unchanged",
     "cc-archive": "done",
     "cc-promote-audit": "unchanged",
+    "cc-discuss": "unchanged",
 }
 
 

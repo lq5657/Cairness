@@ -102,6 +102,19 @@ commands:
     forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose, treat_all_findings_as_selected_by_default, write_bridge_without_finding_selection_choice]
     auto_validation: []
 
+  cc-discuss:
+    category: discovery
+    roles: [pm-orchestrator, requirement-analyst, solution-designer, researcher, context-curator]
+    subagents: [research-analyst, project-context-analyst]
+    change_from: [none]
+    change_to: unchanged
+    inputs: [topic_description, optional_discuss_id, optional_research_depth, optional_continue]
+    outputs: [.cc/discussions/<discuss-id>/brief.md, .cc/discussions/<discuss-id>/log.md]
+    writes: [.cc/discussions/<discuss-id>/brief.md, .cc/discussions/<discuss-id>/log.md]
+    validates: [topic_scope, research_evidence, discussion_convergence, brief_accuracy, routing_selection]
+    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_new_project, fabricate_research, skip_challenging_assumptions, treat_vague_input_as_ready, skip_routing_selection]
+    auto_validation: []
+
   cc-propose:
     category: change
     roles: [pm-orchestrator, requirement-analyst, solution-designer, backlog-curator, gatekeeper]

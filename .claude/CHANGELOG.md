@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.21.0 - 2026-06-06
+
+- Added `cc-discuss` command — a pre-spec discovery and discussion phase for refining vague ideas through interactive AI-guided conversation with proactive web research and existing project analysis. Produces a clarified design brief (`.cc/discussions/<discuss-id>/brief.md`) that feeds into `cc-propose` or `cc-new-project`. Features an open-ended conversation loop (no hard gate), two parallel read-only research subagents (requirement-analyst + context-curator), and an active routing selection after brief completion (new project / new change / continue / park). Includes discussion brief and log templates, subagent contracts, budget limits, and full runtime manifest integration.
+- Added `discuss_id` input contract and `discuss_dir` path role to protocol.
+- Extended `cc-lint` and `cc-schema-check` hardcoded command sets with `cc-discuss` entries.
+
 - Added gate effectiveness metrics (`cc-gate-stats`) with per-gate precision tracking, degradation detection (candidate_for_removal after N consecutive zero-real-error triggers), and root cause clustering across all review findings. Extended `review.schema.json` findings with `root_cause_tag` (18 enumerated tags) and `detected_by` gate attribution, and `command-event.schema.json` with `gate_effectiveness` telemetry. Wired gate attribution recording into `cc-fix` steps and degradation checking into `cc-archive` preconditions.
 - Added cross-change dependency management (`cc-deps`) with dependency graph visualization (ascii/dot/json), file-level conflict detection between concurrent changes, topological sort for safe execution order, and deterministic `depends_on` satisfaction checking. Integrated into `cc-propose` (conflict detection) and `cc-apply` (dependency verification) as auto-validation steps.
 - Added spec-code bidirectional sync with commit-time orphan change detection (`cc-deps orphans`). Compares staged git files against all change file declarations to detect unrecorded modifications. Relaxed `cc-apply` `out_of_scope_change` from hard block to record+flag pattern — spec boundary discoveries now record `spec_review_flag` in `log.md` instead of blocking, enabling an exploratory-coding-to-spec-formalization bridge. Extended `cc-review` to surface `spec_review_flag` entries as spec update candidates.

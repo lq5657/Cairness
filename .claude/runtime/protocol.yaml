@@ -42,6 +42,9 @@ path_roles:
   knowledge_root:
     path: .cc/knowledge
     kind: dir
+  discuss_dir:
+    path: .cc/discussions/<discuss-id>
+    kind: dir
 
 input_contracts:
   change_id:
@@ -55,6 +58,12 @@ input_contracts:
     pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
     resolves_to: audit_dir
     missing_error: missing_required_input
+    invalid_error: invalid_input
+  discuss_id:
+    type: string
+    pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+    resolves_to: discuss_dir
+    missing_error: none
     invalid_error: invalid_input
   optional_scope:
     type: string

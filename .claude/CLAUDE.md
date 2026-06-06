@@ -28,6 +28,7 @@
 - `cc-test`
 - `cc-archive`
 - `cc-promote-audit`
+- `cc-discuss`
 
 ## 核心原则
 
@@ -63,6 +64,7 @@
 | 输出系统讲解材料 | `cc-explain-system [scope]` |
 | 审查存量代码 | `cc-inspect-codebase <mode> [scope]` |
 | 把审查结果转成 change | `cc-promote-audit <audit-id> <change-id>` |
+| 讨论并澄清模糊想法 | `cc-discuss <话题描述>` |
 | 创建正式 change 提案 | `cc-propose <需求描述>` |
 | 开始或继续实现 | `cc-apply <change-id>` |
 | 审查 change | `cc-review <change-id>` |

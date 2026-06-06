@@ -81,6 +81,7 @@ REQUIRED_RUNTIME_COMMANDS = {
     "cc-test",
     "cc-archive",
     "cc-promote-audit",
+    "cc-discuss",
 }
 SUBAGENT_ENABLED_COMMANDS = {
     "cc-apply",
@@ -88,6 +89,7 @@ SUBAGENT_ENABLED_COMMANDS = {
     "cc-fix",
     "cc-test",
     "cc-inspect-codebase",
+    "cc-discuss",
 }
 ANTI_RATIONALIZATION_COMMANDS = {
     "cc-propose",
@@ -194,6 +196,21 @@ INTERACTION_CONTRACT_MARKERS = {
         "request_review_revision",
         "do_not_mark_finding_accepted_or_recommend_archive_without_explicit_user_choice",
     ],
+    "cc-discuss": [
+        "interaction_contract:",
+        "mode: interactive_required",
+        "clarification:",
+        "present_research_findings_before_asking_questions",
+        "challenge_user_assumptions_with_evidence_and_alternatives",
+        "offer_better_suggestions_when_user_path_has_known_pitfalls",
+        "remind_user_they_can_say_ready_to_consolidate_at_any_time",
+        "selection:",
+        "create_new_project_via_cc_new_project",
+        "create_change_proposal_via_cc_propose",
+        "continue_discussing_current_topic",
+        "park_discussion_and_exit",
+        "do_not_exit_without_routing_decision",
+    ],
 }
 TEMPLATE_READ_REQUIREMENTS = {
     "cc-propose": {
@@ -267,6 +284,12 @@ TEMPLATE_READ_REQUIREMENTS = {
             ".claude/templates/context/project-context.md",
             ".claude/templates/context/domain-language.md",
             ".claude/templates/context/dev-map.md",
+        ],
+    },
+    "cc-discuss": {
+        "when_writing_discussion_artifacts": [
+            ".claude/templates/discussions/brief.md",
+            ".claude/templates/discussions/log.md",
         ],
     },
 }

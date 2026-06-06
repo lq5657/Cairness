@@ -75,6 +75,7 @@ budgets:
       explain: 100000
       init: 30000
       enrich: 30000
+      discuss: 120000
   duration:
     warn_seconds: 300
     block_seconds: 600
@@ -120,6 +121,8 @@ validation:
     vet: true
     golangci_lint: false
   run_on:
+    discuss:
+      - cc-verify --harness-only
     propose:
       - cc-verify --harness-only
     apply:

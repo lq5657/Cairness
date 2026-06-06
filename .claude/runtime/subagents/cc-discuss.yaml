@@ -1,0 +1,50 @@
+command: cc-discuss
+merge_owner: main_flow
+final_writes_by: main_flow
+write_scope_policy: parent_writes_subset
+parallel_policy: read_only_parallel_only
+agents:
+  - name: research-analyst
+    role: requirement-analyst
+    mode: read_only
+    trigger: background_research_on_topic_and_domain
+    writes: []
+    output: research_findings_report
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+  - name: project-context-analyst
+    role: context-curator
+    mode: read_only
+    trigger: analyze_existing_project_for_relevance
+    writes: []
+    output: project_relevance_report
+    output_contract:
+      format: structured_subagent_result
+      required_fields:
+        - summary
+        - scope
+        - writes
+        - evidence
+        - risks
+        - merge_notes
+      evidence_quality:
+        min_evidence_items: 1
+        min_risk_items: 1
+        require_concrete_references: true
+        allow_freeform: false
+merge_requirements:
+  - main_flow_synthesizes_research_into_discussion_context
+  - main_flow_deduplicates_findings_across_parallel_subagents
+  - main_flow_integrates_research_into_clarification_questions

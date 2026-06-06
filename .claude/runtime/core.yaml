@@ -17,6 +17,7 @@ migrated_commands:
   - cc-test
   - cc-archive
   - cc-promote-audit
+  - cc-discuss
 
 runtime_commands:
   cc-new-project: .claude/runtime/commands/cc-new-project.yaml
@@ -32,6 +33,7 @@ runtime_commands:
   cc-test: .claude/runtime/commands/cc-test.yaml
   cc-archive: .claude/runtime/commands/cc-archive.yaml
   cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
+  cc-discuss: .claude/runtime/commands/cc-discuss.yaml
 
 runtime_readsets:
   dir: .claude/runtime/readsets

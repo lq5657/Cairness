@@ -92,6 +92,7 @@ INTERACTION_CONTRACT_COMMANDS = {
     "cc-apply",
     "cc-fix",
     "cc-review",
+    "cc-discuss",
 }
 INTERACTION_REQUIREMENTS = {
     "cc-propose": {
@@ -190,6 +191,23 @@ INTERACTION_REQUIREMENTS = {
             "do_not_mark_finding_accepted_or_recommend_archive_without_explicit_user_choice",
         },
     },
+    "cc-discuss": {
+        ("clarification", "presentation"): {
+            "present_research_findings_before_asking_questions",
+            "challenge_user_assumptions_with_evidence_and_alternatives",
+            "offer_better_suggestions_when_user_path_has_known_pitfalls",
+        },
+        ("selection", "presentation"): {
+            "show_routing_options_with_context",
+        },
+        ("selection", "confirmation_options"): {
+            "create_new_project_via_cc_new_project",
+            "create_change_proposal_via_cc_propose",
+        },
+        ("selection", "blocking_behavior"): {
+            "do_not_exit_without_routing_decision",
+        },
+    },
 }
 READSET_GENERATOR = ".claude/scripts/cc-readset"
 SUBAGENT_REQUIRED_COMMANDS = {
@@ -198,6 +216,7 @@ SUBAGENT_REQUIRED_COMMANDS = {
     "cc-fix",
     "cc-test",
     "cc-inspect-codebase",
+    "cc-discuss",
 }
 ANTI_RATIONALIZATION_COMMANDS = {
     "cc-propose",
@@ -205,6 +224,7 @@ ANTI_RATIONALIZATION_COMMANDS = {
     "cc-review",
     "cc-fix",
     "cc-test",
+    "cc-discuss",
 }
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
@@ -289,6 +309,12 @@ TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
             ".claude/templates/context/project-context.md",
             ".claude/templates/context/domain-language.md",
             ".claude/templates/context/dev-map.md",
+        ],
+    },
+    "cc-discuss": {
+        "when_writing_discussion_artifacts": [
+            ".claude/templates/discussions/brief.md",
+            ".claude/templates/discussions/log.md",
         ],
     },
 }
