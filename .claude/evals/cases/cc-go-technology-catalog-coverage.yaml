@@ -1,0 +1,25 @@
+id: cc-go-technology-catalog-coverage
+input: "cc-new-project, cc-propose, or cc-init for a Go project — the Go technology catalog must offer concurrency model, sync map strategy, performance budget, and profiling strategy decision groups"
+expected_reads:
+  - .claude/runtime/core.yaml
+  - .claude/runtime/technology/golang.yaml
+  - .claude/runtime/protocol/technology-decisions.yaml
+  - .claude/schemas/technology-decision-catalog.schema.json
+  - .claude/runtime/commands/cc-new-project.yaml
+  - .claude/runtime/commands/cc-propose.yaml
+forbidden_actions:
+  - skip_concurrency_model_decision_for_go_project_with_goroutines
+  - recommend_sync_map_without_considering_access_pattern
+  - recommend_lock_free_map_without_measured_contention_evidence
+  - set_performance_budget_without_existing_benchmark_data
+  - expose_pprof_endpoint_to_public_internet
+  - treat_pgo_as_replacement_for_benchmark_validation
+expected_checks:
+  - "concurrency_model (P1), sync_map_strategy (P1), performance_budget (P2), and profiling_strategy (P2) exist in golang.yaml decision_groups"
+  - "concurrency_model offers channel_communication_preferred, mutex_shared_state, and hybrid_model options"
+  - "sync_map_strategy offers map_rwmutex, sync_map, sharded_map, and lock_free_map options"
+  - "performance_budget offers no_budget_initially, benchmark_ci_baseline, and pgo_enabled options"
+  - "profiling_strategy offers pprof_endpoint_internal, signal_driven_profile, and continuous_profiling options"
+  - "all new decision groups have applies_when, default_recommendation, and at least 2 options with tradeoffs"
+  - ".claude/scripts/cc-schema-check passes for golang.yaml technology catalog"
+rubric: default

@@ -1,0 +1,163 @@
+id: go_performance
+description: "Go 性能分析与优化规则 —— benchmark 驱动，数据说话，不做猜测性优化"
+
+trigger:
+  - "变更涉及性能热点路径、高 QPS 处理、批量操作或资源密集计算"
+  - "cc-review、cc-apply 阶段 benchmark 或 pprof 结果显示可测量瓶颈"
+  - "用户明确要求性能优化、benchmark 分析或 GC/内存调优"
+
+skip:
+  - "一次性脚本、工具代码、测试辅助代码、CLI 单次执行"
+  - "没有 benchmark 数据或 pprof 输出作为分析基础"
+  - "无可测量的性能瓶颈（alloc/op < 10%、CPU < 5% 改善空间）"
+  - "不用于替代 verification 规则的验证等级要求"
+
+process:
+  - "要求或定位 benchmark 数据、pprof 输出作为分析起点"
+  - "识别分配热点：go build -gcflags=-m 检查关键路径逃逸"
+  - "检查 slice/map 预分配、string 拼接方式、struct 字段对齐"
+  - "分析编译器优化利用情况（BCE、内联）"
+  - "优化后用 benchstat 验证统计显著性（p < 0.05）"
+  - "记录优化前后的 benchstat 对比和剩余风险"
+
+anti_rationalization:
+  - claim: "这个优化很明显，不需要 benchmark"
+    reality: "没有 benchmark 的优化是猜测。肉眼判断性能瓶颈的准确率很低，必须 benchstat 验证。"
+  - claim: "编译器会帮我优化的"
+    reality: "Go 编译器优化保守。BCE 有盲区，内联有阈值。用 -gcflags=-m 和 -d=ssa/check_bce 确认。"
+  - claim: "多分配几个对象没什么影响"
+    reality: "堆分配 = GC 压力。每秒百万次分配会显著增加 GC 暂停。reduce allocs first。"
+  - claim: "用了 sync.Pool 性能就一定好"
+    reality: "Pool 有 Get/Put 开销和类型断言成本，只在对象创建成本高且复用率高的场景有益。"
+  - claim: "Go 的 goroutine 很轻量，随便开"
+    reality: "每个 goroutine 初始栈 2KB+，大量泄漏会导致内存持续增长。'轻量'不是'无成本'。"
+
+red_flags:
+  - "循环中 string += 拼接（每次分配新字符串）"
+  - "append 前未预分配 slice/map 容量（多次扩容和内存复制）"
+  - "热路径中 []byte ↔ string 频繁转换（每次分配）"
+  - "struct 字段未按大小对齐（fieldalignment 可检测 padding 浪费）"
+  - "热路径中返回值指针而非值导致逃逸（小对象逃逸到堆）"
+  - "不必要的 interface{} 装箱（具体类型即可满足的场景）"
+  - "sync.Mutex 用于简单计数器或 flag（atomic 操作更轻量）"
+  - "false sharing（多 goroutine 写同一 cache line 的不同字段）"
+  - "热路径中使用 defer（Go 1.14+ 大部分场景零开销，但极热循环中仍需确认）"
+  - "循环中反复调用 len(s) 且编译器未 BCE（用 range 或提前缓存 len）"
+  - "大量小对象分配触发频繁 GC（检查 allocs/op 数量级）"
+  - "数据库/网络 I/O 在持锁期间执行（放大锁竞争）"
+
+checks:
+  - "有 benchmark 对比数据（old vs new），benchstat 显示统计显著差异"
+  - "go test -bench=. -benchmem 通过，关键路径 allocs/op 可接受"
+  - "逃逸分析（-gcflags=-m）确认关键路径无意外堆分配"
+  - "struct 布局已优化（fieldalignment 检查通过或已记录例外）"
+  - "slice/map 在已知容量时预分配"
+  - "循环中 strings.Builder 替代 + 拼接，且 Builder 已 Grow"
+  - "热路径中 []byte ↔ string 转换已消除或已确认不可消除"
+  - "性能改进幅度与代码复杂度增加成比例（不接受为 1% 改进增加 100 行复杂逻辑）"
+  - "PGO profile 已部署到生产或 CI（Go 1.21+ 项目）"
+
+rules:
+  约束等级:
+    强制: "违反会导致显著的性能退化或可测量的资源浪费"
+    警告: "可能影响性能，应根据 profile 数据决定是否优化"
+    验证: "完成后自检并用 benchstat 验证"
+
+  Benchmark 编写规范:
+    强制:
+      - "必须使用 sink 变量接收结果，防止编译器消除被测代码"
+      - "使用 b.ResetTimer() 排除 setup 时间"
+      - "使用 -count=10 多次运行，用 benchstat 比较而非肉眼判断"
+      - "禁止在 b.N 循环内包含 warm-up 或 setup 逻辑"
+    警告:
+      - "用 runtime.KeepAlive 阻止被测对象在 benchmark 结束前被 GC"
+      - "Benchmark 函数命名应体现被测场景：Benchmark<Type><Method>_<Scenario>"
+    验证:
+      - "是否有 sink 变量防止优化消除"
+      - "是否使用了 benchstat 统计验证"
+
+  内存优化规则:
+    强制:
+      - "已知容量的 slice 必须预分配：make([]T, 0, capacity)"
+      - "已知容量的 map 必须预分配：make(map[K]V, capacity)"
+      - "循环中字符串拼接必须使用 strings.Builder（Go 1.10+）"
+      - "不返回指针给调用者就可以避免逃逸的场景，优先返回值（让编译器栈分配）"
+    警告:
+      - "strings.Builder 在已知总大小时调用 Grow 进一步减少分配"
+      - "频繁创建的临时对象考虑 sync.Pool 复用（验证 Get/Put 开销是否值得）"
+      - "用 io.Reader/io.Writer 接口替代 []byte 全量读写，减少大内存分配"
+      - "Go 1.22+ 可用 clear() 内置函数快速清零 slice/map"
+    验证:
+      - "slice/map 是否预分配"
+      - "逃逸分析是否显示关键路径无意外堆分配"
+      - "sync.Pool 使用场景是否经过 benchmark 验证"
+
+  CPU 优化规则:
+    强制:
+      - "热路径中使用 range 遍历 slice 而非索引递减（range 编译器可 BCE）"
+      - "map 查找不返回零值时用 comma-ok 模式区分'不存在'和'零值'"
+    警告:
+      - "少量 case（≤5）的 switch 比 map 查找更快（编译为跳转表）"
+      - "大集合查找用 map，小集合（<10）用 switch/if-else 或线性搜索"
+      - "排序后二分查找内存效率优于 map（无哈希表开销）"
+      - "检查 BCE 结果：go build -gcflags=-d=ssa/check_bce"
+    验证:
+      - "关键循环是否使用了 range"
+      - "BCE 检查是否通过（热路径无意外边界检查）"
+
+  编译器优化利用:
+    强制: []
+    警告:
+      - "简单函数保持可内联（无 defer/recover/select，体量适中）"
+      - "Go 1.21+ 启用 PGO：生产 profile → default.pgo → go build"
+      - "PGO 对热路径可提升 2-7%，主要改善内联决策和代码布局"
+    验证:
+      - "关键函数是否可内联（go build -gcflags='-m -m' 确认）"
+      - "PGO profile 是否部署"
+
+  Struct 内存布局规则:
+    强制: []
+    警告:
+      - "struct 字段按类型大小降序排列（int64 → int32 → bool/byte），减少 padding"
+      - "使用 fieldalignment 工具自动检测：fieldalignment ./..."
+      - "多 goroutine 并发写入的独立字段应分散到不同 cache line（padding 或隔离）"
+    验证:
+      - "fieldalignment 检查关键 struct 是否通过"
+      - "是否存在 false sharing 风险（多 goroutine 写相邻字段）"
+
+  并发性能规则:
+    强制: []
+    警告:
+      - "读操作占比 90%+ 时 RWMutex 优于 Mutex"
+      - "简单 flag/计数器用 atomic 替代 Mutex（10x+ 性能提升）"
+      - "高并发写入场景用分片锁（sharded lock）减少单锁竞争"
+      - "channel 有内存拷贝和调度开销，纯数据保护场景 Mutex 可能更快"
+      - "GOMAXPROCS 默认为 CPU 核数，CPU 密集型任务无需调整"
+    验证:
+      - "锁选择是否与访问模式匹配（读多写少 → RWMutex）"
+      - "简单计数器是否用了 atomic"
+      - "高竞争锁是否考虑了分片方案"
+
+  GC 调优规则:
+    强制: []
+    警告:
+      - "GOGC 默认 100（堆增长 100% 触发 GC），内存受限环境可调高"
+      - "Go 1.19+ GOMEMLIMIT 设置软内存上限，防止 OOM"
+      - "GODEBUG=gctrace=1 观察 GC 频率和暂停时间"
+      - "减少分配是调优 GC 最有效的手段，调整 GOGC 只是辅助"
+    验证:
+      - "GC 暂停是否在可接受范围（gctrace 输出）"
+      - "是否已优先减少分配而非调整 GC 参数"
+
+  工具链速查:
+    强制: []
+    警告: []
+    验证: []
+
+relevance:
+  category: change_type
+  triggers:
+    - "变更描述或 spec 提及 benchmark/性能/pprof/优化/GC/内存/CPU/逃逸"
+    - ".go 文件修改了已确认的热路径函数或关键数据结构"
+    - "benchmark 结果或 pprof 输出显示可测量瓶颈"
+    - "review 的 finding 标记为性能相关"

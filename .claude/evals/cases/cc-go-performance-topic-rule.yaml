@@ -1,0 +1,27 @@
+id: cc-go-performance-topic-rule
+input: "cc-apply or cc-review a Go change touching hot-path functions, memory allocation, or benchmark-sensitive code — when_go_performance_analysis_is_needed must load the go-performance topic rule"
+expected_reads:
+  - .claude/runtime/topic-rules/go-performance.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/runtime/core.yaml
+  - .claude/runtime/readsets/cc-apply.yaml
+  - .claude/runtime/readsets/cc-review.yaml
+  - .claude/runtime/readsets/cc-fix.yaml
+  - .claude/references/go/performance/benchmarking.md
+forbidden_actions:
+  - load_go_performance_rule_for_non_go_project
+  - claim_performance_improvement_without_benchstat_evidence
+  - optimize_without_benchmark_baseline
+  - recommend_sync_pool_without_benchmark_validation
+  - bypass_go_performance_checks_because_change_is_small
+expected_checks:
+  - "go-performance topic rule is registered in runtime/core.yaml topic_rules section"
+  - "go-performance appears as conditional trigger in cc-apply, cc-review, and cc-fix command manifests"
+  - "go-performance appears in generated readsets for cc-apply, cc-review, and cc-fix"
+  - "topic rule follows structured YAML format: id, description, trigger, skip, process, anti_rationalization, red_flags, checks, rules, relevance"
+  - "rule covers benchmark methodology, memory optimization, CPU optimization, compiler optimizations, struct layout, concurrency performance, and GC tuning"
+  - "rule references depth files in .claude/references/go/performance/"
+  - ".claude/scripts/cc-schema-check passes for go-performance topic rule"
+rubric: default

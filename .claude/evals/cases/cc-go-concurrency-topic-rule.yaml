@@ -1,0 +1,28 @@
+id: cc-go-concurrency-topic-rule
+input: "cc-apply or cc-review a Go change that uses sync primitives, goroutines, channels, or context — when_go_concurrency_pattern_is_detected must load the go-concurrency topic rule"
+expected_reads:
+  - .claude/runtime/topic-rules/go-concurrency.yaml
+  - .claude/runtime/commands/cc-apply.yaml
+  - .claude/runtime/commands/cc-review.yaml
+  - .claude/runtime/commands/cc-fix.yaml
+  - .claude/runtime/core.yaml
+  - .claude/runtime/readsets/cc-apply.yaml
+  - .claude/runtime/readsets/cc-review.yaml
+  - .claude/runtime/readsets/cc-fix.yaml
+  - .claude/references/go/concurrency/traps.md
+forbidden_actions:
+  - load_go_concurrency_rule_for_non_go_project
+  - skip_race_detector_when_sync_primitives_are_modified
+  - mark_concurrent_code_safe_without_race_evidence
+  - use_sync_map_for_frequent_write_scenarios
+  - recommend_lock_free_without_measured_contention
+  - bypass_go_concurrency_checks_because_code_looks_simple
+expected_checks:
+  - "go-concurrency topic rule is registered in runtime/core.yaml topic_rules section"
+  - "go-concurrency appears as conditional trigger in cc-apply, cc-review, and cc-fix command manifests"
+  - "go-concurrency appears in generated readsets for cc-apply, cc-review, and cc-fix"
+  - "topic rule follows structured YAML format: id, description, trigger, skip, process, anti_rationalization, red_flags, checks, rules, relevance"
+  - "rule covers all 8 sync primitive families: Mutex, RWMutex, WaitGroup, Once, sync.Map, atomic, channel, context"
+  - "rule references depth files in .claude/references/go/concurrency/"
+  - ".claude/scripts/cc-schema-check passes for go-concurrency topic rule"
+rubric: default

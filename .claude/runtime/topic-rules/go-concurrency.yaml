@@ -1,0 +1,171 @@
+id: go_concurrency
+description: "Go 并发代码正确性审查 —— 死锁、数据竞争、goroutine 泄漏、sync 原语误用"
+
+trigger:
+  - "变更涉及的 .go 文件使用了 sync 原语、channel、goroutine 或 context"
+  - "cc-review、cc-apply、cc-fix 阶段触及 Go 并发代码"
+  - "race detector、死锁报告或 goroutine 泄漏信号"
+
+skip:
+  - "变更不涉及任何并发代码（无 goroutine、channel、sync.* 使用）"
+  - "纯文档、配置、脚本、生成代码变更"
+  - "不用于替代 testing-strategy 或 verification 规则的验证等级要求"
+
+process:
+  - "扫描 diff 中所有 sync.Mutex、sync.RWMutex、sync.WaitGroup、sync.Once、sync.Cond、sync.Pool、sync.Map、atomic、channel、context、goroutine 使用点"
+  - "对每类原语执行对应陷阱检查（见 checks）"
+  - "检查锁获取顺序是否在所有代码路径中一致"
+  - "检查 WaitGroup.Add/Done 配对和 goroutine 生命周期完整性"
+  - "若存在并发 Bug 信号，建议运行 go test -race ./... 收集证据"
+
+anti_rationalization:
+  - claim: "这段代码很简单，不会有并发问题"
+    reality: "Go 并发 Bug 常在简单代码中。锁顺序、重入、复制等陷阱肉眼难辨，必须用 -race 验证。"
+  - claim: "加了 Mutex 就线程安全了"
+    reality: "锁保护数据访问，不保护逻辑原子性。检查-修改-写入的间隙仍可能被其他 goroutine 插入。"
+  - claim: "channel 比锁更安全"
+    reality: "channel 也有死锁（无人发送/接收）、panic（向已关闭 channel 发送）、goroutine 泄漏（无人读取导致阻塞）等风险。"
+  - claim: "sync.Map 是最快的并发 map，直接用就行"
+    reality: "sync.Map 只适用于读多写少且 key 稳定的场景。通用并发 map 用 map+RWMutex 或分片锁通常更合适。"
+
+red_flags:
+  - "Mutex/RWMutex 未使用 defer unlock（分支 return 前可能漏释放）"
+  - "两个以上锁的获取顺序在不同方法中不一致（死锁风险）"
+  - "Mutex 的可重入尝试（Go Mutex 不支持递归锁，会导致自死锁）"
+  - "sync 原语被值复制（go vet 可检测 copylocks）"
+  - "WaitGroup.Add 在 goroutine 内部调用而非启动前"
+  - "WaitGroup 重用（Wait 未返回前再次 Add）"
+  - "goroutine 没有退出路径（无 context 取消、无 channel 关闭、无 done channel）"
+  - "sync.Map 用于频繁写入或需要 Len() 的场景"
+  - "sync.Once.Do 内的函数可能 panic（panic 后 Once 认为已执行，不会重试）"
+  - "channel 的关闭方不正确（接收方关闭 channel，而非发送方）"
+  - "向已关闭 channel 发送数据（panic）"
+  - "select 中缺少 ctx.Done() case，导致 goroutine 无法取消"
+  - "从 nil channel 收发（永久阻塞）"
+  - "Context 作为 struct 字段存储而非函数第一个参数传递"
+  - "time.After 在 select 中使用（短时间泄漏 timer；应使用 time.NewTimer 并手动 Stop）"
+
+checks:
+  - "go test -race ./... 通过（涉及并发代码的 package 至少运行一次 race 检测）"
+  - "go vet ./... 无 copylocks 警告"
+  - "所有 sync.Mutex/RWMutex 的 Unlock 在 defer 中或有明确的释放保障"
+  - "锁获取顺序在所有代码路径中一致，嵌套锁有文档说明"
+  - "WaitGroup.Add 在启动 goroutine 之前调用，Done 与 Add 计数匹配"
+  - "所有 goroutine 有明确的退出条件（ctx.Done()、channel close、done signal）"
+  - "Context 作为函数第一个参数传递，不在 struct 中存储"
+  - "channel 由发送方负责关闭，接收方使用 ok 检测关闭"
+  - "sync.Once 内的函数不会 panic，或对 panic 后状态有处理预案"
+  - "sync.Pool 中的对象不假设持久性（可能在 GC 时被回收）"
+  - "select 中包含 ctx.Done() 或超时分支，避免无限阻塞"
+  - "不使用 time.After 在 select 的循环中（timer 泄漏）"
+
+rules:
+  约束等级:
+    强制: "违反会导致死锁、数据竞争、panic 或 goroutine 泄漏"
+    警告: "性能或可读性不佳，但不会导致 Bug"
+    验证: "完成后自检"
+
+  锁使用规则:
+    强制:
+      - "Mutex/RWMutex 零值可用，不可复制（值传递会导致复制锁）"
+      - "Lock 后必须使用 defer Unlock，确保所有分支都能释放"
+      - "嵌套锁必须统一获取顺序，避免死锁"
+      - "RWMutex 的 RLock 和 Lock 不可在同一个 goroutine 中嵌套（Lock 会等待所有 RLock 释放，包括自己的）"
+      - "TryLock (Go 1.18+) 使用场景稀少，不应作为常规锁模式"
+    警告:
+      - "读操作占比 90%+ 时优先使用 RWMutex 替代 Mutex"
+      - "临界区应尽可能小，避免在持锁期间做 I/O 或网络调用"
+    验证:
+      - "所有加锁路径是否有 defer unlock"
+      - "嵌套锁的顺序是否一致"
+      - "是否有锁复制（go vet copylocks）"
+
+  WaitGroup 使用规则:
+    强制:
+      - "Add 必须在启动 goroutine 之前调用，不可放在 goroutine 内部"
+      - "Done 本质是 Add(-1)，计数器不可为负数"
+      - "Wait 返回前不可再次 Add（不可重用）"
+      - "Go 1.25+ 优先使用 wg.Go(f) 替代手动 Add+go+defer Done"
+    警告:
+      - "WaitGroup 不可复制，传递时必须用指针"
+    验证:
+      - "Add 是否在所有 go 语句之前"
+      - "Done 次数是否等于 Add 次数"
+      - "是否有 goroutine 内部调用 Add"
+
+  sync.Once 使用规则:
+    强制:
+      - "Do 内的函数 panic 后 Once 认为已执行，不会重试"
+      - "Go 1.21+ 有返回值场景优先使用 OnceValue[T] 或 OnceFunc 替代 Once+闭包"
+    警告:
+      - "Once 不支持 Reset，设计上就是一次性的"
+    验证:
+      - "Do 内的函数是否可能 panic"
+      - "是否需要 OnceValue/OnceFunc 简化代码"
+
+  sync.Map 使用规则:
+    强制:
+      - "仅适用于：(1) key 只写一次读多次 (2) 多 goroutine 操作不相交 key 集合"
+      - "不适用的信号：频繁写入、需要 Len()、需要 Range+Delete 原子性"
+      - "Go 1.24+ Map 实现重写为 hash-trie map，对不相交 key 修改竞争更低"
+    警告:
+      - "通用场景用 map + RWMutex 或分片 map，sync.Map 只在特定场景优于它们"
+    验证:
+      - "sync.Map 的应用场景是否符合其设计意图"
+      - "Go 1.24+ 是否可利用 CompareAndSwap/CompareAndDelete"
+
+  Channel 使用规则:
+    强制:
+      - "channel 由发送方关闭，接收方只检测关闭（ok 模式）"
+      - "向已关闭 channel 发送会 panic，从已关闭 channel 接收得到零值"
+      - "nil channel 的收发永久阻塞，select 中可通过置 nil 禁用 case"
+      - "有缓冲 channel 的容量应基于可测量的并发需求，不使用魔法数字"
+    警告:
+      - "channel 传递数据所有权，mutex 保护共享状态 —— 这是 Go 的核心设计哲学"
+      - "select + default 实现非阻塞操作，但要小心 busy loop"
+    验证:
+      - "谁负责关闭 channel（必须是发送方）"
+      - "是否有向已关闭 channel 发送的风险"
+      - "select 是否包含退出/超时分支"
+
+  Goroutine 生命周期规则:
+    强制:
+      - "每个 goroutine 必须有明确的退出路径（ctx 取消、channel close、全局 done signal）"
+      - "生产者 goroutine 退出时必须关闭对应 channel 或通知消费者"
+      - "任务型并发优先使用 errgroup.WithContext，获得取消传播和错误收集"
+    警告:
+      - "独立 goroutine 入口使用 defer recover() 兜底，防止 panic 导致进程崩溃"
+      - "Go 1.26+ 运行时自动检测 goroutine 泄漏并输出警告"
+    验证:
+      - "每个 go func 是否有退出条件"
+      - "errgroup 是否用于需要取消传播的并发任务组"
+      - "独立 goroutine 是否有 recover 保护"
+
+  Context 使用规则:
+    强制:
+      - "Context 作为函数第一个参数，命名为 ctx"
+      - "不在 struct 中存储 Context（应通过参数传递）"
+      - "不要用 context.Background() 或 context.TODO() 在没有取消机制的长生命周期 goroutine 中"
+      - "Go 1.21+ WithTimeoutCause/WithDeadlineCause 可附带取消原因，Go 1.21+ AfterFunc 可在取消后执行清理"
+    警告:
+      - "不要将 Context 存储在 struct 中作为'便利'字段"
+    验证:
+      - "Context 是否为第一个参数"
+      - "是否有 goroutine 使用 Background() 而没有取消机制"
+      - "是否可以利用 AfterFunc 简化清理逻辑"
+
+  并发测试规则:
+    强制:
+      - "涉及并发的变更必须通过 go test -race ./..."
+      - "测试 goroutine 中不可使用 t.Fatal/t.Skip（需通过 channel 或 t.Error 报告）"
+      - "Go 1.25+ 可用 testing/synctest 在隔离时间环境中测试并发代码"
+    验证:
+      - "-race 是否在相关 package 上运行过"
+      - "goroutine 中是否正确使用测试 API"
+
+relevance:
+  category: change_type
+  triggers:
+    - ".go 文件 diff 匹配 sync\\.|go func|chan |context\\.|atomic\\.|goroutine"
+    - "变更描述或 spec 提及并发/锁/死锁/race/goroutine/channel/同步"
+    - "review 的 finding 标记为并发相关"

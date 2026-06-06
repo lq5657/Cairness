@@ -798,3 +798,166 @@ decision_groups:
         tradeoffs:
           - 生产防护更完整
           - 限流维度、错误响应和监控阈值需要设计
+
+  - id: concurrency_model
+    level: P1
+    scope: project
+    applies_when:
+      - go_project_with_concurrency
+      - concurrency_model_not_selected
+    question: 选择 Go 并发编程模型风格
+    default_recommendation: channel_communication_preferred
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/context/dev-map.md
+    options:
+      - id: channel_communication_preferred
+        label: Channel 通信优先
+        recommended_when:
+          - data_ownership_transfer_between_goroutines
+          - pipeline_or_stream_processing
+        tradeoffs:
+          - 符合 Go "Share memory by communicating" 哲学
+          - 多消费者、广播等场景需要额外编排
+      - id: mutex_shared_state
+        label: Mutex + 共享状态
+        recommended_when:
+          - shared_state_protection_is_primary_concern
+          - fine_grained_performance_control_needed
+        tradeoffs:
+          - 临界区控制精确，适合复杂共享状态
+          - 锁顺序和粒度需要仔细管理
+      - id: hybrid_model
+        label: 混合模型（按场景选择）
+        recommended_when:
+          - multiple_concurrency_patterns_coexist
+          - team_has_concurrency_experience
+        tradeoffs:
+          - 灵活，按场景选择最合适的原语
+          - 需要团队有较强的并发设计判断力
+
+  - id: sync_map_strategy
+    level: P1
+    scope: both
+    applies_when:
+      - concurrent_map_access_required
+      - sync_map_strategy_not_selected
+    question: 选择并发 map 方案
+    default_recommendation: map_rwmutex
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: map_rwmutex
+        label: map + sync.RWMutex
+        recommended_when:
+          - general_concurrent_map_access
+          - read_heavy_workload
+        tradeoffs:
+          - 简单可靠，Go 标准库即可
+          - 写入密集型场景锁竞争可能成为瓶颈
+      - id: sync_map
+        label: sync.Map
+        recommended_when:
+          - keys_written_once_read_many_times
+          - disjoint_key_sets_across_goroutines
+        tradeoffs:
+          - 特定场景下性能优异（Go 1.24+ hash-trie）
+          - 不适用于频繁写入或需要 Len() 的场景
+      - id: sharded_map
+        label: 分片 map（sharded lock）
+        recommended_when:
+          - high_write_concurrency
+          - performance_is_measured_bottleneck
+        tradeoffs:
+          - 减少单锁竞争，提升写入吞吐
+          - 需要 hash 分片逻辑，复杂度增加
+      - id: lock_free_map
+        label: Lock-free map（第三方库）
+        recommended_when:
+          - extreme_concurrency_requirements
+          - lock_contention_is_proven_bottleneck
+        tradeoffs:
+          - 性能极高
+          - 引入第三方依赖，实现复杂，调试困难
+
+  - id: performance_budget
+    level: P2
+    scope: both
+    applies_when:
+      - production_service
+      - performance_budget_not_set
+    question: 是否设定性能预算和持续 benchmark CI？
+    default_recommendation: no_budget_initially
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+      - .cc/changes/<change-id>/spec.md
+    options:
+      - id: no_budget_initially
+        label: 暂不设定性能预算
+        recommended_when:
+          - mvp_or_early_stage
+          - no_measured_performance_pressure
+        tradeoffs:
+          - 早期节省 CI 时间
+          - 上线前需要补充基准数据
+      - id: benchmark_ci_baseline
+        label: CI 中运行 benchmark 基线
+        recommended_when:
+          - core_paths_are_stable
+          - want_performance_regression_detection
+        tradeoffs:
+          - 自动检测性能回归
+          - CI 时间增加，需要稳定的 CI 环境
+      - id: pgo_enabled
+        label: 启用 PGO（Go 1.21+）
+        recommended_when:
+          - production_deployment
+          - want_compiler_guided_optimization
+        tradeoffs:
+          - 热路径 2-7% 性能提升
+          - 需要生产 profile 收集和定期更新 default.pgo
+
+  - id: profiling_strategy
+    level: P2
+    scope: project
+    applies_when:
+      - production_service
+      - profiling_strategy_not_selected
+    question: 选择生产环境 profiling 策略
+    default_recommendation: pprof_endpoint_internal
+    requires_user_confirmation: false
+    outputs:
+      - .cc/context/project-definition.md
+      - .cc/context/architecture-outline.md
+    options:
+      - id: pprof_endpoint_internal
+        label: pprof HTTP 端点（仅内网）
+        recommended_when:
+          - http_service
+          - internal_network_access_possible
+        tradeoffs:
+          - 标准方案，一行 import 即可
+          - 端口和路由必须做访问控制，禁止暴露到公网
+      - id: signal_driven_profile
+        label: 信号驱动 profiling（SIGUSR1）
+        recommended_when:
+          - non_http_service_or_cli
+          - intermittent_profiling_sufficient
+        tradeoffs:
+          - 不占用常驻端口，按需触发
+          - 需要手动收集和分析
+      - id: continuous_profiling
+        label: 持续 profiling（Pyroscope 等）
+        recommended_when:
+          - high_traffic_production
+          - need_historical_profile_comparison
+        tradeoffs:
+          - 可以对比历史 profile，发现渐进式退化
+          - 需要额外基础设施和存储成本

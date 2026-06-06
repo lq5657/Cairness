@@ -47,6 +47,10 @@ conditional_reads:
   - .claude/runtime/topic-rules/git-workflow.yaml
   when_spec_review_flags_present_in_log:
   - .claude/runtime/topic-rules/spec-code-sync.yaml
+  when_go_concurrency_pattern_is_detected:
+  - .claude/runtime/topic-rules/go-concurrency.yaml
+  when_go_performance_analysis_is_needed:
+  - .claude/runtime/topic-rules/go-performance.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-review.yaml

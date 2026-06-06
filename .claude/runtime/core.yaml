@@ -90,6 +90,8 @@ topic_rules:
   gate_effectiveness: .claude/runtime/topic-rules/gate-effectiveness.yaml
   change_dependencies: .claude/runtime/topic-rules/change-dependencies.yaml
   spec_code_sync: .claude/runtime/topic-rules/spec-code-sync.yaml
+  go_concurrency: .claude/runtime/topic-rules/go-concurrency.yaml
+  go_performance: .claude/runtime/topic-rules/go-performance.yaml
 
 profiles:
   dir: .claude/runtime/profiles

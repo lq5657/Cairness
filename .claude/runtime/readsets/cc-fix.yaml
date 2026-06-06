@@ -49,6 +49,10 @@ conditional_reads:
   - .claude/runtime/topic-rules/git-workflow.yaml
   when_gate_effectiveness_should_be_recorded:
   - .claude/runtime/topic-rules/gate-effectiveness.yaml
+  when_go_concurrency_pattern_is_detected:
+  - .claude/runtime/topic-rules/go-concurrency.yaml
+  when_go_performance_analysis_is_needed:
+  - .claude/runtime/topic-rules/go-performance.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
