@@ -246,7 +246,7 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
     if name == "cc-upgrade-check":
         return {
             "cause": "Harness upgrade safety boundary check failed.",
-            "fix_hint": "Keep project state under .cc, framework assets under .claude, and update VERSION/CHANGELOG/UPGRADE together.",
+            "fix_hint": "Keep project state under .cairness, framework assets under .claude, and update VERSION/CHANGELOG/UPGRADE together.",
             "doc_ref": ".claude/UPGRADE.md",
         }
     if name == "cc-schema-check":

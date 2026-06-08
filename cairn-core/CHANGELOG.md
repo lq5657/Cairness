@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 - 2026-06-08
+
+- Renamed project to Cairness with installable CLI toolchain.
+- Reorganized repository structure: `cairn-core/` (framework source, formerly `.claude/`) and `.cairness/` (project state, formerly `.cc/`).
+- Added `cairn_install` — cross-platform Python 3.9+ installer (Linux, macOS, Windows).
+- Added `cairn_update` — cross-platform updater that pulls latest release and updates system installation.
+- Added `cc-cairn` CLI with `init`, `update`, and `version` subcommands for project-level framework management.
+- Updated all internal paths: `.cc/` → `.cairness/` across runtime manifests, schemas, scripts, and documentation.
+- Updated CI workflow to create `.claude` symlink at build time.
 
 ## 0.21.0 - 2026-06-06
 

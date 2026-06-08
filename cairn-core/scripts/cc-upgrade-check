@@ -64,7 +64,7 @@ def check_state_separation(project_root: Path, claude_root: Path, issues: list[I
     ]
     for path in legacy_state_paths:
         if path.exists():
-            add(issues, "E_UPGRADE005", path, "project state must live under .cc, not .claude")
+            add(issues, "E_UPGRADE005", path, "project state must live under .cairness, not .claude")
 
 
 def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:

@@ -1,5 +1,35 @@
 # 升级指南
 
+## 升级到 1.0.0
+
+本版本将项目重命名为 Cairness，引入独立安装 CLI 工具链，并重组仓库目录结构。
+
+### 重大变更
+
+- `cairn-core/` 替代 `.claude/` 作为框架源码目录
+- `.cairness/` 替代 `.cc/` 作为项目状态目录
+- 框架不再内嵌在 `.claude/` 中运行，而是通过 `cc-cairn init` 安装到目标项目
+
+### 全新安装
+
+```bash
+git clone https://github.com/lq5657/Cairness.git
+cd Cairness
+python3 cairn_install
+cd your-project
+cc-cairn init
+```
+
+### 从旧版本迁移
+
+已有项目的 `.cc/` 目录重命名为 `.cairness/`，`.claude/` 保持不变。然后运行 `cc-cairn update` 更新框架文件。
+
+### 验证
+
+```bash
+.claude/scripts/cc-verify --harness-only
+```
+
 ## 升级到 0.21.0
 
 本版本新增 `cc-discuss` 命令。
