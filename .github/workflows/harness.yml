@@ -11,6 +11,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create framework symlink
         run: ln -s cairn-core .claude
+      - name: Create state skeleton
+        run: mkdir -p .cairness/{context,changes,audits,knowledge,discussions}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
