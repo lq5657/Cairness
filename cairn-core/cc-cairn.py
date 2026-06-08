@@ -89,23 +89,7 @@ def cmd_init():
 
     for d in STATE_SKELETON:
         (project_root / d).mkdir(parents=True, exist_ok=True)
-
-    # Copy state templates
-    templates_dir = claude_dir / "templates"
-    state_template_map = {
-        "context/project-summary.md": ".cairness/context/project-summary.md",
-        "context/project-context.md": ".cairness/context/project-context.md",
-        "context/domain-language.md": ".cairness/context/domain-language.md",
-        "context/dev-map.md": ".cairness/context/dev-map.md",
-        "changes/task-board.md": ".cairness/changes/task-board.md",
-        "knowledge/index.md": ".cairness/knowledge/index.md",
-    }
-    for src_rel, dst_rel in state_template_map.items():
-        src = templates_dir / src_rel
-        dst = project_root / dst_rel
-        if src.exists() and not dst.exists():
-            shutil.copy2(src, dst)
-            print(f"  {dst_rel}")
+        print(f"  {d}/")
 
     ci_src = claude_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"
