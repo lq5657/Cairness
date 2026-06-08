@@ -3,35 +3,18 @@
 
 Usage:
     cc-cairn init        Initialize Cairness in the current project
-    cc-cairn update      Update .claude/ from the system installation
+    cc-cairn update      Pull latest release and update framework
     cc-cairn version     Show installed and project versions
 """
 
 import os
 import sys
 import shutil
+import subprocess
 from pathlib import Path
 
 MIN_PYTHON = (3, 9)
-
-CORE_FILES = [
-    "CHANGELOG.md",
-    "CLAUDE.md",
-    "UPGRADE.md",
-    "VERSION",
-    "docs",
-    "evals",
-    "fixtures",
-    "harness.config.yaml",
-    "references",
-    "rules",
-    "runtime",
-    "schemas",
-    "scripts",
-    "skills",
-    "templates",
-    "workflows",
-]
+REMOTE_URL = "https://github.com/lq5657/Cairness.git"
 
 CI_TEMPLATE_DIR = "templates/ci"
 
@@ -112,32 +95,84 @@ def cmd_init():
     print(f"\nCairness v{version} initialized. Start Claude Code to begin.")
 
 
+def find_repo():
+    """Find the Cairness repo by searching upward for cairn-core/VERSION."""
+    d = Path.cwd()
+    while d != d.parent:
+        if (d / "cairn-core" / "VERSION").exists() and (d / "cairn_install").exists():
+            return d
+        d = d.parent
+    return None
+
+
+def sync_repo(data_dir):
+    """Ensure the system installation is up to date from remote."""
+    repo = find_repo()
+    if repo is None:
+        clone_path = Path.home() / ".local" / "share" / "cairness-repo"
+        if not clone_path.exists():
+            print(f"Cloning Cairness from {REMOTE_URL} ...")
+            result = subprocess.run(
+                ["git", "clone", REMOTE_URL, str(clone_path)],
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                sys.exit(f"git clone failed: {result.stderr}")
+        repo = clone_path
+    else:
+        print(f"Pulling latest from {REMOTE_URL} ...")
+        result = subprocess.run(
+            ["git", "pull", "origin", "main"],
+            cwd=repo, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(f"git pull failed: {result.stderr}")
+            sys.exit(1)
+
+    core_src = repo / "cairn-core"
+    new_ver = (core_src / "VERSION").read_text().strip()
+    old_ver = "none"
+    if data_dir.exists():
+        vf = data_dir / "VERSION"
+        if vf.exists():
+            old_ver = vf.read_text().strip()
+
+    if old_ver == new_ver and data_dir.exists():
+        return new_ver
+
+    print(f"Updating system installation: v{old_ver} → v{new_ver}")
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+    shutil.copytree(core_src, data_dir)
+    print(f"System installation updated to v{new_ver}.")
+    return new_ver
+
+
 def cmd_update():
     data_dir = get_data_dir()
-    if not data_dir.exists():
-        sys.exit(f"Framework not installed. Run 'cairn_install' from the Cairness repo first.")
+    new_ver = sync_repo(data_dir)
 
     project_root = Path.cwd()
     claude_dir = project_root / ".claude"
 
     if not claude_dir.exists():
-        sys.exit("No .claude/ directory found. Run 'cc-cairn init' first.")
+        print(f"System installation updated to v{new_ver}.")
+        print("Run 'cc-cairn init' in a project directory to install the framework.")
+        return
 
-    installed_ver = (data_dir / "VERSION").read_text().strip()
     project_ver = "unknown"
     pv_file = claude_dir / "VERSION"
     if pv_file.exists():
         project_ver = pv_file.read_text().strip()
 
-    if installed_ver == project_ver:
-        print(f"Already up to date (v{project_ver}).")
+    if new_ver == project_ver:
+        print(f"Project already up to date (v{project_ver}).")
         return
 
-    print(f"Updating .claude/ from v{project_ver} to v{installed_ver} ...")
+    print(f"Updating project .claude/ from v{project_ver} to v{new_ver} ...")
     shutil.rmtree(claude_dir)
     shutil.copytree(data_dir, claude_dir)
-
-    print(f"Updated to v{installed_ver}.")
+    print(f"Project updated to v{new_ver}.")
 
 
 def cmd_version():

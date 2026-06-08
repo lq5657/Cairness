@@ -40,8 +40,7 @@ cc-cairn init
 ## 框架升级
 
 ```bash
-cairn_update          # 从远程拉取最新版到系统安装位置
-cc-cairn update       # 在项目目录下执行，更新 .claude/（不触碰 .cairness/）
+cc-cairn update       # 拉取最新版并更新系统安装和项目 .claude/（不触碰 .cairness/）
 ```
 
 ## 核心原则
