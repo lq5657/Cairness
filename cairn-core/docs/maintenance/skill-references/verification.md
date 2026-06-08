@@ -8,7 +8,7 @@ Use this reference when a command needs deterministic checks, baseline/delta evi
 .claude/scripts/cc-verify --harness-only
 .claude/scripts/cc-verify --change <change-id>
 .claude/scripts/cc-verify --fixture <fixture-path>
-.claude/scripts/cc-schema-check .cc/changes
+.claude/scripts/cc-schema-check .cairness/changes
 .claude/scripts/cc-role-check --command <cc-command> --change <change-id>
 .claude/scripts/cc-eval .claude/evals
 ```

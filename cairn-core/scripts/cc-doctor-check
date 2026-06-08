@@ -96,12 +96,12 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "templates" / "knowledge" / "index.md", "file"),
         (claude_root / "templates" / "results" / "command-result.md", "file"),
         (claude_root / "templates" / "results" / "command-error.md", "file"),
-        (project_root / ".cc" / "context" / "project-context.md", "file"),
-        (project_root / ".cc" / "context" / "project-summary.md", "file"),
-        (project_root / ".cc" / "context" / "domain-language.md", "file"),
-        (project_root / ".cc" / "context" / "dev-map.md", "file"),
-        (project_root / ".cc" / "changes" / "task-board.md", "file"),
-        (project_root / ".cc" / "knowledge" / "index.md", "file"),
+        (project_root / ".cairness" / "context" / "project-context.md", "file"),
+        (project_root / ".cairness" / "context" / "project-summary.md", "file"),
+        (project_root / ".cairness" / "context" / "domain-language.md", "file"),
+        (project_root / ".cairness" / "context" / "dev-map.md", "file"),
+        (project_root / ".cairness" / "changes" / "task-board.md", "file"),
+        (project_root / ".cairness" / "knowledge" / "index.md", "file"),
     ]
     for path, kind in required:
         require_path(path, kind, issues)

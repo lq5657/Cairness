@@ -6,7 +6,7 @@
 
 #### 核心原则
 
-- **No Spec, No Code**：没有 `.cc/changes/<change-id>/spec.md`，禁止进入实现。
+- **No Spec, No Code**：没有 `.cairness/changes/<change-id>/spec.md`，禁止进入实现。
 - **Spec is Truth**：review / done 阶段，spec 与代码必须一致。
 - **变更即记录**：改代码时必须同步更新 change 文档。
 - **Fresh Evidence**：没有当前实现的新鲜验证证据，不得声称"完成""通过""已修复""可归档"。
@@ -27,19 +27,19 @@ Finding 状态：`open` → `fixed` 或 `accepted`（accepted 必须有用户显
 
 | 命令 | 可写范围 |
 |------|----------|
-| `cc-new-project` | `.cc/context/*`, `.cc/changes/task-board.md` |
+| `cc-new-project` | `.cairness/context/*`, `.cairness/changes/task-board.md` |
 | `cc-preflight` | 无（只读自检） |
-| `cc-init` | `.cc/context/project-summary.md`, `project-context.md`, `domain-language.md`, `dev-map.md` |
-| `cc-enrich-context` | `.cc/context/project-context.md`, `domain-language.md`, `dev-map.md` |
-| `cc-explain-system` | `.cc/context/system-overview.md` |
-| `cc-inspect-codebase` | `.cc/audits/<audit-id>/report.md` |
-| `cc-promote-audit` | `.cc/audits/<audit-id>/to-change.md`, `task-board.md` |
-| `cc-propose` | `.cc/changes/<change-id>/spec.md`, `tasks.md`, `log.md`, `task-board.md` |
+| `cc-init` | `.cairness/context/project-summary.md`, `project-context.md`, `domain-language.md`, `dev-map.md` |
+| `cc-enrich-context` | `.cairness/context/project-context.md`, `domain-language.md`, `dev-map.md` |
+| `cc-explain-system` | `.cairness/context/system-overview.md` |
+| `cc-inspect-codebase` | `.cairness/audits/<audit-id>/report.md` |
+| `cc-promote-audit` | `.cairness/audits/<audit-id>/to-change.md`, `task-board.md` |
+| `cc-propose` | `.cairness/changes/<change-id>/spec.md`, `tasks.md`, `log.md`, `task-board.md` |
 | `cc-apply` | task 声明范围内代码、change 文档、`dev-map.md`、`task-board.md` |
 | `cc-review` | `review.md`、`log.md`、`task-board.md` |
 | `cc-fix` | Finding 相关代码、`review.md`、`log.md`、`task-board.md`、必要的 change 文档 |
 | `cc-test` | 测试文件、`test-spec.md`、`log.md`、`task-board.md` |
-| `cc-archive` | `spec.md` 状态、`log.md`、`task-board.md`、`.cc/knowledge/*` |
+| `cc-archive` | `spec.md` 状态、`log.md`、`task-board.md`、`.cairness/knowledge/*` |
 
 #### 关键约束
 

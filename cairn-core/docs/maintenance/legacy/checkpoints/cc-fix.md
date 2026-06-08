@@ -13,7 +13,7 @@
 | `review.md` 已存在 | ✅ / ❌ / ⚠️ / N/A |
 | 本轮需要处理的问题范围已确认 | ✅ / ❌ / ⚠️ / N/A |
 | 已确定本轮规则装载清单，且至少包含 `rules/verification.md` | ✅ / ❌ / ⚠️ / N/A |
-| 已读取 `.cc/changes/task-board.md`；必要时已读取 `.cc/context/dev-map.md` 与 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `.cairness/changes/task-board.md`；必要时已读取 `.cairness/context/dev-map.md` 与 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已筛出本轮要处理的 `open` Findings | ✅ / ❌ / ⚠️ / N/A |
 | 已复述当前 Finding 的技术要求，而不是只复述 reviewer 原话 | ✅ / ❌ / ⚠️ / N/A |
 | 已确认当前 Finding 仍然适用于当前代码，或已说明为何不再成立 | ✅ / ❌ / ⚠️ / N/A |
@@ -34,7 +34,7 @@
 | 若多个 Findings 存在联动，已说明为何一起处理 | ✅ / ❌ / ⚠️ / N/A |
 | 若 Finding 属于验证/测试/DB/API/配置/可观测性/发布/安全/并发专题，已读取对应规则 | ✅ / ❌ / ⚠️ / N/A |
 | 修复代码时已同步更新 `spec.md` / `tasks.md` / `log.md` / `review.md` | ✅ / ❌ / ⚠️ / N/A |
-| 若模块边界、验证入口或易错边界变化，已同步 `.cc/context/dev-map.md` | ✅ / ❌ / ⚠️ / N/A |
+| 若模块边界、验证入口或易错边界变化，已同步 `.cairness/context/dev-map.md` | ✅ / ❌ / ⚠️ / N/A |
 | 若涉及验证补强或状态修正，已同步更新 `test-spec.md` 与 `spec.md` 的闭环状态 | ✅ / ❌ / ⚠️ / N/A |
 | 每项修复后重新验证，且验证等级未低于既有要求 | ✅ / ❌ / ⚠️ / N/A |
 
@@ -48,5 +48,5 @@
 | `go build ./...` 通过 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 未清空原有 review 结论 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/changes/task-board.md` 已同步修复状态、阻塞项和下一命令 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/changes/task-board.md` 已同步修复状态、阻塞项和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已按 `validation.run_on.fix` 自动运行 `cc-verify`，且失败时未把 Finding 标记为 `fixed` | ✅ / ❌ / ⚠️ / N/A |

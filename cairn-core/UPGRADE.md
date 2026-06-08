@@ -6,7 +6,7 @@
 
 ### 需要创建的新目录
 
-- `.cc/discussions/` — 讨论产出目录（自动创建，无需手动操作）
+- `.cairness/discussions/` — 讨论产出目录（自动创建，无需手动操作）
 
 ### 需要重新生成的文件
 
@@ -38,17 +38,17 @@
 
 ### 需要保留的新目录
 
-- `.cc/context/`
-- `.cc/changes/`
-- `.cc/audits/`
-- `.cc/knowledge/`
+- `.cairness/context/`
+- `.cairness/changes/`
+- `.cairness/audits/`
+- `.cairness/knowledge/`
 
 ### 需要移动的已有文件
 
-- `.claude/context/project-context.md` -> `.cc/context/project-context.md`
-- `.claude/context/dev-map.md` -> `.cc/context/dev-map.md`
-- `.claude/changes/task-board.md` -> `.cc/changes/task-board.md`
-- `.claude/knowledge/index.md` -> `.cc/knowledge/index.md`
+- `.claude/context/project-context.md` -> `.cairness/context/project-context.md`
+- `.claude/context/dev-map.md` -> `.cairness/context/dev-map.md`
+- `.claude/changes/task-board.md` -> `.cairness/changes/task-board.md`
+- `.claude/knowledge/index.md` -> `.cairness/knowledge/index.md`
 - `docs/*` -> `.claude/docs/*`
 - `.claude/context/templates/*` -> `.claude/templates/context/*`
 - `.claude/changes/templates/*` -> `.claude/templates/changes/*`
@@ -91,7 +91,7 @@
 ### 兼容性说明
 
 - `.claude/` 现在是可替换的框架内容；不要在其下存储项目状态。
-- `.cc/` 是项目状态；升级 Harness 时不要覆盖它。
+- `.cairness/` 是项目状态；升级 Harness 时不要覆盖它。
 - 配置、workflow、runtime manifest 和脚本从项目根目录解释框架和状态路径。
 
 ## 升级到 0.19.0

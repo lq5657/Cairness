@@ -1,17 +1,17 @@
 ### Audit → Change 桥接模板
 
-文件位置：`.cc/audits/<audit-id>/to-change.md`
+文件位置：`.cairness/audits/<audit-id>/to-change.md`
 
 用途：
 - 把 `cc-inspect-codebase` 产出的审查报告，转成一个可以进入 `cc-propose` 的正式 change 草稿
 - 避免人工从 Findings 手工重写一遍 spec，降低信息丢失和语义漂移
-- 这不是 `.cc/changes/<change-id>/spec.md` 的替代品，而是它的上游桥接材料
+- 这不是 `.cairness/changes/<change-id>/spec.md` 的替代品，而是它的上游桥接材料
 
 使用方式：
-1. 先完成 `.cc/audits/<audit-id>/report.md`
+1. 先完成 `.cairness/audits/<audit-id>/report.md`
 2. 选出本次要治理的 Findings，避免把不相关问题打包进一个 change
 3. 填写本模板
-4. 再生成 `.cc/changes/<change-id>/spec.md` 与 `tasks.md`
+4. 再生成 `.cairness/changes/<change-id>/spec.md` 与 `tasks.md`
 
 ```text
 audit_id: <audit-id>
@@ -23,7 +23,7 @@ status: draft
 
 #### 1. 来源审查
 
-- 审查报告：`.cc/audits/<audit-id>/report.md`
+- 审查报告：`.cairness/audits/<audit-id>/report.md`
 - 审查模式：`architecture` / `logic` / `observability` / `test-debt`
 - 审查范围：
 - 本次选中的 Findings：

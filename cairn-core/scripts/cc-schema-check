@@ -229,13 +229,13 @@ ANTI_RATIONALIZATION_COMMANDS = {
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
 FINAL_ARTIFACT_WRITE_PREFIXES = (
-    ".cc/changes/",
-    ".cc/audits/",
-    ".cc/context/",
+    ".cairness/changes/",
+    ".cairness/audits/",
+    ".cairness/context/",
 )
 FINAL_ARTIFACT_WRITE_NAMES = {
-    ".cc/changes/task-board.md",
-    ".cc/context/dev-map.md",
+    ".cairness/changes/task-board.md",
+    ".cairness/context/dev-map.md",
 }
 TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
     "cc-propose": {
@@ -612,7 +612,7 @@ def project_path(project_root: Path, declared: Any) -> Path | None:
         return None
     if "<" in declared or "*" in declared:
         return None
-    if declared.startswith(".claude/") or declared.startswith(".cc/"):
+    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
         return project_root / declared
     return None
 
@@ -1868,9 +1868,9 @@ def discover_change_dirs(inputs: list[Path]) -> list[Path]:
 
 def default_input() -> Path:
     cwd = Path.cwd()
-    if (cwd / ".cc" / "changes").exists():
-        return cwd / ".cc" / "changes"
-    return Path(__file__).resolve().parent.parent.parent / ".cc" / "changes"
+    if (cwd / ".cairness" / "changes").exists():
+        return cwd / ".cairness" / "changes"
+    return Path(__file__).resolve().parent.parent.parent / ".cairness" / "changes"
 
 
 def build_report(inputs: list[Path]) -> dict[str, Any]:

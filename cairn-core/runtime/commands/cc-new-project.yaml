@@ -11,13 +11,13 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/context/project-summary.md
-  - .cc/context/project-definition.md
-  - .cc/context/mvp-roadmap.md
-  - .cc/context/architecture-outline.md
-  - .cc/context/domain-language.md
-  - .cc/context/dev-map.md
-  - .cc/changes/task-board.md
+  - .cairness/context/project-summary.md
+  - .cairness/context/project-definition.md
+  - .cairness/context/mvp-roadmap.md
+  - .cairness/context/architecture-outline.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - business_code_write
@@ -29,14 +29,14 @@ forbids:
   - mark_project_definition_complete_without_blocking_choices
 
 required_reads:
-  - .cc/context/project-summary.md
-  - .cc/context/dev-map.md
-  - .cc/context/domain-language.md
-  - .cc/changes/task-board.md
+  - .cairness/context/project-summary.md
+  - .cairness/context/dev-map.md
+  - .cairness/context/domain-language.md
+  - .cairness/changes/task-board.md
   - .claude/rules/memory-policy.md
 
 optional_reads:
-  - .cc/context/project-context.md
+  - .cairness/context/project-context.md
   - .claude/docs/maintenance/technology-decision-model.md
 
 conditional_reads:

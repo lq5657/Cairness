@@ -14,7 +14,7 @@ proposal_profile: micro | standard | staged
 
 #### 文档约束
 
-- 文件位置：`.cc/changes/<change-id>/spec.md`
+- 文件位置：`.cairness/changes/<change-id>/spec.md`
 - `status` 必须与实际阶段一致：
   - `propose`：提案已确认，尚未开始编码
   - `apply`：编码进行中，允许 task 边界内的受控偏差
@@ -218,7 +218,7 @@ proposal_profile: micro | standard | staged
 
 仅在满足以下条件中的多数时填写：本地暂无可直接复用实现、问题域存在成熟通用方案的高概率、自研成本或错误代价较高。
 若不触发，可写 `不触发：本地已有可复用模式` 或省略本节。
-触发时先查本地代码、`.cc/knowledge`、既有依赖和测试；本地证据不足时再查官方文档、事实标准、主流开源项目或上游资料。
+触发时先查本地代码、`.cairness/knowledge`、既有依赖和测试；本地证据不足时再查官方文档、事实标准、主流开源项目或上游资料。
 外部 Research 只用于提炼候选方案、适配前提、关键权衡和不采用原因，不替代本项目的正式方案，也不得绕过用户对 scope / risk / validation 变化的选择。
 
 | 结论 | 候选方案 | 适配前提 | 不采用原因 / 采用原因 |

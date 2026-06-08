@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """cc-deps — 跨 Change 依赖管理与孤儿变更检测。
 
-解析 .cc/changes/*/spec.md 的 depends_on 和 tasks.md 的文件声明，
+解析 .cairness/changes/*/spec.md 的 depends_on 和 tasks.md 的文件声明，
 提供依赖图可视化、文件冲突检测、拓扑排序、孤儿变更检测和安全执行顺序。
 
 用法:
@@ -94,9 +94,9 @@ def parse_task_files(tasks_path: Path) -> set[str]:
 
 
 def discover_changes(root: Path) -> dict[str, ChangeInfo]:
-    """扫描 .cc/changes/ 下所有 change。"""
+    """扫描 .cairness/changes/ 下所有 change。"""
     changes: dict[str, ChangeInfo] = {}
-    changes_dir = root / ".cc" / "changes"
+    changes_dir = root / ".cairness" / "changes"
     if not changes_dir.exists():
         return changes
 
@@ -584,8 +584,8 @@ def print_orphans(result: dict[str, Any]) -> int:
         print(
             "\n  ── 处置选项 ──\n"
             "  1. cc-propose <描述> → 为此工作创建 retro spec\n"
-            "  2. 编辑 .cc/changes/<id>/tasks.md → 添加到已有 change 的文件声明\n"
-            "  3. 记录为 intentional 例外 → 写入 .cc/changes/task-board.md 的例外清单\n"
+            "  2. 编辑 .cairness/changes/<id>/tasks.md → 添加到已有 change 的文件声明\n"
+            "  3. 记录为 intentional 例外 → 写入 .cairness/changes/task-board.md 的例外清单\n"
         )
         return 1
 

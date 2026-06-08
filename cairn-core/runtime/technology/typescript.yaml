@@ -29,9 +29,9 @@ decision_groups:
     default_recommendation: spa
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: spa
         label: Single Page Application (SPA)
@@ -78,9 +78,9 @@ decision_groups:
     cascading_effects:
       constrains: [state_management, routing, component_library]
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: react
         label: React 18+
@@ -119,9 +119,9 @@ decision_groups:
     cascading_effects:
       constrains: [testing_framework]
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: vite
         label: Vite
@@ -160,8 +160,8 @@ decision_groups:
     default_recommendation: tailwind
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: tailwind
         label: Tailwind CSS
@@ -207,8 +207,8 @@ decision_groups:
     default_recommendation: zustand
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: zustand
         label: Zustand
@@ -254,8 +254,8 @@ decision_groups:
     default_recommendation: pinia
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: pinia
         label: Pinia
@@ -287,8 +287,8 @@ decision_groups:
     default_recommendation: react_router
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: react_router
         label: React Router v7
@@ -327,8 +327,8 @@ decision_groups:
     default_recommendation: shadcn_ui
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: shadcn_ui
         label: shadcn/ui (Radix + Tailwind)
@@ -383,9 +383,9 @@ decision_groups:
     default_recommendation: tanstack_query
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: tanstack_query
         label: TanStack Query (React Query)
@@ -422,9 +422,9 @@ decision_groups:
     default_recommendation: vitest
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: vitest
         label: Vitest
@@ -461,9 +461,9 @@ decision_groups:
     default_recommendation: zod
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: zod
         label: Zod
@@ -500,8 +500,8 @@ decision_groups:
     default_recommendation: react_i18next
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: react_i18next
         label: react-i18next
@@ -538,8 +538,8 @@ decision_groups:
     default_recommendation: axe_playwright
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
     options:
       - id: axe_playwright
         label: axe-core + Playwright

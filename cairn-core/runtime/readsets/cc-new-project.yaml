@@ -12,14 +12,14 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-new-project.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-summary.md
-- .cc/context/dev-map.md
-- .cc/context/domain-language.md
-- .cc/changes/task-board.md
+- .cairness/context/project-summary.md
+- .cairness/context/dev-map.md
+- .cairness/context/domain-language.md
+- .cairness/changes/task-board.md
 - .claude/rules/memory-policy.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/project-context.md
+- .cairness/context/project-context.md
 - .claude/docs/maintenance/technology-decision-model.md
 conditional_reads:
   when_project_artifacts_are_written:

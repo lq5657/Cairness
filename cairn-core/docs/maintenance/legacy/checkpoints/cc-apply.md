@@ -8,7 +8,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| `spec.md` 存在于 `.cc/changes/<change-id>/` | ✅ / ❌ / ⚠️ / N/A |
+| `spec.md` 存在于 `.cairness/changes/<change-id>/` | ✅ / ❌ / ⚠️ / N/A |
 | `tasks.md` 存在且至少有一个 task | ✅ / ❌ / ⚠️ / N/A |
 | `spec.md` 的“待澄清”章节已全部解决 | ✅ / ❌ / ⚠️ / N/A |
 | 用户已确认执行 | ✅ / ❌ / ⚠️ / N/A |
@@ -20,7 +20,7 @@
 | 已读取 `.claude/harness.config.yaml` 或确认使用默认 Git 策略 | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `validation.auto_run` / `validation.fail_on_error` / `validation.run_on.apply` | ✅ / ❌ / ⚠️ / N/A |
 | 已保存 `baseline/pre-apply.json` 验证基线 | ✅ / ❌ / ⚠️ / N/A |
-| 已读取 `.cc/context/dev-map.md`、`.cc/changes/task-board.md` 和 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `.cairness/context/dev-map.md`、`.cairness/changes/task-board.md` 和 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
 | 若为恢复执行，已读取上次失败或阻塞记录 | ✅ / ❌ / ⚠️ / N/A |
 | `depends_on` 已满足或已显式标记 `blocked` | ✅ / ❌ / ⚠️ / N/A |
 | 当前分支与 `change-id` 匹配，且不在 `main` / `master` | ✅ / ❌ / ⚠️ / N/A |
@@ -59,7 +59,7 @@
 | 若未自动 commit，已在 `log.md` 与 task 中记录 `待提交` 和原因 | ✅ / ❌ / ⚠️ / N/A |
 | 当前 task 文档同步后已自动运行 `cc-verify` 并保存 `baseline/post-task-<n>.json` | ✅ / ❌ / ⚠️ / N/A |
 | 已运行 `cc-delta-check` 比较 pre-apply 与 post-task，且存在 `new-failure` 时未标记为 `done` | ✅ / ❌ / ⚠️ / N/A |
-| 当前 task 状态已同步到 `.cc/changes/task-board.md`，必要的模块导航变化已同步到 `.cc/context/dev-map.md` | ✅ / ❌ / ⚠️ / N/A |
+| 当前 task 状态已同步到 `.cairness/changes/task-board.md`，必要的模块导航变化已同步到 `.cairness/context/dev-map.md` | ✅ / ❌ / ⚠️ / N/A |
 
 ## 完成后检查
 
@@ -74,6 +74,6 @@
 | `go build ./...` 通过 | ✅ / ❌ / ⚠️ / N/A |
 | 若最低验证等级为 `L2+`，已展示与等级匹配的测试/链路/集成/手工验证证据 | ✅ / ❌ / ⚠️ / N/A |
 | changes 文档已更新 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/changes/task-board.md` 已记录最新状态、阻塞/依赖和下一命令 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/changes/task-board.md` 已记录最新状态、阻塞/依赖和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 | 切换到 `review` 前已再次自动运行 `cc-verify` | ✅ / ❌ / ⚠️ / N/A |
 | 全部 task 完成时，`spec.status` 已更新为 `review` | ✅ / ❌ / ⚠️ / N/A |

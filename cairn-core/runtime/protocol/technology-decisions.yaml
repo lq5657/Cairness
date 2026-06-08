@@ -12,12 +12,12 @@ technology_decisions:
     - require_user_confirmation_for_blocking_p0_decisions
     - record_unresolved_decisions_as_pending_not_final
   project_outputs:
-    - .cc/context/project-definition.md
-    - .cc/context/architecture-outline.md
-    - .cc/context/project-summary.md
-    - .cc/context/project-context.md
-    - .cc/context/dev-map.md
+    - .cairness/context/project-definition.md
+    - .cairness/context/architecture-outline.md
+    - .cairness/context/project-summary.md
+    - .cairness/context/project-context.md
+    - .cairness/context/dev-map.md
   change_outputs:
-    - .cc/changes/<change-id>/spec.md
-    - .cc/changes/<change-id>/log.md
+    - .cairness/changes/<change-id>/spec.md
+    - .cairness/changes/<change-id>/log.md
   blocking_error: user_confirmation_required

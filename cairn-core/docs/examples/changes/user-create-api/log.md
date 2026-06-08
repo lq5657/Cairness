@@ -49,7 +49,7 @@
 
 | 关键词 | 一句话结论 | 出处 | 建议落点 | 复利判断 | 处理结果 |
 |--------|------------|------|----------|----------|----------|
-| `service-idempotency` | 写接口的幂等和业务规则应集中在 Service，而不是只放在 Handler | `.claude/docs/examples/changes/user-create-api/spec.md` §11 | `.cc/knowledge/index.md` | 新增知识 | 已沉淀 |
+| `service-idempotency` | 写接口的幂等和业务规则应集中在 Service，而不是只放在 Handler | `.claude/docs/examples/changes/user-create-api/spec.md` §11 | `.cairness/knowledge/index.md` | 新增知识 | 已沉淀 |
 
 #### Spec-Code 偏差记录
 

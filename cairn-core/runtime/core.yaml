@@ -52,8 +52,8 @@ legacy_fallback:
   checkpoints_dir: .claude/docs/maintenance/legacy/checkpoints
 
 governance:
-  task_board: .cc/changes/task-board.md
-  dev_map: .cc/context/dev-map.md
+  task_board: .cairness/changes/task-board.md
+  dev_map: .cairness/context/dev-map.md
   memory_policy: .claude/rules/memory-policy.md
   subagent_policy: .claude/docs/maintenance/subagent-model.md
 

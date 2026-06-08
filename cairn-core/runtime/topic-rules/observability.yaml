@@ -84,7 +84,7 @@ rules:
 
   minimum_verification:
     - "spec.md 已记录日志点、关键字段、metrics/告警观察项"
-    - ".cc/context/project-context.md 已反映项目真实日志与观测方案"
+    - ".cairness/context/project-context.md 已反映项目真实日志与观测方案"
     - "关键链路的日志或等价可观测信号可定位"
     - "若涉及异步任务，已说明任务标识、重试与失败观察方式"
     - "若涉及发布观察，已说明观察窗口或回归指标"

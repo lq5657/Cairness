@@ -27,9 +27,9 @@ These stages may run through bounded read-only subagents. The main flow still wr
 
 ## Audit Boundary
 
-- `cc-inspect-codebase` creates `.cc/audits/<audit-id>/report.md`; it does not fix code.
+- `cc-inspect-codebase` creates `.cairness/audits/<audit-id>/report.md`; it does not fix code.
 - `cc-inspect-codebase` may use read-only audit subagents for mode/scope evidence collection; the main flow deduplicates findings and writes the final report.
-- `cc-promote-audit` creates `.cc/audits/<audit-id>/to-change.md` and task-board candidates; it does not create `.cc/changes/<change-id>/spec.md`.
+- `cc-promote-audit` creates `.cairness/audits/<audit-id>/to-change.md` and task-board candidates; it does not create `.cairness/changes/<change-id>/spec.md`.
 - Every finding needs concrete evidence: file path, symbol, behavior, command result, or explicit "待确认".
 
 ## Verification

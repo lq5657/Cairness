@@ -44,7 +44,7 @@
 
 #### 输出要求
 
-输出内容必须与 `.cc/changes/<change-id>/review.md` 的 Stage 2 和 Findings 一一对应，不要输出自由文本小结代替表格。
+输出内容必须与 `.cairness/changes/<change-id>/review.md` 的 Stage 2 和 Findings 一一对应，不要输出自由文本小结代替表格。
 
 **固定输出格式：**
 

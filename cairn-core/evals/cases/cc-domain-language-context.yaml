@@ -3,7 +3,7 @@ input: "cc-propose add a buyer account status rule where domain terms may confli
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-propose.yaml
-  - .cc/context/domain-language.md
+  - .cairness/context/domain-language.md
   - .claude/rules/memory-policy.md
 forbidden_actions:
   - ignore_domain_term_conflict_before_hard_gate

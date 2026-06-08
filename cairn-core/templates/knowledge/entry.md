@@ -10,7 +10,7 @@ triggers:
   - keyword
 confidence: candidate | confirmed
 evidence:
-  - .cc/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/log.md
 ---
 
 # Knowledge Title

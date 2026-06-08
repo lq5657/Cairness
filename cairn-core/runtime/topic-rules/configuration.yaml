@@ -35,7 +35,7 @@ red_flags:
   - "删除配置但未确认旧部署流程、任务或回滚版本不再依赖"
 
 checks:
-  - "spec.md 或 .cc/context/project-context.md 已记录配置契约和环境差异"
+  - "spec.md 或 .cairness/context/project-context.md 已记录配置契约和环境差异"
   - "配置读取、注入、校验和默认值路径可定位"
   - "开关启停、密钥来源和回滚影响已验证或记录为风险"
 
@@ -89,7 +89,7 @@ rules:
 
   minimum_verification:
     - "spec.md 已记录新增或变更配置项及其默认值、必填性、环境差异"
-    - ".cc/context/project-context.md 的'配置管理'约定已反映当前项目真实做法"
+    - ".cairness/context/project-context.md 的'配置管理'约定已反映当前项目真实做法"
     - "配置读取点、注入点、校验点可定位"
     - "若涉及敏感配置，来源与脱敏策略已说明"
     - "若涉及开关，已说明启用/关闭策略与回滚影响"

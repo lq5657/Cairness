@@ -48,10 +48,10 @@
 ## 输出
 
 产出：
-- `.cc/audits/<audit-id>/report.md`
+- `.cairness/audits/<audit-id>/report.md`
 
 不产出：
-- `.cc/changes/<change-id>/spec.md`
+- `.cairness/changes/<change-id>/spec.md`
 - 业务代码修改
 - 自动修复结果
 
@@ -60,8 +60,8 @@
 以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-inspect-codebase` 行为准：
 - 状态机定位：存量项目审查命令，不创建也不改变 change 状态
 - 输入：`mode`，可选 `scope`
-- 输出：`.cc/audits/<audit-id>/report.md`
-- 可写文件：仅 `.cc/audits/<audit-id>/report.md`
+- 输出：`.cairness/audits/<audit-id>/report.md`
+- 可写文件：仅 `.cairness/audits/<audit-id>/report.md`
 - 必须校验：`mode` 合法、scope 明确、每个 Finding 都有代码 / 配置 / 调用链证据
 - 禁止行为：自动修复、创建 change、把 audit 直接当 spec、无证据下缺陷结论
 
@@ -89,7 +89,7 @@
 
 允许读取：
 - 与当前 `mode` / `scope` 直接相关的目录、代码、配置
-- `.cc/context/project-context.md`
+- `.cairness/context/project-context.md`
 - 必要的架构、配置、测试相关规则
 
 不建议读取：
@@ -164,5 +164,5 @@
 ## 需要加载的附加文件
 
 - `.claude/docs/maintenance/legacy/checkpoints/cc-inspect-codebase.md`
-- `.cc/context/project-context.md`
+- `.cairness/context/project-context.md`
 - 按 `mode` 增量加载相关专题规则

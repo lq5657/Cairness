@@ -37,7 +37,7 @@ def load_harness_config(project_root: Path) -> dict[str, Any]:
 
 def discover_events(project_root: Path) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
-    changes_dir = project_root / ".cc" / "changes"
+    changes_dir = project_root / ".cairness" / "changes"
     if not changes_dir.exists():
         return events
     for event_file in sorted(changes_dir.rglob("events.jsonl")):

@@ -11,9 +11,9 @@ state:
   change_to: review
 
 writes:
-  - .cc/changes/<change-id>/review.md
-  - .cc/changes/<change-id>/log.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/review.md
+  - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - direct_code_change
@@ -27,15 +27,15 @@ forbids:
   - skip_location_and_existing_code_in_finding_details
 
 required_reads:
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/changes/task-board.md
 
 optional_reads:
-  - .cc/changes/<change-id>/review.md
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/context/domain-language.md
-  - .cc/context/mvp-roadmap.md
+  - .cairness/changes/<change-id>/review.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/mvp-roadmap.md
 
 conditional_reads:
   when_writing_review_artifact:

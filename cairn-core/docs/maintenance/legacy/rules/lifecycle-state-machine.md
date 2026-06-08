@@ -48,5 +48,5 @@
 - `done` 只能由 `cc-archive` 设置；`cc-review` 只能给出"可归档"结论，不能直接归档。
 - 存在 `open` Finding、`blocked` task、未解释的 `gap` 映射项时，禁止进入 `done`。
 - context / audit / explain / preflight 类命令不得修改任何正式 change 的生命周期状态。
-- `.cc/context/dev-map.md` 和 `.cc/changes/task-board.md` 只能承载导航与摘要，不得绕过正式 change 状态机。
+- `.cairness/context/dev-map.md` 和 `.cairness/changes/task-board.md` 只能承载导航与摘要，不得绕过正式 change 状态机。
 - 命令迁移规则（允许前置状态、成功后状态、失败处理）以 `workflows/cc-workflow.yaml` 的 `change_from` / `change_to` 为准。

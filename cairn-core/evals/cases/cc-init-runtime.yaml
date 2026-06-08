@@ -12,6 +12,6 @@ forbidden_actions:
   - create_change_or_audit
   - deep_code_review
 expected_checks:
-  - update .cc/context/project-context.md
-  - update .cc/context/dev-map.md
+  - update .cairness/context/project-context.md
+  - update .cairness/context/dev-map.md
 rubric: default

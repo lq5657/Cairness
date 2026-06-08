@@ -5,7 +5,7 @@ profile: standard
 
 paths:
   framework_root: ".claude"
-  state_root: ".cc"
+  state_root: ".cairness"
   framework_docs_root: ".claude/docs"
 
 git:
@@ -28,11 +28,11 @@ runtime:
   readset_schema: ".claude/schemas/runtime-readset.schema.json"
   topic_rule_schema: ".claude/schemas/topic-rule.schema.json"
 memory:
-  project_summary: ".cc/context/project-summary.md"
-  project_context: ".cc/context/project-context.md"
-  domain_language: ".cc/context/domain-language.md"
-  dev_map: ".cc/context/dev-map.md"
-  task_board: ".cc/changes/task-board.md"
+  project_summary: ".cairness/context/project-summary.md"
+  project_context: ".cairness/context/project-context.md"
+  domain_language: ".cairness/context/domain-language.md"
+  dev_map: ".cairness/context/dev-map.md"
+  task_board: ".cairness/changes/task-board.md"
   policy: ".claude/rules/memory-policy.md"
 
 docs:
@@ -107,7 +107,7 @@ validation:
   readset_command: ".claude/scripts/cc-readset"
   deps_command: ".claude/scripts/cc-deps"
   gate_stats_command: ".claude/scripts/cc-gate-stats"
-  baseline_dir: ".cc/changes/<change-id>/baseline"
+  baseline_dir: ".cairness/changes/<change-id>/baseline"
   fixture_dir: ".claude/fixtures"
   require_structured_hard_gate: true
   require_traceability_check: true

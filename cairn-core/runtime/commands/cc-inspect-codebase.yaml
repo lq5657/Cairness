@@ -13,7 +13,7 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/audits/<audit-id>/report.md
+  - .cairness/audits/<audit-id>/report.md
 
 forbids:
   - auto_fix
@@ -23,10 +23,10 @@ forbids:
   - enter_promote_audit_automatically
 
 required_reads:
-  - .cc/context/project-summary.md
+  - .cairness/context/project-summary.md
 
 optional_reads:
-  - .cc/context/project-context.md
+  - .cairness/context/project-context.md
 
 conditional_reads:
   when_writing_audit_report:

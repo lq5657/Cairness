@@ -12,10 +12,10 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-summary.md
+- .cairness/context/project-summary.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/project-context.md
+- .cairness/context/project-context.md
 conditional_reads:
   when_writing_audit_report:
   - .claude/templates/audits/report.md

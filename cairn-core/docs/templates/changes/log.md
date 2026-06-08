@@ -100,7 +100,7 @@
 
 | 关键词 | 一句话结论 | 出处 | 建议落点 | 类型 | 复利判断 | 处理结果 |
 |--------|------------|------|----------|------|----------|----------|
-| | | | `.cc/knowledge/index.md` / 某专题文件 / `refinement-candidates/` | project_knowledge / refinement_candidate | 无需沉淀 / 新增知识 / 更新既有知识 / 候选维护改进 | 待确认 / 已沉淀 / 放弃 |
+| | | | `.cairness/knowledge/index.md` / 某专题文件 / `refinement-candidates/` | project_knowledge / refinement_candidate | 无需沉淀 / 新增知识 / 更新既有知识 / 候选维护改进 | 待确认 / 已沉淀 / 放弃 |
 
 #### Spec-Code 偏差记录
 

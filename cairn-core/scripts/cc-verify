@@ -73,7 +73,7 @@ def is_relative_to(path: Path, parent: Path) -> bool:
 
 
 def changed_change_dirs(paths: list[Path], project_root: Path) -> list[Path]:
-    changes_root = project_root / ".cc" / "changes"
+    changes_root = project_root / ".cairness" / "changes"
     dirs: set[Path] = set()
     for path in paths:
         if not is_relative_to(path, changes_root):
@@ -90,7 +90,7 @@ def has_harness_changes(paths: list[Path], project_root: Path) -> bool:
     repo_root = git_repo_root(project_root)
     watched_roots = [
         project_root / ".claude",
-        project_root / ".cc",
+        project_root / ".cairness",
         project_root / "README.md",
         repo_root / ".github",
     ]
@@ -129,7 +129,7 @@ def has_profile_changes(paths: list[Path], project_root: Path, profile: Language
         if not is_relative_to(path, project_root):
             continue
         relative = path.resolve().relative_to(project_root.resolve())
-        if relative.parts and relative.parts[0] in {".claude", ".cc"}:
+        if relative.parts and relative.parts[0] in {".claude", ".cairness"}:
             continue
         if relative.name in module_names or relative.name in lockfile_names:
             return True
@@ -234,7 +234,7 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
     if name == "cc-event-check":
         return {
             "cause": "Lifecycle event log validation failed.",
-            "fix_hint": "Fix invalid .cc/changes/<change-id>/events.jsonl records or remove incomplete event drafts.",
+            "fix_hint": "Fix invalid .cairness/changes/<change-id>/events.jsonl records or remove incomplete event drafts.",
             "doc_ref": ".claude/schemas/command-event.schema.json",
         }
     if name == "cc-behavior-check":
@@ -265,7 +265,7 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
         return {
             "cause": "The requested change directory does not exist.",
             "fix_hint": "Provide an existing change_id or create the proposal before running change-scoped checks.",
-            "doc_ref": ".cc/changes/task-board.md",
+            "doc_ref": ".cairness/changes/task-board.md",
         }
     if name == "changed-only":
         return {
@@ -379,8 +379,8 @@ def _extract_code_block(lines: list[str], start_idx: int) -> tuple[str, int]:
 
 def check_review_coverage(project_root: Path, change_id: str) -> dict[str, object]:
     """Check that review.md has a complete file_review_scope table."""
-    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
-    log_path = project_root / ".cc" / "changes" / change_id / "log.md"
+    review_path = project_root / ".cairness" / "changes" / change_id / "review.md"
+    log_path = project_root / ".cairness" / "changes" / change_id / "log.md"
 
     if not review_path.exists():
         return {
@@ -470,7 +470,7 @@ def check_review_coverage(project_root: Path, change_id: str) -> dict[str, objec
 
 def check_finding_locations(project_root: Path, change_id: str) -> dict[str, object]:
     """Check that finding existing_code matches actual file content."""
-    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
+    review_path = project_root / ".cairness" / "changes" / change_id / "review.md"
 
     if not review_path.exists():
         return {
@@ -585,7 +585,7 @@ def check_finding_locations(project_root: Path, change_id: str) -> dict[str, obj
 
 def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
     """Check that if risk_triage marker exists, the table is populated."""
-    review_path = project_root / ".cc" / "changes" / change_id / "review.md"
+    review_path = project_root / ".cairness" / "changes" / change_id / "review.md"
 
     if not review_path.exists():
         return {
@@ -767,7 +767,7 @@ def resolution_error_message(status: str, errors: tuple[str, ...]) -> str:
 def build_report(args: argparse.Namespace) -> dict[str, object]:
     claude_root = Path(__file__).resolve().parent.parent
     project_root = claude_root.parent
-    changes_root = project_root / ".cc" / "changes"
+    changes_root = project_root / ".cairness" / "changes"
     target_project_root = (project_root / args.fixture).resolve() if args.fixture else project_root
     config_path = claude_root / "harness.config.yaml"
     config = load_yaml_mapping(config_path) if config_path.exists() else {}

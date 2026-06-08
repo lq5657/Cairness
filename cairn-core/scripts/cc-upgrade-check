@@ -55,7 +55,7 @@ def check_version_docs(claude_root: Path, issues: list[Issue]) -> dict[str, str]
 
 def check_state_separation(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
     for state_dir in ("context", "changes", "knowledge"):
-        require(project_root / ".cc" / state_dir, "dir", issues, "E_UPGRADE004")
+        require(project_root / ".cairness" / state_dir, "dir", issues, "E_UPGRADE004")
     legacy_state_paths = [
         claude_root / "context",
         claude_root / "changes" / "task-board.md",
@@ -100,12 +100,12 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     for path, kind in technology_assets:
         require(path, kind, issues, "E_UPGRADE006")
     protected_state = [
-        project_root / ".cc" / "context" / "project-summary.md",
-        project_root / ".cc" / "context" / "project-context.md",
-        project_root / ".cc" / "context" / "domain-language.md",
-        project_root / ".cc" / "context" / "dev-map.md",
-        project_root / ".cc" / "changes" / "task-board.md",
-        project_root / ".cc" / "knowledge" / "index.md",
+        project_root / ".cairness" / "context" / "project-summary.md",
+        project_root / ".cairness" / "context" / "project-context.md",
+        project_root / ".cairness" / "context" / "domain-language.md",
+        project_root / ".cairness" / "context" / "dev-map.md",
+        project_root / ".cairness" / "changes" / "task-board.md",
+        project_root / ".cairness" / "knowledge" / "index.md",
     ]
     for path in protected_state:
         require(path, "file", issues, "E_UPGRADE007")
@@ -124,7 +124,7 @@ def build_report() -> dict[str, Any]:
         "status": "failed" if issues else "passed",
         "project_root": str(project_root),
         "version": metadata.get("version", ""),
-        "protected_state_root": str(project_root / ".cc"),
+        "protected_state_root": str(project_root / ".cairness"),
         "replaceable_framework_root": str(claude_root),
         "issues": [issue.__dict__ for issue in issues],
     }

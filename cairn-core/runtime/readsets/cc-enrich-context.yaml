@@ -12,13 +12,13 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-enrich-context.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-context.md
-- .cc/context/domain-language.md
-- .cc/context/dev-map.md
+- .cairness/context/project-context.md
+- .cairness/context/domain-language.md
+- .cairness/context/dev-map.md
 - .claude/rules/memory-policy.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/project-summary.md
+- .cairness/context/project-summary.md
 conditional_reads:
   when_writing_context_artifacts:
   - .claude/templates/context/project-context.md

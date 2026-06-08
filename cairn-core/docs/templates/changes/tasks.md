@@ -6,7 +6,7 @@ updated: YYYY-MM-DD
 
 ### 任务拆分 — 需求名称
 
-文件位置：`.cc/changes/<change-id>/tasks.md`
+文件位置：`.cairness/changes/<change-id>/tasks.md`
 
 **拆分顺序：** 数据模型 → 接口协议 → 底层实现 → 上层编排 → 入口层
 **每个任务** = 可独立提交的原子变更（3-5 个文件）

@@ -91,8 +91,8 @@ cc-propose feedback-summary
 ```
 
 **场景前提**：
-- 已存在 `.cc/context/project-definition.md`
-- 已存在 `.cc/context/mvp-roadmap.md`
+- 已存在 `.cairness/context/project-definition.md`
+- 已存在 `.cairness/context/mvp-roadmap.md`
 - 推荐 backlog 中 `feedback-summary` 位于 Phase 2，依赖 `roleplay-session-core`
 
 **必过信号**：
@@ -139,7 +139,7 @@ cc-propose 让现有告警中心更智能一点，减少无效告警
 cc-propose growth-dashboard
 ```
 
-- 已存在 `.cc/context/mvp-roadmap.md`
+- 已存在 `.cairness/context/mvp-roadmap.md`
 - 当前 roadmap 还处于 Phase 0 / Phase 1
 - `growth-dashboard` 不在推荐 backlog，且与当前 MVP 无直接关系
 

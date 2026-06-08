@@ -27,9 +27,9 @@ Use placeholders until a real change exists:
 For `cc-apply`, save fresh baseline/delta evidence as required by `rules/verification.md`:
 
 ```bash
-.claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>
-.claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/post-task-<n>.json --change <change-id>
-.claude/scripts/cc-delta-check --before .cc/changes/<change-id>/baseline/pre-apply.json --after .cc/changes/<change-id>/baseline/post-task-<n>.json
+.claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/pre-apply.json --change <change-id>
+.claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/post-task-<n>.json --change <change-id>
+.claude/scripts/cc-delta-check --before .cairness/changes/<change-id>/baseline/pre-apply.json --after .cairness/changes/<change-id>/baseline/post-task-<n>.json
 ```
 
 Do not mark a task `done`, finding `fixed`, review `pass`, or archive `done` without current evidence from the same implementation state.

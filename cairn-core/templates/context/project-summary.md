@@ -4,7 +4,7 @@ alwaysApply: true
 ### 项目摘要
 
 本文件是高频命令的短上下文入口，由 `cc-init` 维护。
-完整事实、补充事实和待确认细节继续放在 `.cc/context/project-context.md`。
+完整事实、补充事实和待确认细节继续放在 `.cairness/context/project-context.md`。
 
 #### 1. 项目身份
 
@@ -30,15 +30,15 @@ alwaysApply: true
 
 #### 3. 状态与导航
 
-- 项目状态目录（`.cc`）: `.cc/`
+- 项目状态目录（`.cc`）: `.cairness/`
 - 框架目录（Harness 提供）: `.claude/`
-- 领域语言: `.cc/context/domain-language.md`
-- 开发导航: `.cc/context/dev-map.md`
-- change 看板: `.cc/changes/task-board.md`
+- 领域语言: `.cairness/context/domain-language.md`
+- 开发导航: `.cairness/context/dev-map.md`
+- change 看板: `.cairness/changes/task-board.md`
 
 #### 4. 读取边界
 
 - 默认命令先读本摘要、dev-map 和 task-board。
-- 只有需要扩展事实、历史背景或专题上下文时，再读取 `.cc/context/project-context.md`。
-- 当需求、审查或系统讲解涉及业务术语、状态名或易混概念时，读取 `.cc/context/domain-language.md`。
+- 只有需要扩展事实、历史背景或专题上下文时，再读取 `.cairness/context/project-context.md`。
+- 当需求、审查或系统讲解涉及业务术语、状态名或易混概念时，读取 `.cairness/context/domain-language.md`。
 - 不把本摘要当作 spec、tasks、review 或 test-spec 的替代品。

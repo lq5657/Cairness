@@ -207,7 +207,7 @@ flowchart LR
 - 先看事实：`project-context.md`
 - 再看系统讲解：`system-overview.md`
 - 再看问题体检：`cc-inspect-codebase` 产物
-- 最后看真实 change：`.claude/docs/examples/changes/` 与进行中的 `.cc/changes/<change-id>/`
+- 最后看真实 change：`.claude/docs/examples/changes/` 与进行中的 `.cairness/changes/<change-id>/`
 
 ## 9. 运维与验证视角
 

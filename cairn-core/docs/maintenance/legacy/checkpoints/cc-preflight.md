@@ -9,7 +9,7 @@
 | 检查项 | 结果 |
 |--------|------|
 | `.claude/` 脚手架存在 | ✅ / ❌ / ⚠️ / N/A |
-| 已读取 `.cc/knowledge/integration-preflight-checklist.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `.cairness/knowledge/integration-preflight-checklist.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次目标是“接入前自检”，不是“项目体检” | ✅ / ❌ / ⚠️ / N/A |
 | 已明确本次不是 `cc-init`、`cc-propose` 或 `cc-inspect-codebase` | ✅ / ❌ / ⚠️ / N/A |
 
@@ -25,7 +25,7 @@
 | 已检查 `workflows/cc-workflow.yaml` 中每个命令的 `roles` 都已登记 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `docs/maintenance/legacy/rules/command-contracts.md` 覆盖全部 `cc-*` 命令 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `docs/maintenance/legacy/rules/role-contracts.md` 与 `rules/memory-policy.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
-| 已检查 `.cc/context/dev-map.md` 与 `.cc/changes/task-board.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| 已检查 `.cairness/context/dev-map.md` 与 `.cairness/changes/task-board.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `validation.auto_run` / `validation.fail_on_error` / `validation.run_on` 自动校验策略 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 `cc-verify` / `cc-delta-check` 脚本存在且可执行 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查关键功能资产是否齐全 | ✅ / ❌ / ⚠️ / N/A |

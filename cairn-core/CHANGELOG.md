@@ -4,7 +4,7 @@
 
 ## 0.21.0 - 2026-06-06
 
-- Added `cc-discuss` command — a pre-spec discovery and discussion phase for refining vague ideas through interactive AI-guided conversation with proactive web research and existing project analysis. Produces a clarified design brief (`.cc/discussions/<discuss-id>/brief.md`) that feeds into `cc-propose` or `cc-new-project`. Features an open-ended conversation loop (no hard gate), two parallel read-only research subagents (requirement-analyst + context-curator), and an active routing selection after brief completion (new project / new change / continue / park). Includes discussion brief and log templates, subagent contracts, budget limits, and full runtime manifest integration.
+- Added `cc-discuss` command — a pre-spec discovery and discussion phase for refining vague ideas through interactive AI-guided conversation with proactive web research and existing project analysis. Produces a clarified design brief (`.cairness/discussions/<discuss-id>/brief.md`) that feeds into `cc-propose` or `cc-new-project`. Features an open-ended conversation loop (no hard gate), two parallel read-only research subagents (requirement-analyst + context-curator), and an active routing selection after brief completion (new project / new change / continue / park). Includes discussion brief and log templates, subagent contracts, budget limits, and full runtime manifest integration.
 - Added `discuss_id` input contract and `discuss_dir` path role to protocol.
 - Extended `cc-lint` and `cc-schema-check` hardcoded command sets with `cc-discuss` entries.
 
@@ -19,10 +19,10 @@
 
 ## 0.20.0 - 2026-04-25
 
-- Split upgradeable framework assets from project-generated state: `.claude/` remains the framework root, while `.cc/` stores project context, changes, audits, and knowledge.
+- Split upgradeable framework assets from project-generated state: `.claude/` remains the framework root, while `.cairness/` stores project context, changes, audits, and knowledge.
 - Moved framework maintenance docs under `.claude/docs/` and reusable templates under `.claude/templates/`.
 - Updated runtime manifests, workflow write scopes, config, scripts, schemas, evals, and docs to use `.cc` for project state paths.
-- Adjusted verification, schema, lint, readset, role, sync, and eval scripts so default checks target `.cc/changes` and accept `.cc` project paths.
+- Adjusted verification, schema, lint, readset, role, sync, and eval scripts so default checks target `.cairness/changes` and accept `.cc` project paths.
 
 ## 0.19.0 - 2026-04-25
 

@@ -89,7 +89,7 @@
       "properties": {
         "change_event_log": {
           "type": "string",
-          "pattern": "^\\.cc/changes/<change-id>/events\\.jsonl$"
+          "pattern": "^\\.cairness/changes/<change-id>/events\\.jsonl$"
         },
         "schema": {
           "type": "string",
@@ -251,7 +251,7 @@
     },
     "statePath": {
       "type": "string",
-      "pattern": "^\\.cc/.+$"
+      "pattern": "^\\.cairness/.+$"
     },
     "inputContract": {
       "type": "object",

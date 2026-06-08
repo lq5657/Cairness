@@ -132,7 +132,7 @@ def project_path(project_root: Path, declared: str) -> Path | None:
         return None
     if declared == "README.md":
         return project_root / declared
-    if declared.startswith(".claude/") or declared.startswith(".cc/"):
+    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
         return project_root / declared
     return None
 

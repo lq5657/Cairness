@@ -27,9 +27,9 @@ decision_groups:
     default_recommendation: library_or_cli
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: library_or_cli
         label: Library or CLI
@@ -74,9 +74,9 @@ decision_groups:
     default_recommendation: cmake
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: cmake
         label: CMake
@@ -121,9 +121,9 @@ decision_groups:
     default_recommendation: vcpkg_or_conan
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: vcpkg_or_conan
         label: vcpkg or Conan
@@ -168,9 +168,9 @@ decision_groups:
     default_recommendation: googletest
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: googletest
         label: GoogleTest
@@ -215,9 +215,9 @@ decision_groups:
     default_recommendation: cpp20
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: cpp17
         label: C++17
@@ -254,9 +254,9 @@ decision_groups:
     default_recommendation: spdlog
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: spdlog
         label: spdlog
@@ -301,8 +301,8 @@ decision_groups:
     default_recommendation: clang_tidy
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
     options:
       - id: clang_tidy
         label: clang-tidy
@@ -347,8 +347,8 @@ decision_groups:
     default_recommendation: cpp_httplib
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: cpp_httplib
         label: cpp-httplib

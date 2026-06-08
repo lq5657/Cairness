@@ -10,7 +10,7 @@
 |--------|------|
 | 已判断当前请求属于已有项目 change，而不是新项目定义；若是新项目已路由到 `cc-new-project` | ✅ / ❌ / ⚠️ / N/A |
 | 若存在 `project-definition.md` / `mvp-roadmap.md`，已确认本次 change 与当前 phase / backlog 一致 | ✅ / ❌ / ⚠️ / N/A |
-| 若存在 `.cc/context/dev-map.md` / `.cc/changes/task-board.md`，已用于确认模块边界、冲突和 backlog 状态 | ✅ / ❌ / ⚠️ / N/A |
+| 若存在 `.cairness/context/dev-map.md` / `.cairness/changes/task-board.md`，已用于确认模块边界、冲突和 backlog 状态 | ✅ / ❌ / ⚠️ / N/A |
 | 已确定本轮规则装载清单，且至少包含 `rules/verification.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已完成需求清晰度判断，并收敛为 `direct` / `light-clarify` / `brainstorm-needed` 之一 | ✅ / ❌ / ⚠️ / N/A |
 | 已有项目已完成最小必要 Research | ✅ / ❌ / ⚠️ / N/A |
@@ -51,7 +51,7 @@
 | 若验证策略、测试边界或最低验证承接方式存在争议，已读取 `rules/testing-strategy.md` | ✅ / ❌ / ⚠️ / N/A |
 | 若涉及 DB、API、配置、可观测性、测试、发布等专题，已读取对应规则 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要，而不是隐性假设“规则已自动生效” | ✅ / ❌ / ⚠️ / N/A |
-| 已准备同步 `.cc/changes/task-board.md` 的 change 状态、影响模块、阻塞/依赖和下一命令 | ✅ / ❌ / ⚠️ / N/A |
+| 已准备同步 `.cairness/changes/task-board.md` 的 change 状态、影响模块、阻塞/依赖和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 
 ## 完成后检查
 
@@ -66,7 +66,7 @@
 | 若触发专题规则，`spec.md` 已体现对应约束，而不是只口头提过 | ✅ / ❌ / ⚠️ / N/A |
 | `spec.md` 的验证映射与 `tasks.md` 的验证步骤可追溯 | ✅ / ❌ / ⚠️ / N/A |
 | `tasks.md` 的 task 已达到最小可执行单元粒度 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/changes/task-board.md` 已新增或刷新当前 change 摘要 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/changes/task-board.md` 已新增或刷新当前 change 摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 若存在未决问题，已保留在“待澄清”且未越权进入实现 | ✅ / ❌ / ⚠️ / N/A |
 | 已按 `validation.run_on.propose` 自动运行 `cc-verify --harness-only`，且失败时未进入就绪结论 | ✅ / ❌ / ⚠️ / N/A |
 | HARD-GATE 已包含 spec/tasks 版本、确认范围、接受风险和人审状态 | ✅ / ❌ / ⚠️ / N/A |

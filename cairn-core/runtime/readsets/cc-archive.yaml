@@ -12,13 +12,13 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-archive.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/changes/<change-id>/review.md
-- .cc/changes/<change-id>/log.md
-- .cc/changes/task-board.md
+- .cairness/changes/<change-id>/review.md
+- .cairness/changes/<change-id>/log.md
+- .cairness/changes/task-board.md
 - .claude/rules/memory-policy.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/knowledge/index.md
+- .cairness/knowledge/index.md
 conditional_reads:
   when_writing_knowledge_entry:
   - .claude/templates/knowledge/entry.md

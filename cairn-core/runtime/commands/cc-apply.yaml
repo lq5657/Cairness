@@ -14,12 +14,12 @@ state:
 writes:
   - task_declared_code_files
   - test_files
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/<change-id>/log.md
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/context/dev-map.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/context/dev-map.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - out_of_scope_change_without_spec_review_flag
@@ -31,10 +31,10 @@ forbids:
   - treat_missing_hard_gate_as_user_confirmation
 
 required_reads:
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/context/dev-map.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/context/dev-map.md
+  - .cairness/changes/task-board.md
   - .claude/harness.config.yaml
 
 conditional_reads:
@@ -166,7 +166,7 @@ steps:
 
 auto_validation:
   - .claude/scripts/cc-deps check --change <change-id>
-  - .claude/scripts/cc-verify --json --output .cc/changes/<change-id>/baseline/pre-apply.json --change <change-id>
+  - .claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/pre-apply.json --change <change-id>
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>
   - .claude/scripts/cc-budget-check

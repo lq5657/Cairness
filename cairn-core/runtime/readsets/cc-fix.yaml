@@ -12,19 +12,19 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-fix.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/changes/<change-id>/review.md
-- .cc/changes/task-board.md
+- .cairness/changes/<change-id>/review.md
+- .cairness/changes/task-board.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/changes/<change-id>/test-spec.md
-- .cc/context/dev-map.md
+- .cairness/changes/<change-id>/test-spec.md
+- .cairness/context/dev-map.md
 conditional_reads:
   when_selected_finding_needs_spec_or_task_context:
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
   when_fix_requires_existing_execution_history:
-  - .cc/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/log.md
   when_creating_test_spec_artifact:
   - .claude/templates/changes/test-spec.md
   when_reproduction_or_failure_localization_is_required:

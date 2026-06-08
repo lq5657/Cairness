@@ -13,7 +13,7 @@ It is not split by programming language. Split it only by domain context or boun
 - Do not record general programming terms, framework names, package names, or language-specific implementation details.
 - Prefer one canonical term. Put rejected aliases under `_Avoid_`.
 - When a user uses a term that conflicts with this file, call out the conflict before freezing scope.
-- If multiple contexts exist, keep this file as the root map and link to context-specific files such as `.cc/context/domain/ordering.md`.
+- If multiple contexts exist, keep this file as the root map and link to context-specific files such as `.cairness/context/domain/ordering.md`.
 
 ## Terms
 

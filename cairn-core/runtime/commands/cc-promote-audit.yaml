@@ -12,8 +12,8 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/audits/<audit-id>/to-change.md
-  - .cc/changes/task-board.md
+  - .cairness/audits/<audit-id>/to-change.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - copy_entire_audit_verbatim
@@ -24,8 +24,8 @@ forbids:
   - write_bridge_without_finding_selection_choice
 
 required_reads:
-  - .cc/audits/<audit-id>/report.md
-  - .cc/changes/task-board.md
+  - .cairness/audits/<audit-id>/report.md
+  - .cairness/changes/task-board.md
 
 optional_reads:
   - .claude/runtime/commands/cc-propose.yaml

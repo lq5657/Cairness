@@ -3,7 +3,7 @@ input: "cc-discuss 我想优化数据库查询性能"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-discuss.yaml
-  - .cc/context/project-summary.md
+  - .cairness/context/project-summary.md
 forbidden_actions:
   - treat_vague_input_as_ready
   - skip_challenging_assumptions

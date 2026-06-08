@@ -10,10 +10,10 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/context/project-summary.md
-  - .cc/context/project-context.md
-  - .cc/context/domain-language.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-summary.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
 
 forbids:
   - create_scaffold_assets
@@ -24,13 +24,13 @@ forbids:
   - treat_planned_paths_as_confirmed_facts
 
 required_reads:
-  - .cc/context/project-summary.md
-  - .cc/context/domain-language.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-summary.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
   - .claude/rules/memory-policy.md
 
 optional_reads:
-  - .cc/context/project-context.md
+  - .cairness/context/project-context.md
 
 conditional_reads:
   when_writing_context_artifacts:

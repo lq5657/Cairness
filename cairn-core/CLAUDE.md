@@ -32,23 +32,23 @@
 
 ## 核心原则
 
-- `No Spec, No Code`：没有 `.cc/changes/<change-id>/spec.md`，禁止进入实现。
+- `No Spec, No Code`：没有 `.cairness/changes/<change-id>/spec.md`，禁止进入实现。
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致。
 - `变更即记录`：改代码时必须同步更新 change 文档。
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”。
 - 生命周期状态遵守 `.claude/workflows/cc-workflow.yaml`。
 - migrated command 优先遵守 `.claude/runtime/commands/<command>.yaml`。
-- 项目短上下文优先读 `.cc/context/project-summary.md`。
-- 完整项目事实按需读 `.cc/context/project-context.md`。
-- 领域语言按需读 `.cc/context/domain-language.md`；它按业务上下文拆分，不按编程语言拆分。
-- 项目长期导航写 `.cc/context/dev-map.md`。
-- change 状态摘要写 `.cc/changes/task-board.md`。
+- 项目短上下文优先读 `.cairness/context/project-summary.md`。
+- 完整项目事实按需读 `.cairness/context/project-context.md`。
+- 领域语言按需读 `.cairness/context/domain-language.md`；它按业务上下文拆分，不按编程语言拆分。
+- 项目长期导航写 `.cairness/context/dev-map.md`。
+- change 状态摘要写 `.cairness/changes/task-board.md`。
 - 不得把 `project-summary.md`、`dev-map.md` 或 `task-board.md` 当成 spec/tasks/review/test-spec 的替代品。
 
 ## 运行时边界
 
 - `.claude/` 是可升级 Harness 根目录，只放框架、规则、脚本、schema、runtime、模板和维护说明。
-- `.cc/` 是项目状态根目录，只放项目实践中生成或持续更新的 context、changes、audits 和 knowledge。
+- `.cairness/` 是项目状态根目录，只放项目实践中生成或持续更新的 context、changes、audits 和 knowledge。
 - `.claude/runtime/`、`.claude/workflows/`、`.claude/schemas/`、`.claude/scripts/` 属于运行时与校验资产。
 - `.claude/templates/` 属于可升级模板资产，不是项目真实状态。
 - 本框架所有配置、workflow 和 runtime manifest 中的相对路径默认相对于项目根目录解释。
@@ -77,7 +77,7 @@
 会话启动阶段只允许：
 
 1. 获取当前分支名。
-2. 检查 `.cc/changes/` 下是否存在进行中的 change。
+2. 检查 `.cairness/changes/` 下是否存在进行中的 change。
 3. 读取进行中的 change 最小元信息：`change-id`、`status`、`depends_on`。
 4. 输出会话状态摘要。
 5. 展示可复制的 `cc-*` 命令入口。
@@ -85,7 +85,7 @@
 启动阶段禁止：
 
 - 全量读取 `rules/`。
-- 全量读取 `.cc/knowledge/`。
+- 全量读取 `.cairness/knowledge/`。
 - 扫描业务代码目录。
 - 读取源代码、测试代码、配置正文、README 正文。
 - 推断项目类型、系统架构、依赖栈、模块边界。

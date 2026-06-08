@@ -33,7 +33,7 @@ alwaysApply: true
 - 哪些内容已经确认
 - 哪些内容仍待确认
 
-领域语言另存于 `.cc/context/domain-language.md`。本文件可以引用领域语言事实，但不要把术语表复制到这里。
+领域语言另存于 `.cairness/context/domain-language.md`。本文件可以引用领域语言事实，但不要把术语表复制到这里。
 
 ## 一、基础事实层（`cc-init` 填充）
 
@@ -77,7 +77,7 @@ alwaysApply: true
 - 无法确认或尚未做技术/脚手架选择时，状态写 `unknown`，并写入“待确认事项”
 - 测试入口必须写成可定位事实或规划，例如测试命令、测试目录、文件命名模式或证据位置；不得只写“按项目约定”
 - 若入口无法低成本确认，写入“待确认事项”
-- 项目状态目录指 `.cc/`，框架目录指 `.claude/`；不要把二者混为一类“根目录”
+- 项目状态目录指 `.cairness/`，框架目录指 `.claude/`；不要把二者混为一类“根目录”
 
 #### 5. 关键依赖（必填）
 
@@ -95,7 +95,7 @@ alwaysApply: true
 | `cc-inspect-codebase` | （待填充） | |
 | `cc-explain-system` | （待填充） | |
 | `cc-test` | （待填充） | |
-| 领域语言确认 | `.cc/context/domain-language.md` | 仅在涉及业务术语、状态名、产品概念或易混词时优先读取 |
+| 领域语言确认 | `.cairness/context/domain-language.md` | 仅在涉及业务术语、状态名、产品概念或易混词时优先读取 |
 
 ## 二、补充事实层（`cc-enrich-context` 补充）
 

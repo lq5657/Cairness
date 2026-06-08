@@ -27,9 +27,9 @@ decision_groups:
     default_recommendation: http_api
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: http_api
         label: HTTP API
@@ -74,9 +74,9 @@ decision_groups:
     default_recommendation: net_http_chi
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: net_http_chi
         label: net/http + chi
@@ -121,9 +121,9 @@ decision_groups:
     default_recommendation: rest_json
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: rest_json
         label: REST JSON
@@ -168,9 +168,9 @@ decision_groups:
     default_recommendation: simple_layered
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: simple_layered
         label: 简单分层
@@ -215,9 +215,9 @@ decision_groups:
     default_recommendation: postgresql
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: postgresql
         label: PostgreSQL
@@ -262,9 +262,9 @@ decision_groups:
     default_recommendation: sqlc
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: sqlc
         label: database/sql + sqlc
@@ -309,9 +309,9 @@ decision_groups:
     default_recommendation: golang_migrate
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: golang_migrate
         label: golang-migrate
@@ -348,9 +348,9 @@ decision_groups:
     default_recommendation: jwt
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: jwt
         label: JWT
@@ -395,9 +395,9 @@ decision_groups:
     default_recommendation: rbac
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: rbac
         label: RBAC
@@ -434,9 +434,9 @@ decision_groups:
     default_recommendation: no_mq_until_needed
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: no_mq_until_needed
         label: 暂不引入 MQ
@@ -497,9 +497,9 @@ decision_groups:
     default_recommendation: no_cache_until_needed
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: no_cache_until_needed
         label: 暂不引入缓存
@@ -536,9 +536,9 @@ decision_groups:
     default_recommendation: env_with_secret_manager
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/project-context.md
     options:
       - id: env_with_secret_manager
         label: 环境变量 + Secret Manager
@@ -575,9 +575,9 @@ decision_groups:
     default_recommendation: slog
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/project-context.md
     options:
       - id: slog
         label: log/slog
@@ -614,9 +614,9 @@ decision_groups:
     default_recommendation: prometheus_and_opentelemetry_when_needed
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: prometheus_and_opentelemetry_when_needed
         label: Prometheus + OpenTelemetry（按需）
@@ -653,9 +653,9 @@ decision_groups:
     default_recommendation: explicit_validation
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: explicit_validation
         label: 手写显式校验
@@ -692,9 +692,9 @@ decision_groups:
     default_recommendation: standard_testing_with_testify_when_helpful
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/project-context.md
     options:
       - id: standard_testing_with_testify_when_helpful
         label: testing + Testify（按需）
@@ -731,9 +731,9 @@ decision_groups:
     default_recommendation: manual_constructors
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: manual_constructors
         label: 手写 constructors
@@ -770,9 +770,9 @@ decision_groups:
     default_recommendation: minimal_http_middleware_stack
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: minimal_http_middleware_stack
         label: recovery + request_id + access_log + timeout
@@ -809,9 +809,9 @@ decision_groups:
     default_recommendation: channel_communication_preferred
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: channel_communication_preferred
         label: Channel 通信优先
@@ -848,9 +848,9 @@ decision_groups:
     default_recommendation: map_rwmutex
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: map_rwmutex
         label: map + sync.RWMutex
@@ -895,9 +895,9 @@ decision_groups:
     default_recommendation: no_budget_initially
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: no_budget_initially
         label: 暂不设定性能预算
@@ -934,8 +934,8 @@ decision_groups:
     default_recommendation: pprof_endpoint_internal
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: pprof_endpoint_internal
         label: pprof HTTP 端点（仅内网）

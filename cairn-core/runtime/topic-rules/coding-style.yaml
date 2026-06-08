@@ -87,7 +87,7 @@ rules:
       - "时间精度默认要求到微秒"
       - "禁止在日志中打印用户敏感信息（手机号、身份证、银行卡等）"
     警告:
-      - "运行时日志默认建议落盘到日志文件；若改为 stdout/stderr + 平台采集，必须在 .cc/context/project-context.md 中说明"
+      - "运行时日志默认建议落盘到日志文件；若改为 stdout/stderr + 平台采集，必须在 .cairness/context/project-context.md 中说明"
       - "日志文件路径、切分策略、保留策略由使用者决定，但必须明确记录"
       - "HTTP/gRPC 入口、异步任务、关键状态变更、外部调用失败应有可检索日志"
       - "slog.HandlerOptions 若未开启源码位置信息（AddSource），需说明原因"

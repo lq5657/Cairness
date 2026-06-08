@@ -6,7 +6,7 @@
 建议目录：
 
 ```text
-.cc/knowledge/
+.cairness/knowledge/
   index.md
   domain-rules/
   technical-conventions/

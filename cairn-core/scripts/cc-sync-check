@@ -147,7 +147,7 @@ def main(argv: list[str]) -> int:
     if argv:
         inputs = [Path(arg) for arg in argv]
     else:
-        inputs = [root / ".cc" / "changes"]
+        inputs = [root / ".cairness" / "changes"]
     errors: list[str] = []
     for change_dir in discover_change_dirs(inputs):
         check_change(change_dir, errors)

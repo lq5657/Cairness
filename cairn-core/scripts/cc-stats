@@ -78,7 +78,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def discover_events(project_root: Path) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
-    changes_dir = project_root / ".cc" / "changes"
+    changes_dir = project_root / ".cairness" / "changes"
     if not changes_dir.exists():
         return events
     for event_file in sorted(changes_dir.rglob("events.jsonl")):
@@ -91,7 +91,7 @@ def discover_events(project_root: Path) -> list[dict[str, Any]]:
 def discover_reviews(project_root: Path) -> list[dict[str, Any]]:
     """从 review.md 中提取 finding 统计。"""
     reviews: list[dict[str, Any]] = []
-    changes_dir = project_root / ".cc" / "changes"
+    changes_dir = project_root / ".cairness" / "changes"
     if not changes_dir.exists():
         return reviews
     for review_file in sorted(changes_dir.rglob("review.md")):

@@ -3,8 +3,8 @@ input: "cc-explain-system internal/service"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-explain-system.yaml
-  - .cc/context/project-context.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-context.md
+  - .cairness/context/dev-map.md
 forbidden_actions:
   - finding_output
   - change_creation

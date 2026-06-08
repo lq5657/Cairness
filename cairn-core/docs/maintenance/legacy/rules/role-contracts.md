@@ -8,8 +8,8 @@
 | 角色 | 职责 | 可写范围 |
 |------|------|----------|
 | command-runner | 执行主命令 | 仅限当前命令契约允许范围 |
-| context-curator | 项目事实维护 | `.cc/context/project-context.md`、`dev-map.md` |
-| backlog-curator | 工作看板维护 | `.cc/changes/task-board.md` |
+| context-curator | 项目事实维护 | `.cairness/context/project-context.md`、`dev-map.md` |
+| backlog-curator | 工作看板维护 | `.cairness/changes/task-board.md` |
 | spec-reviewer | Stage 1 结构化审查 | 无（只读） |
 | code-quality-reviewer | Stage 2 代码质量审查 | 无（只读） |
 | harness-maintainer | 框架资产维护 | 当前维护变更声明范围 |

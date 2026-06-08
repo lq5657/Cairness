@@ -3,7 +3,7 @@
 文件位置：`.claude/docs/examples/audits/test-debt-user-module/report.md`
 
 填写约束：
-- 这是存量项目审查报告，不依赖 `.cc/changes/<change-id>/`
+- 这是存量项目审查报告，不依赖 `.cairness/changes/<change-id>/`
 - 重点记录“现状问题、证据、风险、建议动作”，不是生成需求 spec
 - 所有结论都应尽量给到文件路径、结构体或函数名
 - 若某项无法确认，明确写“待确认”，不要编造
@@ -120,6 +120,6 @@ status: open
 
 #### 7. 后续动作
 
-- 是否建议立即创建 `.cc/changes/<change-id>/`：是，建议 `user-module-test-debt`
+- 是否建议立即创建 `.cairness/changes/<change-id>/`：是，建议 `user-module-test-debt`
 - 是否建议补 `project-context.md`：否
-- 是否建议沉淀到 `.cc/knowledge/`：是，建议沉淀“链路回归不能长期替代 transport/repo 层证据”
+- 是否建议沉淀到 `.cairness/knowledge/`：是，建议沉淀“链路回归不能长期替代 transport/repo 层证据”

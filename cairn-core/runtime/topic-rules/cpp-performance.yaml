@@ -96,5 +96,5 @@ rules:
 relevance:
   category: change_type
   triggers:
-    - ".cpp/.cc/.hpp 文件修改了热路径或关键数据结构"
+    - ".cpp/.cairness/.hpp 文件修改了热路径或关键数据结构"
     - "变更描述提及 profiling/perf/cache/性能/优化/move semantics/RVO"

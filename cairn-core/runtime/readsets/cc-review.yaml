@@ -12,16 +12,16 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-review.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/changes/<change-id>/spec.md
-- .cc/changes/<change-id>/tasks.md
-- .cc/changes/task-board.md
+- .cairness/changes/<change-id>/spec.md
+- .cairness/changes/<change-id>/tasks.md
+- .cairness/changes/task-board.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/changes/<change-id>/review.md
-- .cc/changes/<change-id>/test-spec.md
-- .cc/context/domain-language.md
-- .cc/context/mvp-roadmap.md
+- .cairness/changes/<change-id>/review.md
+- .cairness/changes/<change-id>/test-spec.md
+- .cairness/context/domain-language.md
+- .cairness/context/mvp-roadmap.md
 conditional_reads:
   when_writing_review_artifact:
   - .claude/templates/changes/review.md

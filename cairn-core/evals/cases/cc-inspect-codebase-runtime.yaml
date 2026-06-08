@@ -9,6 +9,6 @@ forbidden_actions:
   - create_change_docs
   - enter_promote_audit_automatically
 expected_checks:
-  - write .cc/audits/<audit-id>/report.md
+  - write .cairness/audits/<audit-id>/report.md
   - require evidence for findings
 rubric: default

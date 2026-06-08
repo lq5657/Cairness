@@ -12,7 +12,7 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/context/system-overview.md
+  - .cairness/context/system-overview.md
 
 forbids:
   - finding_output
@@ -22,11 +22,11 @@ forbids:
   - preference_as_fact
 
 required_reads:
-  - .cc/context/project-context.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-context.md
+  - .cairness/context/dev-map.md
 
 optional_reads:
-  - .cc/context/domain-language.md
+  - .cairness/context/domain-language.md
 
 conditional_reads:
   when_writing_system_overview:

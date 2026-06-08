@@ -72,7 +72,7 @@ def changed_files_from_diff(diff_text: str) -> list[str]:
 
 def changed_files_from_tasks(change_id: str) -> list[str]:
     """从 change 的 tasks.md 和 spec.md 中推断相关文件。"""
-    change_dir = PROJECT_ROOT / ".cc" / "changes" / change_id
+    change_dir = PROJECT_ROOT / ".cairness" / "changes" / change_id
     files = set()
 
     for doc in ["tasks.md", "spec.md"]:

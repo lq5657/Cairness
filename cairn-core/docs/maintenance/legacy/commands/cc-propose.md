@@ -2,7 +2,7 @@
 
 ## 用途
 
-为已有项目中的单次正式 change 创建提案，产出 `.cc/changes/<change-id>/spec.md` 与 `tasks.md`。
+为已有项目中的单次正式 change 创建提案，产出 `.cairness/changes/<change-id>/spec.md` 与 `tasks.md`。
 
 若当前目标仍是“先把一个新项目定义清楚”，应改用 `cc-new-project`。
 
@@ -15,7 +15,7 @@
 - `pm-orchestrator`：确认 change 状态、task-board 和下一命令。
 - `requirement-analyst`：澄清需求、冻结范围、识别成功标准。
 - `solution-designer`：完成方案比较、task 拆分和验证映射。
-- `backlog-curator`：同步 `.cc/changes/task-board.md`。
+- `backlog-curator`：同步 `.cairness/changes/task-board.md`。
 - `gatekeeper`：执行 HARD-GATE 与自动校验放行判断。
 
 展示 checkpoint 表时：
@@ -28,15 +28,15 @@
 以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-propose` 行为准：
 - 状态机定位：创建或更新正式 change 草案，成功后 `spec.status = propose`
 - 输入：需求描述
-- 输出：`.cc/changes/<change-id>/spec.md`、`tasks.md`、`log.md`、`.cc/changes/task-board.md` 状态摘要
-- 可写文件：当前 change 文档与 `.cc/changes/task-board.md`；不得写业务代码
+- 输出：`.cairness/changes/<change-id>/spec.md`、`tasks.md`、`log.md`、`.cairness/changes/task-board.md` 状态摘要
+- 可写文件：当前 change 文档与 `.cairness/changes/task-board.md`；不得写业务代码
 - 必须校验：HARD-GATE、验证矩阵、依赖关系、范围冻结、task 到验证映射的可追溯性、task-board 同步
 - 禁止行为：写业务代码、跳过澄清和范围冻结、生成不可验证 tasks、未确认即进入 `cc-apply`
 
 ## 执行流程
 
 1. 命令边界判断：先判断当前请求是否属于已有项目中的正式 change；若仍是新项目定义，路由到 `cc-new-project`
-2. 若存在 `.cc/context/project-definition.md` / `.cc/context/mvp-roadmap.md` / `.cc/context/dev-map.md` / `.cc/changes/task-board.md`，先读取项目定义、当前阶段、开发导航和推荐 change backlog，确认本次 change 与项目路线图和模块边界一致
+2. 若存在 `.cairness/context/project-definition.md` / `.cairness/context/mvp-roadmap.md` / `.cairness/context/dev-map.md` / `.cairness/changes/task-board.md`，先读取项目定义、当前阶段、开发导航和推荐 change backlog，确认本次 change 与项目路线图和模块边界一致
 3. Research：先做本地 Research，读代码、查链路、识别现有实现与项目约定
 4. 上下文充分性判断：判断本地代码、需求信息、项目上下文和既有约定是否足以支撑方案收敛
 5. 需求清晰度判断：先判断当前请求应走 `direct`、`light-clarify` 还是 `brainstorm-needed`
@@ -52,7 +52,7 @@
 12. 验证映射：为主要功能点/风险点声明映射编号、最低验证等级、证据类型与对应 task 承接方式
 13. 生成 Spec：重点补齐需求收敛记录、背景、功能点、风险、成熟替代方案检查、方案比较、待澄清与验证映射
 14. 生成 Tasks：按最小可执行单元拆 task，而不是仅按文件罗列，并确保 task 验证步骤可回溯到验证映射编号
-15. 更新 `.cc/changes/task-board.md`：新增或刷新当前 change 的状态、影响模块、阻塞/依赖和下一命令
+15. 更新 `.cairness/changes/task-board.md`：新增或刷新当前 change 的状态、影响模块、阻塞/依赖和下一命令
 16. 自动 Harness 校验：按 `.claude/harness.config.yaml` 的 `validation.run_on.propose` 运行 `cc-verify --harness-only --change <change-id>`
 17. HARD-GATE：明确列出需要用户确认的 scope、验收标准、风险、验证映射和人审状态，并要求用户在“确认 / 要求修改 / 阻塞待澄清”中选择；不得只输出“进入下一步需要确认”
 
@@ -97,7 +97,7 @@
 - 若涉及 DB、API、配置、可观测性、测试、发布等专题，必须增量读取对应规则
 - 存量项目未做最小必要 Research 前，不得直接提出泛化澄清问题
 - 若当前请求更像新项目定义，不得继续在 `cc-propose` 中硬做 change 提案；应明确改用 `cc-new-project`
-- 若 `.cc/context/mvp-roadmap.md` 已存在，且本次 change 明显偏离当前 phase、依赖关系或推荐 backlog，必须先指出偏差并要求确认
+- 若 `.cairness/context/mvp-roadmap.md` 已存在，且本次 change 明显偏离当前 phase、依赖关系或推荐 backlog，必须先指出偏差并要求确认
 - 需求清晰度判断只能收敛为 `direct`、`light-clarify`、`brainstorm-needed` 三者之一，不得跳过该判断
 - `brainstorm-needed` 只允许做短收敛，不得产出独立长期文档；收敛结果必须回写 `spec.md`
 - 若需求已足够清晰，不得为了“流程完整”强行进入 `brainstorm-needed`
@@ -136,11 +136,11 @@
 
 ## 建议读取
 
-- `.cc/context/project-context.md`
-- `.cc/context/dev-map.md`
-- `.cc/changes/task-board.md`
-- `.cc/context/project-definition.md`（如存在）
-- `.cc/context/mvp-roadmap.md`（如存在）
+- `.cairness/context/project-context.md`
+- `.cairness/context/dev-map.md`
+- `.cairness/changes/task-board.md`
+- `.cairness/context/project-definition.md`（如存在）
+- `.cairness/context/mvp-roadmap.md`（如存在）
 - `.claude/docs/maintenance/legacy/checkpoints/cc-propose.md`
 - `rules/verification.md`
 - `rules/testing-strategy.md`（涉及验证分层或 `cc-apply` / `cc-test` 边界时）

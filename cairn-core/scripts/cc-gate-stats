@@ -155,7 +155,7 @@ def parse_review_gates(path: Path) -> dict[str, Any]:
 
 def discover_reviews(root: Path) -> list[dict[str, Any]]:
     reviews: list[dict[str, Any]] = []
-    changes_dir = root / ".cc" / "changes"
+    changes_dir = root / ".cairness" / "changes"
     if not changes_dir.exists():
         return reviews
     for review_file in sorted(changes_dir.rglob("review.md")):
@@ -182,7 +182,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def discover_events(root: Path) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
-    changes_dir = root / ".cc" / "changes"
+    changes_dir = root / ".cairness" / "changes"
     if not changes_dir.exists():
         return events
     for event_file in sorted(changes_dir.rglob("events.jsonl")):

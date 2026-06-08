@@ -16,8 +16,8 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/discussions/<discuss-id>/brief.md
-  - .cc/discussions/<discuss-id>/log.md
+  - .cairness/discussions/<discuss-id>/brief.md
+  - .cairness/discussions/<discuss-id>/log.md
 
 forbids:
   - business_code_write
@@ -30,21 +30,21 @@ forbids:
   - skip_routing_selection
 
 required_reads:
-  - .cc/context/project-summary.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-summary.md
+  - .cairness/context/dev-map.md
 
 optional_reads:
-  - .cc/context/project-context.md
-  - .cc/context/domain-language.md
-  - .cc/knowledge/index.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/knowledge/index.md
 
 conditional_reads:
   when_writing_discussion_artifacts:
     - .claude/templates/discussions/brief.md
     - .claude/templates/discussions/log.md
   when_previous_discussion_exists:
-    - .cc/discussions/<discuss-id>/brief.md
-    - .cc/discussions/<discuss-id>/log.md
+    - .cairness/discussions/<discuss-id>/brief.md
+    - .cairness/discussions/<discuss-id>/log.md
 
 runtime_protocol_reads:
   technology_catalog: on_demand

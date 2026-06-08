@@ -15,10 +15,10 @@ state:
 
 writes:
   - test_files
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/changes/<change-id>/log.md
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - use_cc_test_as_default_apply_minimum_verification
@@ -26,13 +26,13 @@ forbids:
   - mark_mapping_closed_without_evidence
 
 required_reads:
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/changes/task-board.md
 
 optional_reads:
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/changes/<change-id>/log.md
 
 conditional_reads:
   when_writing_test_spec_artifact:

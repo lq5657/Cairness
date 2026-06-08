@@ -13,5 +13,5 @@ forbidden_actions:
 expected_checks:
   - validate result_contract required fields and status values
   - validate evidence, risks, and next_actions are declared for every runtime command
-  - .claude/scripts/cc-schema-check .cc/changes
+  - .claude/scripts/cc-schema-check .cairness/changes
 rubric: default

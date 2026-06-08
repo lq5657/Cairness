@@ -34,26 +34,26 @@
 | 生命周期状态机存在 | `legacy-compatible` 要求 `.claude/docs/maintenance/legacy/rules/lifecycle-state-machine.md` 存在 | [ ] |
 | 命令契约矩阵存在 | `legacy-compatible` 要求 `.claude/docs/maintenance/legacy/rules/command-contracts.md` 存在且覆盖全部 `cc-*` 命令 | [ ] |
 | 角色与记忆规则存在 | `.claude/docs/maintenance/legacy/rules/role-contracts.md` 与 `.claude/rules/memory-policy.md` 存在 | [ ] |
-| knowledge 状态与模板存在 | `.cc/knowledge/index.md` 与 `.claude/templates/knowledge/index.md` 存在 | [ ] |
-| context 状态与模板存在 | `.cc/context/project-context.md`、`.cc/context/domain-language.md`、`.cc/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/domain-language.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
+| knowledge 状态与模板存在 | `.cairness/knowledge/index.md` 与 `.claude/templates/knowledge/index.md` 存在 | [ ] |
+| context 状态与模板存在 | `.cairness/context/project-context.md`、`.cairness/context/domain-language.md`、`.cairness/context/dev-map.md` 与 `.claude/templates/context/project-context.md`、`.claude/templates/context/domain-language.md`、`.claude/templates/context/dev-map.md`、`.claude/templates/context/system-overview.md` 存在 | [ ] |
 | commands 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback command 文件齐全 | [ ] |
 | checkpoints 完整 | `legacy-compatible` 要求保留的 legacy / 自定义 fallback checkpoint 文件齐全 | [ ] |
 | changes 模板存在 | `.claude/templates/changes/` 存在 | [ ] |
-| task-board 存在 | `.cc/changes/task-board.md` 与 `.claude/templates/changes/task-board.md` 存在 | [ ] |
+| task-board 存在 | `.cairness/changes/task-board.md` 与 `.claude/templates/changes/task-board.md` 存在 | [ ] |
 | audits 模板存在 | `.claude/templates/audits/` 存在 | [ ] |
 | schema 与脚本存在 | `.claude/schemas/`、`.claude/scripts/cc-lint`、`.claude/scripts/cc-sync-check`、`.claude/scripts/cc-verify`、`.claude/scripts/cc-delta-check` 存在 | [ ] |
 | 示例可选但清晰 | 是否包含 examples 已明确，不会被误当成 `cc-init` 产物 | [ ] |
 
 #### 2. 路径解释一致性
 
-目标：确认 Claude Code 会把框架路径理解为项目根目录下的 `.claude/` 或 `.cc/`，而不是仓库根目录裸目录。
+目标：确认 Claude Code 会把框架路径理解为项目根目录下的 `.claude/` 或 `.cairness/`，而不是仓库根目录裸目录。
 
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
 | `rules/` 解释正确 | 指向 `.claude/rules/`，不是仓库根目录 `rules/` | [ ] |
-| `.cc/knowledge/` 解释正确 | 指向项目根目录 `.cc/knowledge/`，不是裸目录 `knowledge/` | [ ] |
-| `.cc/changes/` 解释正确 | 指向项目根目录 `.cc/changes/`，不是裸目录 `changes/` | [ ] |
-| `.cc/audits/` 解释正确 | 指向项目根目录 `.cc/audits/`，不是裸目录 `audits/` | [ ] |
+| `.cairness/knowledge/` 解释正确 | 指向项目根目录 `.cairness/knowledge/`，不是裸目录 `knowledge/` | [ ] |
+| `.cairness/changes/` 解释正确 | 指向项目根目录 `.cairness/changes/`，不是裸目录 `changes/` | [ ] |
+| `.cairness/audits/` 解释正确 | 指向项目根目录 `.cairness/audits/`，不是裸目录 `audits/` | [ ] |
 | 文档引用一致 | README / CLAUDE / rules 中的路径口径一致 | [ ] |
 
 #### 3. 命令入口冲突检查
@@ -85,7 +85,7 @@
 
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
-| 只更新 project-context | 产物集中在 `.cc/context/project-context.md` | [ ] |
+| 只更新 project-context | 产物集中在 `.cairness/context/project-context.md` | [ ] |
 | 不创建根目录脚手架 | 不会创建仓库根目录 `rules/` / `knowledge/` / `changes/` / `audits/` | [ ] |
 | 不补齐 `.claude` 脚手架 | 不会补建 `.claude/rules/*.md`、templates、examples | [ ] |
 | 缺脚手架时会停下 | 若 `.claude/` 不完整，会提示“先安装 harness”，而不是继续执行 | [ ] |
@@ -98,11 +98,11 @@
 推荐最小试跑顺序：
 
 1. `cc-init`
-2. 检查 `.cc/context/project-context.md`
+2. 检查 `.cairness/context/project-context.md`
 3. `cc-enrich-context`
 4. `cc-explain-system`
 5. `cc-inspect-codebase architecture`
-6. 检查 `.cc/audits/<audit-id>/report.md`
+6. 检查 `.cairness/audits/<audit-id>/report.md`
 
 | 检查项 | 通过标准 | 状态 |
 |--------|----------|------|
@@ -110,9 +110,9 @@
 | `project-context.md` 基础事实真实 | `cc-init` 产出的项目身份、目录、依赖、启动入口、配置入口、测试入口与待确认事项不是套模板 | [ ] |
 | `project-context.md` 分层补图可延后 | 若分层、日志、配置策略、可观测性、测试策略尚未确认，可留待 `cc-enrich-context`，不视为 `cc-init` 失败 | [ ] |
 | `cc-enrich-context` 可执行 | 能补充分层、日志、配置、测试等高解释成本上下文，不越界输出 Findings | [ ] |
-| `cc-explain-system` 可执行 | 能输出 `.cc/context/system-overview.md`，且不依赖 Findings 视角 | [ ] |
+| `cc-explain-system` 可执行 | 能输出 `.cairness/context/system-overview.md`，且不依赖 Findings 视角 | [ ] |
 | `cc-inspect-codebase` 可执行 | 能正确进入审查模式，不被宿主截获 | [ ] |
-| audit 产物位置正确 | 产出到 `.cc/audits/<audit-id>/report.md` | [ ] |
+| audit 产物位置正确 | 产出到 `.cairness/audits/<audit-id>/report.md` | [ ] |
 | Findings 有证据 | 结论带文件位置，不是泛泛而谈 | [ ] |
 | checkpoint 表可读 | 开始前/执行中/完成后检查表的 `结果` 列非空且语义一致 | [ ] |
 
@@ -124,7 +124,7 @@
 - Claude Code 把 `cc-inspect-codebase` 误判成宿主 skill 或其他命令
 - checkpoint 表仍出现“`检查项` 列打勾、`结果` 列为空”的输出
 - `project-context.md` 仍然大面积套模板，缺乏项目事实
-- 路径仍被理解错，项目产物落到裸目录而不是 `.cc/`
+- 路径仍被理解错，项目产物落到裸目录而不是 `.cairness/`
 - 维护者无法解释当前项目里“框架脚手架”“项目状态”和“业务代码目录”的边界
 
 #### 7. 通过标准

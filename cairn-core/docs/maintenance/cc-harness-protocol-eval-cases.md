@@ -4,7 +4,7 @@
 
 #### 使用方式
 
-1. 修改 `commands/`、`workflows/`、`rules/`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`、`.claude/templates/changes/`、`.claude/docs/examples/changes/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
+1. 修改 `commands/`、`workflows/`、`rules/`、`.cairness/context/dev-map.md`、`.cairness/changes/task-board.md`、`.claude/templates/changes/`、`.claude/docs/examples/changes/`、`schemas/` 或 `scripts/` 后，至少跑本文件中的 P0/P1 样例。
 2. 对真实样例目录执行：
    - `.claude/scripts/cc-verify --harness-only`
 3. 若某个样例未通过，优先修协议、模板或样例，不要靠人工提示兜底。
@@ -136,7 +136,7 @@
 输入：
 
 ```text
-`cc-propose` 把未确认假设写入 `.cc/context/dev-map.md`，或把完整 spec/tasks 正文复制到 `.cc/changes/task-board.md`。
+`cc-propose` 把未确认假设写入 `.cairness/context/dev-map.md`，或把完整 spec/tasks 正文复制到 `.cairness/changes/task-board.md`。
 ```
 
 期望：
@@ -161,7 +161,7 @@
 输入：
 
 ```text
-`cc-review` 调度 `spec-reviewer` 后，让 reviewer 直接修改 `.cc/changes/<change-id>/review.md` 并将 `final_status` 写为 `pass`。
+`cc-review` 调度 `spec-reviewer` 后，让 reviewer 直接修改 `.cairness/changes/<change-id>/review.md` 并将 `final_status` 写为 `pass`。
 ```
 
 期望：

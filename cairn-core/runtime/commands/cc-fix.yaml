@@ -15,13 +15,13 @@ state:
 writes:
   - finding_related_code_files
   - test_files
-  - .cc/changes/<change-id>/review.md
-  - .cc/changes/<change-id>/log.md
-  - .cc/changes/<change-id>/spec.md
-  - .cc/changes/<change-id>/tasks.md
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/context/dev-map.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/review.md
+  - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/context/dev-map.md
+  - .cairness/changes/task-board.md
 
 forbids:
   - handle_unrecorded_scope
@@ -35,21 +35,21 @@ forbids:
   - alter_risk_triage_section_in_review_md
 
 required_reads:
-  - .cc/changes/<change-id>/review.md
-  - .cc/changes/task-board.md
+  - .cairness/changes/<change-id>/review.md
+  - .cairness/changes/task-board.md
 
 conditional_reads:
   when_selected_finding_needs_spec_or_task_context:
-    - .cc/changes/<change-id>/spec.md
-    - .cc/changes/<change-id>/tasks.md
+    - .cairness/changes/<change-id>/spec.md
+    - .cairness/changes/<change-id>/tasks.md
   when_fix_requires_existing_execution_history:
-    - .cc/changes/<change-id>/log.md
+    - .cairness/changes/<change-id>/log.md
   when_creating_test_spec_artifact:
     - .claude/templates/changes/test-spec.md
 
 optional_reads:
-  - .cc/changes/<change-id>/test-spec.md
-  - .cc/context/dev-map.md
+  - .cairness/changes/<change-id>/test-spec.md
+  - .cairness/context/dev-map.md
 
 runtime_protocol_reads:
   language_profile: on_demand

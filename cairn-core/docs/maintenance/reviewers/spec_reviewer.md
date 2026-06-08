@@ -17,7 +17,7 @@
 
 #### 输出要求
 
-输出内容必须与 `.cc/changes/<change-id>/review.md` 的 Stage 1 和 Findings 一一对应，不要输出自由发挥的额外章节。
+输出内容必须与 `.cairness/changes/<change-id>/review.md` 的 Stage 1 和 Findings 一一对应，不要输出自由发挥的额外章节。
 
 **固定输出格式：**
 

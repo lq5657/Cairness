@@ -12,11 +12,11 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-explain-system.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-context.md
-- .cc/context/dev-map.md
+- .cairness/context/project-context.md
+- .cairness/context/dev-map.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/domain-language.md
+- .cairness/context/domain-language.md
 conditional_reads:
   when_writing_system_overview:
   - .claude/templates/context/system-overview.md

@@ -12,7 +12,7 @@
 | `tasks.md` 已读，且已确认当前 task 完成状态 | ✅ / ❌ / ⚠️ / N/A |
 | 若存在 roadmap，已读取阶段目标并确认本次 change 的对齐关系 | ✅ / ❌ / ⚠️ / N/A |
 | 已确定本轮规则装载清单，且至少包含 `rules/verification.md` | ✅ / ❌ / ⚠️ / N/A |
-| 已读取 `docs/maintenance/legacy/rules/role-contracts.md` 和 `.cc/changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `docs/maintenance/legacy/rules/role-contracts.md` 和 `.cairness/changes/task-board.md` | ✅ / ❌ / ⚠️ / N/A |
 | `spec.md` 的“需求-验证映射”编号与闭环状态已读 | ✅ / ❌ / ⚠️ / N/A |
 | `test-spec.md` 若存在，已读取其对映射项的补强结论 | ✅ / ❌ / ⚠️ / N/A |
 | 代码已存在 | ✅ / ❌ / ⚠️ / N/A |
@@ -54,7 +54,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已输出 `.cc/changes/<change-id>/review.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已输出 `.cairness/changes/<change-id>/review.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 task 级验收结果是否与 `tasks.md` 一致 | ✅ / ❌ / ⚠️ / N/A |
 | 已检查 promised outcome / roadmap 对齐未交付时是否形成 Findings | ✅ / ❌ / ⚠️ / N/A |
 | 已检查未闭环的需求-验证映射是否形成 Findings | ✅ / ❌ / ⚠️ / N/A |
@@ -66,7 +66,7 @@
 | 最终结论与 Stage 1 / Stage 2 / Findings 严重级别一致 | ✅ / ❌ / ⚠️ / N/A |
 | 已显式输出本轮规则装载摘要 | ✅ / ❌ / ⚠️ / N/A |
 | 已将 `spec.md` 的“审查结论”章节同步为当前结论 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/changes/task-board.md` 已同步审查结论、阻塞项和下一命令 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/changes/task-board.md` 已同步审查结论、阻塞项和下一命令 | ✅ / ❌ / ⚠️ / N/A |
 | 若 Stage 1 未完成，`stage2_status` 已记为 `skipped` | ✅ / ❌ / ⚠️ / N/A |
 | 若中断，已记录未完成原因，未重置已有结论 | ✅ / ❌ / ⚠️ / N/A |
 | 若不可归档，已明确下一步应进入 `cc-fix` | ✅ / ❌ / ⚠️ / N/A |

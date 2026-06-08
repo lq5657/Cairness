@@ -2,7 +2,7 @@
 
 ## 用途
 
-对已有 change 执行两阶段审查，并把结论写入 `.cc/changes/<change-id>/review.md`。
+对已有 change 执行两阶段审查，并把结论写入 `.cairness/changes/<change-id>/review.md`。
 
 ## 命令格式
 
@@ -14,7 +14,7 @@
 - `spec-reviewer`：执行 Stage 1，只读检查实现是否符合 spec。
 - `code-quality-reviewer`：执行 Stage 2，只读检查质量、安全、兼容性和可观测性风险。
 - `reviewer`：承载综合审查视角，形成 Findings 输入。
-- `backlog-curator`：同步 `.cc/changes/task-board.md`。
+- `backlog-curator`：同步 `.cairness/changes/task-board.md`。
 - `gatekeeper`：根据 Findings、review 状态和自动校验判断是否可进入修复或归档。
 
 ## 执行模型
@@ -35,8 +35,8 @@
 以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-review` 行为准：
 - 状态机定位：审查 `review` 阶段 change，成功后仍保持 `review`
 - 输入：`change-id`
-- 输出：`.cc/changes/<change-id>/review.md`、`.cc/changes/task-board.md` 审查状态
-- 可写文件：`review.md`、`.cc/changes/task-board.md`，必要时仅补充 `log.md` 中的审查中断上下文
+- 输出：`.cairness/changes/<change-id>/review.md`、`.cairness/changes/task-board.md` 审查状态
+- 可写文件：`review.md`、`.cairness/changes/task-board.md`，必要时仅补充 `log.md` 中的审查中断上下文
 - 必须校验：task coverage、验证证据、Finding 状态、证据类型矩阵、可归档条件、角色契约
 - 禁止行为：直接改代码、直接归档、有 open Critical / Important 仍 pass、删除审计记录
 
@@ -110,7 +110,7 @@
 
 - 写入或更新 `review.md` 后，若 `validation.auto_run = true`，必须运行 `.claude/scripts/cc-verify --harness-only --change <change-id>`。
 - 若校验失败且 `validation.fail_on_error = true`，`final_status` 不得写成 `pass`，必须修正文档闭环或记录为 `partial` / `fail`。
-- 写入或更新 `review.md` 后，必须同步 `.cc/changes/task-board.md` 的审查结论、阻塞项和下一命令。
+- 写入或更新 `review.md` 后，必须同步 `.cairness/changes/task-board.md` 的审查结论、阻塞项和下一命令。
 
 ## 失败与恢复
 
@@ -123,10 +123,10 @@
 - `.claude/docs/maintenance/legacy/checkpoints/cc-review.md`
 - 当前 change 的 `spec.md`
 - 当前 change 的 `tasks.md`
-- `.cc/context/mvp-roadmap.md`（如存在）
+- `.cairness/context/mvp-roadmap.md`（如存在）
 - 当前 change 的 `test-spec.md`（如存在）
 - 当前 change 的 `review.md`
-- `.cc/changes/task-board.md`
+- `.cairness/changes/task-board.md`
 - `docs/maintenance/legacy/rules/role-contracts.md`
 - `rules/verification.md`
 - 命中专题时读取对应规则：`testing-strategy` / `database-changes` / `api-compatibility` / `configuration` / `observability` / `release` / `security` / `git-workflow`

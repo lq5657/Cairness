@@ -11,7 +11,7 @@
 ## 执行阶段角色
 
 - `pm-orchestrator`：确认归档前状态、阻塞项和下一命令。
-- `backlog-curator`：同步 `.cc/changes/task-board.md` 的归档状态。
+- `backlog-curator`：同步 `.cairness/changes/task-board.md` 的归档状态。
 - `gatekeeper`：基于 review pass、无 open/blocked/gap、fresh evidence 和 `cc-verify` 判断是否允许进入 `done`。
 
 展示 checkpoint 表时：
@@ -24,8 +24,8 @@
 以 `docs/maintenance/legacy/rules/command-contracts.md` 中 `cc-archive` 行为准：
 - 状态机定位：唯一允许执行 `review -> done` 的命令
 - 输入：`change-id`
-- 输出：`spec.status = done`、归档记录、`.cc/changes/task-board.md` 归档状态、必要的知识沉淀
-- 可写文件：当前 change 的 `spec.md`、`log.md`、`.cc/changes/task-board.md`，以及确认需要沉淀的 `.cc/knowledge/*`
+- 输出：`spec.status = done`、归档记录、`.cairness/changes/task-board.md` 归档状态、必要的知识沉淀
+- 可写文件：当前 change 的 `spec.md`、`log.md`、`.cairness/changes/task-board.md`，以及确认需要沉淀的 `.cairness/knowledge/*`
 - 必须校验：`review.md` 结论为 pass / 可归档、无 `open` Finding、无 `blocked` task、无未解释 `gap`、fresh verification evidence 仍有效，且知识沉淀符合 `rules/memory-policy.md`，并已获得用户对知识沉淀决策的显式选择
 - 禁止行为：写业务代码、跳过知识沉淀判断、有阻塞仍归档、让其他命令设置 `done`、未让用户选择就推断知识沉淀决策、知识选择缺失仍标 `done`
 
@@ -39,7 +39,7 @@
 ## 执行要求
 
 - 先基于 `log.md` 中的“知识候选 / 发现”做复利价值判断：`无需沉淀` / `新增知识` / `更新既有知识`
-- 先读取 `rules/memory-policy.md`，确认本轮哪些信息适合写入 `.cc/knowledge/*`，哪些只应保留在 change 日志或 task-board 中
+- 先读取 `rules/memory-policy.md`，确认本轮哪些信息适合写入 `.cairness/knowledge/*`，哪些只应保留在 change 日志或 task-board 中
 - 若判断为 `无需沉淀`，也必须显式记录本轮为何不沉淀，而不是直接跳过
 - 若判断为 `新增知识` 或 `更新既有知识`，必须明确建议落点，再执行沉淀
 - 知识沉淀决策必须让用户显式选择：
@@ -50,7 +50,7 @@
 - 归档前必须再次确认：当前 `review.md` 结论、Findings 状态和最新验证证据一致
 - 若 `validation.auto_run = true`，归档前必须运行 `.claude/scripts/cc-verify --change <change-id>`；若失败且 `fail_on_error = true`，禁止归档
 - 归档完成后将 `spec.md` 状态改为 `done`
-- 归档完成后同步 `.cc/changes/task-board.md`，将当前 change 标记为已归档，并清理或关闭对应阻塞项
+- 归档完成后同步 `.cairness/changes/task-board.md`，将当前 change 标记为已归档，并清理或关闭对应阻塞项
 - 切换为 `done` 后应再次运行自动 Harness 校验，确保归档状态仍满足状态机与闭环规则
 
 ## 失败处理
@@ -65,6 +65,6 @@
 
 - `.claude/docs/maintenance/legacy/checkpoints/cc-archive.md`
 - 当前 change 的 `review.md` / `log.md`
-- `.cc/changes/task-board.md`
-- `.cc/knowledge/index.md`
+- `.cairness/changes/task-board.md`
+- `.cairness/knowledge/index.md`
 - `rules/memory-policy.md`

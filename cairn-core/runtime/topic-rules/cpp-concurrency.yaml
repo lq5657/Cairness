@@ -2,7 +2,7 @@ id: cpp_concurrency
 description: "C++ 并发代码正确性审查 —— std::thread、mutex、atomic、memory order、数据竞争、TSAN"
 
 trigger:
-  - "变更涉及的 .cpp/.cc/.hpp 文件使用了 std::thread、mutex、atomic、condition_variable、future/promise 或并行算法"
+  - "变更涉及的 .cpp/.cairness/.hpp 文件使用了 std::thread、mutex、atomic、condition_variable、future/promise 或并行算法"
   - "cc-review、cc-apply、cc-fix 阶段触及 C++ 并发代码"
   - "TSAN 数据竞争或死锁信号"
 
@@ -97,5 +97,5 @@ rules:
 relevance:
   category: change_type
   triggers:
-    - ".cpp/.cc/.hpp 文件 diff 匹配 std::thread|std::mutex|std::atomic|condition_variable|std::async|std::future|std::jthread|memory_order"
+    - ".cpp/.cairness/.hpp 文件 diff 匹配 std::thread|std::mutex|std::atomic|condition_variable|std::async|std::future|std::jthread|memory_order"
     - "变更描述提及 线程/并发/数据竞争/TSAN/deadlock/atomic"

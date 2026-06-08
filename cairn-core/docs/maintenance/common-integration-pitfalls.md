@@ -10,7 +10,7 @@
 #### 1. 把 `cc-init` 当成脚手架安装命令
 
 典型症状：
-- 期望 `cc-init` 自动创建 `.claude/rules/`、`.cc/knowledge/`、`.claude/templates/changes/`
+- 期望 `cc-init` 自动创建 `.claude/rules/`、`.cairness/knowledge/`、`.claude/templates/changes/`
 - 期望 `cc-init` 自动补 examples/templates
 - 宿主项目里还没装 harness，就直接跑 `cc-init`
 
@@ -20,23 +20,23 @@
 
 正确做法：
 - 先确认 `.claude/` 脚手架已经完整安装
-- 只把 `cc-init` 用于更新 `.cc/context/project-context.md`
+- 只把 `cc-init` 用于更新 `.cairness/context/project-context.md`
 - 若脚手架缺失，应停止并提示维护者先安装 harness，而不是继续补目录
 
 #### 2. 框架路径和项目状态路径混淆
 
 典型症状：
 - AI 把 `rules/` 理解成仓库根目录 `rules/`
-- 项目产物落在裸目录 `changes/`、`audits/`，而不是 `.cc/changes/`、`.cc/audits/`
-- 框架模板或维护文档被写进 `.cc/`
+- 项目产物落在裸目录 `changes/`、`audits/`，而不是 `.cairness/changes/`、`.cairness/audits/`
+- 框架模板或维护文档被写进 `.cairness/`
 - README、CLAUDE、rules 中的路径写法不一致
 
 根因：
-- 没把“.claude 是可升级框架，.cc 是项目状态”讲清楚
+- 没把”.claude 是可升级框架，.cairness 是项目状态”讲清楚
 - 文档间路径口径不统一，导致模型自行猜测
 
 正确做法：
-- 在总纲中明确 `.claude/` 是 harness 根目录，`.cc/` 是项目状态根目录
+- 在总纲中明确 `.claude/` 是 harness 根目录，`.cairness/` 是项目状态根目录
 - 接入前先用预检清单核对路径解释一致性
 - 一旦发现产物落点错误，优先修规则文档，不要靠人工口头纠偏
 
@@ -70,7 +70,7 @@
 正确做法：
 - 启动阶段只做分支、进行中 change、命令入口提示
 - 真实分析等到显式 `cc-init` / `cc-inspect-codebase` / `cc-review` 再做
-- 不要在启动阶段全量读 `rules/`、`.cc/knowledge/`、业务代码
+- 不要在启动阶段全量读 `rules/`、`.cairness/knowledge/`、业务代码
 
 #### 5. checkpoint 表格有样式但没有结果语义
 
@@ -104,7 +104,7 @@
 正确做法：
 - `cc-init` 只识别可长期复用的基础项目事实
 - `cc-enrich-context` 只补充高解释成本但仍属于事实的项目画像
-- `cc-inspect-codebase` 只做存量问题审查，产出 `.cc/audits/`
+- `cc-inspect-codebase` 只做存量问题审查，产出 `.cairness/audits/`
 - `cc-review` 只审已有 change 的实现，产出 `review.md`
 
 #### 7. 提案和实现之间缺少 HARD-GATE
@@ -168,11 +168,11 @@
 - 修过一次的规则问题，下个项目又重新踩
 
 根因：
-- 没有把“发现问题并修正规则”转化为 `.cc/knowledge/` 资产
+- 没有把“发现问题并修正规则”转化为 `.cairness/knowledge/` 资产
 - 只改模板，不补索引、清单和长期约定
 
 正确做法：
-- 能复用的问题要进入 `.cc/knowledge/index.md`
+- 能复用的问题要进入 `.cairness/knowledge/index.md`
 - 接入相关问题优先沉淀到 `integration-preflight-checklist.md`，并通过 `cc-preflight` 作为正式入口执行
 - 如果问题属于长期设计约束，除了修模板，还要补主命令文档
 

@@ -9,8 +9,8 @@
 | 检查项 | 结果 |
 |--------|------|
 | `.claude/` 脚手架存在 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/context/dev-map.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/context/dev-map.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
 | `project-context.md` 已具备基础事实层 | ✅ / ❌ / ⚠️ / N/A |
 | 本次目标是“补充事实层”，不是“做项目体检” | ✅ / ❌ / ⚠️ / N/A |
@@ -20,7 +20,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已读取现有 `.cc/context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取现有 `.cairness/context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已围绕“待确认事项”或薄弱项做定向补充读取 | ✅ / ❌ / ⚠️ / N/A |
 | 已形成关键假设并标注主要证据位置与信心等级 | ✅ / ❌ / ⚠️ / N/A |
 | 阻塞式确认已收敛为单轮单组，且关键假设不超过 3 条 | ✅ / ❌ / ⚠️ / N/A |
@@ -38,7 +38,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 仅更新了 `.cc/context/project-context.md` 补充事实层和 `.cc/context/dev-map.md` 开发导航 | ✅ / ❌ / ⚠️ / N/A |
+| 仅更新了 `.cairness/context/project-context.md` 补充事实层和 `.cairness/context/dev-map.md` 开发导航 | ✅ / ❌ / ⚠️ / N/A |
 | 已补充高解释成本字段，且未写成问题审查结论 | ✅ / ❌ / ⚠️ / N/A |
 | `关键链路索引` 已收敛为 3-5 条高价值链路并标注优先级（如适用） | ✅ / ❌ / ⚠️ / N/A |
 | 仍无法确认的内容已保留“待确认” | ✅ / ❌ / ⚠️ / N/A |

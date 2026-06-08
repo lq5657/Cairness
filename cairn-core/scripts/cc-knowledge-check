@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """cc-knowledge-check — 知识条目新鲜度检测。
 
-扫描 .cc/knowledge/ 中的所有条目，提取文件路径引用，
+扫描 .cairness/knowledge/ 中的所有条目，提取文件路径引用，
 验证引用路径在代码库中是否仍然存在。过期引用自动标记为
 candidate（需重新确认），防止腐烂知识误导 AI 决策。
 
@@ -23,12 +23,12 @@ from typing import Any
 
 
 PATH_PATTERNS = [
-    # Backtick-wrapped paths: `src/handler/user.go`, `.cc/context/dev-map.md`
+    # Backtick-wrapped paths: `src/handler/user.go`, `.cairness/context/dev-map.md`
     re.compile(r'`((?:\.?/)?[\w./-]+\.[\w]+)`'),
     # Relative paths: src/module/file.go
     re.compile(r'(?<!\w)((?:src|pkg|cmd|internal|api|lib|app|tests?|docs?|config)/[\w./-]+)'),
-    # .cc/ paths
-    re.compile(r'(?<!\w)(\.cc/[\w./-]+)'),
+    # .cairness/ paths
+    re.compile(r'(?<!\w)(\.cairness/[\w./-]+)'),
     # .claude/ paths (for refinement candidates)
     re.compile(r'(?<!\w)(\.claude/(?:runtime|scripts|schemas|templates|docs|fixtures)/[\w./-]+)'),
 ]
@@ -53,7 +53,7 @@ def extract_paths(content: str) -> list[str]:
 
 
 def check_knowledge_freshness(project_root: Path) -> dict[str, Any]:
-    knowledge_dir = project_root / ".cc" / "knowledge"
+    knowledge_dir = project_root / ".cairness" / "knowledge"
     if not knowledge_dir.exists():
         return {"entries": {}, "stale_count": 0, "fresh_count": 0, "total_entries": 0}
 

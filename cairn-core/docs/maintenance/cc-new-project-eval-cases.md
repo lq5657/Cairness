@@ -22,7 +22,7 @@
 | 技术方向 | 能在合适时机讨论运行形态、模块和技术方向 |
 | 路线图 | 能形成阶段性 roadmap，而不是只给一堆功能点 |
 | Backlog | 能给出首批推荐 change backlog |
-| 生命周期边界 | 不会直接跳进 `cc-apply` 或把项目级定义写进 `.cc/changes/` |
+| 生命周期边界 | 不会直接跳进 `cc-apply` 或把项目级定义写进 `.cairness/changes/` |
 
 ---
 

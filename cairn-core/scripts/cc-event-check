@@ -46,7 +46,7 @@ def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
 
 def discover_event_logs(project_root: Path, inputs: list[Path]) -> list[Path]:
     logs: set[Path] = set()
-    search_inputs = inputs or [project_root / ".cc" / "changes"]
+    search_inputs = inputs or [project_root / ".cairness" / "changes"]
     for item in search_inputs:
         if item.is_file() and item.name == "events.jsonl":
             logs.add(item)

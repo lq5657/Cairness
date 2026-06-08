@@ -12,8 +12,8 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-promote-audit.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/audits/<audit-id>/report.md
-- .cc/changes/task-board.md
+- .cairness/audits/<audit-id>/report.md
+- .cairness/changes/task-board.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .claude/runtime/commands/cc-propose.yaml

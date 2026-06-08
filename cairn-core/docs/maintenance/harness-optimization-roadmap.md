@@ -44,7 +44,7 @@ This roadmap orders the next Harness improvements by risk reduction, user impact
 
 10. **Build an upgrade safety mechanism**
     - Add version-aware upgrade checks and merge reporting for `.claude/` framework assets.
-    - Protect `.cc/` project state during Harness upgrades.
+    - Protect `.cairness/` project state during Harness upgrades.
 
 ## Sequencing Rule
 

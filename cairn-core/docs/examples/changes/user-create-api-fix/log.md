@@ -86,8 +86,8 @@
 
 | 关键词 | 一句话结论 | 出处 | 建议落点 | 复利判断 | 处理结果 |
 |--------|------------|------|----------|----------|----------|
-| `fix-must-update-review` | `cc-fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `.claude/docs/examples/changes/user-create-api-fix/review.md` | `.cc/knowledge/index.md` | 更新既有知识 | 已沉淀 |
-| `finding-root-cause-split` | 修 fix 前应先建立反馈 loop，并区分症状、失败点和根因，再形成最小修复假设 | `.claude/docs/examples/changes/user-create-api-fix/log.md` | `.cc/knowledge/index.md` | 新增知识 | 已沉淀 |
+| `fix-must-update-review` | `cc-fix` 不只是改代码，还必须同步回写 `review.md` Findings 状态 | `.claude/docs/examples/changes/user-create-api-fix/review.md` | `.cairness/knowledge/index.md` | 更新既有知识 | 已沉淀 |
+| `finding-root-cause-split` | 修 fix 前应先建立反馈 loop，并区分症状、失败点和根因，再形成最小修复假设 | `.claude/docs/examples/changes/user-create-api-fix/log.md` | `.cairness/knowledge/index.md` | 新增知识 | 已沉淀 |
 
 #### Spec-Code 偏差记录
 

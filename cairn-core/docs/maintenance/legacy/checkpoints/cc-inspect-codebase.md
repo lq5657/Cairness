@@ -18,7 +18,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已读取 `.cc/context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已读取 `.cairness/context/project-context.md` | ✅ / ❌ / ⚠️ / N/A |
 | 仅加载了与当前 `mode` 相关的最小规则 | ✅ / ❌ / ⚠️ / N/A |
 | 审查范围聚焦在当前 `scope` | ✅ / ❌ / ⚠️ / N/A |
 | 每个关键结论都有代码、配置、调用链或目录结构证据 | ✅ / ❌ / ⚠️ / N/A |
@@ -31,7 +31,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 已输出 `.cc/audits/<audit-id>/report.md` | ✅ / ❌ / ⚠️ / N/A |
+| 已输出 `.cairness/audits/<audit-id>/report.md` | ✅ / ❌ / ⚠️ / N/A |
 | 已记录本次 `mode` 和 `scope` | ✅ / ❌ / ⚠️ / N/A |
 | 已明确哪些问题建议转成 change | ✅ / ❌ / ⚠️ / N/A |
 | 若 `project-context.md` 与现实失真，已标记需更新或建议后续执行 `cc-init` | ✅ / ❌ / ⚠️ / N/A |

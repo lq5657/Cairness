@@ -91,7 +91,7 @@ rules:
       cc-archive: "归档前必须运行 cc-verify；切换 spec.status=done 后应再次运行"
     默认命令: ".claude/scripts/cc-verify --change <change-id>"
     脚本缺失处理: "记录为 blocked/partial 或 preflight 问题，不得静默跳过"
-    baseline要求: "cc-apply 必须将开发前后验证报告写入 .cc/changes/<change-id>/baseline/，用 cc-delta-check 区分历史失败与新增失败；存在 new-failure 时不得标 done"
+    baseline要求: "cc-apply 必须将开发前后验证报告写入 .cairness/changes/<change-id>/baseline/，用 cc-delta-check 区分历史失败与新增失败；存在 new-failure 时不得标 done"
 
   验证等级:
     - 等级: L1

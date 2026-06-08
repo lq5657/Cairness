@@ -47,8 +47,8 @@
 - 必要时建议先修接入，再进入 `cc-init` / `cc-enrich-context` / `cc-explain-system` / `cc-inspect-codebase`
 
 不产出：
-- `.cc/changes/<change-id>/spec.md`
-- `.cc/audits/<audit-id>/report.md`
+- `.cairness/changes/<change-id>/spec.md`
+- `.cairness/audits/<audit-id>/report.md`
 - 业务代码修改
 
 ## 命令契约
@@ -58,7 +58,7 @@
 - 输入：无
 - 输出：结构化接入前自检结果
 - 可写文件：默认不写文件；只有维护者明确要求修复接入资产时，才另起明确变更
-- 必须校验：`.claude/` 结构、命令与 checkpoint、schemas、scripts、`harness.config.yaml`、`workflows/cc-workflow.yaml`、`.cc/context/dev-map.md`、`.cc/changes/task-board.md`、生命周期状态机、命令契约矩阵、角色契约、workflow 角色引用、记忆策略
+- 必须校验：`.claude/` 结构、命令与 checkpoint、schemas、scripts、`harness.config.yaml`、`workflows/cc-workflow.yaml`、`.cairness/context/dev-map.md`、`.cairness/changes/task-board.md`、生命周期状态机、命令契约矩阵、角色契约、workflow 角色引用、记忆策略
 - 禁止行为：扫描业务代码、创建业务 change、自动修复脚手架、扩展成项目体检
 
 ## 与其他命令的边界
@@ -89,9 +89,9 @@
 允许读取：
 - `.claude/` 脚手架目录结构
 - `.claude/docs/adoption/integration-preflight-checklist.md`
-- 必要的 `commands/`、`checkpoints/`、`.cc/context/`、`.claude/templates/changes/`、`.claude/templates/audits/`、`schemas/`、`scripts/`
+- 必要的 `commands/`、`checkpoints/`、`.cairness/context/`、`.claude/templates/changes/`、`.claude/templates/audits/`、`schemas/`、`scripts/`
 - `.claude/harness.config.yaml`、`workflows/cc-workflow.yaml`、`docs/maintenance/legacy/rules/lifecycle-state-machine.md` 与 `docs/maintenance/legacy/rules/command-contracts.md`
-- `docs/maintenance/legacy/rules/role-contracts.md`、`rules/memory-policy.md`、`.cc/context/dev-map.md` 与 `.cc/changes/task-board.md`
+- `docs/maintenance/legacy/rules/role-contracts.md`、`rules/memory-policy.md`、`.cairness/context/dev-map.md` 与 `.cairness/changes/task-board.md`
 - `harness.config.yaml` 中的 `workflow.definition`、`validation.auto_run`、`validation.fail_on_error` 与 `validation.run_on`
 - `.claude/scripts/cc-verify` 与 `.claude/scripts/cc-delta-check`
 - README / CLAUDE 中与入口、路径和结构相关的说明

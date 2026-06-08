@@ -12,20 +12,20 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-discuss.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-summary.md
-- .cc/context/dev-map.md
+- .cairness/context/project-summary.md
+- .cairness/context/dev-map.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/project-context.md
-- .cc/context/domain-language.md
-- .cc/knowledge/index.md
+- .cairness/context/project-context.md
+- .cairness/context/domain-language.md
+- .cairness/knowledge/index.md
 conditional_reads:
   when_writing_discussion_artifacts:
   - .claude/templates/discussions/brief.md
   - .claude/templates/discussions/log.md
   when_previous_discussion_exists:
-  - .cc/discussions/<discuss-id>/brief.md
-  - .cc/discussions/<discuss-id>/log.md
+  - .cairness/discussions/<discuss-id>/brief.md
+  - .cairness/discussions/<discuss-id>/log.md
   when_discussion_involves_external_or_version_sensitive_technology:
   - .claude/runtime/topic-rules/source-driven-development.yaml
   when_discussion_touches_security_boundary:

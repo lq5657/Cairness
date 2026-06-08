@@ -12,15 +12,15 @@ always_reads:
 - .claude/runtime/protocol.yaml
 - .claude/runtime/commands/cc-propose.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .cc/context/project-summary.md
-- .cc/context/dev-map.md
-- .cc/changes/task-board.md
+- .cairness/context/project-summary.md
+- .cairness/context/dev-map.md
+- .cairness/changes/task-board.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/change-sizing.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
-- .cc/context/project-context.md
-- .cc/context/domain-language.md
+- .cairness/context/project-context.md
+- .cairness/context/domain-language.md
 conditional_reads:
   when_writing_change_artifacts:
   - .claude/templates/changes/spec.md

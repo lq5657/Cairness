@@ -37,7 +37,7 @@ technology_decisions:
 
 活跃语言 profile 在技术决策之前解析：
 
-1. 从 `.cc/context/project-definition.md` 或 `.cc/context/project-context.md` 读取显式项目状态。
+1. 从 `.cairness/context/project-definition.md` 或 `.cairness/context/project-context.md` 读取显式项目状态。
 2. 如果项目状态缺失，检查各语言 profile 声明的仓库标记文件。
 3. 如果多个 profile 匹配或没有 profile 匹配，询问用户选择。
 4. 对于没有代码事实的新项目，即使只安装了一个 profile，也必须询问用户确认语言/生态系统。
@@ -62,17 +62,17 @@ technology_decisions:
 项目级决策记录在：
 
 ```text
-.cc/context/project-definition.md
-.cc/context/architecture-outline.md
-.cc/context/project-context.md
-.cc/context/dev-map.md
+.cairness/context/project-definition.md
+.cairness/context/architecture-outline.md
+.cairness/context/project-context.md
+.cairness/context/dev-map.md
 ```
 
 变更级决策记录在：
 
 ```text
-.cc/changes/<change-id>/spec.md
-.cc/changes/<change-id>/log.md
+.cairness/changes/<change-id>/spec.md
+.cairness/changes/<change-id>/log.md
 ```
 
 ## 确认标准

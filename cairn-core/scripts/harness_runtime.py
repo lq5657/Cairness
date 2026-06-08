@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-IGNORED_TOP_LEVEL_DIRS = {".claude", ".cc", ".git"}
+IGNORED_TOP_LEVEL_DIRS = {".claude", ".cairness", ".git"}
 PENDING_LANGUAGE_VALUES = {
     "",
     "-",
@@ -75,7 +75,7 @@ def load_yaml_mapping(path: Path) -> dict[str, Any]:
 def project_path(project_root: Path, declared: Any) -> Path | None:
     if not isinstance(declared, str):
         return None
-    if declared.startswith(".claude/") or declared.startswith(".cc/"):
+    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
         return project_root / declared
     return None
 

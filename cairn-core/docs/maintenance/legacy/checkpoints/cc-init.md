@@ -9,8 +9,8 @@
 | 检查项 | 结果 |
 |--------|------|
 | `.claude/` 脚手架存在 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
-| `.cc/context/dev-map.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/context/project-context.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
+| `.cairness/context/dev-map.md` 存在 | ✅ / ❌ / ⚠️ / N/A |
 | 已读取 `rules/memory-policy.md` | ✅ / ❌ / ⚠️ / N/A |
 | 本次目标是“建立基础事实层”，不是“做项目体检” | ✅ / ❌ / ⚠️ / N/A |
 | 本次目标不是“输出完整系统理解” | ✅ / ❌ / ⚠️ / N/A |
@@ -34,7 +34,7 @@
 
 | 检查项 | 结果 |
 |--------|------|
-| 仅更新了 `.cc/context/project-context.md` 基础事实层和 `.cc/context/dev-map.md` 基础导航 | ✅ / ❌ / ⚠️ / N/A |
+| 仅更新了 `.cairness/context/project-context.md` 基础事实层和 `.cairness/context/dev-map.md` 基础导航 | ✅ / ❌ / ⚠️ / N/A |
 | 已记录项目身份、关键目录、依赖入口、启动入口、配置入口、测试入口等基础事实 | ✅ / ❌ / ⚠️ / N/A |
 | 已提供可复用的后续阅读导航，而不是完整系统画像 | ✅ / ❌ / ⚠️ / N/A |
 | 无法确认的内容已明确标记为“待确认” | ✅ / ❌ / ⚠️ / N/A |

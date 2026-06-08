@@ -9,7 +9,7 @@ final_status: partial
 
 ### Review Report — 需求名称
 
-文件位置：`.cc/changes/<change-id>/review.md`
+文件位置：`.cairness/changes/<change-id>/review.md`
 
 填写约束：
 - `Stage 1`、`Stage 2`、`Findings`、`结论` 四部分都必须保留

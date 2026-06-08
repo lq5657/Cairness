@@ -61,7 +61,7 @@ def dirty_paths(project_root: Path) -> list[str]:
 
 
 def baseline_path(project_root: Path, change_id: str) -> Path:
-    return project_root / ".cc" / "changes" / change_id / "baseline" / BASELINE_FILENAME
+    return project_root / ".cairness" / "changes" / change_id / "baseline" / BASELINE_FILENAME
 
 
 def load_baseline(path: Path) -> list[str]:
@@ -147,7 +147,7 @@ def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], boo
 
 
 def concretize_pattern(pattern: str) -> str:
-    if pattern.startswith(".claude/") or pattern.startswith(".cc/"):
+    if pattern.startswith(".claude/") or pattern.startswith(".cairness/"):
         return pattern
     state_relative_prefixes = (
         "changes/",
@@ -156,7 +156,7 @@ def concretize_pattern(pattern: str) -> str:
         "knowledge/",
     )
     if pattern.startswith(state_relative_prefixes):
-        return f".cc/{pattern}"
+        return f".cairness/{pattern}"
     claude_relative_prefixes = (
         "rules/",
         "schemas/",

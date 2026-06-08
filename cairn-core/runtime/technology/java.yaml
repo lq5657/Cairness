@@ -27,9 +27,9 @@ decision_groups:
     default_recommendation: spring_boot_service
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: spring_boot_service
         label: Spring Boot service
@@ -74,9 +74,9 @@ decision_groups:
     default_recommendation: maven_wrapper
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: maven_wrapper
         label: Maven Wrapper
@@ -121,9 +121,9 @@ decision_groups:
     default_recommendation: spring_boot
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: spring_boot
         label: Spring Boot
@@ -168,9 +168,9 @@ decision_groups:
     default_recommendation: junit5
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: junit5
         label: JUnit 5
@@ -215,9 +215,9 @@ decision_groups:
     default_recommendation: spring_data_jpa
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: spring_data_jpa
         label: Spring Data JPA
@@ -270,9 +270,9 @@ decision_groups:
     default_recommendation: caffeine_local
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: caffeine_local
         label: Caffeine (local cache)
@@ -317,8 +317,8 @@ decision_groups:
     default_recommendation: slf4j_logback_micrometer
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: slf4j_logback_micrometer
         label: SLF4J + Logback + Micrometer
@@ -355,9 +355,9 @@ decision_groups:
     default_recommendation: spring_events
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: spring_events
         label: Spring Events + @Async
@@ -402,8 +402,8 @@ decision_groups:
     default_recommendation: spring_config
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
     options:
       - id: spring_config
         label: Spring Environment + application.yml
@@ -440,9 +440,9 @@ decision_groups:
     default_recommendation: bean_validation
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: bean_validation
         label: Bean Validation (Jakarta Validation)

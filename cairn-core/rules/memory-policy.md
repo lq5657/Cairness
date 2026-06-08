@@ -7,35 +7,35 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 长期记忆只能保存能提升后续准确性的事实、导航和决策。单次执行细节、未确认猜测、敏感信息和临时调试输出不得沉淀。
 
-本策略中的 `.cc/*` 记忆层只适用于使用本 Harness 的目标项目。维护 `cc_spec` Harness 自身时，维护事实应进入 `.claude/CHANGELOG.md`、`.claude/UPGRADE.md`、`.claude/docs/maintenance/*`、runtime manifest、schema、eval、脚本或提交记录，不得写入 `.cc/*`。
+本策略中的 `.cairness/*` 记忆层只适用于使用本 Harness 的目标项目。维护 `cc_spec` Harness 自身时，维护事实应进入 `.claude/CHANGELOG.md`、`.claude/UPGRADE.md`、`.claude/docs/maintenance/*`、runtime manifest、schema、eval、脚本或提交记录，不得写入 `.cairness/*`。
 
 #### 1. 记忆分层
 
 | 层级 | 文件 | 内容 | 主要写入命令 |
 |------|------|------|--------------|
-| 项目事实 | `.cc/context/project-context.md` | 项目身份、入口、基础结构、待确认事项 | `cc-init`、`cc-enrich-context` |
-| 领域语言 | `.cc/context/domain-language.md` | 业务术语、产品概念、状态名、易混词和上下文拆分 | `cc-new-project`、`cc-init`、`cc-enrich-context` |
-| 开发导航 | `.cc/context/dev-map.md` | 模块边界、关键链路、验证入口、易错边界 | `cc-new-project`、`cc-init`、`cc-enrich-context`、必要时 `cc-apply` / `cc-fix` |
-| 工作看板 | `.cc/changes/task-board.md` | change 状态摘要、backlog 候选、阻塞项、下一命令 | `cc-new-project`、`cc-promote-audit`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive` |
-| 变更真相 | `.cc/changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
-| 复利知识 | `.cc/knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
+| 项目事实 | `.cairness/context/project-context.md` | 项目身份、入口、基础结构、待确认事项 | `cc-init`、`cc-enrich-context` |
+| 领域语言 | `.cairness/context/domain-language.md` | 业务术语、产品概念、状态名、易混词和上下文拆分 | `cc-new-project`、`cc-init`、`cc-enrich-context` |
+| 开发导航 | `.cairness/context/dev-map.md` | 模块边界、关键链路、验证入口、易错边界 | `cc-new-project`、`cc-init`、`cc-enrich-context`、必要时 `cc-apply` / `cc-fix` |
+| 工作看板 | `.cairness/changes/task-board.md` | change 状态摘要、backlog 候选、阻塞项、下一命令 | `cc-new-project`、`cc-promote-audit`、`cc-propose`、`cc-apply`、`cc-review`、`cc-fix`、`cc-test`、`cc-archive` |
+| 变更真相 | `.cairness/changes/<change-id>/*` | 单个 change 的需求、任务、证据、审查和日志 | change 级命令 |
+| 复利知识 | `.cairness/knowledge/*` | 可跨 change 复用的规则、踩坑、团队约定 | `cc-archive` 或维护者显式要求 |
 
 #### 1.0 领域语言边界
 
-`.cc/context/domain-language.md` 是项目共享业务语言入口，不按 Go、TypeScript、Python 等开发语言拆分。
+`.cairness/context/domain-language.md` 是项目共享业务语言入口，不按 Go、TypeScript、Python 等开发语言拆分。
 
 - 默认保持一个总入口，记录所有命令都应遵守的业务术语和易混概念。
-- 当仓库存在多个业务上下文时，按 bounded context 或业务模块拆分，例如 `.cc/context/domain/ordering.md`、`.cc/context/domain/billing.md`。
+- 当仓库存在多个业务上下文时，按 bounded context 或业务模块拆分，例如 `.cairness/context/domain/ordering.md`、`.cairness/context/domain/billing.md`。
 - 不记录编程语言、框架、包名、目录名等纯实现词；这些属于 `project-context.md` 或 `dev-map.md`。
 - 若用户输入与已确认领域语言冲突，`cc-propose` / `cc-review` 必须指出冲突并要求澄清或记录为待确认。
 - 未确认术语只能写入 `Flagged Ambiguities`，不得作为已确认定义使用。
 
 #### 1.1 项目私有知识包
 
-`.cc/knowledge/index.md` 是入口索引，具体知识建议按类型拆到专题目录，避免长期把所有内容堆在一个文件里：
+`.cairness/knowledge/index.md` 是入口索引，具体知识建议按类型拆到专题目录，避免长期把所有内容堆在一个文件里：
 
 ```text
-.cc/knowledge/
+.cairness/knowledge/
   index.md
   domain-rules/
   technical-conventions/
@@ -67,8 +67,8 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 #### 3. 更新优先级
 
-- 先更新离事实最近的文件：单次变更事实写 `.cc/changes/<change-id>/*`，项目事实写 `.cc/context/*`。
-- 只有跨 change 可复用的信息才写入 `.cc/knowledge/*`。
+- 先更新离事实最近的文件：单次变更事实写 `.cairness/changes/<change-id>/*`，项目事实写 `.cairness/context/*`。
+- 只有跨 change 可复用的信息才写入 `.cairness/knowledge/*`。
 - `task-board.md` 只写摘要、状态和导航，不复制 spec/tasks/review 正文。
 - `dev-map.md` 只写稳定导航，不记录每次实现的细碎过程。
 

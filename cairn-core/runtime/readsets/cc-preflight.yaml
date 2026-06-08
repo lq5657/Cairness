@@ -18,6 +18,6 @@ always_reads:
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .claude/docs/adoption/integration-preflight-checklist.md
-- .cc/context/dev-map.md
-- .cc/changes/task-board.md
+- .cairness/context/dev-map.md
+- .cairness/changes/task-board.md
 conditional_reads: {}

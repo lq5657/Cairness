@@ -10,9 +10,9 @@ state:
   change_to: unchanged
 
 writes:
-  - .cc/context/project-context.md
-  - .cc/context/domain-language.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
 
 forbids:
   - finding_output
@@ -24,13 +24,13 @@ forbids:
   - write_unconfirmed_blocking_assumption_as_fact
 
 required_reads:
-  - .cc/context/project-context.md
-  - .cc/context/domain-language.md
-  - .cc/context/dev-map.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
   - .claude/rules/memory-policy.md
 
 optional_reads:
-  - .cc/context/project-summary.md
+  - .cairness/context/project-summary.md
 
 conditional_reads:
   when_writing_context_artifacts:

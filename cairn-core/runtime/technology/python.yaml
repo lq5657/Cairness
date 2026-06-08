@@ -27,9 +27,9 @@ decision_groups:
     default_recommendation: cli_or_library
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: cli_or_library
         label: CLI or library
@@ -74,9 +74,9 @@ decision_groups:
     default_recommendation: pyproject_uv
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/dev-map.md
     options:
       - id: pyproject_uv
         label: pyproject.toml + uv
@@ -121,9 +121,9 @@ decision_groups:
     default_recommendation: fastapi
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: fastapi
         label: FastAPI
@@ -168,9 +168,9 @@ decision_groups:
     default_recommendation: pytest
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: pytest
         label: pytest
@@ -207,9 +207,9 @@ decision_groups:
     default_recommendation: ruff_plus_compileall
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/project-context.md
-      - .cc/changes/<change-id>/spec.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/project-context.md
+      - .cairness/changes/<change-id>/spec.md
     options:
       - id: ruff_plus_compileall
         label: ruff + compileall
@@ -254,9 +254,9 @@ decision_groups:
     default_recommendation: loguru
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/architecture-outline.md
-      - .cc/context/project-context.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/architecture-outline.md
+      - .cairness/context/project-context.md
     options:
       - id: loguru
         label: loguru
@@ -292,7 +292,7 @@ decision_groups:
     default_recommendation: asyncio
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: asyncio
         label: asyncio (async/await)
@@ -328,7 +328,7 @@ decision_groups:
     default_recommendation: postgresql
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: postgresql
         label: PostgreSQL
@@ -371,8 +371,8 @@ decision_groups:
     default_recommendation: sqlalchemy
     requires_user_confirmation: true
     outputs:
-      - .cc/context/project-definition.md
-      - .cc/context/dev-map.md
+      - .cairness/context/project-definition.md
+      - .cairness/context/dev-map.md
     options:
       - id: sqlalchemy
         label: SQLAlchemy 2.0
@@ -414,7 +414,7 @@ decision_groups:
     default_recommendation: simple_layered
     requires_user_confirmation: true
     outputs:
-      - .cc/context/dev-map.md
+      - .cairness/context/dev-map.md
     options:
       - id: simple_layered
         label: Simple layered (router/service/repo)
@@ -449,7 +449,7 @@ decision_groups:
     default_recommendation: redis
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: redis
         label: Redis (redis-py)
@@ -483,7 +483,7 @@ decision_groups:
     default_recommendation: pydantic_settings
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: pydantic_settings
         label: Pydantic Settings
@@ -519,7 +519,7 @@ decision_groups:
     default_recommendation: pydantic_v2
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: pydantic_v2
         label: Pydantic v2
@@ -554,7 +554,7 @@ decision_groups:
     default_recommendation: fastapi_depends
     requires_user_confirmation: false
     outputs:
-      - .cc/context/dev-map.md
+      - .cairness/context/dev-map.md
     options:
       - id: fastapi_depends
         label: FastAPI Depends
@@ -589,7 +589,7 @@ decision_groups:
     default_recommendation: celery
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: celery
         label: Celery
@@ -630,7 +630,7 @@ decision_groups:
     default_recommendation: opentelemetry
     requires_user_confirmation: false
     outputs:
-      - .cc/context/project-definition.md
+      - .cairness/context/project-definition.md
     options:
       - id: opentelemetry
         label: OpenTelemetry

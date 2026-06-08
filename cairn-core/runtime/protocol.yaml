@@ -16,34 +16,34 @@ path_roles:
     path: .claude
     kind: dir
   state_root:
-    path: .cc
+    path: .cairness
     kind: dir
   project_context:
-    path: .cc/context/project-context.md
+    path: .cairness/context/project-context.md
     kind: file
   project_summary:
-    path: .cc/context/project-summary.md
+    path: .cairness/context/project-summary.md
     kind: file
   domain_language:
-    path: .cc/context/domain-language.md
+    path: .cairness/context/domain-language.md
     kind: file
   dev_map:
-    path: .cc/context/dev-map.md
+    path: .cairness/context/dev-map.md
     kind: file
   task_board:
-    path: .cc/changes/task-board.md
+    path: .cairness/changes/task-board.md
     kind: file
   change_dir:
-    path: .cc/changes/<change-id>
+    path: .cairness/changes/<change-id>
     kind: dir
   audit_dir:
-    path: .cc/audits/<audit-id>
+    path: .cairness/audits/<audit-id>
     kind: dir
   knowledge_root:
-    path: .cc/knowledge
+    path: .cairness/knowledge
     kind: dir
   discuss_dir:
-    path: .cc/discussions/<discuss-id>
+    path: .cairness/discussions/<discuss-id>
     kind: dir
 
 input_contracts:
@@ -114,6 +114,6 @@ result_rendering:
   error_template: .claude/templates/results/command-error.md
 
 lifecycle_events:
-  change_event_log: .cc/changes/<change-id>/events.jsonl
+  change_event_log: .cairness/changes/<change-id>/events.jsonl
   schema: .claude/schemas/command-event.schema.json
   template: .claude/templates/changes/events.jsonl
