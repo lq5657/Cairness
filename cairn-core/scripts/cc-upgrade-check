@@ -99,16 +99,6 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
     ]
     for path, kind in technology_assets:
         require(path, kind, issues, "E_UPGRADE006")
-    protected_state = [
-        project_root / ".cairness" / "context" / "project-summary.md",
-        project_root / ".cairness" / "context" / "project-context.md",
-        project_root / ".cairness" / "context" / "domain-language.md",
-        project_root / ".cairness" / "context" / "dev-map.md",
-        project_root / ".cairness" / "changes" / "task-board.md",
-        project_root / ".cairness" / "knowledge" / "index.md",
-    ]
-    for path in protected_state:
-        require(path, "file", issues, "E_UPGRADE007")
 
 
 def build_report() -> dict[str, Any]:

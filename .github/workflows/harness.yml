@@ -12,14 +12,7 @@ jobs:
       - name: Create framework symlink
         run: ln -s cairn-core .claude
       - name: Create state skeleton
-        run: |
-          mkdir -p .cairness/{context,changes,audits,knowledge,discussions}
-          touch .cairness/context/project-summary.md
-          touch .cairness/context/project-context.md
-          touch .cairness/context/domain-language.md
-          touch .cairness/context/dev-map.md
-          touch .cairness/changes/task-board.md
-          touch .cairness/knowledge/index.md
+        run: mkdir -p .cairness/{context,changes,audits,knowledge,discussions}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
