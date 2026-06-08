@@ -821,12 +821,6 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
     project_root = root.parent
     _, protocol, _ = load_runtime_protocol(project_root)
     required = [
-        project_root / ".cairness" / "context" / "project-summary.md",
-        project_root / ".cairness" / "context" / "project-context.md",
-        project_root / ".cairness" / "context" / "domain-language.md",
-        project_root / ".cairness" / "context" / "dev-map.md",
-        project_root / ".cairness" / "changes" / "task-board.md",
-        project_root / ".cairness" / "knowledge" / "index.md",
         root / "templates" / "context" / "project-summary.md",
         root / "templates" / "context" / "project-context.md",
         root / "templates" / "context" / "domain-language.md",
