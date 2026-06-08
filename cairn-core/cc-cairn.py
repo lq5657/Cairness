@@ -46,6 +46,27 @@ def get_data_dir():
         sys.exit(f"Unsupported platform: {system}")
 
 
+def git_head_commit(repo):
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.exit(f"git rev-parse failed: {result.stderr}")
+    return result.stdout.strip()
+
+
+def read_commit_hash(directory):
+    cf = directory / "COMMIT"
+    if cf.exists():
+        return cf.read_text().strip()
+    return None
+
+
+def write_commit_hash(directory, commit):
+    (directory / "COMMIT").write_text(commit + "\n")
+
+
 def cmd_init():
     data_dir = get_data_dir()
     if not data_dir.exists():
@@ -54,7 +75,6 @@ def cmd_init():
     project_root = Path.cwd()
     claude_dir = project_root / ".claude"
 
-    # Check for existing installation
     if claude_dir.exists():
         print(f".claude/ already exists in {project_root}")
         resp = input("Overwrite? This will replace all framework files. [y/N] ").strip().lower()
@@ -63,18 +83,14 @@ def cmd_init():
             return
         shutil.rmtree(claude_dir)
 
-    # Copy framework core
     print(f"Installing Cairness framework to {claude_dir} ...")
     shutil.copytree(data_dir, claude_dir)
     print("  Copied framework core.")
 
-    # Create state skeleton
-    print("Creating state directories...")
     for d in STATE_SKELETON:
         (project_root / d).mkdir(parents=True, exist_ok=True)
         print(f"  {d}/")
 
-    # Copy CI templates if available
     ci_src = claude_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"
     if ci_src.exists():
@@ -83,7 +99,6 @@ def cmd_init():
             shutil.copy2(f, ci_dst / f.name)
         print("  Copied CI templates to .github/workflows/")
 
-    # Update .gitignore
     gitignore = project_root / ".gitignore"
     existing = gitignore.read_text() if gitignore.exists() else ""
     if ".claude/" not in existing:
@@ -96,7 +111,6 @@ def cmd_init():
 
 
 def find_repo():
-    """Find the Cairness repo by searching upward for cairn-core/VERSION."""
     d = Path.cwd()
     while d != d.parent:
         if (d / "cairn-core" / "VERSION").exists() and (d / "cairn_install").exists():
@@ -105,91 +119,135 @@ def find_repo():
     return None
 
 
-def sync_repo(data_dir):
-    """Ensure the system installation is up to date from remote."""
+def pull_repo(repo):
+    result = subprocess.run(
+        ["git", "pull", "origin", "main"],
+        cwd=repo, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.exit(f"git pull failed: {result.stderr}")
+    return result.stdout.strip()
+
+
+def ensure_repo():
     repo = find_repo()
-    if repo is None:
-        clone_path = Path.home() / ".local" / "share" / "cairness-repo"
-        if not clone_path.exists():
-            print(f"Cloning Cairness from {REMOTE_URL} ...")
-            result = subprocess.run(
-                ["git", "clone", REMOTE_URL, str(clone_path)],
-                capture_output=True, text=True
-            )
-            if result.returncode != 0:
-                sys.exit(f"git clone failed: {result.stderr}")
-        repo = clone_path
-    else:
-        print(f"Pulling latest from {REMOTE_URL} ...")
+    if repo is not None:
+        return repo
+
+    clone_path = Path.home() / ".local" / "share" / "cairness-repo"
+    if not clone_path.exists():
+        print(f"Cloning Cairness from {REMOTE_URL} ...")
         result = subprocess.run(
-            ["git", "pull", "origin", "main"],
-            cwd=repo, capture_output=True, text=True
+            ["git", "clone", REMOTE_URL, str(clone_path)],
+            capture_output=True, text=True
         )
         if result.returncode != 0:
-            print(f"git pull failed: {result.stderr}")
-            sys.exit(1)
+            sys.exit(f"git clone failed: {result.stderr}")
+    return clone_path
+
+
+def sync_system_install(data_dir, repo):
+    """Update system installation from repo. Returns True if updated."""
+    print("Pulling latest from remote ...")
+    pull_repo(repo)
+
+    new_commit = git_head_commit(repo)
+    old_commit = read_commit_hash(data_dir)
+
+    if old_commit == new_commit:
+        version = "unknown"
+        vf = repo / "cairn-core" / "VERSION"
+        if vf.exists():
+            version = vf.read_text().strip()
+        print(f"System installation already up to date (v{version}, {new_commit[:7]}).")
+        return data_dir  # no update needed
 
     core_src = repo / "cairn-core"
     new_ver = (core_src / "VERSION").read_text().strip()
     old_ver = "none"
-    if data_dir.exists():
-        vf = data_dir / "VERSION"
-        if vf.exists():
-            old_ver = vf.read_text().strip()
-
-    if old_ver == new_ver and data_dir.exists():
-        return new_ver
+    vf = data_dir / "VERSION"
+    if vf.exists():
+        old_ver = vf.read_text().strip()
 
     print(f"Updating system installation: v{old_ver} → v{new_ver}")
     if data_dir.exists():
         shutil.rmtree(data_dir)
     shutil.copytree(core_src, data_dir)
-    print(f"System installation updated to v{new_ver}.")
-    return new_ver
+    write_commit_hash(data_dir, new_commit)
+    print(f"System installation updated to v{new_ver} ({new_commit[:7]}).")
+    return data_dir
+
+
+def sync_project(data_dir, project_root):
+    """Update project .claude/ from system installation. Returns True if updated."""
+    claude_dir = project_root / ".claude"
+    if not claude_dir.exists():
+        version = (data_dir / "VERSION").read_text().strip()
+        print(f"System installation is v{version}.")
+        print("Run 'cc-cairn init' in a project directory to install the framework.")
+        return False
+
+    new_commit = read_commit_hash(data_dir)
+    old_commit = read_commit_hash(claude_dir)
+
+    if new_commit and old_commit and new_commit == old_commit:
+        project_ver = "unknown"
+        vf = claude_dir / "VERSION"
+        if vf.exists():
+            project_ver = vf.read_text().strip()
+        print(f"Project already up to date (v{project_ver}, {old_commit[:7]}).")
+        return False
+
+    new_ver = (data_dir / "VERSION").read_text().strip()
+    project_ver = "unknown"
+    vf = claude_dir / "VERSION"
+    if vf.exists():
+        project_ver = vf.read_text().strip()
+
+    print(f"Updating project .claude/: v{project_ver} → v{new_ver}")
+    shutil.rmtree(claude_dir)
+    shutil.copytree(data_dir, claude_dir)
+    print(f"Project updated to v{new_ver}.")
+    return True
 
 
 def cmd_update():
     data_dir = get_data_dir()
-    new_ver = sync_repo(data_dir)
+    if not data_dir.exists():
+        sys.exit(f"Framework not installed. Run 'cairn_install' from the Cairness repo first.")
 
-    project_root = Path.cwd()
-    claude_dir = project_root / ".claude"
-
-    if not claude_dir.exists():
-        print(f"System installation updated to v{new_ver}.")
-        print("Run 'cc-cairn init' in a project directory to install the framework.")
-        return
-
-    project_ver = "unknown"
-    pv_file = claude_dir / "VERSION"
-    if pv_file.exists():
-        project_ver = pv_file.read_text().strip()
-
-    if new_ver == project_ver:
-        print(f"Project already up to date (v{project_ver}).")
-        return
-
-    print(f"Updating project .claude/ from v{project_ver} to v{new_ver} ...")
-    shutil.rmtree(claude_dir)
-    shutil.copytree(data_dir, claude_dir)
-    print(f"Project updated to v{new_ver}.")
+    repo = ensure_repo()
+    sync_system_install(data_dir, repo)
+    sync_project(data_dir, Path.cwd())
 
 
 def cmd_version():
     data_dir = get_data_dir()
-    installed = "not installed"
+    installed_ver = "not installed"
+    installed_commit = ""
     if data_dir.exists():
         vf = data_dir / "VERSION"
         if vf.exists():
-            installed = vf.read_text().strip()
+            installed_ver = vf.read_text().strip()
+        cf = data_dir / "COMMIT"
+        if cf.exists():
+            installed_commit = cf.read_text().strip()[:7]
 
     project_ver = "not initialized"
-    pv_file = Path.cwd() / ".claude" / "VERSION"
-    if pv_file.exists():
-        project_ver = pv_file.read_text().strip()
+    project_commit = ""
+    claude_dir = Path.cwd() / ".claude"
+    if claude_dir.exists():
+        vf = claude_dir / "VERSION"
+        if vf.exists():
+            project_ver = vf.read_text().strip()
+        cf = claude_dir / "COMMIT"
+        if cf.exists():
+            project_commit = cf.read_text().strip()[:7]
 
-    print(f"cc-cairn (system): v{installed}")
-    print(f"Project ({Path.cwd()}): v{project_ver}")
+    sys_commit = f" ({installed_commit})" if installed_commit else ""
+    proj_commit = f" ({project_commit})" if project_commit else ""
+    print(f"cc-cairn (system): v{installed_ver}{sys_commit}")
+    print(f"Project ({Path.cwd()}): v{project_ver}{proj_commit}")
 
 
 def main():

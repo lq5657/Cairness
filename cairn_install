@@ -12,6 +12,7 @@ import os
 import sys
 import shutil
 import stat
+import subprocess
 from pathlib import Path
 
 MIN_PYTHON = (3, 9)
@@ -51,6 +52,15 @@ def install_core(data_dir: Path):
     if data_dir.exists():
         shutil.rmtree(data_dir)
     shutil.copytree(CORE_SRC, data_dir)
+
+    # Record git commit hash for future update comparisons
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT, capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        (data_dir / "COMMIT").write_text(result.stdout.strip() + "\n")
+
     print(f"Installed framework core to: {data_dir}")
 
 
