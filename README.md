@@ -18,7 +18,15 @@ cd Cairness
 python3 cairn_install
 ```
 
-`cairn_install` 将框架核心安装到系统位置，并注册 `cc-cairn` 命令。
+`cairn_install` 将框架核心安装到系统位置，并注册 `cc-cairn` 命令。重复执行可重装。
+
+卸载：
+
+```bash
+python3 cairn_uninstall
+```
+
+卸载只清理系统安装位置，不触碰项目中的 `.claude/` 和 `.cairness/`。
 
 | 平台 | 框架安装位置 | CLI 路径 |
 |------|-------------|---------|

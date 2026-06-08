@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Cairness framework uninstaller.
+
+Removes the Cairness framework core and cc-cairn CLI from the system.
+Does NOT touch project-level .claude/ or .cairness/ directories.
+
+Usage:
+    python3 cairn_uninstall
+"""
+
+import os
+import sys
+import shutil
+from pathlib import Path
+
+MIN_PYTHON = (3, 9)
+
+
+def check_python():
+    if sys.version_info < MIN_PYTHON:
+        v = ".".join(map(str, MIN_PYTHON))
+        sys.exit(f"Cairness requires Python {v}+ (current: {sys.version})")
+
+
+def get_platform_paths():
+    system = sys.platform
+    home = Path.home()
+
+    if system == "linux":
+        data_dir = home / ".local" / "share" / "cairness"
+        bin_dir = home / ".local" / "bin"
+    elif system == "darwin":
+        data_dir = home / "Library" / "Application Support" / "cairness"
+        bin_dir = Path("/usr/local/bin")
+    elif system == "win32":
+        data_dir = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")) / "cairness"
+        bin_dir = data_dir
+    else:
+        sys.exit(f"Unsupported platform: {system}")
+
+    return data_dir, bin_dir
+
+
+def main():
+    check_python()
+
+    data_dir, bin_dir = get_platform_paths()
+
+    print("This will remove:")
+    if data_dir.exists():
+        print(f"  {data_dir}/")
+    cli_name = "cc-cairn.cmd" if sys.platform == "win32" else "cc-cairn"
+    cli_path = bin_dir / cli_name
+    if cli_path.exists():
+        print(f"  {cli_path}")
+
+    if not data_dir.exists() and not cli_path.exists():
+        print("Nothing to uninstall.")
+        return
+
+    resp = input("Proceed? [y/N] ").strip().lower()
+    if resp != "y":
+        print("Aborted.")
+        return
+
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+        print(f"Removed: {data_dir}")
+
+    if cli_path.exists():
+        cli_path.unlink()
+        print(f"Removed: {cli_path}")
+
+    print("Cairness uninstalled. Project directories (.claude/, .cairness/) are untouched.")
+
+
+if __name__ == "__main__":
+    main()
