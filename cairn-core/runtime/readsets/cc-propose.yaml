@@ -15,6 +15,7 @@ always_reads:
 - .cairness/context/project-summary.md
 - .cairness/context/dev-map.md
 - .cairness/changes/task-board.md
+- .cairness/knowledge/index.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/change-sizing.yaml
 - .claude/runtime/profiles/standard.yaml
@@ -48,6 +49,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/source-driven-development.yaml
   when_change_has_dependency_or_parallelism_constraints:
   - .claude/runtime/topic-rules/git-workflow.yaml
+  when_knowledge_keyword_matched:
+  - .claude/runtime/topic-rules/knowledge-loading.yaml
   when_technology_decision_is_required:
   - .claude/runtime/protocol/technology-decisions.yaml
   - .claude/runtime/protocol/language-profile.yaml

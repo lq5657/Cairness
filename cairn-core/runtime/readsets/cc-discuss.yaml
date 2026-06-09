@@ -14,11 +14,11 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/context/project-summary.md
 - .cairness/context/dev-map.md
+- .cairness/knowledge/index.md
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cairness/context/project-context.md
 - .cairness/context/domain-language.md
-- .cairness/knowledge/index.md
 conditional_reads:
   when_writing_discussion_artifacts:
   - .claude/templates/discussions/brief.md
@@ -38,6 +38,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/source-driven-development.yaml
   when_assumptions_mode_is_activated:
   - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
+  when_knowledge_keyword_matched:
+  - .claude/runtime/topic-rules/knowledge-loading.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

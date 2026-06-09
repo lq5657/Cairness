@@ -89,6 +89,7 @@ topic_rules:
   source_driven_development: .claude/runtime/topic-rules/source-driven-development.yaml
   git_workflow: .claude/runtime/topic-rules/git-workflow.yaml
   interaction_guidance: .claude/runtime/topic-rules/interaction-guidance.yaml
+  knowledge_loading: .claude/runtime/topic-rules/knowledge-loading.yaml
   gate_effectiveness: .claude/runtime/topic-rules/gate-effectiveness.yaml
   change_dependencies: .claude/runtime/topic-rules/change-dependencies.yaml
   spec_code_sync: .claude/runtime/topic-rules/spec-code-sync.yaml

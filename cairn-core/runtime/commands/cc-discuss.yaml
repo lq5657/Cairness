@@ -32,11 +32,11 @@ forbids:
 required_reads:
   - .cairness/context/project-summary.md
   - .cairness/context/dev-map.md
+  - .cairness/knowledge/index.md
 
 optional_reads:
   - .cairness/context/project-context.md
   - .cairness/context/domain-language.md
-  - .cairness/knowledge/index.md
 
 conditional_reads:
   when_writing_discussion_artifacts:
@@ -134,6 +134,8 @@ topic_rules:
     - .claude/runtime/topic-rules/source-driven-development.yaml
   when_assumptions_mode_is_activated:
     - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
+  when_knowledge_keyword_matched:
+    - .claude/runtime/topic-rules/knowledge-loading.yaml
 
 subagents:
   enabled: true

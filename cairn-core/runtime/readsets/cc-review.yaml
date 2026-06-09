@@ -15,6 +15,7 @@ always_reads:
 - .cairness/changes/<change-id>/spec.md
 - .cairness/changes/<change-id>/tasks.md
 - .cairness/changes/task-board.md
+- .cairness/knowledge/index.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
@@ -69,6 +70,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/cpp-concurrency.yaml
   when_cpp_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/cpp-performance.yaml
+  when_knowledge_keyword_matched:
+  - .claude/runtime/topic-rules/knowledge-loading.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-review.yaml

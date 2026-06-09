@@ -17,6 +17,7 @@ always_reads:
 - .cairness/context/dev-map.md
 - .cairness/changes/task-board.md
 - .claude/harness.config.yaml
+- .cairness/knowledge/index.md
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/coding-style.yaml
 - .claude/runtime/profiles/standard.yaml
@@ -66,6 +67,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/cpp-concurrency.yaml
   when_cpp_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/cpp-performance.yaml
+  when_knowledge_keyword_matched:
+  - .claude/runtime/topic-rules/knowledge-loading.yaml
   when_language_profile_resolution_is_required:
   - .claude/runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml

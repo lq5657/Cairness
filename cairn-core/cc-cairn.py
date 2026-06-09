@@ -26,6 +26,21 @@ STATE_SKELETON = [
     ".cairness/discussions",
 ]
 
+KNOWLEDGE_SUBDIRS = [
+    "domain-rules",
+    "technical-conventions",
+    "pitfalls",
+    "module-guides",
+    "decision-records",
+    "data-assets",
+    "non-functional",
+    "external-references",
+    "refinement-candidates",
+]
+
+KNOWLEDGE_TEMPLATE = "templates/knowledge/index.md"
+KNOWLEDGE_TARGET = ".cairness/knowledge/index.md"
+
 GITIGNORE_ADDITIONS = """
 # Cairness framework (managed by cc-cairn)
 .claude/
@@ -90,6 +105,17 @@ def cmd_init():
     for d in STATE_SKELETON:
         (project_root / d).mkdir(parents=True, exist_ok=True)
         print(f"  {d}/")
+
+    knowledge_root = project_root / ".cairness" / "knowledge"
+    for sub in KNOWLEDGE_SUBDIRS:
+        (knowledge_root / sub).mkdir(parents=True, exist_ok=True)
+    print("  .cairness/knowledge/ subdirectories")
+
+    tmpl = claude_dir / KNOWLEDGE_TEMPLATE
+    dst = project_root / KNOWLEDGE_TARGET
+    if tmpl.exists() and not dst.exists():
+        shutil.copy2(tmpl, dst)
+        print(f"  {KNOWLEDGE_TARGET} (from template)")
 
     ci_src = claude_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"

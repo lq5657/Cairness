@@ -1,0 +1,46 @@
+id: knowledge-loading
+description: "根据 change 语义匹配 team knowledge 关键词，加载对应知识文件作为增强上下文"
+
+trigger:
+  - "cc-propose: spec 需求描述或任务拆分涉及 knowledge/index.md 中已注册的关键词"
+  - "cc-apply: 实现 task 时触及 index 中记录的易错模式、业务规则或技术约定"
+  - "cc-review: 审查 change 时发现可被已有知识覆盖的检查维度"
+
+skip:
+  - "index.md 无关键词条目 → 跳过知识加载，不阻塞主流程"
+  - "index.md 格式无法解析（缺少 **粗体** 标记或 → 路径分隔符）→ 跳过该条目，不阻塞"
+  - "关键词匹配到的知识文件不存在或无法读取 → 跳过该条目，继续处理其他匹配"
+  - "知识内容与 spec 冲突 → 标记为待确认事项记录到 log.md，不静默覆盖 spec 或实现"
+  - "关键词未匹配到任何条目 → 跳过，LLM 按常规流程继续"
+
+process:
+  - "步骤 1: 解析 index.md，提取每条 **关键词** : 说明 → 文件路径 的映射关系"
+  - "步骤 2: 将提取的关键词集合与当前 change 做语义比对"
+  - "  cc-propose: 比对需求描述、spec 范围、tasks 描述"
+  - "  cc-apply: 比对当前 task 描述、涉及模块、变更类型"
+  - "  cc-review: 比对 spec 约束、实现范围、review 维度"
+  - "步骤 3: 对每个匹配的关键词，读取对应的知识文件"
+  - "步骤 4: 将知识约束应用到当前阶段"
+  - "  cc-propose: 将知识规则作为 spec 约束或 risk 项纳入提案"
+  - "  cc-apply: 将知识规则作为实现边界，避免重复已知坑点"
+  - "  cc-review: 将知识规则作为额外审查维度，检查是否违反已知约定"
+  - "步骤 5: 在 log.md 中简要记录匹配到的知识条目（关键词 + 文件路径），供追溯"
+
+anti_rationalization:
+  - claim: "我大概记得这个知识，不用去读文件了"
+    reality: "记忆不可靠。index 匹配到的文件必须 Read，不能凭印象。"
+  - claim: "这个关键词不完全匹配，应该也算"
+    reality: "语义匹配允许近似，但如果关键词描述和当前场景差异明显，宁可漏匹配也不要误匹配。标注 confidence: low。"
+  - claim: "index 里没有相关关键词，说明没有相关知识"
+    reality: "index 可能不完整。没有匹配到 ≠ 知识不存在。如果在实现中发现新模式，建议沉淀到 knowledge。"
+  - claim: "知识文件内容和当前 spec 冲突，以知识为准"
+    reality: "知识是历史记录，spec 是当前决策。冲突时必须标记为待确认，让用户选择以哪个为准。"
+
+red_flags:
+  - "已匹配的知识文件被跳过而未记录跳过原因"
+  - "知识内容与 spec 冲突但被静默覆盖"
+  - "同一关键词反复匹配但对应的知识文件从未被读取"
+
+checks:
+  - "cc-knowledge-check"
+  - "cc-knowledge-check --stale-only"
