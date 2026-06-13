@@ -51,6 +51,48 @@ cc-cairn init
 cc-cairn update       # 拉取最新版并更新系统安装和项目 .claude/（不触碰 .cairness/）
 ```
 
+## 知识管理
+
+`.cairness/knowledge/index.md` 维护「关键词 → 知识文件」三元组索引（`**关键词** : 一句话说明 → 路径`）。LLM 通过语义匹配关键词来决定加载哪些知识文件，因此 index.md 必须保持格式合法、关键词唯一、路径存在。
+
+### 注册新知识
+
+把新知识文件落到 `.cairness/knowledge/<category>/` 后，使用 CLI 注册到 index：
+
+```bash
+# 默认 dry-run，预览将要写入的条目
+cc-cairn add-knowledge .cairness/knowledge/domain-rules/foo.md
+
+# 加 --apply 落盘（自动从知识文件提取关键词/描述草稿）
+cc-cairn add-knowledge --apply .cairness/knowledge/domain-rules/foo.md
+
+# 自定义关键词或描述（仅单文件模式可用）
+cc-cairn add-knowledge --apply --keyword "Foo Rule" --desc "When foo, do bar" \
+  .cairness/knowledge/domain-rules/foo.md
+
+# 一次注册多个文件
+cc-cairn add-knowledge --apply \
+  .cairness/knowledge/domain-rules/foo.md \
+  .cairness/knowledge/pitfalls/null-deref.md
+```
+
+CLI 在写入时会做：
+- 路径校验：必须位于 `.cairness/knowledge/<known-category>/` 下，`refinement-candidates/` 不参与索引；
+- 关键词唯一性校验：同名关键词冲突会失败并提示用 `--keyword` 覆盖；
+- 写后自检：自动调用 `cc-index-check`，若新增 error 自动回滚。
+
+> **不要 free-form 编辑 index.md**。Harness 在 `cc-archive` 等命令中已声明 `freeform_edit_of_knowledge_index_md` 为禁止行为，必须走 CLI。
+
+### 校验 index 格式
+
+```bash
+.claude/scripts/cc-index-check          # 检查并以人类可读格式输出
+.claude/scripts/cc-index-check --json   # JSON 输出（便于脚本消费）
+.claude/scripts/cc-index-check --strict # 严格模式：warn 也算失败
+```
+
+`cc-archive` 已把 `cc-index-check` 纳入 `auto_validation`，归档时自动校验。
+
 ## 核心原则
 
 - `No Spec, No Code`：没有 spec，禁止进入实现。
@@ -139,6 +181,7 @@ Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Sp
 .claude/scripts/cc-deps orphans
 .claude/scripts/cc-gate-stats --degraded
 .claude/scripts/cc-knowledge-check
+.claude/scripts/cc-index-check
 .claude/scripts/cc-budget-check
 ```
 
