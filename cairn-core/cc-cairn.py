@@ -2,15 +2,20 @@
 """cc-cairn — Cairness framework project CLI.
 
 Usage:
-    cc-cairn init        Initialize Cairness in the current project
-    cc-cairn update      Pull latest release and update framework
-    cc-cairn version     Show installed and project versions
+    cc-cairn init                            Initialize Cairness in the current project
+    cc-cairn update                          Pull latest release and update framework
+    cc-cairn version                         Show installed and project versions
+    cc-cairn add-knowledge [--apply] PATH... Register knowledge files into index.md
 """
 
+import argparse
+import json
 import os
+import re
 import sys
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 MIN_PYTHON = (3, 9)
@@ -276,13 +281,366 @@ def cmd_version():
     print(f"Project ({Path.cwd()}): v{project_ver}{proj_commit}")
 
 
+KNOWLEDGE_INDEX_CATEGORIES = [
+    ("domain-rules", "业务规则"),
+    ("technical-conventions", "技术约定"),
+    ("pitfalls", "踩坑记录"),
+    ("module-guides", "模块指南"),
+    ("decision-records", "历史方案"),
+    ("data-assets", "数据资产"),
+    ("non-functional", "非功能性约束"),
+    ("external-references", "外部依赖引用"),
+]
+KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS = {"refinement-candidates"}
+
+
+def _knowledge_root(project_root):
+    return project_root / ".cairness" / "knowledge"
+
+
+def _resolve_knowledge_path(project_root, raw_path):
+    """Return (subdir, rel_path_posix) or raise ValueError."""
+    p = Path(raw_path).expanduser()
+    if not p.is_absolute():
+        p = (project_root / p).resolve()
+    else:
+        p = p.resolve()
+
+    knowledge_root = _knowledge_root(project_root).resolve()
+    try:
+        rel = p.relative_to(knowledge_root)
+    except ValueError:
+        raise ValueError(
+            f"path is not under .cairness/knowledge/: {raw_path}"
+        )
+
+    parts = rel.parts
+    if len(parts) < 2:
+        raise ValueError(
+            f"path must be inside a category subdir (e.g. domain-rules/foo.md): {raw_path}"
+        )
+    subdir = parts[0]
+    if subdir in KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS:
+        raise ValueError(
+            f"refinement-candidates/ is not registered in index.md: {raw_path}"
+        )
+    valid_subdirs = {s for s, _ in KNOWLEDGE_INDEX_CATEGORIES}
+    if subdir not in valid_subdirs:
+        raise ValueError(
+            f"unknown category subdir '{subdir}'. Valid: {sorted(valid_subdirs)}"
+        )
+    if p.suffix.lower() != ".md":
+        raise ValueError(f"only .md files can be registered: {raw_path}")
+    if not p.is_file():
+        raise ValueError(f"file not found: {raw_path}")
+
+    return subdir, rel.as_posix()
+
+
+def _extract_keyword_draft(content, fallback_stem):
+    for line in content.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        m = re.match(r"^#{1,6}\s+(.+?)\s*$", s)
+        if m:
+            return m.group(1).strip()
+        return s[:30].strip()
+    return fallback_stem.replace("-", " ").replace("_", " ").strip() or fallback_stem
+
+
+def _extract_desc_draft(content):
+    lines = content.splitlines()
+    skipped_h1 = False
+    for line in lines:
+        s = line.strip()
+        if not s:
+            continue
+        if not skipped_h1 and re.match(r"^#{1,6}\s+", s):
+            skipped_h1 = True
+            continue
+        clean = re.sub(r"\*\*", "", s)
+        clean = re.sub(r"^\s*[>#]+\s*", "", clean).strip()
+        if clean:
+            return clean[:60]
+    return "TODO: 补充一句话说明"
+
+
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def _strip_html_comments(text):
+    return _HTML_COMMENT_RE.sub("", text)
+
+
+def _parse_existing_entries(index_text):
+    """Return set of registered relative paths and dict keyword -> path.
+
+    Skips content inside HTML comments so example entries in templates
+    don't trigger false-positive conflicts.
+    """
+    paths = set()
+    keywords = {}
+    entry_re = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+?)\s*→\s*(\S+)")
+    cleaned = _strip_html_comments(index_text)
+    for line in cleaned.splitlines():
+        m = entry_re.search(line)
+        if m:
+            kw, _desc, path = m.group(1).strip(), m.group(2), m.group(3).strip()
+            paths.add(path)
+            keywords[kw] = path
+    return paths, keywords
+
+
+def _find_section_insert_point(index_text, subdir):
+    """Locate where to insert a new entry for subdir.
+
+    Strategy: find a heading line whose text contains '({subdir}/)' marker.
+    Return (line_index_after_section_end, heading_level) or (None, None) if not found.
+    """
+    lines = index_text.splitlines()
+    marker = f"({subdir}/)"
+    section_start = None
+    section_level = None
+    for i, line in enumerate(lines):
+        m = re.match(r"^(#{1,6})\s+(.+)$", line)
+        if m and marker in m.group(2):
+            section_start = i
+            section_level = len(m.group(1))
+            break
+    if section_start is None or section_level is None:
+        return None, None
+
+    end = len(lines)
+    for j in range(section_start + 1, len(lines)):
+        line = lines[j]
+        m = re.match(r"^(#{1,6})\s+", line)
+        if m and len(m.group(1)) <= section_level:
+            end = j
+            break
+        if re.match(r"^-{3,}\s*$", line.strip()):
+            end = j
+            break
+    while end > section_start + 1 and lines[end - 1].strip() == "":
+        end -= 1
+    return end, section_level
+
+
+def _insert_entry(lines, insert_at, entry_line):
+    """Insert entry_line at insert_at, padding with blank lines as needed.
+
+    Returns (new_lines, shift) where shift is the number of lines added.
+    """
+    out = list(lines)
+    inserted = []
+    need_blank_before = insert_at > 0 and out[insert_at - 1].strip() != ""
+    if need_blank_before:
+        inserted.append("")
+    inserted.append(entry_line)
+    next_line = out[insert_at] if insert_at < len(out) else ""
+    if next_line.strip() != "":
+        inserted.append("")
+    out[insert_at:insert_at] = inserted
+    return out, len(inserted)
+
+
+def _append_new_section(lines, subdir, display_name, entry_line):
+    out = list(lines)
+    while out and out[-1].strip() == "":
+        out.pop()
+    out.append("")
+    out.append("---")
+    out.append("")
+    out.append(f"## {display_name} ({subdir}/)")
+    out.append("")
+    out.append(entry_line)
+    out.append("")
+    return out
+
+
+def cmd_add_knowledge(argv):
+    parser = argparse.ArgumentParser(
+        prog="cc-cairn add-knowledge",
+        description="Register knowledge files into .cairness/knowledge/index.md",
+    )
+    parser.add_argument("paths", nargs="+", help="knowledge file path(s) under .cairness/knowledge/<category>/")
+    parser.add_argument("--apply", action="store_true", help="actually write to index.md (default: dry-run)")
+    parser.add_argument("--keyword", help="override keyword (only valid with a single path)")
+    parser.add_argument("--desc", help="override description (only valid with a single path)")
+    args = parser.parse_args(argv)
+
+    if (args.keyword or args.desc) and len(args.paths) != 1:
+        sys.exit("--keyword/--desc only valid when registering a single path")
+
+    project_root = Path.cwd()
+    index_path = project_root / ".cairness" / "knowledge" / "index.md"
+    if not index_path.is_file():
+        sys.exit(
+            "index.md not found. Run 'cc-cairn init' first or create "
+            ".cairness/knowledge/index.md."
+        )
+
+    resolved = []
+    errors = []
+    for raw in args.paths:
+        try:
+            subdir, rel = _resolve_knowledge_path(project_root, raw)
+        except ValueError as e:
+            errors.append(str(e))
+            continue
+        resolved.append((subdir, rel, raw))
+
+    if errors:
+        for e in errors:
+            print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    index_text = index_path.read_text(encoding="utf-8")
+    existing_paths, existing_keywords = _parse_existing_entries(index_text)
+
+    drafts = []
+    skip_already = []
+    for subdir, rel, raw in resolved:
+        if rel in existing_paths:
+            skip_already.append(rel)
+            continue
+        file_path = project_root / ".cairness" / "knowledge" / rel
+        content = file_path.read_text(encoding="utf-8")
+        if args.keyword:
+            kw = args.keyword.strip()
+        else:
+            kw = _extract_keyword_draft(content, file_path.stem)
+        if args.desc:
+            desc = args.desc.strip()
+        else:
+            desc = _extract_desc_draft(content)
+        drafts.append((subdir, rel, kw, desc))
+
+    seen_kw_in_batch = {}
+    kw_conflicts = []
+    for subdir, rel, kw, desc in drafts:
+        if kw in existing_keywords and existing_keywords[kw] != rel:
+            kw_conflicts.append((kw, rel, existing_keywords[kw]))
+        if kw in seen_kw_in_batch and seen_kw_in_batch[kw] != rel:
+            kw_conflicts.append((kw, rel, seen_kw_in_batch[kw]))
+        seen_kw_in_batch[kw] = rel
+
+    if kw_conflicts:
+        for kw, new_path, existing in kw_conflicts:
+            print(
+                f"error: keyword conflict: '{kw}' already used by {existing} (new: {new_path})",
+                file=sys.stderr,
+            )
+        print("hint: pass --keyword to override (single-path mode only)", file=sys.stderr)
+        sys.exit(1)
+
+    if not drafts and not skip_already:
+        print("nothing to do.")
+        return
+    if not drafts:
+        for p in skip_already:
+            print(f"already registered: {p}")
+        return
+
+    by_subdir = {}
+    for subdir, rel, kw, desc in drafts:
+        by_subdir.setdefault(subdir, []).append((rel, kw, desc))
+
+    if not args.apply:
+        print(f"[dry-run] {len(drafts)} entries to register:")
+        for p in skip_already:
+            print(f"  (skip, already registered) {p}")
+        category_map = dict(KNOWLEDGE_INDEX_CATEGORIES)
+        for subdir, items in by_subdir.items():
+            display = category_map[subdir]
+            print()
+            print(f"  ## {display} ({subdir}/)")
+            for rel, kw, desc in items:
+                print(f"    + **{kw}** : {desc} → {rel}")
+        print()
+        print("Run with --apply to write changes.")
+        return
+
+    lines = index_text.splitlines()
+    category_map = dict(KNOWLEDGE_INDEX_CATEGORIES)
+    inserted_count = 0
+    for subdir, items in by_subdir.items():
+        for rel, kw, desc in items:
+            entry_line = f"- **{kw}** : {desc} → {rel}"
+            insert_at, _level = _find_section_insert_point("\n".join(lines), subdir)
+            if insert_at is None:
+                lines = _append_new_section(lines, subdir, category_map[subdir], entry_line)
+            else:
+                lines, _shift = _insert_entry(lines, insert_at, entry_line)
+            inserted_count += 1
+
+    new_text = "\n".join(lines)
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+
+    pre_error_count = _count_index_errors(project_root, index_text)
+
+    tmp = index_path.with_suffix(index_path.suffix + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    os.replace(tmp, index_path)
+
+    post_error_count = _count_index_errors(project_root, new_text)
+    if post_error_count is not None and pre_error_count is not None \
+            and post_error_count > pre_error_count:
+        # rollback
+        index_path.write_text(index_text, encoding="utf-8")
+        print(
+            f"error: cc-index-check reported {post_error_count - pre_error_count} new "
+            f"error(s) after write; rolled back. Run "
+            f".claude/scripts/cc-index-check to inspect.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    for p in skip_already:
+        print(f"already registered: {p}")
+    print(f"wrote {inserted_count} entries to {index_path.relative_to(project_root)}")
+
+
+def _count_index_errors(project_root, index_text):
+    """Run cc-index-check against given index content (via temp file).
+
+    Returns error count, or None if the lint script is unavailable / errored.
+    """
+    lint_script = project_root / ".claude" / "scripts" / "cc-index-check"
+    if not lint_script.is_file():
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        td_path = Path(td)
+        knowledge_src = project_root / ".cairness" / "knowledge"
+        knowledge_dst = td_path / ".cairness" / "knowledge"
+        # Copy the knowledge tree so path-existence checks resolve, but write
+        # our candidate index.md instead of the on-disk one.
+        shutil.copytree(knowledge_src, knowledge_dst, symlinks=True)
+        (knowledge_dst / "index.md").write_text(index_text, encoding="utf-8")
+        try:
+            res = subprocess.run(
+                [sys.executable, str(lint_script), "--json", "--root", str(td_path)],
+                capture_output=True, text=True, timeout=15,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        if res.returncode == 2:
+            return None
+        try:
+            data = json.loads(res.stdout)
+        except (ValueError, json.JSONDecodeError):
+            return None
+        return data.get("summary", {}).get("error", 0)
+
+
 def main():
     if sys.version_info < MIN_PYTHON:
         v = ".".join(map(str, MIN_PYTHON))
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|update|version>")
+        print("Usage: cc-cairn <init|update|version|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -292,9 +650,11 @@ def main():
         cmd_update()
     elif cmd == "version":
         cmd_version()
+    elif cmd == "add-knowledge":
+        cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|update|version>")
+        print("Usage: cc-cairn <init|update|version|add-knowledge>")
         sys.exit(1)
 
 

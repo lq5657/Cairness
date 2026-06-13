@@ -186,7 +186,7 @@ commands:
     change_to: done
     inputs: [change_id]
     outputs: [done_status, archival_log, task_board_archive_state, optional_knowledge]
-    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md, .cairness/knowledge/*]
+    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md, .cairness/knowledge/<category>/*.md, .cairness/knowledge/refinement-candidates/*.md]
     validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence, memory_policy, knowledge_decision_user_choice]
-    forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice]
-    auto_validation: ["cc-verify --change <change-id>"]
+    forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice, freeform_edit_of_knowledge_index_md]
+    auto_validation: ["cc-verify --change <change-id>", "cc-index-check"]

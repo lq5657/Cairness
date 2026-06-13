@@ -14,7 +14,9 @@ writes:
   - .cairness/changes/<change-id>/spec.md
   - .cairness/changes/<change-id>/log.md
   - .cairness/changes/task-board.md
-  - .cairness/knowledge/*
+  - .cairness/knowledge/<category>/*.md
+  - .cairness/knowledge/refinement-candidates/*.md
+
 
 forbids:
   - business_code_write
@@ -23,6 +25,7 @@ forbids:
   - set_done_from_other_command
   - infer_knowledge_decision_without_user_choice
   - mark_done_before_knowledge_choice
+  - freeform_edit_of_knowledge_index_md
 
 required_reads:
   - .cairness/changes/<change-id>/review.md
@@ -96,6 +99,7 @@ steps:
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
+  - .claude/scripts/cc-index-check
 
 anti_rationalizations:
   - treat_project_knowledge_as_framework_rule

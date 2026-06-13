@@ -56,6 +56,14 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 `refinement-candidates/` 只保存“框架/规则/流程改进候选”，不得在 `cc-archive` 中直接改 `.claude/rules`、runtime manifest 或模板。此类改动必须进入单独维护 change 并通过 Harness 校验。
 
+#### 1.2 写入 index.md
+
+注册新知识到 `.cairness/knowledge/index.md` 时禁止 free-form 编辑，必须通过 `cc-cairn add-knowledge --apply <知识文件路径>` 完成。CLI 会从知识文件提取关键词/描述草稿，做关键词唯一性、路径存在、目录归属校验，并在写后调用 `cc-index-check` 自检；新增 error 会自动回滚。
+
+如需自定义关键词或描述：`cc-cairn add-knowledge --apply --keyword <kw> --desc <desc> <path>`（仅单文件模式可用）。
+默认 dry-run，去掉 `--apply` 可预览将要写入的条目。
+仅当 CLI 不可用且必须手工编辑时，必须立即运行 `.claude/scripts/cc-index-check --strict` 验证格式。
+
 #### 2. 写入准入
 
 写入长期记忆前必须满足：

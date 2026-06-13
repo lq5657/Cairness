@@ -52,6 +52,7 @@
 - 归档完成后将 `spec.md` 状态改为 `done`
 - 归档完成后同步 `.cairness/changes/task-board.md`，将当前 change 标记为已归档，并清理或关闭对应阻塞项
 - 切换为 `done` 后应再次运行自动 Harness 校验，确保归档状态仍满足状态机与闭环规则
+- 写入 `.cairness/knowledge/index.md` 时禁止 free-form 编辑，必须使用 `cc-cairn add-knowledge --apply <知识文件路径>` CLI 注册条目；如需自定义 keyword/desc，使用 `--keyword <kw> --desc <desc>`。CLI 在写后会通过 `cc-index-check` 自检，新增 error 会自动回滚。仅当 CLI 不可用时退化为读取 `.claude/templates/knowledge/index.md` 手工追加，并必须立即运行 `.claude/scripts/cc-index-check --strict` 验证。
 
 ## 失败处理
 
