@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/knowledge-categories.schema.json",
+  "title": "cc_spec Knowledge Category Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "categories"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subdir",
+          "display_name",
+          "description",
+          "indexed",
+          "created_by_init"
+        ],
+        "properties": {
+          "subdir": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "minLength": 1
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "indexed": {
+            "type": "boolean"
+          },
+          "created_by_init": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 
-KNOWN_CATEGORIES = {
+KNOWN_CATEGORIES_FALLBACK = {
     "domain-rules",
     "technical-conventions",
     "pitfalls",
@@ -36,10 +36,48 @@ KNOWN_CATEGORIES = {
     "non-functional",
     "external-references",
 }
-FORBIDDEN_IN_INDEX = {"refinement-candidates"}
+FORBIDDEN_IN_INDEX_FALLBACK = {"refinement-candidates"}
+KNOWLEDGE_CATALOG_REL = "runtime/knowledge-categories.yaml"
 HARNESS_REFERENCE_PREFIX = ".claude/"
 
-ENTRY_RE = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+?)\s*→\s*(\S+)")
+
+def _load_catalog(root: Path) -> tuple[set[str], set[str]]:
+    """Load (known_categories, forbidden_in_index) from runtime YAML or fall back."""
+    candidates = [
+        Path(__file__).resolve().parent.parent / KNOWLEDGE_CATALOG_REL,
+        root / ".claude" / KNOWLEDGE_CATALOG_REL,
+    ]
+    catalog_path = next((c for c in candidates if c.is_file()), None)
+    if catalog_path is None:
+        return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+    try:
+        data = yaml.safe_load(catalog_path.read_text(encoding="utf-8"))
+    except Exception:
+        return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+    if not isinstance(data, dict):
+        return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+    cats = data.get("categories")
+    if not isinstance(cats, list) or not cats:
+        return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+    known: set[str] = set()
+    forbidden: set[str] = set()
+    for c in cats:
+        if not isinstance(c, dict):
+            return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+        sub = c.get("subdir")
+        if not isinstance(sub, str):
+            return set(KNOWN_CATEGORIES_FALLBACK), set(FORBIDDEN_IN_INDEX_FALLBACK)
+        if c.get("indexed"):
+            known.add(sub)
+        else:
+            forbidden.add(sub)
+    return known, forbidden
+
+ENTRY_RE = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+)\s*→\s*(\S+)\s*$")
 LOOSE_BOLD_LINE_RE = re.compile(r"\*\*[^*]+\*\*")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 SECTION_MARKER_RE = re.compile(r"\(([a-z][a-z0-9-]*)/\)")
@@ -72,6 +110,7 @@ def find_section_for_line(lines: list[str], lineno: int) -> str | None:
 
 
 def lint_index(index_path: Path, project_root: Path) -> dict[str, Any]:
+    known_categories, forbidden_in_index = _load_catalog(project_root)
     text = index_path.read_text(encoding="utf-8")
     cleaned = strip_comments(text)
     lines = cleaned.splitlines()
@@ -146,14 +185,14 @@ def lint_index(index_path: Path, project_root: Path) -> dict[str, Any]:
                 "line": idx + 1,
                 "message": f"cross-tree reference to {path} (allowed for Harness maintenance entries)",
             })
-        elif first_seg in FORBIDDEN_IN_INDEX:
+        elif first_seg in forbidden_in_index:
             findings.append({
                 "level": "warn",
                 "code": "forbidden-category",
                 "line": idx + 1,
                 "message": f"refinement-candidates/ should not appear in index.md: {path}",
             })
-        elif first_seg not in KNOWN_CATEGORIES:
+        elif first_seg not in known_categories:
             findings.append({
                 "level": "warn",
                 "code": "unknown-category",
@@ -173,7 +212,7 @@ def lint_index(index_path: Path, project_root: Path) -> dict[str, Any]:
                 })
 
         # category-section mismatch
-        if first_seg in KNOWN_CATEGORIES:
+        if first_seg in known_categories:
             section_subdir = find_section_for_line(lines, idx)
             if section_subdir is not None and section_subdir != first_seg:
                 findings.append({

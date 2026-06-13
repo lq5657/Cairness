@@ -32,7 +32,7 @@ description: "长期记忆写入策略：context、dev-map、task-board、knowle
 
 #### 1.1 项目私有知识包
 
-`.cairness/knowledge/index.md` 是入口索引，具体知识建议按类型拆到专题目录，避免长期把所有内容堆在一个文件里：
+`.cairness/knowledge/index.md` 是入口索引，具体知识建议按类型拆到专题目录，避免长期把所有内容堆在一个文件里。分类的权威定义见 `.claude/runtime/knowledge-categories.yaml`（`subdir` / `display_name` / `indexed` / `created_by_init`），下面只是示例：
 
 ```text
 .cairness/knowledge/

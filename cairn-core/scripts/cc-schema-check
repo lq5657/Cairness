@@ -64,6 +64,7 @@ RUNTIME_READSET_SCHEMA = "runtime-readset.schema.json"
 COMMAND_PROTOCOL_SCHEMA = "command-protocol.schema.json"
 TECHNOLOGY_DECISION_CATALOG_SCHEMA = "technology-decision-catalog.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
+KNOWLEDGE_CATEGORIES_SCHEMA = "knowledge-categories.schema.json"
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
     "**When To Use**",
@@ -1736,8 +1737,46 @@ def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_workflow_runtime_parity(claude_root, core, issues))
     checked.extend(validate_runtime_readsets(claude_root, core, issues))
+    checked.extend(validate_knowledge_categories(claude_root, issues))
     checked_topic_rules = validate_topic_rules(claude_root, core, issues)
     return checked, checked_topic_rules
+
+
+def validate_knowledge_categories(claude_root: Path, issues: list[Issue]) -> list[str]:
+    catalog_path = claude_root / "runtime" / "knowledge-categories.yaml"
+    schema_path = claude_root / "schemas" / KNOWLEDGE_CATEGORIES_SCHEMA
+    catalog = load_yaml_file(catalog_path, issues)
+    schema = load_json_file(schema_path, issues)
+    if catalog is None or schema is None:
+        return [str(catalog_path)] if catalog_path.exists() else []
+    validate_against_schema(catalog, schema, schema, [], catalog_path, issues)
+
+    seen_subdirs: set[str] = set()
+    seen_display: set[str] = set()
+    for entry in catalog.get("categories", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        subdir = entry.get("subdir")
+        if isinstance(subdir, str):
+            if subdir in seen_subdirs:
+                add(
+                    issues,
+                    "E_SCHEMA160",
+                    catalog_path,
+                    f"duplicate knowledge category subdir: {subdir}",
+                )
+            seen_subdirs.add(subdir)
+        display = entry.get("display_name")
+        if isinstance(display, str):
+            if display in seen_display:
+                add(
+                    issues,
+                    "E_SCHEMA161",
+                    catalog_path,
+                    f"duplicate knowledge category display_name: {display}",
+                )
+            seen_display.add(display)
+    return [str(catalog_path)]
 
 
 def validate_change_id(value: Any) -> bool:

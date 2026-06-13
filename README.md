@@ -74,6 +74,14 @@ cc-cairn add-knowledge --apply --keyword "Foo Rule" --desc "When foo, do bar" \
 cc-cairn add-knowledge --apply \
   .cairness/knowledge/domain-rules/foo.md \
   .cairness/knowledge/pitfalls/null-deref.md
+
+# 删除已注册条目
+cc-cairn add-knowledge --remove --apply .cairness/knowledge/pitfalls/null-deref.md
+
+# 重命名已注册条目（关键词/描述保留，路径替换）
+cc-cairn add-knowledge --rename --apply \
+  .cairness/knowledge/domain-rules/foo.md \
+  .cairness/knowledge/decision-records/foo.md
 ```
 
 CLI 在写入时会做：

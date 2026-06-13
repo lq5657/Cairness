@@ -5,6 +5,8 @@
 
 可使用 `cc-cairn add-knowledge <path>` 自动生成草稿条目（默认 dry-run，加 `--apply` 落盘）。
 
+分类的权威列表见 `.claude/runtime/knowledge-categories.yaml`；本模板仅展示常用入口，不要把模板里的目录名当作硬约束。
+
 LLM 通过语义匹配 index 中的关键词来决定加载哪些知识文件。格式被破坏时静默跳过，不阻塞主流程。
 
 建议目录：

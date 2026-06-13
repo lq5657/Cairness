@@ -808,6 +808,8 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_upgrade_check = claude_root / "scripts" / "cc-upgrade-check"
         cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
+        cc_index_check = claude_root / "scripts" / "cc-index-check"
+        knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
         if args.changed_only:
             if not harness_changed and not changed_dirs:
@@ -828,6 +830,8 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                     results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
                 results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+                if knowledge_index_path.is_file():
+                    results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
         else:
             lint_targets = [str(claude_root)]
             if sync_target.exists():
@@ -841,6 +845,8 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
             results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
             results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+            if knowledge_index_path.is_file():
+                results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]
             if args.change:

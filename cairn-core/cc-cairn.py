@@ -2,10 +2,12 @@
 """cc-cairn — Cairness framework project CLI.
 
 Usage:
-    cc-cairn init                            Initialize Cairness in the current project
-    cc-cairn update                          Pull latest release and update framework
-    cc-cairn version                         Show installed and project versions
-    cc-cairn add-knowledge [--apply] PATH... Register knowledge files into index.md
+    cc-cairn init                                Initialize Cairness in the current project
+    cc-cairn update                              Pull latest release and update framework
+    cc-cairn version                             Show installed and project versions
+    cc-cairn add-knowledge [--apply] PATH...     Register knowledge files into index.md
+    cc-cairn add-knowledge --remove [--apply] PATH...  Remove entries from index.md
+    cc-cairn add-knowledge --rename [--apply] OLD NEW  Rename an entry's path
 """
 
 import argparse
@@ -31,17 +33,7 @@ STATE_SKELETON = [
     ".cairness/discussions",
 ]
 
-KNOWLEDGE_SUBDIRS = [
-    "domain-rules",
-    "technical-conventions",
-    "pitfalls",
-    "module-guides",
-    "decision-records",
-    "data-assets",
-    "non-functional",
-    "external-references",
-    "refinement-candidates",
-]
+KNOWLEDGE_CATALOG_REL = "runtime/knowledge-categories.yaml"
 
 KNOWLEDGE_TEMPLATE = "templates/knowledge/index.md"
 KNOWLEDGE_TARGET = ".cairness/knowledge/index.md"
@@ -112,7 +104,7 @@ def cmd_init():
         print(f"  {d}/")
 
     knowledge_root = project_root / ".cairness" / "knowledge"
-    for sub in KNOWLEDGE_SUBDIRS:
+    for sub in _knowledge_init_subdirs(project_root):
         (knowledge_root / sub).mkdir(parents=True, exist_ok=True)
     print("  .cairness/knowledge/ subdirectories")
 
@@ -281,7 +273,7 @@ def cmd_version():
     print(f"Project ({Path.cwd()}): v{project_ver}{proj_commit}")
 
 
-KNOWLEDGE_INDEX_CATEGORIES = [
+KNOWLEDGE_INDEX_CATEGORIES_FALLBACK = [
     ("domain-rules", "业务规则"),
     ("technical-conventions", "技术约定"),
     ("pitfalls", "踩坑记录"),
@@ -291,7 +283,73 @@ KNOWLEDGE_INDEX_CATEGORIES = [
     ("non-functional", "非功能性约束"),
     ("external-references", "外部依赖引用"),
 ]
-KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS = {"refinement-candidates"}
+KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS_FALLBACK = {"refinement-candidates"}
+KNOWLEDGE_INIT_SUBDIRS_FALLBACK = [s for s, _ in KNOWLEDGE_INDEX_CATEGORIES_FALLBACK] + ["refinement-candidates"]
+
+
+def _resolve_catalog_path(project_root):
+    """Locate knowledge-categories.yaml. Prefer project, fall back to system."""
+    candidates = [
+        project_root / ".claude" / KNOWLEDGE_CATALOG_REL,
+        get_data_dir() / KNOWLEDGE_CATALOG_REL,
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return None
+
+
+def _load_knowledge_catalog(project_root):
+    """Return list of category dicts; fall back to hardcoded defaults on any error.
+
+    Each entry has: subdir, display_name, description, indexed, created_by_init.
+    """
+    catalog_path = _resolve_catalog_path(project_root)
+    if catalog_path is None:
+        return None
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return None
+    try:
+        data = yaml.safe_load(catalog_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    cats = data.get("categories")
+    if not isinstance(cats, list) or not cats:
+        return None
+    out = []
+    for c in cats:
+        if not isinstance(c, dict):
+            return None
+        if not all(k in c for k in ("subdir", "display_name", "indexed", "created_by_init")):
+            return None
+        out.append(c)
+    return out
+
+
+def _knowledge_init_subdirs(project_root):
+    cats = _load_knowledge_catalog(project_root)
+    if cats is None:
+        return list(KNOWLEDGE_INIT_SUBDIRS_FALLBACK)
+    return [c["subdir"] for c in cats if c.get("created_by_init")]
+
+
+def _knowledge_indexed_categories(project_root):
+    """Return [(subdir, display_name), ...] for categories that participate in index.md."""
+    cats = _load_knowledge_catalog(project_root)
+    if cats is None:
+        return list(KNOWLEDGE_INDEX_CATEGORIES_FALLBACK)
+    return [(c["subdir"], c["display_name"]) for c in cats if c.get("indexed")]
+
+
+def _knowledge_forbidden_subdirs(project_root):
+    cats = _load_knowledge_catalog(project_root)
+    if cats is None:
+        return set(KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS_FALLBACK)
+    return {c["subdir"] for c in cats if not c.get("indexed")}
 
 
 def _knowledge_root(project_root):
@@ -320,11 +378,11 @@ def _resolve_knowledge_path(project_root, raw_path):
             f"path must be inside a category subdir (e.g. domain-rules/foo.md): {raw_path}"
         )
     subdir = parts[0]
-    if subdir in KNOWLEDGE_INDEX_FORBIDDEN_SUBDIRS:
+    if subdir in _knowledge_forbidden_subdirs(project_root):
         raise ValueError(
             f"refinement-candidates/ is not registered in index.md: {raw_path}"
         )
-    valid_subdirs = {s for s, _ in KNOWLEDGE_INDEX_CATEGORIES}
+    valid_subdirs = {s for s, _ in _knowledge_indexed_categories(project_root)}
     if subdir not in valid_subdirs:
         raise ValueError(
             f"unknown category subdir '{subdir}'. Valid: {sorted(valid_subdirs)}"
@@ -381,7 +439,7 @@ def _parse_existing_entries(index_text):
     """
     paths = set()
     keywords = {}
-    entry_re = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+?)\s*→\s*(\S+)")
+    entry_re = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+)\s*→\s*(\S+)\s*$")
     cleaned = _strip_html_comments(index_text)
     for line in cleaned.splitlines():
         m = entry_re.search(line)
@@ -390,6 +448,46 @@ def _parse_existing_entries(index_text):
             paths.add(path)
             keywords[kw] = path
     return paths, keywords
+
+
+def _find_entry_lines(index_text, target_path):
+    """Return list of (line_index_in_raw, keyword, desc) for entries matching path.
+
+    Walks raw lines so the returned line indices are valid for line-based edits.
+    Tracks multi-line HTML comments so example triples inside `<!-- … -->`
+    don't get matched (template example uses `文件路径` placeholder, but be safe).
+    """
+    entry_re = re.compile(r"\*\*(.+?)\*\*\s*:\s*(.+)\s*→\s*(\S+)\s*$")
+    in_comment = False
+    out = []
+    for idx, line in enumerate(index_text.splitlines()):
+        scan = line
+        if in_comment:
+            close = scan.find("-->")
+            if close == -1:
+                continue
+            scan = scan[close + 3:]
+            in_comment = False
+        # strip same-line comments and detect open comment
+        while True:
+            opn = scan.find("<!--")
+            if opn == -1:
+                break
+            cls = scan.find("-->", opn + 4)
+            if cls == -1:
+                scan = scan[:opn]
+                in_comment = True
+                break
+            scan = scan[:opn] + scan[cls + 3:]
+        m = entry_re.search(scan)
+        if not m:
+            continue
+        kw = m.group(1).strip()
+        desc = m.group(2).strip()
+        path = m.group(3).strip()
+        if path == target_path:
+            out.append((idx, kw, desc))
+    return out
 
 
 def _find_section_insert_point(index_text, subdir):
@@ -458,6 +556,185 @@ def _append_new_section(lines, subdir, display_name, entry_line):
     return out
 
 
+def _commit_index_text(project_root, index_path, original_text, new_text):
+    """Write new_text atomically; if cc-index-check reports new errors, rollback.
+
+    Returns (ok, message). On success ok=True. On rollback ok=False with a
+    user-facing message describing the new error count.
+    """
+    pre_error_count = _count_index_errors(project_root, original_text)
+    tmp = index_path.with_suffix(index_path.suffix + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    os.replace(tmp, index_path)
+    post_error_count = _count_index_errors(project_root, new_text)
+    if post_error_count is not None and pre_error_count is not None \
+            and post_error_count > pre_error_count:
+        index_path.write_text(original_text, encoding="utf-8")
+        return False, (
+            f"cc-index-check reported {post_error_count - pre_error_count} new "
+            f"error(s) after write; rolled back. Run "
+            f".claude/scripts/cc-index-check to inspect."
+        )
+    return True, ""
+
+
+def _strip_blank_pad(lines, idx):
+    """Remove a blank line immediately after `idx` if both before and after are blank.
+
+    Used after deleting an entry so we don't accumulate consecutive blanks.
+    """
+    if 0 <= idx - 1 < len(lines) and idx < len(lines):
+        if lines[idx - 1].strip() == "" and lines[idx].strip() == "":
+            del lines[idx]
+
+
+def _handle_remove(project_root, index_path, paths, apply):
+    """Remove entries matching the given paths from index.md.
+
+    paths are accepted in the same form `add-knowledge` accepts (absolute, relative,
+    or category/file.md), but we don't require the file to still exist on disk —
+    the whole point of `--remove` is cleaning up stale entries.
+    """
+    knowledge_root = (project_root / ".cairness" / "knowledge").resolve()
+    targets = []
+    errors = []
+    for raw in paths:
+        p = Path(raw).expanduser()
+        if not p.is_absolute():
+            p = (project_root / p)
+        try:
+            rel = Path(p).resolve().relative_to(knowledge_root).as_posix()
+        except ValueError:
+            try:
+                rel = Path(raw).as_posix()
+                # accept bare category/file.md if it round-trips
+                if not rel or rel.startswith("/") or ".." in rel.split("/"):
+                    raise ValueError
+            except Exception:
+                errors.append(f"path is not under .cairness/knowledge/: {raw}")
+                continue
+        targets.append(rel)
+
+    if errors:
+        for e in errors:
+            print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    original_text = index_path.read_text(encoding="utf-8")
+    lines = original_text.splitlines()
+
+    removals = []  # (rel, line_index, kw)
+    not_found = []
+    for rel in targets:
+        hits = _find_entry_lines(original_text, rel)
+        if not hits:
+            not_found.append(rel)
+            continue
+        for line_idx, kw, _desc in hits:
+            removals.append((rel, line_idx, kw))
+
+    if not removals:
+        for rel in not_found:
+            print(f"not registered: {rel}")
+        return
+
+    # Sort descending so deletion doesn't shift earlier indices
+    removals.sort(key=lambda r: r[1], reverse=True)
+
+    if not apply:
+        print(f"[dry-run] {len(removals)} entries to remove:")
+        for rel, line_idx, kw in sorted(removals, key=lambda r: r[1]):
+            print(f"  - L{line_idx + 1}: **{kw}** → {rel}")
+        for rel in not_found:
+            print(f"  (not registered) {rel}")
+        print()
+        print("Run with --apply to write changes.")
+        return
+
+    for _rel, line_idx, _kw in removals:
+        if 0 <= line_idx < len(lines):
+            del lines[line_idx]
+            _strip_blank_pad(lines, line_idx)
+
+    new_text = "\n".join(lines)
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+
+    ok, msg = _commit_index_text(project_root, index_path, original_text, new_text)
+    if not ok:
+        print(f"error: {msg}", file=sys.stderr)
+        sys.exit(1)
+    for rel in not_found:
+        print(f"not registered: {rel}")
+    print(f"removed {len(removals)} entries from {index_path.relative_to(project_root)}")
+
+
+def _handle_rename(project_root, index_path, old_raw, new_raw, apply):
+    """Rename a single entry's path from old → new (keyword/description preserved).
+
+    `new` must resolve to a valid registered category and the file must exist.
+    `old` does not need to exist on disk.
+    """
+    knowledge_root = (project_root / ".cairness" / "knowledge").resolve()
+
+    old_p = Path(old_raw).expanduser()
+    if not old_p.is_absolute():
+        old_p = project_root / old_p
+    try:
+        old_rel = Path(old_p).resolve().relative_to(knowledge_root).as_posix()
+    except ValueError:
+        sys.exit(f"old path is not under .cairness/knowledge/: {old_raw}")
+
+    try:
+        _new_subdir, new_rel = _resolve_knowledge_path(project_root, new_raw)
+    except ValueError as e:
+        sys.exit(str(e))
+
+    original_text = index_path.read_text(encoding="utf-8")
+    hits = _find_entry_lines(original_text, old_rel)
+    if not hits:
+        sys.exit(f"not registered: {old_rel}")
+    if len(hits) > 1:
+        sys.exit(
+            f"old path has {len(hits)} entries; resolve duplicates first via "
+            f"--remove and then re-register"
+        )
+    line_idx, kw, desc = hits[0]
+
+    existing_paths, _existing_keywords = _parse_existing_entries(original_text)
+    if new_rel != old_rel and new_rel in existing_paths:
+        sys.exit(f"new path already registered: {new_rel}")
+
+    lines = original_text.splitlines()
+    raw_line = lines[line_idx]
+    # Replace the path token at end of triple. Anchor on '→' to avoid touching
+    # similar text earlier on the line.
+    arrow = raw_line.rfind("→")
+    if arrow == -1:
+        sys.exit("internal: failed to locate arrow on entry line")
+    new_line = raw_line[:arrow + 1] + " " + new_rel
+    # Preserve trailing whitespace if any
+    lines[line_idx] = new_line
+
+    if not apply:
+        print("[dry-run] rename:")
+        print(f"  - {old_rel}")
+        print(f"  + {new_rel}    (kw='{kw}', desc='{desc}')")
+        print()
+        print("Run with --apply to write changes.")
+        return
+
+    new_text = "\n".join(lines)
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+
+    ok, msg = _commit_index_text(project_root, index_path, original_text, new_text)
+    if not ok:
+        print(f"error: {msg}", file=sys.stderr)
+        sys.exit(1)
+    print(f"renamed {old_rel} → {new_rel} in {index_path.relative_to(project_root)}")
+
+
 def cmd_add_knowledge(argv):
     parser = argparse.ArgumentParser(
         prog="cc-cairn add-knowledge",
@@ -467,8 +744,14 @@ def cmd_add_knowledge(argv):
     parser.add_argument("--apply", action="store_true", help="actually write to index.md (default: dry-run)")
     parser.add_argument("--keyword", help="override keyword (only valid with a single path)")
     parser.add_argument("--desc", help="override description (only valid with a single path)")
+    parser.add_argument("--remove", action="store_true", help="remove the given path(s) from index.md instead of registering")
+    parser.add_argument("--rename", action="store_true", help="rename a single entry: pass <old-path> <new-path>")
     args = parser.parse_args(argv)
 
+    if args.remove and args.rename:
+        sys.exit("--remove and --rename are mutually exclusive")
+    if (args.keyword or args.desc) and (args.remove or args.rename):
+        sys.exit("--keyword/--desc are not valid with --remove/--rename")
     if (args.keyword or args.desc) and len(args.paths) != 1:
         sys.exit("--keyword/--desc only valid when registering a single path")
 
@@ -479,6 +762,15 @@ def cmd_add_knowledge(argv):
             "index.md not found. Run 'cc-cairn init' first or create "
             ".cairness/knowledge/index.md."
         )
+
+    if args.remove:
+        _handle_remove(project_root, index_path, args.paths, args.apply)
+        return
+    if args.rename:
+        if len(args.paths) != 2:
+            sys.exit("--rename requires exactly two paths: <old> <new>")
+        _handle_rename(project_root, index_path, args.paths[0], args.paths[1], args.apply)
+        return
 
     resolved = []
     errors = []
@@ -550,7 +842,7 @@ def cmd_add_knowledge(argv):
         print(f"[dry-run] {len(drafts)} entries to register:")
         for p in skip_already:
             print(f"  (skip, already registered) {p}")
-        category_map = dict(KNOWLEDGE_INDEX_CATEGORIES)
+        category_map = dict(_knowledge_indexed_categories(project_root))
         for subdir, items in by_subdir.items():
             display = category_map[subdir]
             print()
@@ -562,7 +854,7 @@ def cmd_add_knowledge(argv):
         return
 
     lines = index_text.splitlines()
-    category_map = dict(KNOWLEDGE_INDEX_CATEGORIES)
+    category_map = dict(_knowledge_indexed_categories(project_root))
     inserted_count = 0
     for subdir, items in by_subdir.items():
         for rel, kw, desc in items:
@@ -578,23 +870,9 @@ def cmd_add_knowledge(argv):
     if not new_text.endswith("\n"):
         new_text += "\n"
 
-    pre_error_count = _count_index_errors(project_root, index_text)
-
-    tmp = index_path.with_suffix(index_path.suffix + ".tmp")
-    tmp.write_text(new_text, encoding="utf-8")
-    os.replace(tmp, index_path)
-
-    post_error_count = _count_index_errors(project_root, new_text)
-    if post_error_count is not None and pre_error_count is not None \
-            and post_error_count > pre_error_count:
-        # rollback
-        index_path.write_text(index_text, encoding="utf-8")
-        print(
-            f"error: cc-index-check reported {post_error_count - pre_error_count} new "
-            f"error(s) after write; rolled back. Run "
-            f".claude/scripts/cc-index-check to inspect.",
-            file=sys.stderr,
-        )
+    ok, msg = _commit_index_text(project_root, index_path, index_text, new_text)
+    if not ok:
+        print(f"error: {msg}", file=sys.stderr)
         sys.exit(1)
 
     for p in skip_already:

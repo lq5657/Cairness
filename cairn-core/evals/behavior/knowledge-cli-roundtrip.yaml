@@ -1,0 +1,11 @@
+id: knowledge-cli-roundtrip
+description: |
+  cc-cairn add-knowledge supports add, --remove, --rename round-trip,
+  rejects refinement-candidates/ and duplicate-path renames, and the
+  resulting index.md passes cc-index-check.
+command:
+  - bash
+  - .claude/evals/fixtures/knowledge-cli/run.sh
+expect_exit_code: 0
+expect_output_contains:
+  - "knowledge-cli fixture: OK"

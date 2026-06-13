@@ -1,0 +1,69 @@
+version: 1
+
+# Single source of truth for `.cairness/knowledge/` category metadata.
+# Consumed by cc-cairn (init, add-knowledge) and .claude/scripts/cc-index-check.
+# Templates and `rules/memory-policy.md` are written by humans for humans;
+# they reference this file as the authoritative list but are NOT auto-generated.
+#
+# Field semantics:
+#   subdir            directory name under .cairness/knowledge/
+#   display_name      Chinese section heading written into index.md
+#   description       one-line purpose summary
+#   indexed           true  -> entries under this dir must be registered in index.md
+#                     false -> dir exists for storage only, never appears in index.md
+#   created_by_init   true  -> `cc-cairn init` creates the directory
+
+categories:
+  - subdir: domain-rules
+    display_name: 业务规则
+    description: 业务领域特定规则，通常与数据模型和状态机相关
+    indexed: true
+    created_by_init: true
+
+  - subdir: technical-conventions
+    display_name: 技术约定
+    description: 项目特定的实现模式、框架使用规范
+    indexed: true
+    created_by_init: true
+
+  - subdir: pitfalls
+    display_name: 踩坑记录
+    description: 问题描述 + 原因 + 解决方案，可被 future self 快速查找复用
+    indexed: true
+    created_by_init: true
+
+  - subdir: module-guides
+    display_name: 模块指南
+    description: 模块边界、职责、接口与协作约定
+    indexed: true
+    created_by_init: true
+
+  - subdir: decision-records
+    display_name: 历史方案
+    description: 技术决策及其理由（含已废弃方案与未选方案）
+    indexed: true
+    created_by_init: true
+
+  - subdir: data-assets
+    display_name: 数据资产
+    description: 数据库表、MQ topic、缓存 key 等 LLM 无法从代码推导的资产
+    indexed: true
+    created_by_init: true
+
+  - subdir: non-functional
+    display_name: 非功能性约束
+    description: 性能基线、可用性、保留策略、安全合规等非功能性约束
+    indexed: true
+    created_by_init: true
+
+  - subdir: external-references
+    display_name: 外部依赖引用
+    description: 第三方 API、内部平台、合作方接口等外部依赖说明
+    indexed: true
+    created_by_init: true
+
+  - subdir: refinement-candidates
+    display_name: 框架改进候选
+    description: 仅记录可能需要改进 .claude/rules、runtime manifest、模板或 eval 的候选；不参与 index.md
+    indexed: false
+    created_by_init: true
