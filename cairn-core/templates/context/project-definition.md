@@ -82,12 +82,14 @@
 
 ## 7.2 技术选型确认矩阵
 
-仅填写当前项目实际触发的选型；不涉及的项写 `不涉及`，不要为了完整性强行选择。
-P0 选型必须由用户确认后才能写成最终选择；未确认时填 `待确认`。
+填写规则：
+- 行枚举来源：必须读取 `.claude/runtime/technology/<language>.yaml` 中**当前项目语言**对应的全部 `decision_groups`，按该文件 `id` 字段逐项落入下表的“选型组”列（不要从其它语言 catalog 复制 ID，也不要使用模板示例中的占位词）。
+- 触发判定：每个决策组按其 `applies_when` 条件判定是否触发；触发的写实际选择（P0 必须用户确认后才写为最终选择，未确认填 `待确认`），未触发的写 `不涉及`，不要为了完整性强行选择。
+- 漏列即视为治理违规：任何决策组缺失行都会让该 catalog 的默认推荐被静默跳过（例如 Python 的 `logging` → loguru、Go 的 `logging` → zap），属于 `cc-new-project` 红线。
 
-| 选型组 | 级别 | 触发原因 | 推荐方案 | 用户选择 | 备选方案 | 采用 / 放弃原因 | 确认状态 |
-|--------|------|----------|----------|----------|----------|-----------------|----------|
-| runtime_shape / http_framework / api_protocol / project_structure / database / data_access / migration_tool / authn / authorization / async_messaging | P0 / P1 | | | 待确认 / 不涉及 / 已确认 | | | pending / confirmed / not_applicable |
+| 选型组（必须穷举本项目语言 catalog 全部 `decision_groups.id`） | 级别 | 触发原因 | 推荐方案 | 用户选择 | 备选方案 | 采用 / 放弃原因 | 确认状态 |
+|---------------------------------------------------------------|------|----------|----------|----------|----------|-----------------|----------|
+| <逐行展开 catalog 中的每个 id，例如 runtime_shape> | P0 / P1 | | | 待确认 / 不涉及 / 已确认 | | | pending / confirmed / not_applicable |
 
 ## 8. 首批推荐 Change Backlog
 
