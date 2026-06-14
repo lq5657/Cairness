@@ -96,6 +96,7 @@ steps:
   - mark_spec_done
   - sync_log_and_task_board
   - rerun_post_archive_validation
+  - remind_user_to_return_to_default_branch_before_next_change
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>
@@ -133,6 +134,7 @@ result_contract:
     - stop_change_complete
     - choose_knowledge_compounding_option
     - choose_refinement_candidate_disposition
+    - prepare_branch_for_next_change
 
 stop_conditions:
   - missing_required_argument

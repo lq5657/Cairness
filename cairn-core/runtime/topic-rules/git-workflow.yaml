@@ -73,6 +73,14 @@ rules:
     - "归档时尚未合并须在 log.md 记录待合并状态"
     - "归档前发生 rebase/cherry-pick/手工解决冲突须在 log.md 记录影响范围和结论"
 
+  branch_handoff_between_changes:
+    - "cc-archive 不会自动切回主分支；归档完成时 worktree 仍停在 feat/<change-id> 分支"
+    - "在开启下一个 change 前，必须先把当前 feat 分支推送/合并并切回主分支拉取最新基线"
+    - "禁止从一个已归档但未合并的 feat 分支上直接拉新 feat 分支；这会让新 change 携带上一个 change 的 commits，后续合并会冲突或重复"
+    - "推荐顺序：cc-archive → 人工 push/PR/合并 feat/<A> → git checkout main → git pull → git checkout -b feat/<B> → cc-propose B"
+    - "cc-archive 完成时必须向用户输出本节顺序作为 next_action 提示，不得只说 done 就结束"
+    - "cc-propose / cc-apply 在检测到当前分支属于另一个已归档 change 时，应提示用户先回主分支再开新 change"
+
 relevance:
   category: default_skip
   triggers:
