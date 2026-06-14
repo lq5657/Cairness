@@ -6,8 +6,12 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-CAIRN_CLI="$REPO_ROOT/cairn-core/cc-cairn.py"
-INDEX_CHECK="$REPO_ROOT/cairn-core/scripts/cc-index-check"
+# Resolve framework root via .claude/ so the fixture works in both forms:
+#   dev repo: .claude is a symlink to cairn-core/
+#   cc-cairn init project: .claude is a real directory copied from cairn-core/
+FRAMEWORK_ROOT="$REPO_ROOT/.claude"
+CAIRN_CLI="$FRAMEWORK_ROOT/cc-cairn.py"
+INDEX_CHECK="$FRAMEWORK_ROOT/scripts/cc-index-check"
 
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/cc-knowledge-cli-eval.XXXXXX")"
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -15,7 +19,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 mkdir -p "$TMPDIR/.cairness/knowledge/domain-rules"
 mkdir -p "$TMPDIR/.cairness/knowledge/pitfalls"
 mkdir -p "$TMPDIR/.cairness/knowledge/decision-records"
-ln -s "$REPO_ROOT/cairn-core" "$TMPDIR/.claude"
+ln -s "$FRAMEWORK_ROOT" "$TMPDIR/.claude"
 
 cat > "$TMPDIR/.cairness/knowledge/index.md" <<'INDEX'
 ### 知识索引
