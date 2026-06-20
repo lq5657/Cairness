@@ -40,26 +40,26 @@ checks:
   - "cc-verify --check-review-coverage 通过（file_review_scope 完整性已验证）"
   - "cc-verify --check-finding-locations 通过（existing_code 定位已验证）"
 
-file_review_scope规则:
-  强制:
-    - "cc-review 写入 review.md 时必须包含 file_review_scope 表"
-    - "tasks.md 声明的所有文件必须出现在 file_review_scope 中"
-    - "status 为 not_reviewed 的文件必须在 notes 列填写原因"
-    - "status 为 out_of_scope_flagged 的文件必须关联 log.md 中的 spec_review_flag"
-  警告:
-    - "skipped_generated / skipped_vendored / skipped_trivial 应注明判断依据"
-  验证:
-    - "cc-verify --check-review-coverage --change <change-id>"
-
-finding位置规则:
-  强制: []
-  警告:
-    - "每个 Important 及以上级别的 finding 应附带 **Location** 和 **Existing Code**"
-    - "existing_code 仅作审查锚点；cc-fix 修复后不得改写原始 existing_code"
-  验证:
-    - "cc-verify --check-finding-locations --change <change-id>"
-
 rules:
+  file_review_scope规则:
+    强制:
+      - "cc-review 写入 review.md 时必须包含 file_review_scope 表"
+      - "tasks.md 声明的所有文件必须出现在 file_review_scope 中"
+      - "status 为 not_reviewed 的文件必须在 notes 列填写原因"
+      - "status 为 out_of_scope_flagged 的文件必须关联 log.md 中的 spec_review_flag"
+    警告:
+      - "skipped_generated / skipped_vendored / skipped_trivial 应注明判断依据"
+    验证:
+      - "cc-verify --check-review-coverage --change <change-id>"
+
+  finding位置规则:
+    强制: []
+    警告:
+      - "每个 Important 及以上级别的 finding 应附带 **Location** 和 **Existing Code**"
+      - "existing_code 仅作审查锚点；cc-fix 修复后不得改写原始 existing_code"
+    验证:
+      - "cc-verify --check-finding-locations --change <change-id>"
+
   核心原则:
     - "变更完成的最低标准不是'代码写完'，而是'达到本次声明的最低验证等级'"
     - "go build ./... 只是最小编译校验，不自动等于'可交付'"

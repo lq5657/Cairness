@@ -53,11 +53,10 @@ rules:
   require_evidence_per_assumption: true
   allow_mode_switch: true
   default_mode: interactive
-
-warning_message: >-
-  Assumptions mode presents AI inferences in bulk based on research findings.
-  This mode is suitable for experienced users who can efficiently spot incorrect
-  assumptions. Risk of confirmation fatigue — each assumption requires careful
-  individual review. If you feel unsure about any assumption, reply
-  'switch to interactive' to return to one-question-at-a-time mode.
-  Activate with: cc-discuss --mode assumptions <topic>
+  warning_message: >-
+    Assumptions mode presents AI inferences in bulk based on research findings.
+    This mode is suitable for experienced users who can efficiently spot incorrect
+    assumptions. Risk of confirmation fatigue — each assumption requires careful
+    individual review. If you feel unsure about any assumption, reply
+    'switch to interactive' to return to one-question-at-a-time mode.
+    Activate with: cc-discuss --mode assumptions <topic>
