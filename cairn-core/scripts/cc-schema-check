@@ -521,6 +521,26 @@ def resolve_schema_ref(ref: str, root_schema: dict[str, Any]) -> dict[str, Any]:
     return current
 
 
+def _trial_validate(
+    value: Any,
+    schema: dict[str, Any],
+    root_schema: dict[str, Any],
+    path: list[str | int],
+    subject_path: Path,
+) -> list[Issue]:
+    """Validate value against schema into a throwaway issue list.
+
+    Returns the issues found (empty == the schema accepts the value).
+    Used by anyOf/oneOf/not combinators to test branch acceptance without
+    polluting the caller's issue list. Previously these combinators were
+    silently skipped, so schemas relying on oneOf/anyOf/allOf were not
+    actually enforced (see E_SCHEMA191..194).
+    """
+    trial: list[Issue] = []
+    validate_against_schema(value, schema, root_schema, path, subject_path, trial)
+    return trial
+
+
 def validate_against_schema(
     value: Any,
     schema: dict[str, Any],
@@ -537,6 +557,53 @@ def validate_against_schema(
             return
 
     location = schema_location(path)
+
+    # Combinators (draft-07). Each is evaluated independently of type/const.
+    if "allOf" in schema and isinstance(schema["allOf"], list):
+        for idx, sub in enumerate(schema["allOf"]):
+            if isinstance(sub, dict):
+                validate_against_schema(
+                    value, sub, root_schema, path + [f"allOf[{idx}]"],
+                    subject_path, issues,
+                )
+
+    if "anyOf" in schema and isinstance(schema["anyOf"], list):
+        any_ok = False
+        any_failures: list[str] = []
+        for idx, sub in enumerate(schema["anyOf"]):
+            if not isinstance(sub, dict):
+                continue
+            trial = _trial_validate(value, sub, root_schema, path, subject_path)
+            if not trial:
+                any_ok = True
+                break
+            any_failures.append(f"[{idx}] {trial[0].message}")
+        if not any_ok and any_failures:
+            add(
+                issues, "E_SCHEMA191", subject_path,
+                f"{location}: value matches no anyOf schema: " + "; ".join(any_failures),
+            )
+
+    if "oneOf" in schema and isinstance(schema["oneOf"], list):
+        one_matches = 0
+        for sub in schema["oneOf"]:
+            if not isinstance(sub, dict):
+                continue
+            if not _trial_validate(value, sub, root_schema, path, subject_path):
+                one_matches += 1
+        if one_matches != 1:
+            add(
+                issues, "E_SCHEMA192", subject_path,
+                f"{location}: value matches {one_matches} oneOf schemas (expected exactly 1)",
+            )
+
+    if isinstance(schema.get("not"), dict):
+        if not _trial_validate(value, schema["not"], root_schema, path, subject_path):
+            add(
+                issues, "E_SCHEMA193", subject_path,
+                f"{location}: value must not match the 'not' schema",
+            )
+
     if "const" in schema and value != schema["const"]:
         add(issues, "E_SCHEMA108", subject_path, f"{location}: expected constant {schema['const']!r}")
         return

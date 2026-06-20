@@ -358,7 +358,7 @@ def normalize_language_value(text: str, known_profiles: set[str]) -> str:
 
 def explicit_language_values(text: str) -> list[str]:
     values: list[str] = []
-    line_match = re.search(r"^\*\s*主语言 / language profile:\s*(.+?)\s*$", text, re.M)
+    line_match = re.search(r"^[-*]\s*主语言 / language profile:\s*(.+?)\s*$", text, re.M)
     if line_match:
         values.append(line_match.group(1).strip())
     for line in text.splitlines():

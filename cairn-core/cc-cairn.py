@@ -44,6 +44,121 @@ GITIGNORE_ADDITIONS = """
 """
 
 
+# Files the release ships but whose local version must survive an upgrade
+# (these are user-local state, not framework assets).
+PRESERVE_ON_UPGRADE = {"settings.local.json"}
+
+
+class UpgradeSafetyError(Exception):
+    """Raised when an upgrade would unsafely clobber state."""
+
+
+def _rel_file_set(root: Path) -> set[str]:
+    """Posix-relative paths of every regular file under ``root``."""
+    out: set[str] = set()
+    if not root.exists():
+        return out
+    for p in root.rglob("*"):
+        if p.is_file():
+            out.add(p.relative_to(root).as_posix())
+    return out
+
+
+def _replace_framework_dir(
+    src: Path,
+    dst: Path,
+    *,
+    label: str,
+    force: bool = False,
+) -> Path | None:
+    """Safely replace ``dst`` with a fresh copy of ``src``.
+
+    Used by init/update for both the project ``.claude/`` and the system
+    install dir. Replaces the previous ``rmtree + copytree`` which silently
+    destroyed any local modifications with no recovery path.
+
+    Safety properties:
+      * Identity check: if ``dst`` exists but has no ``VERSION`` file it is
+        treated as a foreign directory and refused unless ``force=True``
+        (prevents clobbering a non-Cairness ``.claude/``).
+      * Backup: the previous ``dst`` is moved to ``<dst>.bak`` (one backup
+        retained) so local changes are always recoverable.
+      * Atomic-ish swap: the fresh tree is built in a temp dir beside ``dst``
+        and renamed into place; on failure the backup is restored.
+      * Preservation: files present in the old ``dst`` but absent from ``src``
+        (user-added hooks/scripts) are copied back, and files in
+        ``PRESERVE_ON_UPGRADE`` keep the user's local version.
+
+    Returns the backup ``Path`` if one was made, else ``None``.
+    """
+    parent = dst.parent
+    parent.mkdir(parents=True, exist_ok=True)
+
+    had_existing = dst.exists()
+    backup: Path | None = None
+
+    if had_existing:
+        if not force and not (dst / "VERSION").is_file():
+            raise UpgradeSafetyError(
+                f"{dst} exists but is not a Cairness install (no VERSION file). "
+                f"Refusing to overwrite a foreign directory. Re-run with --force "
+                f"to override."
+            )
+        backup = dst.with_name(dst.name + ".bak")
+        if backup.exists():
+            shutil.rmtree(backup)
+        os.rename(dst, backup)
+
+    # Build the fresh tree in a temp dir beside dst, then rename into place.
+    tmp = Path(tempfile.mkdtemp(prefix=dst.name + ".tmp-", dir=str(parent)))
+    try:
+        # tmp is an empty dir created by mkdtemp; copy into it.
+        shutil.copytree(src, tmp, dirs_exist_ok=True)
+        os.rename(tmp, dst)
+    except Exception:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+        if backup is not None and backup.exists() and not dst.exists():
+            os.rename(backup, dst)
+        raise
+
+    # Carry forward user-added files and protected local files from the backup.
+    if backup is not None and backup.exists():
+        src_files = _rel_file_set(src)
+        for rel in sorted(_rel_file_set(backup)):
+            if rel in PRESERVE_ON_UPGRADE or rel not in src_files:
+                src_file = backup / rel
+                target = dst / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, target)
+
+    if backup is not None:
+        print(f"  Previous {label} backed up to: {backup}")
+    return backup
+
+
+def _copy_ci_templates(ci_src: Path, ci_dst: Path) -> None:
+    """Copy CI workflow templates without clobbering user-edited files.
+
+    Existing files that differ from the template are written to
+    ``<name>.cairness.new`` with a warning instead of being overwritten.
+    """
+    if not ci_src.exists():
+        return
+    ci_dst.mkdir(parents=True, exist_ok=True)
+    for f in ci_src.iterdir():
+        if not f.is_file():
+            continue
+        target = ci_dst / f.name
+        if target.exists() and target.read_bytes() != f.read_bytes():
+            alt = ci_dst / (f.name + ".cairness.new")
+            shutil.copy2(f, alt)
+            print(f"  CI template {f.name} differs from existing; wrote {alt.name} (review and merge manually)")
+        else:
+            shutil.copy2(f, target)
+            print(f"  .github/workflows/{f.name}")
+
+
 def get_data_dir():
     system = sys.platform
     home = Path.home()
@@ -88,15 +203,25 @@ def cmd_init():
     claude_dir = project_root / ".claude"
 
     if claude_dir.exists():
-        print(f".claude/ already exists in {project_root}")
-        resp = input("Overwrite? This will replace all framework files. [y/N] ").strip().lower()
-        if resp != "y":
-            print("Aborted.")
-            return
-        shutil.rmtree(claude_dir)
+        if not (claude_dir / "VERSION").is_file():
+            print(f".claude/ already exists in {project_root} but is not a Cairness install.")
+            resp = input("Overwrite this foreign directory anyway? [y/N] ").strip().lower()
+            if resp != "y":
+                print("Aborted.")
+                return
+            force = True
+        else:
+            print(f".claude/ already exists in {project_root}")
+            resp = input("Overwrite? This will replace framework files (local additions are preserved). [y/N] ").strip().lower()
+            if resp != "y":
+                print("Aborted.")
+                return
+            force = False
+    else:
+        force = False
 
     print(f"Installing Cairness framework to {claude_dir} ...")
-    shutil.copytree(data_dir, claude_dir)
+    _replace_framework_dir(data_dir, claude_dir, label="framework", force=force)
     print("  Copied framework core.")
 
     for d in STATE_SKELETON:
@@ -117,10 +242,8 @@ def cmd_init():
     ci_src = claude_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"
     if ci_src.exists():
-        ci_dst.mkdir(parents=True, exist_ok=True)
-        for f in ci_src.iterdir():
-            shutil.copy2(f, ci_dst / f.name)
-        print("  Copied CI templates to .github/workflows/")
+        print("  CI templates:")
+        _copy_ci_templates(ci_src, ci_dst)
 
     gitignore = project_root / ".gitignore"
     existing = gitignore.read_text() if gitignore.exists() else ""
@@ -152,9 +275,29 @@ def pull_repo(repo):
     return result.stdout.strip()
 
 
+def _repo_remote_url(repo):
+    """Return origin URL for repo, or '' if unavailable / not a git repo."""
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=repo, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
 def ensure_repo():
     repo = find_repo()
     if repo is not None:
+        remote = _repo_remote_url(repo)
+        if remote and remote != REMOTE_URL:
+            # Found a local checkout (e.g. a fork) whose origin is not the
+            # official upstream. Don't surprise-pull; use it as-is so the user
+            # controls updates to their own checkout.
+            print(f"Using local Cairness checkout at {repo}")
+            print(f"  (origin={remote} != {REMOTE_URL}; skipping auto-pull. "
+                  f"Update the checkout manually if needed.)")
+            return repo
         return repo
 
     clone_path = Path.home() / ".local" / "share" / "cairness-repo"
@@ -193,9 +336,7 @@ def sync_system_install(data_dir, repo):
         old_ver = vf.read_text().strip()
 
     print(f"Updating system installation: v{old_ver} → v{new_ver}")
-    if data_dir.exists():
-        shutil.rmtree(data_dir)
-    shutil.copytree(core_src, data_dir)
+    _replace_framework_dir(core_src, data_dir, label="system install")
     write_commit_hash(data_dir, new_commit)
     print(f"System installation updated to v{new_ver} ({new_commit[:7]}).")
     return data_dir
@@ -228,9 +369,15 @@ def sync_project(data_dir, project_root):
         project_ver = vf.read_text().strip()
 
     print(f"Updating project .claude/: v{project_ver} → v{new_ver}")
-    shutil.rmtree(claude_dir)
-    shutil.copytree(data_dir, claude_dir)
-    print(f"Project updated to v{new_ver}.")
+    try:
+        _replace_framework_dir(data_dir, claude_dir, label="project .claude/")
+    except UpgradeSafetyError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        print("hint: if this is intentionally a non-Cairness directory, run "
+              "'cc-cairn init' with overwrite, or remove it manually.", file=sys.stderr)
+        sys.exit(1)
+    print(f"Project updated to v{new_ver}. Local additions were preserved; "
+          f"previous .claude/ backed up to {claude_dir.name}.bak.")
     return True
 
 
