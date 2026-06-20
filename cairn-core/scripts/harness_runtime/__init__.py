@@ -58,11 +58,28 @@ class LanguageResolution:
     errors: tuple[str, ...] = ()
 
 
-def load_yaml_mapping(path: Path) -> dict[str, Any]:
+def require_yaml():
+    """Return the yaml module, or fail-fast with a clear diagnostic.
+
+    PyYAML is a hard runtime dependency for the harness scripts (declared in
+    pyproject.toml). A missing PyYAML is an environment failure, NOT a
+    "no data" condition — previously many loaders silently returned {} on
+    ImportError, which made checks report green while skipping validation
+    (a false-positive source). Call this instead of `try: import yaml` when
+    the caller cannot meaningfully continue without YAML.
+    """
     try:
         import yaml  # type: ignore
-    except Exception:
-        return {}
+        return yaml
+    except Exception as exc:  # pragma: no cover - environment-dependent
+        raise SystemExit(
+            f"E_DEP001 PyYAML is required but not installed: {exc}\n"
+            f"  Install it:  pip install pyyaml   (or: pipx install cairness)"
+        )
+
+
+def load_yaml_mapping(path: Path) -> dict[str, Any]:
+    yaml = require_yaml()
     if not path.exists():
         return {}
     try:

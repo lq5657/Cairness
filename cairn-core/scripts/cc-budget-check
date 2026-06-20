@@ -17,6 +17,8 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
+
+from harness_runtime import require_yaml
 from typing import Any
 
 
@@ -28,8 +30,8 @@ def load_harness_config(project_root: Path) -> dict[str, Any]:
     path = project_root / ".claude" / "harness.config.yaml"
     if not path.exists():
         return {}
+    yaml = require_yaml()
     try:
-        import yaml
         return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except Exception:
         return {}
