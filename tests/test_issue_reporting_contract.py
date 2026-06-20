@@ -32,13 +32,15 @@ ISSUE_SCRIPTS = [
     "cc-doctor-check",
     "cc-event-check",
     "cc-upgrade-check",
+    "cc-lint",
 ]
 
 
 def test_issue_scripts_pass_on_clean_repo():
     """On a clean repo each Issue-script must exit 0 and print an ok line."""
     for script in ISSUE_SCRIPTS:
-        proc = _run(script, [])
+        args = [] if script != "cc-lint" else ["cairn-core", ".cairness/changes"]
+        proc = _run(script, args)
         assert proc.returncode == 0, f"{script} exited {proc.returncode}: {proc.stderr}"
         assert proc.stdout.strip(), f"{script} produced no stdout on pass"
 
@@ -46,7 +48,8 @@ def test_issue_scripts_pass_on_clean_repo():
 def test_issue_scripts_emit_structured_json():
     """Each Issue-script's --json output has the canonical report shape."""
     for script in ISSUE_SCRIPTS:
-        proc = _run(script, ["--json"])
+        args = ["--json"] if script != "cc-lint" else ["cairn-core", "--json"]
+        proc = _run(script, args)
         assert proc.returncode == 0, f"{script} --json failed: {proc.stderr}"
         report = json.loads(proc.stdout)
         assert report["status"] in ("passed", "failed"), f"{script} status={report.get('status')!r}"
@@ -77,6 +80,36 @@ def test_issue_scripts_stderr_line_format_on_failure():
         assert ": " in line, f"stderr line missing ': message': {line!r}"
     finally:
         readset.write_text(original, encoding="utf-8")
+
+
+def test_lint_emits_structured_issue_on_failure(tmp_path):
+    """E2 stage 3: cc-lint (was free-text list[str], no --json) now emits the
+    canonical Issue shape. A runtime command manifest missing `steps:` yields a
+    code/path/message issue in both --json and stderr."""
+    # Build a fake .claude root (name must be ".claude" to trigger lint_runtime).
+    fake = tmp_path / ".claude"
+    (fake / "runtime" / "commands").mkdir(parents=True)
+    (fake / "runtime" / "commands" / "cc-test.yaml").write_text(
+        "command: cc-test\ninputs:\n  required: []\nstate:\n  change_from: [none]\n"
+        "  change_to: unchanged\nwrites: []\npreconditions: []\nauto_validation: []\n"
+        "result_contract:\n  evidence: []\n  risks: []\n  next_actions: []\n",
+        encoding="utf-8",
+    )
+    proc = _run("cc-lint", [str(fake), "--json"])
+    assert proc.returncode == 1, proc.stderr
+    report = json.loads(proc.stdout)
+    assert report["status"] == "failed"
+    assert report["issues"], "cc-lint reported no issues for the malformed fake .claude"
+    issue = report["issues"][0]
+    assert set(issue.keys()) == {"code", "path", "message"}
+    assert issue["code"] == "E_LINT001"
+    assert issue["message"], "issue message must be non-empty"
+    assert issue["path"], "issue path must be non-empty"
+
+    # Non-json stderr line is `CODE path: message`.
+    proc_text = _run("cc-lint", [str(fake)])
+    assert proc_text.returncode == 1
+    assert proc_text.stderr.startswith("E_LINT001 "), proc_text.stderr
 
 
 def test_role_check_uses_shared_issues_key():

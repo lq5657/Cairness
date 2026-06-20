@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import sys
 from pathlib import Path
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
+from harness_runtime.issues import Issue, build_report
 
 from change_docs import (
     CHANGE_ID_RE,
@@ -882,9 +884,25 @@ def default_inputs(root: Path) -> list[Path]:
     return inputs
 
 
+LINT_ISSUE_CODE = "E_LINT001"
+# Lint messages are emitted as `"{path}: {message}"` or `"{path}:{lineno}: {message}"`.
+# Split the leading path/locator from the human message so each finding is
+# machine-classifiable (code/path/message) like the other cc-* check scripts.
+def error_to_issue(error: str) -> Issue:
+    head, sep, message = error.partition(": ")
+    if not sep:
+        return Issue(LINT_ISSUE_CODE, "", error)
+    return Issue(LINT_ISSUE_CODE, head.strip(), message.strip())
+
+
 def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Lint cc_spec Harness assets and change documents.")
+    parser.add_argument("paths", nargs="*", help="Roots to lint (default: cwd).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
     root = Path.cwd()
-    inputs = [Path(arg) for arg in argv] if argv else default_inputs(root)
+    inputs = [Path(arg) for arg in args.paths] if args.paths else default_inputs(root)
     errors: list[str] = []
 
     for item in inputs:
@@ -909,12 +927,21 @@ def main(argv: list[str]) -> int:
         lint_review(change_dir, errors)
         lint_test_spec(change_dir, errors)
 
-    if errors:
-        for error in errors:
-            print(error, file=sys.stderr)
-        return 1
-    print("cc-lint: ok")
-    return 0
+    issues = [error_to_issue(error) for error in errors]
+    report = build_report(
+        "cc-lint",
+        issues,
+        extra={"checked_roots": [str(path) for path in inputs]},
+    )
+    if args.json:
+        import json
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-lint: ok")
+    else:
+        for entry in report["issues"]:
+            print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
 
 
 if __name__ == "__main__":
