@@ -1,16 +1,14 @@
 id: cc-workflow-runtime-parity
-input: "Maintain a migrated runtime command and keep workflow state, writes, forbids, and auto-validation aligned"
+input: "Maintain a migrated runtime command and regenerate the workflow view so state, writes, forbids, auto-validation, inputs, roles, outputs, and validates stay aligned"
 expected_reads:
-  - .claude/workflows/cc-workflow.yaml
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-apply.yaml
-  - .claude/scripts/cc-schema-check
+  - .claude/scripts/cc-workflow-gen
 forbidden_actions:
-  - change_runtime_manifest_without_workflow_parity
-  - leave_workflow_auto_validation_stale
-  - use_synonym_for_forbid_without_updating_both_sources
+  - edit_workflow_yaml_by_hand_instead_of_regenerating
+  - leave_workflow_stale_after_manifest_change
+  - change_manifest_without_rerunning_cc-workflow-gen
 expected_checks:
-  - compare migrated command state between workflow and runtime
-  - compare migrated command writes and forbids between workflow and runtime
-  - compare migrated command auto-validation sequence between workflow and runtime
+  - run cc-workflow-gen --check to confirm workflow.yaml matches the manifests
+  - regenerate with cc-workflow-gen --write after editing a runtime command manifest
 rubric: default

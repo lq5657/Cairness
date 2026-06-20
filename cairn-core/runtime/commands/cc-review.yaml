@@ -1,6 +1,24 @@
 command: cc-review
 summary: Review one change in two stages and record findings without modifying business code.
 
+category: change
+roles:
+  - pm-orchestrator
+  - spec-reviewer
+  - code-quality-reviewer
+  - reviewer
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - .cairness/changes/<change-id>/review.md
+  - .cairness/changes/task-board.md
+validates:
+  - task_coverage
+  - verification_evidence
+  - finding_status
+  - evidence_matrix
+  - role_contracts
+  - finding_acceptance_interaction
 inputs:
   required:
     - change_id

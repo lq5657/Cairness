@@ -1,6 +1,25 @@
 command: cc-preflight
 summary: Validate that a project has the Harness scaffold, routing, and deterministic checks needed before normal use.
 
+category: harness
+roles:
+  - pm-orchestrator
+  - gatekeeper
+  - harness-maintainer
+outputs:
+  - structured_preflight_result
+validates:
+  - harness_structure
+  - commands
+  - checkpoints
+  - schemas
+  - scripts
+  - harness_config
+  - workflow_definition
+  - dev_map
+  - task_board
+  - role_contracts
+  - memory_policy
 inputs:
   required: []
 

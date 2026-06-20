@@ -39,6 +39,12 @@
         "$ref": "#/$defs/ccCommand"
       }
     },
+    "workflow_order": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ccCommand"
+      }
+    },
     "runtime_commands": {
       "type": "object",
       "minProperties": 1,

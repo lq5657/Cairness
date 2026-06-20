@@ -26,6 +26,18 @@
       "type": "string",
       "minLength": 1
     },
+    "category": {
+      "$ref": "#/$defs/categoryId"
+    },
+    "roles": {
+      "$ref": "#/$defs/nonEmptyKebabList"
+    },
+    "outputs": {
+      "$ref": "#/$defs/stringList"
+    },
+    "validates": {
+      "$ref": "#/$defs/nonEmptySnakeList"
+    },
     "inputs": {
       "type": "object",
       "additionalProperties": false,
@@ -316,6 +328,18 @@
     "ccCommand": {
       "type": "string",
       "pattern": "^cc-[a-z0-9-]+$"
+    },
+    "categoryId": {
+      "type": "string",
+      "enum": ["project", "harness", "context", "audit", "audit_bridge", "discovery", "change"]
+    },
+    "nonEmptyKebabList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/hyphenId"
+      }
     },
     "snakeId": {
       "type": "string",

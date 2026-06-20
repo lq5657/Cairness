@@ -1,6 +1,26 @@
 command: cc-fix
 summary: Resolve review findings with minimal scoped fixes and keep the change in review.
 
+category: change
+roles:
+  - pm-orchestrator
+  - developer
+  - test-verifier
+  - context-curator
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - fixed_code
+  - updated_findings
+  - synced_change_docs
+  - task_board_update
+validates:
+  - finding_exists
+  - root_cause
+  - minimum_fix
+  - verification_level_not_reduced
+  - memory_sync
+  - finding_clarification_or_disposition_choice
 inputs:
   required:
     - change_id

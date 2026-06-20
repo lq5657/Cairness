@@ -620,21 +620,6 @@ def normalize_declared_path(value: Any) -> str:
     return normalized
 
 
-def normalize_auto_validation(value: Any) -> str:
-    if not isinstance(value, str):
-        return str(value)
-    normalized = re.sub(r"\s+", " ", value.strip())
-    normalized = normalized.replace(".claude/scripts/", "")
-    normalized = normalized.replace(".claude/", "")
-    return normalized
-
-
-def parity_list(value: Any, normalizer: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [normalizer(item) for item in value]
-
-
 def string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
@@ -678,83 +663,6 @@ def is_final_artifact_write(value: str) -> bool:
 def expected_subagent_parallel_policy(agents: list[Any]) -> str:
     has_scoped_writer = any(isinstance(agent, dict) and agent.get("mode") == "scoped_write" for agent in agents)
     return "disjoint_writes_only" if has_scoped_writer else "read_only_parallel_only"
-
-
-def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
-    if not isinstance(core, dict):
-        return []
-    project_root = claude_root.parent
-    workflow_path = project_path(project_root, core.get("workflow_definition"))
-    if workflow_path is None:
-        return []
-    workflow = load_yaml_file(workflow_path, issues)
-    if workflow is None:
-        return [str(workflow_path)]
-    commands = workflow.get("commands")
-    runtime_commands = core.get("runtime_commands")
-    if not isinstance(commands, dict) or not isinstance(runtime_commands, dict):
-        return [str(workflow_path)]
-
-    for command, declared_manifest_path in sorted(runtime_commands.items()):
-        workflow_command = commands.get(command)
-        if not isinstance(workflow_command, dict):
-            add(issues, "E_SCHEMA131", workflow_path, f"workflow missing migrated command {command}")
-            continue
-        manifest_path = project_path(project_root, declared_manifest_path)
-        if manifest_path is None:
-            continue
-        manifest = load_yaml_file(manifest_path, issues)
-        if manifest is None:
-            continue
-
-        state = manifest.get("state") if isinstance(manifest.get("state"), dict) else {}
-        runtime_from = state.get("change_from")
-        workflow_from = workflow_command.get("change_from")
-        if isinstance(runtime_from, list) and isinstance(workflow_from, list) and set(runtime_from) != set(workflow_from):
-            add(
-                issues,
-                "E_SCHEMA132",
-                manifest_path,
-                f"{command} change_from differs from workflow: runtime={runtime_from}, workflow={workflow_from}",
-            )
-        if state.get("change_to") != workflow_command.get("change_to"):
-            add(
-                issues,
-                "E_SCHEMA133",
-                manifest_path,
-                f"{command} change_to differs from workflow: runtime={state.get('change_to')!r}, workflow={workflow_command.get('change_to')!r}",
-            )
-
-        runtime_writes = set(parity_list(manifest.get("writes"), normalize_declared_path))
-        workflow_writes = set(parity_list(workflow_command.get("writes"), normalize_declared_path))
-        if runtime_writes != workflow_writes:
-            add(
-                issues,
-                "E_SCHEMA134",
-                manifest_path,
-                f"{command} writes differ from workflow: missing={sorted(workflow_writes - runtime_writes)}, extra={sorted(runtime_writes - workflow_writes)}",
-            )
-
-        runtime_forbids = set(parity_list(manifest.get("forbids"), str))
-        workflow_forbids = set(parity_list(workflow_command.get("forbids"), str))
-        if runtime_forbids != workflow_forbids:
-            add(
-                issues,
-                "E_SCHEMA135",
-                manifest_path,
-                f"{command} forbids differ from workflow: missing={sorted(workflow_forbids - runtime_forbids)}, extra={sorted(runtime_forbids - workflow_forbids)}",
-            )
-
-        runtime_auto_validation = parity_list(manifest.get("auto_validation"), normalize_auto_validation)
-        workflow_auto_validation = parity_list(workflow_command.get("auto_validation"), normalize_auto_validation)
-        if runtime_auto_validation != workflow_auto_validation:
-            add(
-                issues,
-                "E_SCHEMA136",
-                manifest_path,
-                f"{command} auto_validation differs from workflow: runtime={runtime_auto_validation}, workflow={workflow_auto_validation}",
-            )
-    return [str(workflow_path)]
 
 
 HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
@@ -1483,7 +1391,6 @@ def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[
     checked = [str(claude_root / "runtime" / "core.yaml")]
     checked.extend(validate_agent_command_protocol(claude_root, core, issues))
     checked.extend(validate_runtime_commands(claude_root, core, issues))
-    checked.extend(validate_workflow_runtime_parity(claude_root, core, issues))
     checked.extend(validate_runtime_readsets(claude_root, core, issues))
     checked.extend(validate_knowledge_categories(claude_root, issues))
     checked_topic_rules = validate_topic_rules(claude_root, core, issues)

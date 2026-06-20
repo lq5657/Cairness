@@ -225,6 +225,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Run .claude/scripts/cc-readset --write, review the diff, then rerun cc-verify.",
             "doc_ref": ".claude/runtime/readsets/index.yaml",
         }
+    if name == "cc-workflow-gen":
+        return {
+            "cause": "Generated workflow.yaml is stale relative to runtime command manifests.",
+            "fix_hint": "Run .claude/scripts/cc-workflow-gen --write, review the diff, then rerun cc-verify.",
+            "doc_ref": ".claude/workflows/cc-workflow.yaml",
+        }
     if name == "cc-doctor-check":
         return {
             "cause": "Harness adoption readiness check failed.",
@@ -802,6 +808,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_lint = claude_root / "scripts" / "cc-lint"
         cc_sync_check = claude_root / "scripts" / "cc-sync-check"
         cc_readset = claude_root / "scripts" / "cc-readset"
+        cc_workflow_gen = claude_root / "scripts" / "cc-workflow-gen"
         cc_doctor_check = claude_root / "scripts" / "cc-doctor-check"
         cc_event_check = claude_root / "scripts" / "cc-event-check"
         cc_behavior_check = claude_root / "scripts" / "cc-behavior-check"
@@ -825,6 +832,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root))
             if harness_changed:
                 results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
+                results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root))
                 results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
                 if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
                     results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
@@ -839,6 +847,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
             results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
             results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
+            results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root))
             results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
             results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root))
             if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":

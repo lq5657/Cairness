@@ -1,6 +1,16 @@
 command: cc-inspect-codebase
 summary: Perform an explicit evidence-based brownfield codebase audit and write an audit report without fixing code.
 
+category: audit
+roles:
+  - pm-orchestrator
+  - reviewer
+outputs:
+  - .cairness/audits/<audit-id>/report.md
+validates:
+  - valid_mode
+  - bounded_scope
+  - evidence_per_finding
 inputs:
   required:
     - mode

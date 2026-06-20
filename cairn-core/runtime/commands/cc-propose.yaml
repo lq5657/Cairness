@@ -1,6 +1,28 @@
 command: cc-propose
 summary: Create or update a formal change proposal without writing business code.
 
+category: change
+roles:
+  - pm-orchestrator
+  - requirement-analyst
+  - solution-designer
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - .cairness/changes/<change-id>/spec.md
+  - .cairness/changes/<change-id>/tasks.md
+  - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/task-board.md
+validates:
+  - hard_gate
+  - validation_matrix
+  - dependencies
+  - scope_freeze
+  - task_traceability
+  - task_board_sync
+  - clarification_interaction
+  - risk_resolution_interaction
+  - hard_gate_user_choice
 inputs:
   required:
     - requirement_description
