@@ -10,49 +10,29 @@ from pathlib import Path
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
 
+from change_docs import (
+    CHANGE_ID_RE,
+    EVIDENCE_BY_LEVEL,
+    HARD_GATE_FIELDS,
+    TASK_FIELDS,
+    VALID_CHANGE_STATUS,
+    VALID_MAPPING_STATUS,
+    VALID_REVIEW_STATUS,
+    VALID_TASK_STATUS,
+    VALID_TEST_MODE,
+    accepted_confirmation_rows,
+    finding_rows,
+    table_rows,
+    task_sections,
+    validation_rows,
+)
 
-CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
 SLASH_COMMAND_RE = re.compile(
     r"(?<![A-Za-z0-9_.<>-])/(propose|apply|review|test|fix|archive|init|new-project|inspect-codebase|preflight|enrich-context|explain-system)\b"
 )
-VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
-VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
-VALID_REVIEW_STATUS = {
-    "stage1_status": {"pass", "fail", "partial"},
-    "stage2_status": {"pass", "fail", "skipped", "partial"},
-    "final_status": {"pass", "fail", "partial"},
-}
-VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
-VALID_TEST_MODE = {"supplement", "recovery"}
 AUTO_VALIDATION_COMMANDS = ["propose", "apply", "fix", "test", "review", "archive"]
-EVIDENCE_BY_LEVEL = {
-    "L1": {"build", "doc-check"},
-    "L2": {"package", "unit"},
-    "L3": {"chain"},
-    "L4": {"integration", "manual"},
-    "L5": {"migration-safety", "release-safety"},
-}
-HARD_GATE_FIELDS = [
-    "confirmed_at",
-    "confirmed_by",
-    "confirmed_spec_revision",
-    "confirmed_tasks_revision",
-    "confirmed_scope",
-    "resolved_risk_decisions",
-    "accepted_residual_risks",
-    "human_review_required",
-    "human_review_status",
-]
-TASK_FIELDS = [
-    "**目标**",
-    "**涉及文件**",
-    "**验收标准**",
-    "**验证步骤**",
-    "**测试要求**",
-    "**回退方式**",
-    "**完成后状态**",
-    "**Baseline / Delta",
-]
+
 WORKFLOW_REQUIRED_COMMAND_KEYS = [
     "category",
     "roles",
@@ -358,17 +338,6 @@ def parse_meta(text: str) -> dict[str, str]:
     return meta
 
 
-def table_rows(text: str) -> list[list[str]]:
-    rows: list[list[str]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|") or "---" in stripped:
-            continue
-        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
-        rows.append(cells)
-    return rows
-
-
 def parse_inline_list(raw: str) -> list[str]:
     value = raw.strip()
     if value == "[]":
@@ -403,43 +372,6 @@ def parse_workflow_commands(text: str) -> dict[str, str]:
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
         blocks[item.group(1)] = body[start:end]
     return blocks
-
-
-def validation_rows(text: str) -> list[list[str]]:
-    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
-
-
-def task_sections(text: str) -> list[str]:
-    matches = list(re.finditer(r"^#### Task [0-9]+:", text, re.M))
-    sections: list[str] = []
-    for idx, match in enumerate(matches):
-        start = match.start()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
-        sections.append(text[start:end])
-    return sections
-
-
-def finding_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    section = match.group(1)
-    rows = []
-    for row in table_rows(section):
-        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}:
-            rows.append(row)
-    return rows
-
-
-def accepted_confirmation_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\.1 Accepted Findings 确认记录（按需）(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    rows = []
-    for row in table_rows(match.group(1)):
-        if len(row) >= 5 and row[0] != "Finding 描述（与上表一致）":
-            rows.append(row)
-    return rows
 
 
 def line_allowed_for_slash(path: Path, line: str) -> bool:
