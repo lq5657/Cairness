@@ -1,6 +1,23 @@
 command: cc-test
 summary: Add test design and fresh evidence to supplement or recover change validation without replacing apply minimum verification.
 
+category: change
+roles:
+  - pm-orchestrator
+  - test-verifier
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - .cairness/changes/<change-id>/test-spec.md
+  - tests_or_evidence
+  - updated_mapping_status
+  - task_board_update
+validates:
+  - valid_mode
+  - recovery_blocker_record
+  - fresh_evidence
+  - mapping_closure
+  - task_board_sync
 inputs:
   required:
     - change_id

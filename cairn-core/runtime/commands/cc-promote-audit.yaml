@@ -1,6 +1,21 @@
 command: cc-promote-audit
 summary: Bridge selected audit findings into a bounded change candidate without creating formal change docs.
 
+category: audit_bridge
+roles:
+  - pm-orchestrator
+  - requirement-analyst
+  - backlog-curator
+outputs:
+  - .cairness/audits/<audit-id>/to-change.md
+  - .cairness/changes/task-board.md
+validates:
+  - finding_selection
+  - scope_reduction
+  - split_boundary
+  - verification_level_hint
+  - task_board_not_spec
+  - finding_selection_user_choice
 inputs:
   required:
     - audit_id

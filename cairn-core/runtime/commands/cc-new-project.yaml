@@ -1,6 +1,31 @@
 command: cc-new-project
 summary: Convert an open-ended project idea into a project definition, MVP roadmap, and first backlog candidates without creating a formal change.
 
+category: project
+roles:
+  - pm-orchestrator
+  - requirement-analyst
+  - solution-designer
+  - context-curator
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - .cairness/context/project-summary.md
+  - .cairness/context/project-definition.md
+  - .cairness/context/mvp-roadmap.md
+  - .cairness/context/architecture-outline.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
+  - .cairness/changes/task-board.md
+validates:
+  - project_goal
+  - target_users
+  - mvp_scope
+  - out_of_scope
+  - backlog_bridge
+  - planned_path_status
+  - memory_policy
+  - blocking_project_decision_user_choice
 inputs:
   required:
     - project_idea

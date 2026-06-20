@@ -1,6 +1,17 @@
 command: cc-explain-system
 summary: Produce evidence-backed system orientation material without turning the work into an audit or change proposal.
 
+category: context
+roles:
+  - pm-orchestrator
+  - context-curator
+outputs:
+  - .cairness/context/system-overview.md
+validates:
+  - code_evidence
+  - config_evidence
+  - flow_evidence
+  - bounded_scope
 inputs:
   required: []
   optional:

@@ -1,6 +1,29 @@
 command: cc-apply
 summary: Implement one formal change task-by-task and promote the change to review only after evidence is fresh.
 
+category: change
+roles:
+  - pm-orchestrator
+  - developer
+  - test-verifier
+  - context-curator
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - business_code_changes
+  - change_docs_update
+  - dev_map_update_if_needed
+  - task_board_update
+  - optional_commits
+validates:
+  - hard_gate
+  - task_gate
+  - minimum_verification
+  - git_policy
+  - dirty_worktree_policy
+  - baseline_delta
+  - memory_sync
+  - hard_gate_resolution_choice
 inputs:
   required:
     - change_id

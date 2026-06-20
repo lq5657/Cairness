@@ -1,6 +1,24 @@
 command: cc-archive
 summary: Archive a reviewed change, optionally compound reusable knowledge, and set status to done only when closure is clean.
 
+category: change
+roles:
+  - pm-orchestrator
+  - backlog-curator
+  - gatekeeper
+outputs:
+  - done_status
+  - archival_log
+  - task_board_archive_state
+  - optional_knowledge
+validates:
+  - review_pass
+  - no_open_findings
+  - no_blocked_tasks
+  - no_unexplained_gap
+  - fresh_evidence
+  - memory_policy
+  - knowledge_decision_user_choice
 inputs:
   required:
     - change_id

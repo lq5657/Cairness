@@ -1,6 +1,21 @@
 command: cc-init
 summary: Establish the minimum reusable project fact layer without creating changes, audits, or scaffold assets.
 
+category: context
+roles:
+  - pm-orchestrator
+  - context-curator
+outputs:
+  - .cairness/context/project-summary.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
+validates:
+  - claude_scaffold_exists
+  - entrypoints_status_recorded
+  - domain_language_status_recorded
+  - unknowns_recorded
+  - memory_policy
 inputs:
   required: []
 

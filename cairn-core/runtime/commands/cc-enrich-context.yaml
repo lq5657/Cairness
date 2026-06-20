@@ -1,6 +1,22 @@
 command: cc-enrich-context
 summary: Enrich the project fact layer with evidence-backed context while avoiding audit findings or change creation.
 
+category: context
+roles:
+  - pm-orchestrator
+  - context-curator
+outputs:
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
+validates:
+  - base_context_exists
+  - assumptions_confirmed
+  - domain_language_terms_confirmed_or_pending
+  - evidence_locations
+  - confidence_level
+  - memory_policy
+  - blocking_assumption_user_confirmation
 inputs:
   required: []
 

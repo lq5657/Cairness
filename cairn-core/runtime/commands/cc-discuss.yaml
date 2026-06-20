@@ -1,6 +1,22 @@
 command: cc-discuss
 summary: Refine a vague idea through interactive AI-guided discussion with proactive web research, existing project analysis, and deep reasoning before creating a formal spec or new project.
 
+category: discovery
+roles:
+  - pm-orchestrator
+  - requirement-analyst
+  - solution-designer
+  - researcher
+  - context-curator
+outputs:
+  - .cairness/discussions/<discuss-id>/brief.md
+  - .cairness/discussions/<discuss-id>/log.md
+validates:
+  - topic_scope
+  - research_evidence
+  - discussion_convergence
+  - brief_accuracy
+  - routing_selection
 inputs:
   required:
     - topic_description
