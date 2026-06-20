@@ -108,6 +108,8 @@ CLI 在写入时会做：
 - 变更即记录：改代码时必须同步更新 change 文档。
 - Fresh Evidence：没有当前实现的新鲜验证证据，不得声称完成、通过、已修复或可归档。
 
+`No Spec, No Code` 还通过 `.claude/hooks/no-spec-no-code.py`（`PreToolUse(Edit|Write)` 钩子，`cc-cairn init` 自动注册）在 agent loop 内做**非阻塞提示**：写业务代码而无进行中 change spec 时，stderr 提醒先 `cc-propose` 或补回 spec。框架仓库自身维护时该钩子自豁免。详见 `.claude/skills/cc-harness/SKILL.md`「In-loop 闸门」。
+
 ## 为什么选择 Cairness
 
 Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Spec Kit** 的 spec 驱动、**Open Spec** 的变更生命周期、**Superpowers** 的 Agent Skills 编排、**GSD** 的多阶段工作流——并将其统一为一套**机器可执行的 YAML 合同体系**。你不再需要在"结构性"和"灵活性"之间做选择。

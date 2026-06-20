@@ -33,6 +33,7 @@
 ## 核心原则
 
 - `No Spec, No Code`：没有 `.cairness/changes/<change-id>/spec.md`，禁止进入实现。
+- 该规则通过 `.claude/hooks/no-spec-no-code.py`（`PreToolUse(Edit|Write)` 钩子，配置在 `.claude/settings.json`）在 agent loop 内做非阻塞 warn 提示；详见 `.claude/skills/cc-harness/SKILL.md` 的「In-loop 闸门」一节。框架仓库自身维护时该钩子自豁免。
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致。
 - `变更即记录`：改代码时必须同步更新 change 文档。
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”。
