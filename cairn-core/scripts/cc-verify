@@ -875,7 +875,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
             if changed_dirs:
                 changed_dir_args = [str(path) for path in changed_dirs]
-                results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), *changed_dir_args], project_root))
+                results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), *changed_dir_args], project_root, collect_issues=True))
                 results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root, collect_issues=True))
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root, collect_issues=True))
             if harness_changed:
@@ -893,7 +893,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             if sync_target.exists():
                 lint_targets.append(str(sync_target))
             results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
-            results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
+            results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root, collect_issues=True))
             results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
             results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
             results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))

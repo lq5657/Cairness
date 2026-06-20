@@ -34,6 +34,7 @@ ISSUE_SCRIPTS = [
     "cc-upgrade-check",
     "cc-lint",
     "cc-index-check",
+    "cc-sync-check",
 ]
 
 
@@ -138,6 +139,40 @@ def test_index_check_emits_canonical_issue_fields():
     assert "findings" in report and "summary" in report
     for issue in report["issues"]:
         assert set(issue.keys()) == {"code", "path", "message"}
+
+
+def test_sync_check_emits_structured_issue_on_failure(tmp_path):
+    """E2 final cleanup: cc-sync-check (was free-text list[str], no --json) now
+    emits the canonical Issue shape. A change whose spec references a validation
+    mapping absent from tasks yields a code/path/message issue."""
+    change = tmp_path / "changes" / "C-test"
+    change.mkdir(parents=True)
+    # spec.md with a validation row V1 marked closed, but tasks.md never
+    # mentions V1 -> "missing validation mapping V1".
+    (change / "spec.md").write_text(
+        "---\nchange_id: C-test\nstatus: proposed\n---\n\n"
+        "## Validation Mapping\n\n"
+        "| ID | a | b | c | d | e | status |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| V1 | x | y | z | w | v | apply-covered |\n",
+        encoding="utf-8",
+    )
+    (change / "tasks.md").write_text("# Tasks\n\n- [ ] do thing\n", encoding="utf-8")
+    proc = _run("cc-sync-check", [str(tmp_path / "changes"), "--json"])
+    assert proc.returncode == 1, proc.stderr
+    report = json.loads(proc.stdout)
+    assert report["status"] == "failed"
+    assert report["tool"] == "cc-sync-check"
+    assert report["issues"], "cc-sync-check reported no issues for the mismatched change"
+    issue = report["issues"][0]
+    assert set(issue.keys()) == {"code", "path", "message"}
+    assert issue["code"] == "E_SYNC001"
+    assert "V1" in issue["message"]
+
+    # Non-json stderr line is `CODE path: message`.
+    proc_text = _run("cc-sync-check", [str(tmp_path / "changes")])
+    assert proc_text.returncode == 1
+    assert proc_text.stderr.startswith("E_SYNC001 "), proc_text.stderr
 
 
 def test_role_check_uses_shared_issues_key():

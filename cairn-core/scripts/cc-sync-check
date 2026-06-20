@@ -3,12 +3,17 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import re
 import sys
 from pathlib import Path
 
+from harness_runtime.issues import Issue, build_report
+
 
 VALID_CLOSED = {"apply-covered", "test-covered"}
+SYNC_ISSUE_CODE = "E_SYNC001"
 
 
 def read(path: Path) -> str:
@@ -142,21 +147,44 @@ def check_change(change_dir: Path, errors: list[str]) -> None:
             errors.append(f"{spec_path}: status done with gap validation mapping")
 
 
+def error_to_issue(error: str) -> Issue:
+    """Split a `"{path}: {message}"` lint line into an Issue.
+
+    Sync-check messages are uniformly `"{path}: {message}"` (no lineno
+    variant, unlike cc-lint), so a single partition on the first `: ` suffices.
+    """
+    head, sep, message = error.partition(": ")
+    if not sep:
+        return Issue(SYNC_ISSUE_CODE, "", error)
+    return Issue(SYNC_ISSUE_CODE, head.strip(), message.strip())
+
+
 def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Cross-document sync checks for change documents.")
+    parser.add_argument("paths", nargs="*", help="Change dirs or roots to check (default: .cairness/changes).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
     root = Path.cwd()
-    if argv:
-        inputs = [Path(arg) for arg in argv]
-    else:
-        inputs = [root / ".cairness" / "changes"]
+    inputs = [Path(arg) for arg in args.paths] if args.paths else [root / ".cairness" / "changes"]
     errors: list[str] = []
     for change_dir in discover_change_dirs(inputs):
         check_change(change_dir, errors)
-    if errors:
-        for error in errors:
-            print(error, file=sys.stderr)
-        return 1
-    print("cc-sync-check: ok")
-    return 0
+
+    issues = [error_to_issue(error) for error in errors]
+    report = build_report(
+        "cc-sync-check",
+        issues,
+        extra={"checked_roots": [str(path) for path in inputs]},
+    )
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-sync-check: ok")
+    else:
+        for entry in report["issues"]:
+            print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
 
 
 if __name__ == "__main__":
