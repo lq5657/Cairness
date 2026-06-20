@@ -126,7 +126,61 @@ def parse_key_value(block: str, key: str) -> str | None:
     return match.group(1).strip() if match else None
 
 
+def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
+    """Read the `writes` list from the command's runtime manifest.
+
+    Returns None if the manifest cannot be resolved/loaded (caller falls back
+    to workflow during the A1 transition). The manifest is the SSOT for write
+    scope; this is the authoritative source going forward.
+    """
+    project_root = claude_root.parent
+    core_path = claude_root / "runtime" / "core.yaml"
+    if not core_path.exists():
+        return None
+    try:
+        import yaml  # type: ignore
+        core = yaml.safe_load(core_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(core, dict):
+        return None
+    runtime_commands = core.get("runtime_commands")
+    if not isinstance(runtime_commands, dict):
+        return None
+    declared = runtime_commands.get(command)
+    if not isinstance(declared, str):
+        return None
+    manifest_path = project_root / declared if declared.startswith(".claude/") else None
+    if manifest_path is None or not manifest_path.exists():
+        return None
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(manifest, dict):
+        return None
+    writes = manifest.get("writes")
+    if not isinstance(writes, list):
+        return None
+    return [w for w in writes if isinstance(w, str)]
+
+
 def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], bool]:
+    # Manifest is the SSOT for write scope (A1). Prefer it; fall back to the
+    # workflow only during the transition (workflow will become generated).
+    writes = _load_manifest_writes(claude_root, command)
+    if writes is None:
+        writes = _load_workflow_writes(claude_root, command)
+    has_abstract = any(item in ABSTRACT_WRITE_PATTERNS for item in writes)
+    concrete: list[str] = []
+    for item in writes:
+        if item in ABSTRACT_WRITE_PATTERNS:
+            continue
+        concrete.append(concretize_pattern(item))
+    return concrete, has_abstract
+
+
+def _load_workflow_writes(claude_root: Path, command: str) -> list[str]:
     workflow_path = claude_root / "workflows" / "cc-workflow.yaml"
     if not workflow_path.exists():
         raise RuntimeError(f"{workflow_path} not found")
@@ -136,14 +190,7 @@ def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], boo
     writes_value = parse_key_value(blocks[command], "writes")
     if writes_value is None:
         raise RuntimeError(f"{command} missing writes field")
-    writes = parse_inline_list(writes_value)
-    has_abstract = any(item in ABSTRACT_WRITE_PATTERNS for item in writes)
-    concrete: list[str] = []
-    for item in writes:
-        if item in ABSTRACT_WRITE_PATTERNS:
-            continue
-        concrete.append(concretize_pattern(item))
-    return concrete, has_abstract
+    return parse_inline_list(writes_value)
 
 
 def concretize_pattern(pattern: str) -> str:
