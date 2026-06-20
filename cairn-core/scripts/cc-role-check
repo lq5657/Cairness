@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml
+from harness_runtime.issues import (
+    Issue,
+    build_report as build_issue_report,
+)
 
 BASELINE_FILENAME = "role-baseline.json"
 
@@ -235,48 +239,50 @@ def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in expanded)
 
 
-def build_report(command: str, change_id: str | None, project_root: Path) -> dict[str, Any]:
+def build_role_report(command: str, change_id: str | None, project_root: Path) -> dict[str, Any]:
     claude_root = project_root / ".claude"
     patterns, has_abstract = load_command_writes(claude_root, command)
     if any("<change-id>" in pattern for pattern in patterns) and not change_id:
-        return {
-            "tool": "cc-role-check",
-            "status": "failed",
-            "reason": f"{command} requires --change",
-            "dirty_paths": [],
-            "violations": [{"code": "E_ROLE001", "path": "", "message": "missing --change"}],
-        }
+        return build_issue_report(
+            "cc-role-check",
+            [Issue("E_ROLE001", "", "missing --change")],
+            status="failed",
+            extra={"reason": f"{command} requires --change", "dirty_paths": []},
+        )
     if has_abstract:
-        return {
-            "tool": "cc-role-check",
-            "status": "skipped",
-            "reason": f"{command} has task-dependent or abstract write scope",
-            "allowed": [expand(pattern, change_id) for pattern in patterns],
-            "dirty_paths": [],
-            "violations": [],
-        }
+        return build_issue_report(
+            "cc-role-check",
+            [],
+            status="skipped",
+            extra={
+                "reason": f"{command} has task-dependent or abstract write scope",
+                "allowed": [expand(pattern, change_id) for pattern in patterns],
+                "dirty_paths": [],
+            },
+        )
     paths = dirty_paths(project_root)
     previous_paths: list[str] = []
     if change_id:
         bp = baseline_path(project_root, change_id)
         previous_paths = load_baseline(bp)
     new_paths = [p for p in paths if p not in previous_paths]
-    violations = [
-        {"code": "E_ROLE002", "path": path, "message": f"{command} may not write this path"}
+    issues = [
+        Issue("E_ROLE002", path, f"{command} may not write this path")
         for path in new_paths
         if not is_allowed(path, patterns, change_id)
     ]
     if change_id:
         save_baseline(baseline_path(project_root, change_id), paths)
-    return {
-        "tool": "cc-role-check",
-        "status": "failed" if violations else "passed",
-        "command": command,
-        "change_id": change_id or "",
-        "allowed": [expand(pattern, change_id) for pattern in patterns],
-        "dirty_paths": new_paths,
-        "violations": violations,
-    }
+    return build_issue_report(
+        "cc-role-check",
+        issues,
+        extra={
+            "command": command,
+            "change_id": change_id or "",
+            "allowed": [expand(pattern, change_id) for pattern in patterns],
+            "dirty_paths": new_paths,
+        },
+    )
 
 
 def main(argv: list[str]) -> int:
@@ -293,12 +299,12 @@ def main(argv: list[str]) -> int:
 
     if args.reset_baseline:
         if not args.change:
-            report = {
-                "tool": "cc-role-check",
-                "status": "failed",
-                "reason": "--reset-baseline requires --change",
-                "violations": [{"code": "E_ROLE001", "path": "", "message": "missing --change for --reset-baseline"}],
-            }
+            report = build_issue_report(
+                "cc-role-check",
+                [Issue("E_ROLE001", "", "missing --change for --reset-baseline")],
+                status="failed",
+                extra={"reason": "--reset-baseline requires --change"},
+            )
             print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "cc-role-check: --reset-baseline requires --change", file=sys.stderr)
             return 1
         bp = baseline_path(project_root, args.change)
@@ -310,23 +316,23 @@ def main(argv: list[str]) -> int:
         return 1
 
     if not args.command:
-        report = {
-            "tool": "cc-role-check",
-            "status": "failed",
-            "reason": "--command is required (unless using --reset-baseline)",
-            "violations": [{"code": "E_ROLE003", "path": "", "message": "missing --command"}],
-        }
+        report = build_issue_report(
+            "cc-role-check",
+            [Issue("E_ROLE003", "", "missing --command")],
+            status="failed",
+            extra={"reason": "--command is required (unless using --reset-baseline)"},
+        )
         print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "cc-role-check: --command is required", file=sys.stderr)
         return 1
     try:
-        report = build_report(args.command, args.change, project_root)
+        report = build_role_report(args.command, args.change, project_root)
     except RuntimeError as exc:
-        report = {
-            "tool": "cc-role-check",
-            "status": "failed",
-            "reason": str(exc),
-            "violations": [{"code": "E_ROLE003", "path": "", "message": str(exc)}],
-        }
+        report = build_issue_report(
+            "cc-role-check",
+            [Issue("E_ROLE003", "", str(exc))],
+            status="failed",
+            extra={"reason": str(exc)},
+        )
 
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -335,8 +341,8 @@ def main(argv: list[str]) -> int:
     elif report["status"] == "skipped":
         print(f"cc-role-check: skipped ({report['reason']})")
     else:
-        for violation in report.get("violations", []):
-            print(f"{violation['code']} {violation['path']}: {violation['message']}", file=sys.stderr)
+        for entry in report.get("issues", []):
+            print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
     return 1 if report["status"] == "failed" else 0
 
 

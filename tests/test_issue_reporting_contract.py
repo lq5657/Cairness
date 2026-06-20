@@ -79,15 +79,18 @@ def test_issue_scripts_stderr_line_format_on_failure():
         readset.write_text(original, encoding="utf-8")
 
 
-def test_role_check_uses_violations_key_divergence():
-    """E2 stage-2 baseline: cc-role-check currently diverges — it uses the
-    `violations` JSON key and inline dicts instead of the shared `issues`/Issue
-    form. This test records the pre-refactor divergence so stage 2 must
-    explicitly update it when converging to the shared Issue form."""
-    # A bogus command yields a structured failure (missing --change path).
+def test_role_check_uses_shared_issues_key():
+    """E2 stage-2: cc-role-check now uses the shared `issues` JSON key (was the
+    divergent `violations` key with inline dicts). Verifies convergence to the
+    canonical Issue-based report shape, and that the `skipped` status is
+    preserved for abstract-write commands."""
+    # A command needing --change yields a structured failure.
     proc = _run("cc-role-check", ["--command", "cc-apply", "--json"])
     assert proc.returncode == 1, proc.stderr
     report = json.loads(proc.stdout)
-    # Pre-refactor divergence we are about to fix in stage 2:
-    assert "violations" in report, "cc-role-check should still use 'violations' key at this baseline"
-    assert "issues" not in report, "cc-role-check has not yet converged to 'issues' key"
+    assert "issues" in report, "cc-role-check should now use 'issues' key"
+    assert "violations" not in report, "cc-role-check should no longer use 'violations' key"
+    assert report["status"] == "failed"
+    # Each issue entry has the canonical code/path/message shape.
+    for entry in report["issues"]:
+        assert set(entry.keys()) == {"code", "path", "message"}, f"bad issue shape: {entry}"
