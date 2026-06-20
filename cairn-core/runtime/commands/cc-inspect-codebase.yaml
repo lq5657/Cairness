@@ -67,55 +67,7 @@ topic_rules:
 subagents:
   enabled: true
   policy: .claude/docs/maintenance/subagent-model.md
-  merge_owner: main_flow
-  final_writes_by: main_flow
-  write_scope_policy: parent_writes_subset
-  parallel_policy: read_only_parallel_only
-  agents:
-    - name: mode-audit-reviewer
-      role: reviewer
-      mode: read_only
-      trigger: inspect_selected_mode_and_scope
-      writes: []
-      output: evidence_backed_findings
-      output_contract:
-        format: structured_subagent_result
-        required_fields:
-          - summary
-          - scope
-          - writes
-          - evidence
-          - risks
-          - merge_notes
-        evidence_quality:
-          min_evidence_items: 1
-          min_risk_items: 1
-          require_concrete_references: true
-          allow_freeform: false
-    - name: scope-split-reviewer
-      role: reviewer
-      mode: read_only
-      trigger: optional_large_scope_split
-      writes: []
-      output: scoped_findings_fragment
-      output_contract:
-        format: structured_subagent_result
-        required_fields:
-          - summary
-          - scope
-          - writes
-          - evidence
-          - risks
-          - merge_notes
-        evidence_quality:
-          min_evidence_items: 1
-          min_risk_items: 1
-          require_concrete_references: true
-          allow_freeform: false
-  merge_requirements:
-    - main_flow_deduplicates_findings
-    - main_flow_sets_final_severity
-    - main_flow_writes_audit_report
+  contract: .claude/runtime/subagents/cc-inspect-codebase.yaml
 
 steps:
   - validate_mode_and_scope

@@ -72,11 +72,6 @@ def _derive_subagents(project_root: Path, manifest: dict[str, Any]) -> list[str]
     sa = manifest.get("subagents")
     if not isinstance(sa, dict) or sa.get("enabled") is not True:
         return []
-    # Inline agents form.
-    agents = sa.get("agents")
-    if isinstance(agents, list):
-        return [a.get("name") for a in agents if isinstance(a, dict) and isinstance(a.get("name"), str)]
-    # Contract file form.
     contract = sa.get("contract")
     if isinstance(contract, str):
         cpath = _project_path(project_root, contract)

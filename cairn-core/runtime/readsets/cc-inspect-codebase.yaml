@@ -31,3 +31,4 @@ conditional_reads:
   - .claude/runtime/topic-rules/verification.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
+  - .claude/runtime/subagents/cc-inspect-codebase.yaml
