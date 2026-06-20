@@ -663,14 +663,60 @@ def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
     }
 
 
-def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, object]:
+def _collect_issues_from_json(stdout: str) -> list[dict[str, str]]:
+    """Parse a sub-check's --json stdout into a list of issue dicts.
+
+    Sub-checks that emit the canonical Issue report ({tool, status, issues: [...]}
+    where each issue is {code, path, message}) are parsed structurally. Returns
+    [] for unparseable/non-canonical output (caller keeps relying on
+    fingerprints/exit code for those). Never raises — a parse failure just
+    means no structured issues are collected.
+    """
+    try:
+        report = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(report, dict):
+        return []
+    issues = report.get("issues")
+    if not isinstance(issues, list):
+        return []
+    collected: list[dict[str, str]] = []
+    for item in issues:
+        if isinstance(item, dict) and {"code", "path", "message"} <= item.keys():
+            collected.append({
+                "code": str(item["code"]),
+                "path": str(item["path"]),
+                "message": str(item["message"]),
+            })
+    return collected
+
+
+def run_step(
+    name: str,
+    kind: str,
+    command: list[str],
+    cwd: Path,
+    *,
+    collect_issues: bool = False,
+) -> dict[str, object]:
+    """Run a sub-check subprocess and record its result.
+
+    When ``collect_issues`` is True, ``--json`` is appended to the command and
+    the child's structured ``issues`` are parsed into the result. This lets
+    cc-verify aggregate sub-check findings by code/path/message instead of only
+    by truncated stderr text (fingerprints). Scripts that do not emit the
+    canonical Issue JSON (cc-sync-check free-text, cc-index-check's level/
+    summary schema) keep relying on exit code + fingerprints.
+    """
     started = time.time()
     try:
         env = os.environ.copy()
         if kind.startswith("project:golang") and "GOCACHE" not in env:
             env["GOCACHE"] = "/tmp/cc-go-build"
+        run_command = [*command, "--json"] if collect_issues else command
         completed = subprocess.run(
-            command,
+            run_command,
             cwd=str(cwd),
             text=True,
             capture_output=True,
@@ -682,7 +728,7 @@ def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, o
         result = {
             "name": name,
             "kind": kind,
-            "command": command,
+            "command": run_command,
             "cwd": str(cwd),
             "status": status,
             "exit_code": completed.returncode,
@@ -692,6 +738,8 @@ def run_step(name: str, kind: str, command: list[str], cwd: Path) -> dict[str, o
             "fingerprints": fingerprints(completed.stdout, completed.stderr) if completed.returncode else [],
             "warnings": warnings(completed.stdout, completed.stderr),
         }
+        if collect_issues:
+            result["issues"] = _collect_issues_from_json(completed.stdout)
         result["diagnosis"] = diagnosis_for(name, status, completed.stderr)
         return result
     except FileNotFoundError as exc:
@@ -824,36 +872,36 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             lint_targets = [str(claude_root)] if harness_changed else []
             lint_targets.extend(str(path) for path in changed_dirs)
             if lint_targets:
-                results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
+                results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
             if changed_dirs:
                 changed_dir_args = [str(path) for path in changed_dirs]
                 results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), *changed_dir_args], project_root))
-                results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root))
-                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root))
+                results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root, collect_issues=True))
+                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root, collect_issues=True))
             if harness_changed:
-                results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
-                results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root))
-                results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
+                results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
+                results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
+                results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))
                 if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
-                    results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
-                results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
-                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+                    results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root, collect_issues=True))
+                results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
+                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
                 if knowledge_index_path.is_file():
                     results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
         else:
             lint_targets = [str(claude_root)]
             if sync_target.exists():
                 lint_targets.append(str(sync_target))
-            results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root))
+            results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
             results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root))
-            results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root))
-            results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root))
-            results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root))
-            results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root))
+            results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
+            results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
+            results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))
+            results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root, collect_issues=True))
             if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
-                results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root))
-            results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root))
-            results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root))
+                results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root, collect_issues=True))
+            results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
+            results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
             if knowledge_index_path.is_file():
                 results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
         if args.command:
