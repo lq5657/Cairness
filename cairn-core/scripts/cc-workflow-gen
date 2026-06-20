@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""Generate workflows/cc-workflow.yaml from runtime command manifests (A1).
+
+The workflow was a parallel SSOT for per-command fields (category, roles,
+change_from/to, inputs, outputs, writes, validates, forbids, auto_validation,
+subagents). A1 makes the runtime manifest the single source and this script
+derives the workflow view from it. Mirrors the cc-readset pattern: a
+`--check` mode compares the generated output to the committed file.
+
+Field derivation:
+  category/roles/outputs/validates/writes/forbids/auto_validation: copied
+    verbatim from the manifest.
+  change_from/change_to: from manifest.state.
+  inputs: derived via change_docs... actually manifest.inputs {required,optional}
+    → flat list with optional_ prefix (same rule as E_SCHEMA137).
+  subagents: flat kebab list of agent names. From manifest.subagents.agents
+    when inline, else from the referenced contract file's `agents[].name`.
+
+Output format is flow-style inline lists to match the historical file exactly
+(so `--check` passes against the pre-generated artifact).
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Any
+
+WORKFLOW_PATH = ".claude/workflows/cc-workflow.yaml"
+CORE_PATH = ".claude/runtime/core.yaml"
+GENERATOR_PATH = ".claude/scripts/cc-workflow-gen"
+
+HEADER = """\
+# Machine-readable workflow definition for all cc-* commands.
+# This file is the script and CI truth for lifecycle, write scope,
+# validation wiring, and command coverage. Runtime manifests may
+# provide slimmer execution guidance for high-frequency commands.
+
+"""
+
+
+def _load_yaml(path: Path) -> Any:
+    try:
+        import yaml  # type: ignore
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _project_path(project_root: Path, declared: Any) -> Path | None:
+    if not isinstance(declared, str):
+        return None
+    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
+        return project_root / declared
+    return None
+
+
+def _derive_inputs(manifest_inputs: Any) -> list[str]:
+    if not isinstance(manifest_inputs, dict):
+        return []
+    required = [r for r in (manifest_inputs.get("required") or []) if isinstance(r, str)]
+    optional_raw = [o for o in (manifest_inputs.get("optional") or []) if isinstance(o, str)]
+    optional = [o if o.startswith("optional_") else f"optional_{o}" for o in optional_raw]
+    return [*required, *optional]
+
+
+def _derive_subagents(project_root: Path, manifest: dict[str, Any]) -> list[str]:
+    sa = manifest.get("subagents")
+    if not isinstance(sa, dict) or sa.get("enabled") is not True:
+        return []
+    # Inline agents form.
+    agents = sa.get("agents")
+    if isinstance(agents, list):
+        return [a.get("name") for a in agents if isinstance(a, dict) and isinstance(a.get("name"), str)]
+    # Contract file form.
+    contract = sa.get("contract")
+    if isinstance(contract, str):
+        cpath = _project_path(project_root, contract)
+        if cpath is not None and cpath.exists():
+            cdata = _load_yaml(cpath)
+            if isinstance(cdata, dict):
+                cagents = cdata.get("agents")
+                if isinstance(cagents, list):
+                    return [a.get("name") for a in cagents if isinstance(a, dict) and isinstance(a.get("name"), str)]
+    return []
+
+
+def _as_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [v for v in value if isinstance(v, str)]
+
+
+def _flow(items: list[str]) -> str:
+    """Render a list as a YAML flow-style inline list, matching the historical
+    file: `[a, b, c]` or `[]` for empty."""
+    return "[" + ", ".join(items) + "]"
+
+
+def _quoted_flow(items: list[str]) -> str:
+    """Flow list with double-quoted items (auto_validation entries contain
+    spaces, so the historical file quotes them)."""
+    return "[" + ", ".join(f'"{i}"' for i in items) + "]"
+
+
+def _field_line(key: str, value: Any, *, quoted: bool = False) -> str:
+    """Render `    key: <flow-value>` for a scalar or list field."""
+    if isinstance(value, list):
+        rendered = _quoted_flow(value) if quoted else _flow(value)
+    elif isinstance(value, str):
+        rendered = f'"{value}"' if quoted else value
+    else:
+        rendered = str(value)
+    return f"    {key}: {rendered}\n"
+
+
+def derive_workflow(project_root: Path) -> str:
+    """Generate the full workflow.yaml text from manifests."""
+    core = _load_yaml(project_root / CORE_PATH)
+    if not isinstance(core, dict):
+        return ""
+    runtime_commands = core.get("runtime_commands")
+    if not isinstance(runtime_commands, dict):
+        return ""
+    migrated = _as_list(core.get("migrated_commands"))
+    # Order: migrated (filtered to runtime_commands), then any extras sorted.
+    order = [c for c in migrated if c in runtime_commands]
+    order.extend(sorted(c for c in runtime_commands if c not in order))
+
+    out: list[str] = [HEADER]
+    out.append("version: 1\n")
+    out.append("workflow_id: cc-spec-harness-cc-workflow\n")
+    out.append("\nsources:\n")
+    out.append("  runtime_core: .claude/runtime/core.yaml\n")
+    out.append("  maintenance_guide: .claude/docs/maintenance/runtime-model.md\n")
+    out.append("\nstates:\n")
+    out.append("  change: [propose, apply, review, done]\n")
+    out.append("  task: [todo, in_progress, blocked, partial, aborted, done]\n")
+    out.append("  finding: [open, fixed, accepted]\n")
+    out.append("  validation_mapping: [todo, apply-covered, test-covered, gap]\n")
+    out.append("\ncommands:\n")
+
+    for command in order:
+        declared = runtime_commands.get(command)
+        mpath = _project_path(project_root, declared)
+        if mpath is None or not mpath.exists():
+            continue
+        manifest = _load_yaml(mpath)
+        if not isinstance(manifest, dict):
+            continue
+        state = manifest.get("state") if isinstance(manifest.get("state"), dict) else {}
+        subagents = _derive_subagents(project_root, manifest)
+
+        out.append(f"  {command}:\n")
+        out.append(_field_line("category", manifest.get("category", "")))
+        out.append(_field_line("roles", _as_list(manifest.get("roles"))))
+        if subagents:
+            out.append(_field_line("subagents", subagents))
+        out.append(_field_line("change_from", _as_list(state.get("change_from"))))
+        out.append(_field_line("change_to", state.get("change_to", "")))
+        out.append(_field_line("inputs", _derive_inputs(manifest.get("inputs"))))
+        out.append(_field_line("outputs", _as_list(manifest.get("outputs"))))
+        out.append(_field_line("writes", _as_list(manifest.get("writes"))))
+        out.append(_field_line("validates", _as_list(manifest.get("validates"))))
+        out.append(_field_line("forbids", _as_list(manifest.get("forbids"))))
+        auto_validation = _as_list(manifest.get("auto_validation"))
+        if auto_validation:
+            out.append(_field_line("auto_validation", auto_validation, quoted=True))
+        else:
+            out.append("    auto_validation: []\n")
+        out.append("\n")
+
+    # Trailing newline handling: historical file ends with a single newline
+    # after the last command's blank line. Join and strip trailing blanks then
+    # add exactly one.
+    text = "".join(out)
+    return text.rstrip("\n") + "\n"
+
+
+def check(project_root: Path) -> dict[str, Any]:
+    generated = derive_workflow(project_root)
+    wf_path = project_root / WORKFLOW_PATH
+    committed = wf_path.read_text(encoding="utf-8") if wf_path.exists() else ""
+    stale = generated != committed
+    return {
+        "tool": "cc-workflow-gen",
+        "mode": "check",
+        "status": "failed" if stale else "passed",
+        "workflow": WORKFLOW_PATH,
+        "issues": ["committed workflow.yaml is stale; run cc-workflow-gen --write"] if stale else [],
+    }
+
+
+def write(project_root: Path) -> dict[str, Any]:
+    generated = derive_workflow(project_root)
+    wf_path = project_root / WORKFLOW_PATH
+    wf_path.parent.mkdir(parents=True, exist_ok=True)
+    wf_path.write_text(generated, encoding="utf-8")
+    return {"tool": "cc-workflow-gen", "mode": "write", "status": "passed", "workflow": WORKFLOW_PATH}
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Generate or verify the workflow.yaml view from manifests.")
+    parser.add_argument("--write", action="store_true", help="Write generated workflow.yaml to disk.")
+    parser.add_argument("--check", action="store_true", help="Check committed workflow.yaml is current.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    project_root = Path(__file__).resolve().parent.parent.parent
+    report = write(project_root) if args.write else check(project_root)
+    if args.json:
+        import json
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print(f"cc-workflow-gen: ok ({report['mode']})")
+    else:
+        for issue in report["issues"]:
+            print(issue, file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
