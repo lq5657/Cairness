@@ -17,6 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import protocol_language_assets
+from harness_runtime.readsets import (
+    derive_readsets as _derive_readsets_shared,
+    load_protocol_assets,
+    project_path,
+    runtime_protocol_config,
+    runtime_readset_config,
+)
 
 from change_docs import (
     CHANGE_ID_RE,
@@ -753,260 +760,25 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
 HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
 
 
-def load_harness_config(project_root: Path, issues: list[Issue]) -> dict[str, Any]:
-    """读取 harness.config.yaml，失败时返回空 dict。"""
-    path = project_root / HARNESS_CONFIG_PATH
-    loaded = load_yaml_file(path, issues)
-    return loaded if isinstance(loaded, dict) else {}
-
-
-def resolve_active_profile_path(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> str:
-    """从 harness.config.yaml 的 profile 字段解析活跃 profile 文件路径。"""
-    harness_config = load_harness_config(project_root, issues)
-    profile_name = harness_config.get("profile")
-    if not isinstance(profile_name, str) or not profile_name:
-        profiles_cfg = core.get("profiles") if isinstance(core, dict) and isinstance(core.get("profiles"), dict) else {}
-        profile_name = profiles_cfg.get("default", "standard")
-    if not isinstance(profile_name, str):
-        profile_name = "standard"
-    profiles_dir = ".claude/runtime/profiles"
-    return f"{profiles_dir}/{profile_name}.yaml"
-
-
-def runtime_readset_config(core: dict[str, Any] | None) -> dict[str, str]:
-    config = core.get("runtime_readsets") if isinstance(core, dict) and isinstance(core.get("runtime_readsets"), dict) else {}
-    return {
-        "dir": config.get("dir", ".claude/runtime/readsets"),
-        "index": config.get("index", ".claude/runtime/readsets/index.yaml"),
-        "schema": config.get("schema", f".claude/schemas/{RUNTIME_READSET_SCHEMA}"),
-    }
-
-
-def runtime_protocol_config(core: dict[str, Any] | None) -> dict[str, str]:
-    config = core.get("runtime_protocol") if isinstance(core, dict) and isinstance(core.get("runtime_protocol"), dict) else {}
-    return {
-        "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
-        "technology_decisions": config.get("technology_decisions", ".claude/runtime/protocol/technology-decisions.yaml"),
-        "language_profile": config.get("language_profile", ".claude/runtime/protocol/language-profile.yaml"),
-        "schema": config.get("schema", f".claude/schemas/{COMMAND_PROTOCOL_SCHEMA}"),
-        "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
-    }
-
-
-def technology_catalog_from_language_profile(project_root: Path, declared_profile: str, issues: list[Issue]) -> str:
-    profile_path = project_path(project_root, declared_profile)
-    if profile_path is None:
-        return ""
-    profile = load_yaml_file(profile_path, issues)
-    if not isinstance(profile, dict):
-        return ""
-    technology_decisions = profile.get("technology_decisions") if isinstance(profile.get("technology_decisions"), dict) else {}
-    catalog = technology_decisions.get("catalog")
-    return catalog if isinstance(catalog, str) else ""
-
-
 def load_runtime_protocol(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> dict[str, Any]:
-    config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
-    loaded = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
-    protocol = loaded if isinstance(loaded, dict) else {}
-    for key in ("technology_decisions", "language_profile"):
-        declared = config.get(key, "")
-        if not declared or declared == config["protocol"]:
-            continue
-        asset_path = project_path(project_root, declared)
-        asset = load_yaml_file(asset_path, issues) if asset_path is not None else None
-        if isinstance(asset, dict):
-            protocol.update(asset)
-    return protocol
+    """Merge protocol assets, pushing failures into issues via load_yaml_file.
+
+    Thin adapter over harness_runtime.readsets.load_protocol_assets, kept under
+    the historical name because validate_agent_command_protocol calls it
+    directly. The derivation chain itself now lives in the shared module.
+    """
+    return load_protocol_assets(project_root, core, issues, load_yaml_file)
 
 
-def runtime_protocol_read_mode(manifest: dict[str, Any], key: str, default: str) -> str:
-    runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
-    mode = runtime_reads.get(key, default)
-    return mode if mode in {"always", "never", "on_demand"} else "always"
+def derive_readsets(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """Derive readsets via the shared module; drop the config cc-readset needs.
 
-
-def language_profile_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "language_profile", "never")
-
-
-def technology_decisions_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "technology_decisions", "never")
-
-
-def technology_catalog_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "technology_catalog", "always")
-
-
-def include_technology_catalog(manifest: dict[str, Any]) -> bool:
-    return technology_catalog_mode(manifest) == "always"
-
-
-def protocol_asset_read(config: dict[str, str], key: str) -> list[str]:
-    declared = config.get(key, "")
-    return [declared] if declared else []
-
-
-def language_profile_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
-    config = runtime_protocol_config(core)
-    return ordered_unique([
-        *protocol_asset_read(config, "language_profile"),
-        *protocol_language_assets(project_root, protocol, include_catalog=False),
-    ])
-
-
-def technology_decision_reads(core: dict[str, Any] | None) -> list[str]:
-    config = runtime_protocol_config(core)
-    return protocol_asset_read(config, "technology_decisions")
-
-
-def technology_catalog_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
-    return ordered_unique([
-        *technology_decision_reads(core),
-        *language_profile_reads(project_root, core, protocol),
-        *protocol_language_assets(project_root, protocol, include_catalog=True),
-    ])
-
-
-def result_contract_profile_reads(manifest: dict[str, Any]) -> list[str]:
-    result_contract = manifest.get("result_contract") if isinstance(manifest.get("result_contract"), dict) else {}
-    profile = result_contract.get("profile")
-    return [profile] if isinstance(profile, str) else []
-
-
-def runtime_protocol_reads(
-    project_root: Path,
-    core: dict[str, Any] | None,
-    manifest: dict[str, Any],
-    issues: list[Issue],
-) -> list[str]:
-    config = runtime_protocol_config(core)
-    reads = [config["protocol"]]
-    protocol = load_runtime_protocol(project_root, core, issues)
-    if language_profile_mode(manifest) == "always":
-        reads.extend(language_profile_reads(project_root, core, protocol))
-    if technology_decisions_mode(manifest) == "always":
-        reads.extend(technology_decision_reads(core))
-    if include_technology_catalog(manifest):
-        reads.extend(technology_catalog_reads(project_root, core, protocol))
-    return ordered_unique(reads)
-
-
-def on_demand_runtime_protocol_reads(
-    project_root: Path,
-    core: dict[str, Any] | None,
-    manifest: dict[str, Any],
-    issues: list[Issue],
-) -> dict[str, list[str]]:
-    protocol = load_runtime_protocol(project_root, core, issues)
-    reads: dict[str, list[str]] = {}
-    if language_profile_mode(manifest) == "on_demand":
-        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol)
-    if technology_decisions_mode(manifest) == "on_demand":
-        reads["when_technology_decision_is_required"] = technology_decision_reads(core)
-    if technology_catalog_mode(manifest) == "on_demand":
-        reads["when_technology_decision_is_required"] = ordered_unique([
-            *reads.get("when_technology_decision_is_required", []),
-            *technology_catalog_reads(project_root, core, protocol),
-        ])
-    return reads
-
-
-def command_order(core: dict[str, Any]) -> list[str]:
-    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
-    ordered = [command for command in string_list(core.get("migrated_commands")) if command in runtime_commands]
-    ordered.extend(sorted(command for command in runtime_commands if command not in ordered))
-    return ordered
-
-
-def derive_command_readset(
-    project_root: Path,
-    command: str,
-    manifest_path: str,
-    manifest: dict[str, Any],
-    core: dict[str, Any] | None,
-    issues: list[Issue],
-) -> dict[str, Any]:
-    topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
-    conditional_reads: dict[str, list[str]] = {}
-    manifest_conditional_reads = manifest.get("conditional_reads") if isinstance(manifest.get("conditional_reads"), dict) else {}
-    for condition, reads in manifest_conditional_reads.items():
-        conditional_reads[condition] = ordered_unique(string_list(reads))
-    for condition, rules in topic_rules.items():
-        if condition == "always":
-            continue
-        conditional_reads[condition] = ordered_unique(string_list(rules))
-    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues).items():
-        conditional_reads[condition] = ordered_unique([
-            *conditional_reads.get(condition, []),
-            *reads,
-        ])
-
-    subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
-    subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
-    subagent_contract = subagents.get("contract") if subagents.get("enabled") is True and isinstance(subagents.get("contract"), str) else ""
-    if subagent_policy or subagent_contract:
-        condition = "when_subagent_delegation_is_used"
-        conditional_reads[condition] = ordered_unique([
-            *conditional_reads.get(condition, []),
-            *([subagent_policy] if subagent_policy else []),
-            *([subagent_contract] if subagent_contract else []),
-        ])
-    protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
-    result_profile_reads = result_contract_profile_reads(manifest)
-    active_profile_path = resolve_active_profile_path(project_root, core, issues)
-    always_reads = [
-        ".claude/runtime/core.yaml",
-        *protocol_reads,
-        manifest_path,
-        *result_profile_reads,
-        *string_list(manifest.get("required_reads")),
-        *string_list(topic_rules.get("always")),
-        *([active_profile_path] if active_profile_path else []),
-    ]
-
-    return {
-        "version": 1,
-        "command": command,
-        "source_manifest": manifest_path,
-        "generated_from": [
-            ".claude/runtime/core.yaml",
-            *protocol_reads,
-            manifest_path,
-            *result_profile_reads,
-            *([active_profile_path] if active_profile_path else []),
-        ],
-        "always_reads": ordered_unique(always_reads),
-        "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),
-        "conditional_reads": conditional_reads,
-    }
-
-
-def derive_readsets(project_root: Path, core: dict[str, Any], issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    config = runtime_readset_config(core)
-    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
-    command_readsets: dict[str, dict[str, Any]] = {}
-    commands_index: dict[str, str] = {}
-    for command in command_order(core):
-        manifest_path = runtime_commands.get(command)
-        if not isinstance(manifest_path, str):
-            continue
-        resolved = project_path(project_root, manifest_path)
-        if resolved is None:
-            continue
-        manifest = load_yaml_file(resolved, issues)
-        if not isinstance(manifest, dict):
-            continue
-        command_readsets[command] = derive_command_readset(project_root, command, manifest_path, manifest, core, issues)
-        commands_index[command] = f"{config['dir']}/{command}.yaml"
-    index = {
-        "version": 1,
-        "generated_by": READSET_GENERATOR,
-        "source_core": ".claude/runtime/core.yaml",
-        "commands": commands_index,
-    }
-    return index, command_readsets
+    cc-schema-check's validate pipeline only needs (index, readsets); the
+    shared module also returns a readset_config used by cc-readset for file
+    paths, which we discard here.
+    """
+    index, readsets, _config = _derive_readsets_shared(project_root, core, issues, load_yaml_file)
+    return index, readsets
 
 
 def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
