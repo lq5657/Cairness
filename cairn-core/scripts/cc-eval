@@ -7,9 +7,10 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from harness_runtime.issues import Issue, issues_to_dicts
 
 
 CASE_REQUIRED_KEYS = {"id", "input", "expected_reads", "forbidden_actions", "expected_checks", "rubric"}
@@ -81,13 +82,6 @@ INTENT_TOKENS = {
     "verify",
     "write",
 }
-
-
-@dataclass
-class Issue:
-    code: str
-    path: str
-    message: str
 
 
 def read(path: Path) -> str:
@@ -368,7 +362,7 @@ def build_report(root: Path) -> dict[str, Any]:
         "mode": "semantic",
         "cases": [str(path) for path in cases],
         "rubrics": [str(path) for path in rubrics],
-        "issues": [issue.__dict__ for issue in issues],
+        "issues": issues_to_dicts(issues),
     }
 
 
