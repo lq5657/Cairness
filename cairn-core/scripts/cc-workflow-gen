@@ -127,8 +127,10 @@ def derive_workflow(project_root: Path) -> str:
     if not isinstance(runtime_commands, dict):
         return ""
     migrated = _as_list(core.get("migrated_commands"))
-    # Order: migrated (filtered to runtime_commands), then any extras sorted.
-    order = [c for c in migrated if c in runtime_commands]
+    # Display order: prefer core.workflow_order (the scenario-ordered view);
+    # fall back to migrated_commands, then any extras sorted.
+    declared_order = _as_list(core.get("workflow_order")) or [c for c in migrated if c in runtime_commands]
+    order = [c for c in declared_order if c in runtime_commands]
     order.extend(sorted(c for c in runtime_commands if c not in order))
 
     out: list[str] = [HEADER]
@@ -145,6 +147,18 @@ def derive_workflow(project_root: Path) -> str:
     out.append("\ncommands:\n")
 
     for command in order:
+        # Section banners (display only; grouping reflects the two scenario
+        # entry paths converging on the shared change trunk).
+        if command == "cc-preflight":
+            out.append("  # cross-cutting / pre-adoption self-check\n")
+        elif command == "cc-discuss":
+            out.append("  # new-project entry path: discuss(optional) → new-project\n")
+        elif command == "cc-init":
+            out.append("  # existing-project entry path: init → enrich(optional) → inspect-codebase(optional) → promote-audit(optional)\n")
+        elif command == "cc-propose":
+            out.append("  # shared change trunk: propose → apply → review → fix → test → archive\n")
+        elif command == "cc-explain-system":
+            out.append("  # cross-cutting / documentation tool\n")
         declared = runtime_commands.get(command)
         mpath = _project_path(project_root, declared)
         if mpath is None or not mpath.exists():

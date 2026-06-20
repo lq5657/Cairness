@@ -21,18 +21,7 @@ states:
   validation_mapping: [todo, apply-covered, test-covered, gap]
 
 commands:
-  cc-new-project:
-    category: project
-    roles: [pm-orchestrator, requirement-analyst, solution-designer, context-curator, backlog-curator, gatekeeper]
-    change_from: [none]
-    change_to: unchanged
-    inputs: [project_idea]
-    outputs: [.cairness/context/project-summary.md, .cairness/context/project-definition.md, .cairness/context/mvp-roadmap.md, .cairness/context/architecture-outline.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
-    writes: [.cairness/context/project-summary.md, .cairness/context/project-definition.md, .cairness/context/mvp-roadmap.md, .cairness/context/architecture-outline.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
-    validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, planned_path_status, memory_policy, blocking_project_decision_user_choice]
-    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply, treat_project_unknowns_as_resolved, treat_planned_paths_as_confirmed_facts, mark_project_definition_complete_without_blocking_choices]
-    auto_validation: []
-
+  # cross-cutting / pre-adoption self-check
   cc-preflight:
     category: harness
     roles: [pm-orchestrator, gatekeeper, harness-maintainer]
@@ -45,6 +34,33 @@ commands:
     forbids: [scan_business_code_deeply, create_business_change, auto_fix_scaffold, expand_into_project_audit]
     auto_validation: []
 
+  # new-project entry path: discuss(optional) → new-project
+  cc-discuss:
+    category: discovery
+    roles: [pm-orchestrator, requirement-analyst, solution-designer, researcher, context-curator]
+    subagents: [research-analyst, project-context-analyst]
+    change_from: [none]
+    change_to: unchanged
+    inputs: [topic_description, optional_discuss_id, optional_research_depth, optional_discuss_mode, optional_continue_discussion]
+    outputs: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
+    writes: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
+    validates: [topic_scope, research_evidence, discussion_convergence, brief_accuracy, routing_selection]
+    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_new_project, fabricate_research, skip_challenging_assumptions, treat_vague_input_as_ready, skip_routing_selection]
+    auto_validation: []
+
+  cc-new-project:
+    category: project
+    roles: [pm-orchestrator, requirement-analyst, solution-designer, context-curator, backlog-curator, gatekeeper]
+    change_from: [none]
+    change_to: unchanged
+    inputs: [project_idea]
+    outputs: [.cairness/context/project-summary.md, .cairness/context/project-definition.md, .cairness/context/mvp-roadmap.md, .cairness/context/architecture-outline.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
+    writes: [.cairness/context/project-summary.md, .cairness/context/project-definition.md, .cairness/context/mvp-roadmap.md, .cairness/context/architecture-outline.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
+    validates: [project_goal, target_users, mvp_scope, out_of_scope, backlog_bridge, planned_path_status, memory_policy, blocking_project_decision_user_choice]
+    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_apply, treat_project_unknowns_as_resolved, treat_planned_paths_as_confirmed_facts, mark_project_definition_complete_without_blocking_choices]
+    auto_validation: []
+
+  # existing-project entry path: init → enrich(optional) → inspect-codebase(optional) → promote-audit(optional)
   cc-init:
     category: context
     roles: [pm-orchestrator, context-curator]
@@ -69,18 +85,6 @@ commands:
     forbids: [finding_output, change_creation, audit_creation, assumptions_as_facts, auto_review_or_apply, treat_listed_assumptions_as_confirmed, write_unconfirmed_blocking_assumption_as_fact]
     auto_validation: []
 
-  cc-explain-system:
-    category: context
-    roles: [pm-orchestrator, context-curator]
-    change_from: [none]
-    change_to: unchanged
-    inputs: [optional_scope]
-    outputs: [.cairness/context/system-overview.md]
-    writes: [.cairness/context/system-overview.md]
-    validates: [code_evidence, config_evidence, flow_evidence, bounded_scope]
-    forbids: [finding_output, change_creation, audit_creation, business_code_write, preference_as_fact]
-    auto_validation: []
-
   cc-inspect-codebase:
     category: audit
     roles: [pm-orchestrator, reviewer]
@@ -94,6 +98,19 @@ commands:
     forbids: [auto_fix, create_change_docs, review_existing_change_implementation, unsupported_findings, enter_promote_audit_automatically]
     auto_validation: []
 
+  cc-promote-audit:
+    category: audit_bridge
+    roles: [pm-orchestrator, requirement-analyst, backlog-curator]
+    change_from: [none]
+    change_to: unchanged
+    inputs: [audit_id, change_id]
+    outputs: [.cairness/audits/<audit-id>/to-change.md, .cairness/changes/task-board.md]
+    writes: [.cairness/audits/<audit-id>/to-change.md, .cairness/changes/task-board.md]
+    validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint, task_board_not_spec, finding_selection_user_choice]
+    forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose, treat_all_findings_as_selected_by_default, write_bridge_without_finding_selection_choice]
+    auto_validation: []
+
+  # shared change trunk: propose → apply → review → fix → test → archive
   cc-propose:
     category: change
     roles: [pm-orchestrator, requirement-analyst, solution-designer, backlog-curator, gatekeeper]
@@ -170,27 +187,15 @@ commands:
     forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice, freeform_edit_of_knowledge_index_md]
     auto_validation: [".claude/scripts/cc-verify --change <change-id>", ".claude/scripts/cc-index-check"]
 
-  cc-promote-audit:
-    category: audit_bridge
-    roles: [pm-orchestrator, requirement-analyst, backlog-curator]
+  # cross-cutting / documentation tool
+  cc-explain-system:
+    category: context
+    roles: [pm-orchestrator, context-curator]
     change_from: [none]
     change_to: unchanged
-    inputs: [audit_id, change_id]
-    outputs: [.cairness/audits/<audit-id>/to-change.md, .cairness/changes/task-board.md]
-    writes: [.cairness/audits/<audit-id>/to-change.md, .cairness/changes/task-board.md]
-    validates: [finding_selection, scope_reduction, split_boundary, verification_level_hint, task_board_not_spec, finding_selection_user_choice]
-    forbids: [copy_entire_audit_verbatim, write_formal_change_spec_directly, merge_unrelated_findings, auto_enter_propose, treat_all_findings_as_selected_by_default, write_bridge_without_finding_selection_choice]
-    auto_validation: []
-
-  cc-discuss:
-    category: discovery
-    roles: [pm-orchestrator, requirement-analyst, solution-designer, researcher, context-curator]
-    subagents: [research-analyst, project-context-analyst]
-    change_from: [none]
-    change_to: unchanged
-    inputs: [topic_description, optional_discuss_id, optional_research_depth, optional_discuss_mode, optional_continue_discussion]
-    outputs: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
-    writes: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
-    validates: [topic_scope, research_evidence, discussion_convergence, brief_accuracy, routing_selection]
-    forbids: [business_code_write, change_creation, auto_enter_propose, auto_enter_new_project, fabricate_research, skip_challenging_assumptions, treat_vague_input_as_ready, skip_routing_selection]
+    inputs: [optional_scope]
+    outputs: [.cairness/context/system-overview.md]
+    writes: [.cairness/context/system-overview.md]
+    validates: [code_evidence, config_evidence, flow_evidence, bounded_scope]
+    forbids: [finding_output, change_creation, audit_creation, business_code_write, preference_as_fact]
     auto_validation: []

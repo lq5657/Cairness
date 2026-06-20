@@ -38,6 +38,37 @@ def test_generated_workflow_has_all_migrated_commands():
         assert cmd in commands, f"{cmd} missing from generated workflow"
 
 
+def test_workflow_order_reflects_scenario_paths():
+    """Generated workflow orders commands by core.workflow_order: cross-cutting
+    pre-adoption → new-project path → existing-project path → change trunk →
+    cross-cutting tooling. Guards against regression to migrated_commands
+    registration order (which dumps discuss/promote-audit at the end)."""
+    import yaml
+    mod = _load_gen()
+    gen = mod.derive_workflow(REPO)
+    order = list(yaml.safe_load(gen)["commands"].keys())
+    expected = [
+        "cc-preflight",
+        "cc-discuss", "cc-new-project",
+        "cc-init", "cc-enrich-context", "cc-inspect-codebase", "cc-promote-audit",
+        "cc-propose", "cc-apply", "cc-review", "cc-fix", "cc-test", "cc-archive",
+        "cc-explain-system",
+    ]
+    assert order == expected, f"order mismatch:\n got {order}\n exp {expected}"
+
+
+def test_generated_workflow_has_section_banners():
+    """Section banners annotate the scenario grouping for human readers."""
+    mod = _load_gen()
+    gen = mod.derive_workflow(REPO)
+    assert "# cross-cutting / pre-adoption self-check" in gen
+    assert "# new-project entry path" in gen
+    assert "# existing-project entry path" in gen
+    assert "# shared change trunk" in gen
+    assert "# cross-cutting / documentation tool" in gen
+
+
+
 def test_generated_fields_match_manifests():
     """Each generated command's fields equal the manifest's (the SSOT)."""
     import yaml, glob

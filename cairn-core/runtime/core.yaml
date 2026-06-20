@@ -19,6 +19,37 @@ migrated_commands:
   - cc-promote-audit
   - cc-discuss
 
+# Display order for the generated workflow.yaml view, organized by scenario.
+# Commands are not a single linear flow but two entry paths converging on a
+# shared change trunk:
+#   new-project path:  cc-discuss(optional) → cc-new-project → [trunk]
+#   existing-project:  cc-init → cc-enrich-context(optional) → cc-inspect-codebase(optional) → cc-promote-audit(optional) → [trunk]
+#   shared trunk:      cc-propose → cc-apply → cc-review → cc-fix → cc-test → cc-archive
+# cc-preflight (adoption self-check) and cc-explain-system (doc tool) are
+# cross-cutting. migrated_commands above is the unordered set of migrated
+# commands; this field is the ordered view. cc-workflow-gen reads this.
+workflow_order:
+  # cross-cutting / pre-adoption
+  - cc-preflight
+  # new-project entry path
+  - cc-discuss
+  - cc-new-project
+  # existing-project entry path
+  - cc-init
+  - cc-enrich-context
+  - cc-inspect-codebase
+  - cc-promote-audit
+  # shared change trunk
+  - cc-propose
+  - cc-apply
+  - cc-review
+  - cc-fix
+  - cc-test
+  - cc-archive
+  # cross-cutting / tooling
+  - cc-explain-system
+
+
 runtime_commands:
   cc-new-project: .claude/runtime/commands/cc-new-project.yaml
   cc-preflight: .claude/runtime/commands/cc-preflight.yaml
