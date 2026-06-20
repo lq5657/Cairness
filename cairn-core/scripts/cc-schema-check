@@ -635,6 +635,26 @@ def parity_list(value: Any, normalizer: Any) -> list[str]:
     return [normalizer(item) for item in value]
 
 
+def derive_workflow_inputs(manifest_inputs: Any) -> list[str]:
+    """Derive the flat workflow `inputs` list from structured manifest inputs.
+
+    manifest.inputs is {required: [...], optional: [...]} (structured truth);
+    workflow.inputs is a flat list encoding optionality via an `optional_`
+    prefix. This is the derivation the A1 generator will apply, and the rule
+    the E_SCHEMA137 parity check compares against.
+
+    An optional item already starting with `optional_` is kept as-is (no
+    double prefix); otherwise `optional_` is prepended. required precedes
+    optional, preserving list order within each.
+    """
+    if not isinstance(manifest_inputs, dict):
+        return []
+    required = [r for r in (manifest_inputs.get("required") or []) if isinstance(r, str)]
+    optional_raw = [o for o in (manifest_inputs.get("optional") or []) if isinstance(o, str)]
+    optional = [o if o.startswith("optional_") else f"optional_{o}" for o in optional_raw]
+    return [*required, *optional]
+
+
 def string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
@@ -753,6 +773,19 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
                 "E_SCHEMA136",
                 manifest_path,
                 f"{command} auto_validation differs from workflow: runtime={runtime_auto_validation}, workflow={workflow_auto_validation}",
+            )
+
+        # inputs: workflow.inputs is a flat list derived from manifest.inputs
+        # (required + optional_ prefixed). Compare the derived form against the
+        # workflow's declared flat list — manifest is the structured SSOT.
+        derived_inputs = derive_workflow_inputs(manifest.get("inputs"))
+        workflow_inputs = [i for i in (workflow_command.get("inputs") or []) if isinstance(i, str)]
+        if derived_inputs != workflow_inputs:
+            add(
+                issues,
+                "E_SCHEMA137",
+                manifest_path,
+                f"{command} inputs differ from workflow: derived(manifest)={derived_inputs}, workflow={workflow_inputs}",
             )
     return [str(workflow_path)]
 

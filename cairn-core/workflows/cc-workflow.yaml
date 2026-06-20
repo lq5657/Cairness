@@ -108,7 +108,7 @@ commands:
     subagents: [research-analyst, project-context-analyst]
     change_from: [none]
     change_to: unchanged
-    inputs: [topic_description, optional_discuss_id, optional_research_depth, optional_continue]
+    inputs: [topic_description, optional_discuss_id, optional_research_depth, optional_discuss_mode, optional_continue_discussion]
     outputs: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
     writes: [.cairness/discussions/<discuss-id>/brief.md, .cairness/discussions/<discuss-id>/log.md]
     validates: [topic_scope, research_evidence, discussion_convergence, brief_accuracy, routing_selection]
