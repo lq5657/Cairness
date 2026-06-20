@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import require_yaml
+
 BASELINE_FILENAME = "role-baseline.json"
 
 
@@ -137,8 +139,8 @@ def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
     core_path = claude_root / "runtime" / "core.yaml"
     if not core_path.exists():
         return None
+    yaml = require_yaml()
     try:
-        import yaml  # type: ignore
         core = yaml.safe_load(core_path.read_text(encoding="utf-8"))
     except Exception:
         return None

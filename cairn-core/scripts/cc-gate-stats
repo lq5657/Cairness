@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import require_yaml
+
 
 ROOT_CAUSE_TAG_RE = re.compile(
     r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
@@ -86,9 +88,8 @@ def load_config(root: Path) -> dict[str, Any]:
     config_path = root / ".claude" / "harness.config.yaml"
     if not config_path.exists():
         return {}
+    yaml = require_yaml()
     try:
-        import yaml
-
         return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     except Exception:
         return {}
@@ -136,7 +137,7 @@ def parse_review_gates(path: Path) -> dict[str, Any]:
     fm = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
     if fm:
         try:
-            import yaml
+            yaml = require_yaml()
 
             fm_data = yaml.safe_load(fm.group(1))
             if isinstance(fm_data, dict):
