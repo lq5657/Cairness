@@ -1,0 +1,33 @@
+# Cairness framework repository — development metadata.
+#
+# NOTE: this file lives at the REPOSITORY ROOT, not inside cairn-core/, so it
+# does NOT ship into target projects' .claude/ (cairn-core/ is the shippable
+# unit, copied wholesale by cairn_install / `cc-cairn init`). It exists to:
+#   1. declare the runtime dependency the scripts rely on (PyYAML) — see B6,
+#   2. configure pytest for the framework's own unit tests under tests/.
+# It is not published as an installable pip package; installation is via
+# `python3 cairn_install`.
+
+[project]
+name = "cairness"
+description = "AI-driven software development lifecycle governance harness for Claude Code"
+requires-python = ">=3.9"
+# The scripts import `yaml` at runtime. Declaring it here makes the dependency
+# explicit instead of "assume the system has PyYAML" (previously a source of
+# silent false-passes when yaml import failed and checks returned {}).
+dependencies = ["PyYAML>=5.4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Extensionless scripts under cairn-core/scripts/ import each other by name
+# (e.g. `from harness_runtime import ...`), relying on the script dir being on
+# sys.path. conftest.py adds it; keep testpaths self-contained.
+pythonpath = ["."]
+
+[tool.cairness]
+# Version of the shippable framework. Authoritative source is
+# cairn-core/VERSION; this is mirrored for tooling that reads pyproject.
+version = "1.0.0"

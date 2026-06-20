@@ -17,46 +17,35 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import protocol_language_assets
+from harness_runtime.readsets import (
+    derive_readsets as _derive_readsets_shared,
+    load_protocol_assets,
+    project_path,
+    runtime_protocol_config,
+    runtime_readset_config,
+)
+
+from change_docs import (
+    CHANGE_ID_RE,
+    EVIDENCE_BY_LEVEL,
+    HARD_GATE_FIELDS,
+    TASK_FIELDS,
+    VALID_CHANGE_STATUS,
+    VALID_MAPPING_STATUS,
+    VALID_REVIEW_STATUS,
+    VALID_TASK_STATUS,
+    VALID_TEST_MODE,
+    accepted_confirmation_rows,
+    finding_rows,
+    parse_key_values,
+    parse_scalar,
+    table_rows,
+    task_sections,
+    validation_rows,
+)
 
 
-CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
-VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
-VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
-VALID_TEST_MODE = {"supplement", "recovery"}
-VALID_REVIEW_STATUS = {
-    "stage1_status": {"pass", "fail", "partial"},
-    "stage2_status": {"pass", "fail", "skipped", "partial"},
-    "final_status": {"pass", "fail", "partial"},
-}
-EVIDENCE_BY_LEVEL = {
-    "L1": {"build", "doc-check"},
-    "L2": {"package", "unit"},
-    "L3": {"chain"},
-    "L4": {"integration", "manual"},
-    "L5": {"migration-safety", "release-safety"},
-}
-HARD_GATE_FIELDS = [
-    "confirmed_at",
-    "confirmed_by",
-    "confirmed_spec_revision",
-    "confirmed_tasks_revision",
-    "confirmed_scope",
-    "resolved_risk_decisions",
-    "accepted_residual_risks",
-    "human_review_required",
-    "human_review_status",
-]
-TASK_FIELDS = [
-    "**目标**",
-    "**涉及文件**",
-    "**验收标准**",
-    "**验证步骤**",
-    "**测试要求**",
-    "**回退方式**",
-    "**完成后状态**",
-    "**Baseline / Delta",
-]
+
 RUNTIME_CORE_SCHEMA = "runtime-core.schema.json"
 RUNTIME_COMMAND_SCHEMA = "runtime-command.schema.json"
 RUNTIME_SUBAGENT_CONTRACT_SCHEMA = "runtime-subagent-contract.schema.json"
@@ -332,33 +321,6 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def parse_scalar(raw: str) -> Any:
-    value = raw.strip().strip('"').strip("'")
-    if value == "[]":
-        return []
-    if value.startswith("[") and value.endswith("]"):
-        body = value[1:-1].strip()
-        if not body:
-            return []
-        return [item.strip().strip('"').strip("'") for item in body.split(",")]
-    if value.lower() == "true":
-        return True
-    if value.lower() == "false":
-        return False
-    return value
-
-
-def parse_key_values(block: str) -> dict[str, Any]:
-    meta: dict[str, Any] = {}
-    for line in block.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or ":" not in stripped:
-            continue
-        key, value = stripped.split(":", 1)
-        meta[key.strip()] = parse_scalar(value.split("#", 1)[0])
-    return meta
-
-
 def parse_frontmatter(text: str) -> dict[str, Any]:
     if not text.startswith("---\n"):
         return {}
@@ -384,52 +346,6 @@ def parse_legacy_meta(text: str) -> dict[str, Any]:
 
 def parse_meta(text: str) -> dict[str, Any]:
     return parse_frontmatter(text) or parse_legacy_meta(text)
-
-
-def table_rows(text: str) -> list[list[str]]:
-    rows: list[list[str]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|") or "---" in stripped:
-            continue
-        rows.append([cell.strip().strip("`") for cell in stripped.strip("|").split("|")])
-    return rows
-
-
-def validation_rows(text: str) -> list[list[str]]:
-    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
-
-
-def task_sections(text: str) -> list[str]:
-    matches = list(re.finditer(r"^#### Task [0-9]+:", text, re.M))
-    sections: list[str] = []
-    for idx, match in enumerate(matches):
-        start = match.start()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
-        sections.append(text[start:end])
-    return sections
-
-
-def finding_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    return [
-        row
-        for row in table_rows(match.group(1))
-        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}
-    ]
-
-
-def accepted_confirmation_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\.1 Accepted Findings 确认记录（按需）(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    return [
-        row
-        for row in table_rows(match.group(1))
-        if len(row) >= 5 and row[0] != "Finding 描述（与上表一致）"
-    ]
 
 
 def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
@@ -521,6 +437,26 @@ def resolve_schema_ref(ref: str, root_schema: dict[str, Any]) -> dict[str, Any]:
     return current
 
 
+def _trial_validate(
+    value: Any,
+    schema: dict[str, Any],
+    root_schema: dict[str, Any],
+    path: list[str | int],
+    subject_path: Path,
+) -> list[Issue]:
+    """Validate value against schema into a throwaway issue list.
+
+    Returns the issues found (empty == the schema accepts the value).
+    Used by anyOf/oneOf/not combinators to test branch acceptance without
+    polluting the caller's issue list. Previously these combinators were
+    silently skipped, so schemas relying on oneOf/anyOf/allOf were not
+    actually enforced (see E_SCHEMA191..194).
+    """
+    trial: list[Issue] = []
+    validate_against_schema(value, schema, root_schema, path, subject_path, trial)
+    return trial
+
+
 def validate_against_schema(
     value: Any,
     schema: dict[str, Any],
@@ -537,6 +473,53 @@ def validate_against_schema(
             return
 
     location = schema_location(path)
+
+    # Combinators (draft-07). Each is evaluated independently of type/const.
+    if "allOf" in schema and isinstance(schema["allOf"], list):
+        for idx, sub in enumerate(schema["allOf"]):
+            if isinstance(sub, dict):
+                validate_against_schema(
+                    value, sub, root_schema, path + [f"allOf[{idx}]"],
+                    subject_path, issues,
+                )
+
+    if "anyOf" in schema and isinstance(schema["anyOf"], list):
+        any_ok = False
+        any_failures: list[str] = []
+        for idx, sub in enumerate(schema["anyOf"]):
+            if not isinstance(sub, dict):
+                continue
+            trial = _trial_validate(value, sub, root_schema, path, subject_path)
+            if not trial:
+                any_ok = True
+                break
+            any_failures.append(f"[{idx}] {trial[0].message}")
+        if not any_ok and any_failures:
+            add(
+                issues, "E_SCHEMA191", subject_path,
+                f"{location}: value matches no anyOf schema: " + "; ".join(any_failures),
+            )
+
+    if "oneOf" in schema and isinstance(schema["oneOf"], list):
+        one_matches = 0
+        for sub in schema["oneOf"]:
+            if not isinstance(sub, dict):
+                continue
+            if not _trial_validate(value, sub, root_schema, path, subject_path):
+                one_matches += 1
+        if one_matches != 1:
+            add(
+                issues, "E_SCHEMA192", subject_path,
+                f"{location}: value matches {one_matches} oneOf schemas (expected exactly 1)",
+            )
+
+    if isinstance(schema.get("not"), dict):
+        if not _trial_validate(value, schema["not"], root_schema, path, subject_path):
+            add(
+                issues, "E_SCHEMA193", subject_path,
+                f"{location}: value must not match the 'not' schema",
+            )
+
     if "const" in schema and value != schema["const"]:
         add(issues, "E_SCHEMA108", subject_path, f"{location}: expected constant {schema['const']!r}")
         return
@@ -777,260 +760,25 @@ def validate_workflow_runtime_parity(claude_root: Path, core: dict[str, Any] | N
 HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
 
 
-def load_harness_config(project_root: Path, issues: list[Issue]) -> dict[str, Any]:
-    """读取 harness.config.yaml，失败时返回空 dict。"""
-    path = project_root / HARNESS_CONFIG_PATH
-    loaded = load_yaml_file(path, issues)
-    return loaded if isinstance(loaded, dict) else {}
-
-
-def resolve_active_profile_path(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> str:
-    """从 harness.config.yaml 的 profile 字段解析活跃 profile 文件路径。"""
-    harness_config = load_harness_config(project_root, issues)
-    profile_name = harness_config.get("profile")
-    if not isinstance(profile_name, str) or not profile_name:
-        profiles_cfg = core.get("profiles") if isinstance(core, dict) and isinstance(core.get("profiles"), dict) else {}
-        profile_name = profiles_cfg.get("default", "standard")
-    if not isinstance(profile_name, str):
-        profile_name = "standard"
-    profiles_dir = ".claude/runtime/profiles"
-    return f"{profiles_dir}/{profile_name}.yaml"
-
-
-def runtime_readset_config(core: dict[str, Any] | None) -> dict[str, str]:
-    config = core.get("runtime_readsets") if isinstance(core, dict) and isinstance(core.get("runtime_readsets"), dict) else {}
-    return {
-        "dir": config.get("dir", ".claude/runtime/readsets"),
-        "index": config.get("index", ".claude/runtime/readsets/index.yaml"),
-        "schema": config.get("schema", f".claude/schemas/{RUNTIME_READSET_SCHEMA}"),
-    }
-
-
-def runtime_protocol_config(core: dict[str, Any] | None) -> dict[str, str]:
-    config = core.get("runtime_protocol") if isinstance(core, dict) and isinstance(core.get("runtime_protocol"), dict) else {}
-    return {
-        "protocol": config.get("protocol", ".claude/runtime/protocol.yaml"),
-        "technology_decisions": config.get("technology_decisions", ".claude/runtime/protocol/technology-decisions.yaml"),
-        "language_profile": config.get("language_profile", ".claude/runtime/protocol/language-profile.yaml"),
-        "schema": config.get("schema", f".claude/schemas/{COMMAND_PROTOCOL_SCHEMA}"),
-        "default_language_profile": config.get("default_language_profile", ".claude/runtime/languages/golang.yaml"),
-    }
-
-
-def technology_catalog_from_language_profile(project_root: Path, declared_profile: str, issues: list[Issue]) -> str:
-    profile_path = project_path(project_root, declared_profile)
-    if profile_path is None:
-        return ""
-    profile = load_yaml_file(profile_path, issues)
-    if not isinstance(profile, dict):
-        return ""
-    technology_decisions = profile.get("technology_decisions") if isinstance(profile.get("technology_decisions"), dict) else {}
-    catalog = technology_decisions.get("catalog")
-    return catalog if isinstance(catalog, str) else ""
-
-
 def load_runtime_protocol(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> dict[str, Any]:
-    config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
-    loaded = load_yaml_file(protocol_path, issues) if protocol_path is not None else None
-    protocol = loaded if isinstance(loaded, dict) else {}
-    for key in ("technology_decisions", "language_profile"):
-        declared = config.get(key, "")
-        if not declared or declared == config["protocol"]:
-            continue
-        asset_path = project_path(project_root, declared)
-        asset = load_yaml_file(asset_path, issues) if asset_path is not None else None
-        if isinstance(asset, dict):
-            protocol.update(asset)
-    return protocol
+    """Merge protocol assets, pushing failures into issues via load_yaml_file.
+
+    Thin adapter over harness_runtime.readsets.load_protocol_assets, kept under
+    the historical name because validate_agent_command_protocol calls it
+    directly. The derivation chain itself now lives in the shared module.
+    """
+    return load_protocol_assets(project_root, core, issues, load_yaml_file)
 
 
-def runtime_protocol_read_mode(manifest: dict[str, Any], key: str, default: str) -> str:
-    runtime_reads = manifest.get("runtime_protocol_reads") if isinstance(manifest.get("runtime_protocol_reads"), dict) else {}
-    mode = runtime_reads.get(key, default)
-    return mode if mode in {"always", "never", "on_demand"} else "always"
+def derive_readsets(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """Derive readsets via the shared module; drop the config cc-readset needs.
 
-
-def language_profile_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "language_profile", "never")
-
-
-def technology_decisions_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "technology_decisions", "never")
-
-
-def technology_catalog_mode(manifest: dict[str, Any]) -> str:
-    return runtime_protocol_read_mode(manifest, "technology_catalog", "always")
-
-
-def include_technology_catalog(manifest: dict[str, Any]) -> bool:
-    return technology_catalog_mode(manifest) == "always"
-
-
-def protocol_asset_read(config: dict[str, str], key: str) -> list[str]:
-    declared = config.get(key, "")
-    return [declared] if declared else []
-
-
-def language_profile_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
-    config = runtime_protocol_config(core)
-    return ordered_unique([
-        *protocol_asset_read(config, "language_profile"),
-        *protocol_language_assets(project_root, protocol, include_catalog=False),
-    ])
-
-
-def technology_decision_reads(core: dict[str, Any] | None) -> list[str]:
-    config = runtime_protocol_config(core)
-    return protocol_asset_read(config, "technology_decisions")
-
-
-def technology_catalog_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
-    return ordered_unique([
-        *technology_decision_reads(core),
-        *language_profile_reads(project_root, core, protocol),
-        *protocol_language_assets(project_root, protocol, include_catalog=True),
-    ])
-
-
-def result_contract_profile_reads(manifest: dict[str, Any]) -> list[str]:
-    result_contract = manifest.get("result_contract") if isinstance(manifest.get("result_contract"), dict) else {}
-    profile = result_contract.get("profile")
-    return [profile] if isinstance(profile, str) else []
-
-
-def runtime_protocol_reads(
-    project_root: Path,
-    core: dict[str, Any] | None,
-    manifest: dict[str, Any],
-    issues: list[Issue],
-) -> list[str]:
-    config = runtime_protocol_config(core)
-    reads = [config["protocol"]]
-    protocol = load_runtime_protocol(project_root, core, issues)
-    if language_profile_mode(manifest) == "always":
-        reads.extend(language_profile_reads(project_root, core, protocol))
-    if technology_decisions_mode(manifest) == "always":
-        reads.extend(technology_decision_reads(core))
-    if include_technology_catalog(manifest):
-        reads.extend(technology_catalog_reads(project_root, core, protocol))
-    return ordered_unique(reads)
-
-
-def on_demand_runtime_protocol_reads(
-    project_root: Path,
-    core: dict[str, Any] | None,
-    manifest: dict[str, Any],
-    issues: list[Issue],
-) -> dict[str, list[str]]:
-    protocol = load_runtime_protocol(project_root, core, issues)
-    reads: dict[str, list[str]] = {}
-    if language_profile_mode(manifest) == "on_demand":
-        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol)
-    if technology_decisions_mode(manifest) == "on_demand":
-        reads["when_technology_decision_is_required"] = technology_decision_reads(core)
-    if technology_catalog_mode(manifest) == "on_demand":
-        reads["when_technology_decision_is_required"] = ordered_unique([
-            *reads.get("when_technology_decision_is_required", []),
-            *technology_catalog_reads(project_root, core, protocol),
-        ])
-    return reads
-
-
-def command_order(core: dict[str, Any]) -> list[str]:
-    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
-    ordered = [command for command in string_list(core.get("migrated_commands")) if command in runtime_commands]
-    ordered.extend(sorted(command for command in runtime_commands if command not in ordered))
-    return ordered
-
-
-def derive_command_readset(
-    project_root: Path,
-    command: str,
-    manifest_path: str,
-    manifest: dict[str, Any],
-    core: dict[str, Any] | None,
-    issues: list[Issue],
-) -> dict[str, Any]:
-    topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
-    conditional_reads: dict[str, list[str]] = {}
-    manifest_conditional_reads = manifest.get("conditional_reads") if isinstance(manifest.get("conditional_reads"), dict) else {}
-    for condition, reads in manifest_conditional_reads.items():
-        conditional_reads[condition] = ordered_unique(string_list(reads))
-    for condition, rules in topic_rules.items():
-        if condition == "always":
-            continue
-        conditional_reads[condition] = ordered_unique(string_list(rules))
-    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues).items():
-        conditional_reads[condition] = ordered_unique([
-            *conditional_reads.get(condition, []),
-            *reads,
-        ])
-
-    subagents = manifest.get("subagents") if isinstance(manifest.get("subagents"), dict) else {}
-    subagent_policy = subagents.get("policy") if subagents.get("enabled") is True and isinstance(subagents.get("policy"), str) else ""
-    subagent_contract = subagents.get("contract") if subagents.get("enabled") is True and isinstance(subagents.get("contract"), str) else ""
-    if subagent_policy or subagent_contract:
-        condition = "when_subagent_delegation_is_used"
-        conditional_reads[condition] = ordered_unique([
-            *conditional_reads.get(condition, []),
-            *([subagent_policy] if subagent_policy else []),
-            *([subagent_contract] if subagent_contract else []),
-        ])
-    protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues)
-    result_profile_reads = result_contract_profile_reads(manifest)
-    active_profile_path = resolve_active_profile_path(project_root, core, issues)
-    always_reads = [
-        ".claude/runtime/core.yaml",
-        *protocol_reads,
-        manifest_path,
-        *result_profile_reads,
-        *string_list(manifest.get("required_reads")),
-        *string_list(topic_rules.get("always")),
-        *([active_profile_path] if active_profile_path else []),
-    ]
-
-    return {
-        "version": 1,
-        "command": command,
-        "source_manifest": manifest_path,
-        "generated_from": [
-            ".claude/runtime/core.yaml",
-            *protocol_reads,
-            manifest_path,
-            *result_profile_reads,
-            *([active_profile_path] if active_profile_path else []),
-        ],
-        "always_reads": ordered_unique(always_reads),
-        "optional_reads": ordered_unique(string_list(manifest.get("optional_reads"))),
-        "conditional_reads": conditional_reads,
-    }
-
-
-def derive_readsets(project_root: Path, core: dict[str, Any], issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    config = runtime_readset_config(core)
-    runtime_commands = core.get("runtime_commands") if isinstance(core.get("runtime_commands"), dict) else {}
-    command_readsets: dict[str, dict[str, Any]] = {}
-    commands_index: dict[str, str] = {}
-    for command in command_order(core):
-        manifest_path = runtime_commands.get(command)
-        if not isinstance(manifest_path, str):
-            continue
-        resolved = project_path(project_root, manifest_path)
-        if resolved is None:
-            continue
-        manifest = load_yaml_file(resolved, issues)
-        if not isinstance(manifest, dict):
-            continue
-        command_readsets[command] = derive_command_readset(project_root, command, manifest_path, manifest, core, issues)
-        commands_index[command] = f"{config['dir']}/{command}.yaml"
-    index = {
-        "version": 1,
-        "generated_by": READSET_GENERATOR,
-        "source_core": ".claude/runtime/core.yaml",
-        "commands": commands_index,
-    }
-    return index, command_readsets
+    cc-schema-check's validate pipeline only needs (index, readsets); the
+    shared module also returns a readset_config used by cc-readset for file
+    paths, which we discard here.
+    """
+    index, readsets, _config = _derive_readsets_shared(project_root, core, issues, load_yaml_file)
+    return index, readsets
 
 
 def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:

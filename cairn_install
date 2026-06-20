@@ -49,9 +49,24 @@ def get_platform_paths():
 
 
 def install_core(data_dir: Path):
+    backup = None
     if data_dir.exists():
-        shutil.rmtree(data_dir)
-    shutil.copytree(CORE_SRC, data_dir)
+        # Back up the previous install before replacing it, so a failed or
+        # interrupted install never leaves the system without a working copy.
+        backup = data_dir.with_name(data_dir.name + ".bak")
+        if backup.exists():
+            shutil.rmtree(backup)
+        os.rename(data_dir, backup)
+
+    try:
+        shutil.copytree(CORE_SRC, data_dir)
+    except Exception:
+        # Restore the backup if the fresh copy failed.
+        if backup is not None and backup.exists():
+            if data_dir.exists():
+                shutil.rmtree(data_dir, ignore_errors=True)
+            os.rename(backup, data_dir)
+        raise
 
     # Record git commit hash for future update comparisons
     result = subprocess.run(
@@ -61,6 +76,8 @@ def install_core(data_dir: Path):
     if result.returncode == 0:
         (data_dir / "COMMIT").write_text(result.stdout.strip() + "\n")
 
+    if backup is not None and backup.exists():
+        print(f"  Previous install backed up to: {backup}")
     print(f"Installed framework core to: {data_dir}")
 
 
