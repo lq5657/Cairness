@@ -167,7 +167,9 @@ def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
 
 def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], bool]:
     # Manifest is the SSOT for write scope (A1). Prefer it; fall back to the
-    # workflow only during the transition (workflow will become generated).
+    # generated workflow view only if the manifest can't be resolved (e.g.
+    # core.yaml unreadable / PyYAML missing) so the write-permission gate
+    # never silently degrades to "allow all".
     writes = _load_manifest_writes(claude_root, command)
     if writes is None:
         writes = _load_workflow_writes(claude_root, command)

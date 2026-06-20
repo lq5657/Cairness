@@ -37,7 +37,7 @@
 - `Spec is Truth`：`review` / `done` 阶段，spec 与代码必须一致。
 - `变更即记录`：改代码时必须同步更新 change 文档。
 - 没有 fresh verification evidence，不得声称“完成”“通过”“已修复”“可归档”。
-- 生命周期状态遵守 `.claude/workflows/cc-workflow.yaml`。
+- 生命周期状态真相源是 `.claude/runtime/commands/<command>.yaml` 的 `state`；`.claude/workflows/cc-workflow.yaml` 是其生成视图，由 `cc-workflow-gen` 维护。
 - migrated command 优先遵守 `.claude/runtime/commands/<command>.yaml`。
 - 项目短上下文优先读 `.cairness/context/project-summary.md`。
 - 完整项目事实按需读 `.cairness/context/project-context.md`。
