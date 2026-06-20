@@ -12,11 +12,11 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from harness_runtime import protocol_language_assets
+from harness_runtime.issues import Issue, add, issues_to_dicts
 from harness_runtime.readsets import (
     derive_readsets as _derive_readsets_shared,
     load_protocol_assets,
@@ -310,13 +310,6 @@ TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
 }
 
 
-@dataclass
-class Issue:
-    code: str
-    path: str
-    message: str
-
-
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -346,10 +339,6 @@ def parse_legacy_meta(text: str) -> dict[str, Any]:
 
 def parse_meta(text: str) -> dict[str, Any]:
     return parse_frontmatter(text) or parse_legacy_meta(text)
-
-
-def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
-    issues.append(Issue(code=code, path=str(path), message=message))
 
 
 def load_json_file(path: Path, issues: list[Issue]) -> dict[str, Any] | None:
@@ -1585,7 +1574,7 @@ def build_report(inputs: list[Path]) -> dict[str, Any]:
         "checked_runtime": checked_runtime,
         "checked_topic_rules": checked_topic_rules,
         "checked_changes": [str(path) for path in change_dirs],
-        "issues": [issue.__dict__ for issue in issues],
+        "issues": issues_to_dicts(issues),
     }
 
 

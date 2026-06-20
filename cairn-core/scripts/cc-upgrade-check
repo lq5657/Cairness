@@ -12,21 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
-
-
-@dataclass
-class Issue:
-    code: str
-    path: str
-    message: str
+from harness_runtime.issues import Issue, add, issues_to_dicts
 
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
-    issues.append(Issue(code=code, path=str(path), message=message))
 
 
 def require(path: Path, kind: str, issues: list[Issue], code: str = "E_UPGRADE001") -> None:
@@ -116,7 +106,7 @@ def build_report() -> dict[str, Any]:
         "version": metadata.get("version", ""),
         "protected_state_root": str(project_root / ".cairness"),
         "replaceable_framework_root": str(claude_root),
-        "issues": [issue.__dict__ for issue in issues],
+        "issues": issues_to_dicts(issues),
     }
 
 

@@ -6,9 +6,10 @@ from __future__ import annotations
 import json
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from harness_runtime.issues import Issue, add, issues_to_dicts
 
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -29,19 +30,8 @@ COMMAND_TO = {
 }
 
 
-@dataclass
-class Issue:
-    code: str
-    path: str
-    message: str
-
-
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def add(issues: list[Issue], code: str, path: Path, message: str) -> None:
-    issues.append(Issue(code=code, path=str(path), message=message))
 
 
 def discover_event_logs(project_root: Path, inputs: list[Path]) -> list[Path]:
@@ -143,7 +133,7 @@ def build_report(inputs: list[Path]) -> dict[str, Any]:
         "tool": "cc-event-check",
         "status": "failed" if issues else "passed",
         "checked_event_logs": [str(path) for path in logs],
-        "issues": [issue.__dict__ for issue in issues],
+        "issues": issues_to_dicts(issues),
     }
 
 

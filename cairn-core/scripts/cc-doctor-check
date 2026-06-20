@@ -13,13 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import load_runtime_protocol, project_path, resolve_language_profile, runtime_protocol_asset_declarations
-
-
-@dataclass
-class Issue:
-    code: str
-    path: str
-    message: str
+from harness_runtime.issues import Issue, issues_to_dicts
 
 
 def read(path: Path) -> str:
@@ -200,7 +194,7 @@ def build_report() -> dict[str, Any]:
         "tool": "cc-doctor-check",
         "status": "failed" if issues else "passed",
         "project_root": str(project_root),
-        "issues": [issue.__dict__ for issue in issues],
+        "issues": issues_to_dicts(issues),
     }
 
 
