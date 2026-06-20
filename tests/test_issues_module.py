@@ -88,5 +88,21 @@ def test_shared_issue_is_same_class_as_script_issues():
     """The shared Issue is the one the scripts now use — no shadow dataclass."""
     from importlib.machinery import SourceFileLoader
     scripts = Path(__file__).resolve().parent.parent / "cairn-core" / "scripts"
-    mod = SourceFileLoader("_cc_readset", str(scripts / "cc-readset")).load_module()
-    assert mod.Issue is Issue, "cc-readset must import the shared Issue, not redeclare it"
+    # Every script that historically redeclared Issue must now import the shared one.
+    for script in ("cc-readset", "cc-schema-check", "cc-eval"):
+        mod = SourceFileLoader(f"_cc_{script}", str(scripts / script)).load_module()
+        assert mod.Issue is Issue, f"{script} must import the shared Issue, not redeclare it"
+
+
+def test_no_script_redeclares_issue_dataclass():
+    """No cc-* script may carry a local `class Issue:` — the shared module is
+    the single source. Guards against regressions reintroducing copy-paste."""
+    scripts = Path(__file__).resolve().parent.parent / "cairn-core" / "scripts"
+    offenders = []
+    for path in scripts.iterdir():
+        if path.name == "issues.py" or not path.is_file():
+            continue
+        # Skip the shared module's own location.
+        if "class Issue:" in path.read_text(encoding="utf-8"):
+            offenders.append(path.name)
+    assert not offenders, f"scripts still redeclare Issue: {offenders}"
