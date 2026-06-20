@@ -26,6 +26,7 @@ def _verify_json(args: list[str]) -> dict:
 CANONICAL_ISSUE_SCRIPTS = {
     "cc-lint", "cc-readset", "cc-workflow-gen", "cc-doctor-check",
     "cc-event-check", "cc-behavior-check", "cc-upgrade-check", "cc-schema-check",
+    "cc-index-check",
 }
 
 
@@ -40,8 +41,8 @@ def test_canonical_subchecks_carry_issues_field_on_clean_repo():
 
 
 def test_noncanonical_subchecks_have_no_issues_field():
-    """cc-sync-check (free-text) and cc-index-check (level/summary schema) are
-    not yet canonical Issue-JSON — they must NOT claim an issues field (so a
+    """cc-sync-check (free-text, no --json) is the remaining non-canonical
+    sub-check after E2 stages 1-5 — it must NOT claim an issues field (so a
     consumer can distinguish structured vs unstructured)."""
     report = _verify_json(["--harness-only"])
     results = {r["name"]: r for r in report["results"]}

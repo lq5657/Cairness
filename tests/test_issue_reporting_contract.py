@@ -33,6 +33,7 @@ ISSUE_SCRIPTS = [
     "cc-event-check",
     "cc-upgrade-check",
     "cc-lint",
+    "cc-index-check",
 ]
 
 
@@ -110,6 +111,33 @@ def test_lint_emits_structured_issue_on_failure(tmp_path):
     proc_text = _run("cc-lint", [str(fake)])
     assert proc_text.returncode == 1
     assert proc_text.stderr.startswith("E_LINT001 "), proc_text.stderr
+
+
+def test_index_check_collapses_exit2_to_exit1_with_structured_issue(tmp_path):
+    """E2 stage 5: cc-index-check previously returned exit 2 for a missing
+    index.md (an isolated code). It now returns exit 1 + a structured
+    E_INDEX001 issue, matching the standard Issue-script contract."""
+    proc = _run("cc-index-check", ["--json", "--root", str(tmp_path)])
+    assert proc.returncode == 1, f"missing index.md should exit 1, got {proc.returncode}"
+    report = json.loads(proc.stdout)
+    assert report["status"] == "failed"
+    assert report["tool"] == "cc-index-check"
+    assert any(i["code"] == "E_INDEX001" for i in report["issues"]), report["issues"]
+
+
+def test_index_check_emits_canonical_issue_fields():
+    """E2 stage 5: cc-index-check's --json report now carries the canonical
+    tool/status/issues fields alongside its legacy findings/summary."""
+    proc = _run("cc-index-check", ["--json"])
+    assert proc.returncode == 0, proc.stderr
+    report = json.loads(proc.stdout)
+    assert report["tool"] == "cc-index-check"
+    assert report["status"] in ("passed", "failed")
+    assert "issues" in report and isinstance(report["issues"], list)
+    # Legacy fields preserved for backward compatibility.
+    assert "findings" in report and "summary" in report
+    for issue in report["issues"]:
+        assert set(issue.keys()) == {"code", "path", "message"}
 
 
 def test_role_check_uses_shared_issues_key():

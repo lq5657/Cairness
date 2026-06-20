@@ -887,7 +887,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
                 if knowledge_index_path.is_file():
-                    results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
+                    results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
         else:
             lint_targets = [str(claude_root)]
             if sync_target.exists():
@@ -903,7 +903,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
             results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
             if knowledge_index_path.is_file():
-                results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root))
+                results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]
             if args.change:
