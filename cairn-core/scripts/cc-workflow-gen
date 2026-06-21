@@ -26,9 +26,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.enums import enum_list, load_enums
+
 WORKFLOW_PATH = ".claude/workflows/cc-workflow.yaml"
 CORE_PATH = ".claude/runtime/core.yaml"
 GENERATOR_PATH = ".claude/scripts/cc-workflow-gen"
+
+_ENUMS = load_enums()
 
 HEADER = """\
 # Machine-readable workflow definition for all cc-* commands.
@@ -135,10 +139,10 @@ def derive_workflow(project_root: Path) -> str:
     out.append("  runtime_core: .claude/runtime/core.yaml\n")
     out.append("  maintenance_guide: .claude/docs/maintenance/runtime-model.md\n")
     out.append("\nstates:\n")
-    out.append("  change: [propose, apply, review, done]\n")
-    out.append("  task: [todo, in_progress, blocked, partial, aborted, done]\n")
-    out.append("  finding: [open, fixed, accepted]\n")
-    out.append("  validation_mapping: [todo, apply-covered, test-covered, gap]\n")
+    out.append(f"  change: [{', '.join(enum_list(_ENUMS, 'change_status', 'core'))}]\n")
+    out.append(f"  task: [{', '.join(enum_list(_ENUMS, 'task_status', 'core'))}]\n")
+    out.append(f"  finding: [{', '.join(enum_list(_ENUMS, 'finding_status', 'core'))}]\n")
+    out.append(f"  validation_mapping: [{', '.join(enum_list(_ENUMS, 'validation_mapping_status', 'core'))}]\n")
     out.append("\ncommands:\n")
 
     for command in order:

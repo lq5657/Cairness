@@ -62,7 +62,7 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": ["none", "propose", "apply", "review", "done"]
+            "enum": ["none", "propose", "apply", "review", "done", "unchanged"]
           }
         },
         "change_to": {

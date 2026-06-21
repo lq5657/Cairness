@@ -35,6 +35,9 @@ SLASH_COMMAND_RE = re.compile(
 )
 AUTO_VALIDATION_COMMANDS = ["propose", "apply", "fix", "test", "review", "archive"]
 
+from harness_runtime.enums import enum_set, load_enums as _load_enums
+_FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")
+
 WORKFLOW_REQUIRED_COMMAND_KEYS = [
     "category",
     "roles",
@@ -455,7 +458,7 @@ def lint_review(change_dir: Path, errors: list[str]) -> None:
     rows = finding_rows(text)
     for row in rows:
         status = row[4].strip("` ")
-        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+        if row[0] != "无" and status not in _FINDING_STATUS:
             errors.append(f"{path}: finding has invalid status {status}")
     accepted_rows = [row for row in rows if len(row) >= 5 and row[4].strip("` ") == "accepted"]
     confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}
@@ -500,7 +503,7 @@ def lint_workflow_definition(root: Path, errors: list[str]) -> None:
     expected_states = {
         "change": list(VALID_CHANGE_STATUS),
         "task": list(VALID_TASK_STATUS),
-        "finding": ["open", "fixed", "accepted"],
+        "finding": list(_FINDING_STATUS),
         "validation_mapping": list(VALID_MAPPING_STATUS),
     }
     for key, expected in expected_states.items():

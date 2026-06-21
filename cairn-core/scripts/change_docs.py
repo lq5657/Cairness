@@ -10,21 +10,30 @@ values — that divergence is a documented behavior difference, not a refactor
 target. Each script keeps its own parse_meta but may reuse the scalar/line
 helpers below.
 
-Pure functions only (no I/O). Importing this module must not require PyYAML.
+Lifecycle enums (VALID_CHANGE/TASK/MAPPING_STATUS, VALID_TEST_MODE) are
+derived from runtime/enums.yaml at import time via harness_runtime.enums —
+the single source. Importing this module therefore requires PyYAML and
+enums.yaml (both framework assets, always present in the runtime scripts
+dir). VALID_REVIEW_STATUS (stage1/2/final) is a review-phase vocabulary, not
+a lifecycle enum, and stays literal here.
 """
 from __future__ import annotations
 
 import re
 from typing import Any
 
+from harness_runtime.enums import enum_set, load_enums
+
 
 # --- shared validation vocab (identical values across cc-schema-check/cc-lint)
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-VALID_CHANGE_STATUS = {"propose", "apply", "review", "done"}
-VALID_TASK_STATUS = {"todo", "in_progress", "blocked", "partial", "aborted", "done"}
-VALID_MAPPING_STATUS = {"todo", "apply-covered", "test-covered", "gap"}
-VALID_TEST_MODE = {"supplement", "recovery"}
+
+_ENUMS = load_enums()
+VALID_CHANGE_STATUS = enum_set(_ENUMS, "change_status", "core")
+VALID_TASK_STATUS = enum_set(_ENUMS, "task_status", "core")
+VALID_MAPPING_STATUS = enum_set(_ENUMS, "validation_mapping_status", "core")
+VALID_TEST_MODE = enum_set(_ENUMS, "test_mode", "core")
 VALID_REVIEW_STATUS = {
     "stage1_status": {"pass", "fail", "partial"},
     "stage2_status": {"pass", "fail", "skipped", "partial"},

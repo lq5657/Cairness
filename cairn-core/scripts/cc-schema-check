@@ -56,6 +56,9 @@ TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 KNOWLEDGE_CATEGORIES_SCHEMA = "knowledge-categories.schema.json"
 PROFILE_SCHEMA = "profile.schema.json"
 VALID_PROFILE_IDS = {"minimal", "standard", "strict"}
+
+from harness_runtime.enums import enum_set, load_enums as _load_enums
+_FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
     "**When To Use**",
@@ -1408,6 +1411,7 @@ def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_runtime_readsets(claude_root, core, issues))
     checked.extend(validate_knowledge_categories(claude_root, issues))
+    checked.extend(validate_enums(claude_root, issues))
     checked_topic_rules = validate_topic_rules(claude_root, core, issues)
     return checked, checked_topic_rules
 
@@ -1451,6 +1455,62 @@ def validate_knowledge_categories(claude_root: Path, issues: list[Issue]) -> lis
 
 def validate_change_id(value: Any) -> bool:
     return isinstance(value, str) and bool(CHANGE_ID_RE.match(value))
+
+
+# enums.yaml required enums and their subset relationships. Lightweight code
+# validation (no schema) — mirrors validate_knowledge_categories' approach for
+# runtime/*.yaml structural checks. The source-of-truth structure is also
+# guarded by tests/test_enums_single_source.py.
+ENUMS_REQUIRED = {
+    "change_status": ("core",),
+    "task_status": ("core",),
+    "finding_status": ("core",),
+    "validation_mapping_status": ("core",),
+    "test_mode": ("core",),
+}
+
+
+def validate_enums(claude_root: Path, issues: list[Issue]) -> list[str]:
+    enums_path = claude_root / "runtime" / "enums.yaml"
+    if not enums_path.exists():
+        add(issues, "E_SCHEMA196", enums_path, "enums.yaml not found (lifecycle enum single source)")
+        return []
+    enums = load_yaml_file(enums_path, issues)
+    if not isinstance(enums, dict):
+        add(issues, "E_SCHEMA196", enums_path, "enums.yaml root must be a mapping")
+        return [str(enums_path)]
+    for name, required_subsets in ENUMS_REQUIRED.items():
+        entry = enums.get(name)
+        if not isinstance(entry, dict):
+            add(issues, "E_SCHEMA196", enums_path, f"enums.yaml missing enum {name!r}")
+            continue
+        for subset in required_subsets:
+            values = entry.get(subset)
+            if not isinstance(values, list) or not values:
+                add(issues, "E_SCHEMA197", enums_path, f"enums.yaml {name}.{subset} must be a non-empty list")
+    # Subset relationships (core ⊆ from_set/to_set; closed ⊆ core).
+    cs = enums.get("change_status")
+    if isinstance(cs, dict):
+        core = _enum_values(cs.get("core"))
+        from_set = _enum_values(cs.get("from_set"))
+        to_set = _enum_values(cs.get("to_set"))
+        if core and from_set and not core <= from_set:
+            add(issues, "E_SCHEMA198", enums_path, "change_status.core must be a subset of from_set")
+        if core and to_set and not core <= to_set:
+            add(issues, "E_SCHEMA198", enums_path, "change_status.core must be a subset of to_set")
+    vm = enums.get("validation_mapping_status")
+    if isinstance(vm, dict):
+        core = _enum_values(vm.get("core"))
+        closed = _enum_values(vm.get("closed"))
+        if core and closed and not closed <= core:
+            add(issues, "E_SCHEMA198", enums_path, "validation_mapping_status.closed must be a subset of core")
+    return [str(enums_path)]
+
+
+def _enum_values(value: Any) -> set[str]:
+    if not isinstance(value, list):
+        return set()
+    return {str(v) for v in value}
 
 
 def validate_spec(path: Path, issues: list[Issue]) -> set[str]:
@@ -1523,7 +1583,7 @@ def validate_review(path: Path, issues: list[Issue]) -> None:
             add(issues, "E_SCHEMA017", path, f"invalid or missing {key}")
     for row in finding_rows(text):
         status = row[4].strip("` ")
-        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+        if row[0] != "无" and status not in _FINDING_STATUS:
             add(issues, "E_SCHEMA018", path, f"finding has invalid status {status}")
     accepted_rows = [row for row in finding_rows(text) if len(row) >= 5 and row[4].strip("` ") == "accepted"]
     confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}
