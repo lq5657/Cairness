@@ -65,7 +65,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | 3 | 改进校验诊断 | ✅ 完成 | E2:统一 `Issue(code,path,message)` 契约 + `harness_runtime.issues` 单一来源 + cc-verify 聚合结构化 issues |
 | 4 | 强化项目接入检查 | ✅ 完成 | 5 类 readiness 全覆盖:scaffold/CI fixture/可执行脚本由 `cc-doctor-check:67-182`;runtime 注册由 `cc-schema-check` E_SCHEMA120/121 + `cc-readset --check` + `cc-workflow-gen --check`(均经 `cc-verify:897-916` 串行);项目入口由新增 E_DOCTOR013(`cc-doctor-check` 校验 CLAUDE.md「已迁移命令」列表 ↔ `core.yaml:migrated_commands` SSOT)。2026-06-21 核实:runtime 注册原判"缺口"实为假缺口(已被 cc-verify 串行覆盖),唯一真缺口是 CLAUDE.md 文档漂移 |
 | 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
-| 6 | Subagent 证据质量闸门 | 部分 | A12 已完成合同文件形式收敛(`runtime/subagents/*.yaml` + schema 单形态);**证据空但结构合法判为无效**这条闸门尚未落地 |
+| 6 | Subagent 证据质量闸门 | 部分 | A12 合同形式收敛已完成;路线 B(运行时证据投影闸门)已落地:`cc-subagent-evidence-check` E_EVIDENCE001(Critical/Important finding 缺 `**Location**: \`path:line\`` 锚点)/ E_EVIDENCE002(Location 引用文件不存在)/ E_EVIDENCE003(验证映射声称通过但证据列为空),经 cc-verify 两路串行;模板占位由 finding_rows 真实行 + Finding #N 块 + 2.1 表三信号联合判定跳过,框架仓库 discover 自然豁免。**待办(路线 A)**:subagent payload 字面契约校验(evidence 数组 ≥ min_evidence_items)依赖 payload 落盘约定,本轮不动 |
 | 7 | eval 行为重放 | ✅ 完成 | `.claude/evals/behavior/` 6 case:explicit-fixture、knowledge-cli-roundtrip、role-check 写边界、sync-check done-without-review、deps-orphans(D2)、spec-scope(D3);覆盖缺失硬闸门/非法状态/禁止写场景 |
 | 8 | 增量校验模式 | 部分 | `cc-delta-check` 已存在(对比两份 verify 报告检测回归 = delta-verify);changed-only 本地迭代增量校验待办 |
 | 9 | 语言 profile 分离 | 部分 | `language-profile.schema.json` + `profile.schema.json` 双 schema 在位;topic-rules 按语言已拆分(go/python/java/cpp/typescript);生命周期命令语言中立度与 profile 强制执行待办 |
@@ -87,6 +87,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | D1 | hooks warn + 补 spec | In-loop 闸门 | `no-spec-no-code.py` 钩子已在位,warn 强度 + spec 补全方向待定 | 缓置 |
 | D2 | spec↔code drift 检测 | #3 / #6 | cc-deps orphans 已 Issue 契约化(E_ORPHAN001)+ 接入 cc-verify 两路;无声明源时 pass(框架自维护豁免) | ✅ 完成 |
 | D3 | delta-spec | #3 / #8 | `cc-spec-scope-check` 新建:E_SCOPE001(out_of_scope_flagged 无 spec_review_flag)+ E_SCOPE002(tasks 声明文件未入 review scope 表);接入 cc-verify 两路。注:已存在的 `cc-delta-check` 是 delta-verify(回归检测),非此项 | ✅ 完成 |
+| D4 | subagent 证据投影闸门(路线 B) | #6 | `cc-subagent-evidence-check` 新建:E_EVIDENCE001(Critical/Important finding 缺 Location 锚点)/ E_EVIDENCE002(Location 引用文件不存在)/ E_EVIDENCE003(验证映射声称通过但证据列空),接入 cc-verify 两路。路线 B 只校验已落盘 review.md 的证据可观测投影;路线 A(payload 字面契约)待 payload 落盘约定,本轮不动。守护测试 17 例 | ✅ 完成 |
 | C1 | 行为 eval | #7 | `.claude/evals/behavior/` 6 case 覆盖 4 类硬闸门(role/sync/orphan/scope)+ 2 fixture;`tests/test_behavior_cases.py` 守护 | ✅ 完成 |
 
 ### 维护约定

@@ -279,6 +279,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Record a spec_review_flag in log.md for out-of-scope flags, and ensure every tasks.md declared file appears in review.md's file_review_scope table.",
             "doc_ref": ".claude/runtime/topic-rules/spec-code-sync.yaml",
         }
+    if name == "cc-subagent-evidence-check":
+        return {
+            "cause": "Review.md evidence projection failed: Critical/Important findings lack a resolvable **Location** anchor, a Location references a non-existent file, or a passed validation mapping has an empty evidence column.",
+            "fix_hint": "Add **Location**: `path:line` anchors to Critical/Important finding detail blocks, fix or remove phantom file references, and fill the 证据/缺口 column for passed validation mappings.",
+            "doc_ref": ".claude/docs/maintenance/subagent-model.md",
+        }
     if name == "change-dir":
         return {
             "cause": "The requested change directory does not exist.",
@@ -878,6 +884,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_index_check = claude_root / "scripts" / "cc-index-check"
         cc_deps = claude_root / "scripts" / "cc-deps"
         cc_spec_scope_check = claude_root / "scripts" / "cc-spec-scope-check"
+        cc_subagent_evidence_check = claude_root / "scripts" / "cc-subagent-evidence-check"
         knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
         if args.changed_only:
@@ -893,6 +900,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root, collect_issues=True))
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root, collect_issues=True))
                 results.append(run_step("cc-spec-scope-check", "harness", [str(cc_spec_scope_check), *changed_dir_args], project_root, collect_issues=True))
+                results.append(run_step("cc-subagent-evidence-check", "harness", [str(cc_subagent_evidence_check), *changed_dir_args], project_root, collect_issues=True))
             if harness_changed:
                 results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
                 results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
@@ -911,6 +919,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
             results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root, collect_issues=True))
             results.append(run_step("cc-spec-scope-check", "harness", [str(cc_spec_scope_check), str(sync_target)], project_root, collect_issues=True))
+            results.append(run_step("cc-subagent-evidence-check", "harness", [str(cc_subagent_evidence_check), str(sync_target)], project_root, collect_issues=True))
             results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
             results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
             results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))

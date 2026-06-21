@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Runtime evidence-projection checks for subagent output (roadmap #6, path B).
+
+Subagent payloads are absorbed into review.md without independent on-disk
+landing (the main flow merges them in memory). The evidence_quality contract
+(min_evidence_items>=1, require_concrete_references=true) is therefore only
+checked statically by cc-schema-check against the manifest literal values —
+nothing verifies the *observable projection* of that evidence in a real
+change's review.md. A structurally valid but evidence-empty review can reach
+"archivable" with no traceable evidence.
+
+This tool validates that projection (path B). It does NOT check the payload
+literal contract (path A — requires payload landing, out of scope here):
+
+  E_EVIDENCE001 — Findings table lists a Critical/Important row but the
+                  matching `### Finding #N:` detail block is missing or has
+                  no `**Location**: `path:line`` anchor (untraceable evidence).
+  E_EVIDENCE002 — `**Location**: `path:line`` references a file that does
+                  not exist under project_root (phantom reference).
+  E_EVIDENCE003 — 2.1 验证映射检查 row claims passed but the 证据/缺口 column
+                  is empty or a placeholder (claim without evidence).
+
+Template-placeholder vs real-review is distinguished so an unfilled review.md
+is skipped rather than flagged: real Findings rows (change_docs.finding_rows
+already filters placeholder rows), any `### Finding #N:` block, or any real
+2.1 mapping row each count as "real review started".
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+from change_docs import finding_rows
+from harness_runtime.issues import Issue, build_report
+
+
+EVIDENCE_TRACEABILITY_CODE = "E_EVIDENCE001"
+EVIDENCE_PHANTOM_REF_CODE = "E_EVIDENCE002"
+EVIDENCE_CLAIM_NO_PROOF_CODE = "E_EVIDENCE003"
+
+LOCATION_RE = re.compile(r"\*\*Location\*\*:\s*`([^`]+)`")
+FINDING_HDR_RE = re.compile(r"^###\s+Finding\s+#(\d+)\b[^\n]*\(([^,)]+)", re.M)
+MAPPING_SECTION_RE = re.compile(r"#### 2\.1 验证映射检查(.*?)(?:\n####|\Z)", re.S)
+
+PASSED_TOKENS = {"pass", "passed", "通过", "✅", "ok", "done", "完成"}
+EMPTY_TOKENS = {"", "-", "—", "n/a", "na", "/", "待补充", "tbd", "todo", "无"}
+
+# Findings-table levels that MUST carry a traceable Location anchor.
+HIGH_SEVERITY_LEVELS = {"Critical", "Important"}
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def table_rows(lines: list[str], start_idx: int) -> list[dict[str, str]]:
+    """Parse a markdown table starting at/after start_idx into row dicts.
+
+    Mirrors cc-spec-scope-check's lightweight table parser.
+    """
+    idx = start_idx
+    while idx < len(lines) and (not lines[idx].strip() or lines[idx].strip().startswith("<!--")):
+        idx += 1
+    rows: list[dict[str, str]] = []
+    if idx >= len(lines) or not lines[idx].lstrip().startswith("|"):
+        return rows
+    headers: list[str] = []
+    for j in range(idx, len(lines)):
+        line = lines[j].strip()
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in cells) and any(c for c in cells):
+            continue  # separator row
+        if not headers:
+            headers = cells
+            continue
+        if len(cells) != len(headers):
+            continue
+        rows.append(dict(zip(headers, cells)))
+    return rows
+
+
+def cell(row: dict[str, str], *keys: str) -> str:
+    for k in keys:
+        if k in row:
+            return row[k]
+    return ""
+
+
+def high_severity_finding_rows(review_text: str) -> list[list[str]]:
+    """Critical/Important rows from the Findings table (real rows only).
+
+    finding_rows already drops placeholder rows (empty first cell) and keeps
+    only rows whose first cell is in {Critical, Important, Minor, 无}.
+    """
+    return [row for row in finding_rows(review_text) if row and row[0] in HIGH_SEVERITY_LEVELS]
+
+
+def finding_detail_blocks(review_text: str) -> list[dict[str, str]]:
+    """Parse `### Finding #N: ... (level, ...)` detail blocks in order.
+
+    Returns one dict per block (in document order) with `number`, `level`,
+    and `location` (empty string if the block has no **Location** anchor).
+    Walks forward from each header until the next `### Finding` or EOF.
+    """
+    lines = review_text.splitlines()
+    headers = list(FINDING_HDR_RE.finditer(review_text))
+    blocks: list[dict[str, str]] = []
+    for i, m in enumerate(headers):
+        number = m.group(1)
+        level = m.group(2).strip()
+        start_line = review_text[: m.start()].count("\n")
+        end_line = review_text[: headers[i + 1].start()].count("\n") if i + 1 < len(headers) else len(lines)
+        location = ""
+        for line in lines[start_line:end_line]:
+            loc_m = LOCATION_RE.search(line)
+            if loc_m:
+                location = loc_m.group(1)
+                break
+        blocks.append({"number": number, "level": level, "location": location})
+    return blocks
+
+
+def parse_location(loc: str) -> str | None:
+    """`path:line-line` → 'path' (file part); None if no path separator.
+
+    Mirrors cc-verify:528 location.rsplit(':', 1) but only needs the file
+    part for existence checking.
+    """
+    if not loc:
+        return None
+    parts = loc.rsplit(":", 1)
+    # `path:line` → ['path', 'line']; bare `path` → ['path'] (still a file ref)
+    file_part = parts[0] if len(parts) == 2 else loc
+    file_part = file_part.strip().strip("`")
+    return file_part or None
+
+
+def mapping_rows(review_text: str) -> list[dict[str, str]]:
+    """Rows of the 2.1 验证映射检查 table (映射编号 / ... / 证据 / 缺口 / 结果)."""
+    match = MAPPING_SECTION_RE.search(review_text)
+    if match is None:
+        return []
+    lines = match.group(1).splitlines()
+    return table_rows(lines, 0)
+
+
+def is_template_placeholder(review_text: str) -> bool:
+    """True iff review.md shows no sign a real review started.
+
+    No real Findings rows, no `### Finding #N:` detail block, and no real
+    2.1 mapping rows. An unfilled template must not be flagged.
+    """
+    if high_severity_finding_rows(review_text):
+        return False
+    if any(row[0] in {"Minor", "无"} for row in finding_rows(review_text) if row):
+        return False
+    if FINDING_HDR_RE.search(review_text):
+        return False
+    if mapping_rows(review_text):
+        return False
+    return True
+
+
+def check_change(change_dir: Path, project_root: Path, issues: list[Issue]) -> str:
+    """Return 'checked' or 'skipped'. Appends issues for the active codes."""
+    review_path = change_dir / "review.md"
+    if not review_path.exists():
+        return "skipped"
+
+    review_text = read(review_path)
+    if is_template_placeholder(review_text):
+        return "skipped"
+
+    # E_EVIDENCE001 / E_EVIDENCE002: every high-severity Findings row must map
+    # to a `### Finding #N:` detail block (by document order) carrying a
+    # non-empty **Location** anchor that resolves to an existing file.
+    high_rows = high_severity_finding_rows(review_text)
+    blocks = finding_detail_blocks(review_text)
+    for idx, row in enumerate(high_rows):
+        level = row[0]
+        desc = row[1] if len(row) > 1 else ""
+        if idx >= len(blocks):
+            issues.append(
+                Issue(
+                    EVIDENCE_TRACEABILITY_CODE,
+                    str(review_path),
+                    f"finding[{idx + 1}] '{desc[:40]}' ({level}): no matching `### Finding #{idx + 1}:` detail block with a **Location** anchor",
+                )
+            )
+            continue
+        block = blocks[idx]
+        location = block.get("location", "")
+        if not location:
+            issues.append(
+                Issue(
+                    EVIDENCE_TRACEABILITY_CODE,
+                    str(review_path),
+                    f"finding[{idx + 1}] '{desc[:40]}' ({level}): detail block has no **Location**: `path:line` anchor",
+                )
+            )
+            continue
+        # E_EVIDENCE002: the referenced file must exist under project_root.
+        file_part = parse_location(location)
+        if file_part is None:
+            issues.append(
+                Issue(
+                    EVIDENCE_TRACEABILITY_CODE,
+                    str(review_path),
+                    f"finding[{idx + 1}] '{desc[:40]}' ({level}): Location '{location}' is not a resolvable path:line",
+                )
+            )
+            continue
+        if not (project_root / file_part).exists():
+            issues.append(
+                Issue(
+                    EVIDENCE_PHANTOM_REF_CODE,
+                    str(review_path),
+                    f"{file_part}: referenced by Finding #{block.get('number', idx + 1)} but file not found under project root",
+                )
+            )
+
+    # E_EVIDENCE003: a passed validation mapping must carry non-empty evidence.
+    for row in mapping_rows(review_text):
+        result = cell(row, "结果", "result").strip().lower()
+        if result not in PASSED_TOKENS:
+            continue
+        evidence = cell(row, "证据 / 缺口", "证据", "缺口", "evidence").strip()
+        if evidence.lower() in EMPTY_TOKENS:
+            mapping_id = cell(row, "映射编号", "id") or "?"
+            issues.append(
+                Issue(
+                    EVIDENCE_CLAIM_NO_PROOF_CODE,
+                    str(review_path),
+                    f"validation mapping '{mapping_id}': result claims passed but 证据/缺口 column is empty",
+                )
+            )
+
+    return "checked"
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        if item.is_dir():
+            for spec in item.rglob("spec.md"):
+                if "templates" in spec.parts:
+                    continue
+                parent = spec.parent
+                if (parent / "tasks.md").exists():
+                    dirs.add(parent)
+    return sorted(dirs)
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Runtime evidence-projection checks for subagent output.")
+    parser.add_argument("paths", nargs="*", help="Change dirs or roots to check (default: .cairness/changes).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    inputs = [Path(arg) for arg in args.paths] if args.paths else [root / ".cairness" / "changes"]
+    issues: list[Issue] = []
+    checked = 0
+    skipped = 0
+    for change_dir in discover_change_dirs(inputs):
+        outcome = check_change(change_dir, root, issues)
+        if outcome == "checked":
+            checked += 1
+        else:
+            skipped += 1
+
+    report = build_report(
+        "cc-subagent-evidence-check",
+        issues,
+        extra={
+            "checked_roots": [str(path) for path in inputs],
+            "checked_changes": checked,
+            "skipped_changes": skipped,
+        },
+    )
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-subagent-evidence-check: ok")
+    else:
+        for entry in report["issues"]:
+            print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
