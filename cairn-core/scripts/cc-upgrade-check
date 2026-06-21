@@ -57,6 +57,35 @@ def check_state_separation(project_root: Path, claude_root: Path, issues: list[I
             add(issues, "E_UPGRADE005", path, "project state must live under .cairness, not .claude")
 
 
+FRAMEWORK_POLLUTION_MARKERS = [
+    "VERSION",
+    "CHANGELOG.md",
+    "UPGRADE.md",
+    "runtime",
+    "rules",
+    "schemas",
+    "scripts",
+    "workflows",
+    "templates",
+]
+
+
+def check_state_pollution(project_root: Path, issues: list[Issue]) -> None:
+    """Framework assets must not leak into .cairness/ (reverse of E_UPGRADE005).
+
+    E_UPGRADE005 catches project state misplaced under .claude/; this catches
+    framework assets misplaced under .cairness/, which an unsafe upgrade could
+    then clobber or carry forward incorrectly.
+    """
+    cairness = project_root / ".cairness"
+    if not cairness.is_dir():
+        return
+    for marker in FRAMEWORK_POLLUTION_MARKERS:
+        path = cairness / marker
+        if path.exists():
+            add(issues, "E_UPGRADE007", path, "framework asset must not live under .cairness")
+
+
 def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
     framework_assets = [
         claude_root / "runtime",
@@ -91,12 +120,15 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
         require(path, kind, issues, "E_UPGRADE006")
 
 
-def build_report() -> dict[str, Any]:
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = claude_root.parent
+def build_report(project_root: Path | None = None, claude_root: Path | None = None) -> dict[str, Any]:
+    if claude_root is None:
+        claude_root = Path(__file__).resolve().parent.parent
+    if project_root is None:
+        project_root = claude_root.parent
     issues: list[Issue] = []
     metadata = check_version_docs(claude_root, issues)
     check_state_separation(project_root, claude_root, issues)
+    check_state_pollution(project_root, issues)
     check_upgrade_boundaries(project_root, claude_root, issues)
     return {
         "tool": "cc-upgrade-check",

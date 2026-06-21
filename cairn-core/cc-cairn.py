@@ -48,6 +48,11 @@ GITIGNORE_ADDITIONS = """
 # (these are user-local state, not framework assets).
 PRESERVE_ON_UPGRADE = {"settings.local.json"}
 
+# Framework version-metadata files that legitimately change on every upgrade.
+# They are not user customizations, so excluded from the upgrade merge report
+# (reporting them would be noise on every upgrade).
+UPGRADE_META_FILES = {"VERSION", "CHANGELOG.md", "UPGRADE.md"}
+
 
 class UpgradeSafetyError(Exception):
     """Raised when an upgrade would unsafely clobber state."""
@@ -62,6 +67,25 @@ def _rel_file_set(root: Path) -> set[str]:
         if p.is_file():
             out.add(p.relative_to(root).as_posix())
     return out
+
+
+def _modified_framework_files(backup: Path, src: Path) -> list[str]:
+    """User-customized framework files that the fresh swap overwrites.
+
+    rel paths present in both ``backup`` (user's old version) and ``src`` (new
+    release) whose bytes differ. Excludes ``PRESERVE_ON_UPGRADE`` (kept, not
+    overwritten) and user-added files (absent from src, carried forward
+    separately). Used for the upgrade merge report — does not alter overwrite
+    semantics.
+    """
+    src_files = _rel_file_set(src)
+    modified: list[str] = []
+    for rel in sorted(_rel_file_set(backup)):
+        if rel in PRESERVE_ON_UPGRADE or rel in UPGRADE_META_FILES or rel not in src_files:
+            continue
+        if (backup / rel).read_bytes() != (src / rel).read_bytes():
+            modified.append(rel)
+    return modified
 
 
 def _replace_framework_dir(
@@ -93,6 +117,12 @@ def _replace_framework_dir(
     """
     parent = dst.parent
     parent.mkdir(parents=True, exist_ok=True)
+
+    if dst.name == ".cairness":
+        raise UpgradeSafetyError(
+            f"Refusing to replace {dst}: '.cairness/' is project state, "
+            f"not a replaceable framework root."
+        )
 
     had_existing = dst.exists()
     backup: Path | None = None
@@ -131,6 +161,23 @@ def _replace_framework_dir(
                 target = dst / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, target)
+
+    # Merge report: surface user-customized framework files that the fresh
+    # swap overwrote. Report-only — overwrite semantics are unchanged; the
+    # user's versions remain in the backup for re-application.
+    if backup is not None and backup.exists():
+        modified = _modified_framework_files(backup, src)
+        if modified:
+            print(f"  {len(modified)} framework file(s) you customized were overwritten by the new version:")
+            for rel in modified:
+                print(f"    - {rel}")
+            print(f"  Your versions are retained in {backup.name}/ ; re-apply customizations or diff against the new files.")
+            report_path = dst.parent / f"{dst.name}.merge-report.json"
+            report_path.write_text(
+                json.dumps({"overwritten_modified_files": modified}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            print(f"  Merge report: {report_path}")
 
     if backup is not None:
         print(f"  Previous {label} backed up to: {backup}")

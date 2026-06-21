@@ -143,6 +143,63 @@ def test_failed_swap_restores_backup(tmp_path):
     assert (dst / "scripts" / "cc-verify").read_text() == "ORIGINAL"
 
 
+# --- upgrade merge report (report-only) ------------------------------------
+
+def test_modified_framework_file_reported(tmp_path, capsys):
+    """A user-customized framework file overwritten by the new version is
+    reported (stdout + sidecar), but overwrite semantics are unchanged: the
+    new version lands in dst, the user's version survives in the backup."""
+    import json
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0", "rules/x.md": "NEW"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {"VERSION": "1.0.0", "rules/x.md": "USER EDIT"})
+
+    backup = mod._replace_framework_dir(src, dst, label="framework")
+
+    # Overwrite semantics unchanged: new version in dst, user version in backup.
+    assert (dst / "rules" / "x.md").read_text() == "NEW"
+    assert backup is not None
+    assert (backup / "rules" / "x.md").read_text() == "USER EDIT"
+    # Report surfaces the overwritten file.
+    out = capsys.readouterr().out
+    assert "rules/x.md" in out
+    assert "Merge report" in out
+    # Sidecar written next to dst, lists the file.
+    sidecar = dst.parent / ".claude.merge-report.json"
+    assert sidecar.is_file()
+    report = json.loads(sidecar.read_text())
+    assert report["overwritten_modified_files"] == ["rules/x.md"]
+
+
+def test_no_report_when_no_modifications(tmp_path, capsys):
+    """When the user made no conflicting edits, no report or sidecar is produced."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0", "rules/x.md": "SAME"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {"VERSION": "1.0.0", "rules/x.md": "SAME"})
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    out = capsys.readouterr().out
+    assert "overwritten" not in out
+    assert not (dst.parent / ".claude.merge-report.json").exists()
+
+
+def test_cairness_dst_rejected(tmp_path):
+    """Passing .cairness/ as the replaceable dst must be refused."""
+    import pytest
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0"})
+    dst = tmp_path / ".cairness"
+
+    with pytest.raises(mod.UpgradeSafetyError):
+        mod._replace_framework_dir(src, dst, label="framework")
+
+
 # --- _copy_ci_templates ----------------------------------------------------
 
 def test_ci_templates_non_clobber_on_diff(tmp_path):

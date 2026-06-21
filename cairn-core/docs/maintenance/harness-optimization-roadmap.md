@@ -69,7 +69,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | 7 | eval 行为重放 | ✅ 完成 | `.claude/evals/behavior/` 6 case:explicit-fixture、knowledge-cli-roundtrip、role-check 写边界、sync-check done-without-review、deps-orphans(D2)、spec-scope(D3);覆盖缺失硬闸门/非法状态/禁止写场景 |
 | 8 | 增量校验模式 | 部分 | `cc-delta-check` 已存在(对比两份 verify 报告检测回归 = delta-verify);changed-only 本地迭代增量校验待办 |
 | 9 | 语言 profile 分离 | 部分 | `language-profile.schema.json` + `profile.schema.json` 双 schema 在位;topic-rules 按语言已拆分(go/python/java/cpp/typescript);生命周期命令语言中立度与 profile 强制执行待办 |
-| 10 | 升级安全机制 | 部分 | `cc-upgrade-check` 已存在;版本感知合并报告 + `.cairness/` 保护覆盖面待核实 |
+| 10 | 升级安全机制 | ✅ 完成 | `.cairness/` 保护:E_UPGRADE004/005 + 新增 `_replace_framework_dir` dst.name=`.cairness` 拒绝(UpgradeSafetyError)+ E_UPGRADE007 反向污染(`.cairness/` 下混入框架资产)。版本感知合并报告:`_replace_framework_dir` report-only——检测用户定制且新版本也不同的框架文件,stdout 报告 + sidecar `.merge-report.json`(不改覆盖语义,排除 VERSION/CHANGELOG/UPGRADE 元数据噪声)。2026-06-21 核实:保护基本到位,真缺口是静默覆盖无报告 |
 
 ### Backlog 项映射
 
@@ -80,6 +80,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | A2/A3 | topic_rules 样板/注册收敛 | #9 / 结构 | ❌ 描述错误(本轮证伪):`detection-patterns.yaml` 是 `cc-topic-trigger` 配置文件,属独立机制,本就不进 `core.yaml` topic_rules 注册(那 29 个是命令装载用 topic-rule)。非 drift | 不做 |
 | A4 | profiles 强制执行 | #9 | 项目 profile(minimal/standard/strict)补结构校验:cc-schema-check validate_runtime_core 对照 profile.schema 校验 3 个 profile 文件 + default 枚举(E_SCHEMA194/195),与 language-profile 校验对称。language-profile 原已由 cc-doctor-check E_DOCTOR006 强制 | ✅ 完成 |
 | A7 | doctor readiness 收口 | #4 | `cc-doctor-check` 新增 `check_command_entrypoints`(E_DOCTOR013):CLAUDE.md「已迁移命令」bullet 列表 ↔ `core.yaml:migrated_commands` SSOT 集合一致性。核实发现 runtime 注册(commands↔readsets↔workflow)已被 cc-schema-check/cc-readset/cc-workflow-gen 经 cc-verify 串行覆盖,非缺口;cc-lint `REQUIRED_RUNTIME_COMMANDS` 硬编码副本另立后续收敛项。守护测试 7 例(missing/extra/missing-section + 段缺失) | ✅ 完成 |
+| A8 | 升级合并报告 + 防御护栏 | #10 | `cc-cairn.py _replace_framework_dir` 新增 report-only 合并报告(`_modified_framework_files` + stdout + sidecar `.merge-report.json`,排除 VERSION/CHANGELOG/UPGRADE 元数据,不改覆盖语义)+ dst.name=`.cairness` 拒绝护栏(UpgradeSafetyError,不误伤系统安装 dst=`cairness`)。`cc-upgrade-check` 新增 E_UPGRADE007 反向污染检查(`.cairness/` 下框架资产),build_report 加 optional roots 参数可测。守护测试 10 例(report/no-report/dst-reject + pollution parametrized) | ✅ 完成 |
 | A5 | 去重 | #9 | ❌ 描述错误(本轮证伪):`profile.schema`(项目 profile,id/description/topic_rules/subagents/validation/interaction)与 `language-profile.schema`(语言 profile,version/language/project_detection/verification/fixtures)字段完全不重叠,不同概念 | 不做 |
 | A9 | 孤儿 schema 清理 | 结构 | 删除 `tasks.schema.json`、`test-spec.schema.json`(c5297c5 废弃蓝图:描述 JSON 但实际文档是 markdown,字段双错配,历史零引用)。保留 `review.schema`/`spec.schema`(结构契约:被 cc-gate-stats/validate_spec 对齐字段,非孤儿) | ✅ 完成 |
 | A6 | 生命周期枚举单一源 | 结构 | `runtime/enums.yaml` 为 5 组枚举(change/task/finding/validation_mapping status、test mode)单一源,核心集+命名子集;`harness_runtime.enums` 加载;change_docs/cc-workflow-gen/cc-event-check/cc-sync-check/cc-lint/cc-schema-check/cc-stats 全部派生去硬编码;schema enum+模板由守护测试绑定;cc-schema-check 校验 enums.yaml 自身(E_SCHEMA196-198)。收敛中暴露并修复 runtime-command.schema change_from 缺 unchanged 漂移 | ✅ 完成 |
