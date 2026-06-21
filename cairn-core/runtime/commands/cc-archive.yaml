@@ -115,6 +115,7 @@ steps:
   - sync_log_and_task_board
   - rerun_post_archive_validation
   - remind_user_to_return_to_default_branch_before_next_change
+  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>

@@ -117,6 +117,7 @@ steps:
   - update_mapping_status_to_test_covered_or_gap
   - sync_log_and_task_board
   - run_change_validation
+  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>

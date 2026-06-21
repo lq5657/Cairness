@@ -187,6 +187,7 @@ steps:
   - run_auto_validation
   - present_hard_gate_choices_and_wait_for_user_selection
   - wait_for_hard_gate_confirmation
+  - record_state_transition_event_via_cc_event_write
 
 anti_rationalizations:
   - keep_broad_request_as_one_change_because_user_asked_for_all_of_it

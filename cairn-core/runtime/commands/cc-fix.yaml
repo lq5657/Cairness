@@ -234,6 +234,7 @@ steps:
   - sync_dev_map_if_boundaries_changed
   - sync_task_board
   - run_change_validation
+  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>

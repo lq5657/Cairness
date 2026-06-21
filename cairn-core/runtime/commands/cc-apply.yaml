@@ -189,6 +189,7 @@ steps:
   - repeat_until_all_tasks_closed
   - run_final_change_validation
   - promote_change_to_review
+  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-deps check --change <change-id>

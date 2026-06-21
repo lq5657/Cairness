@@ -192,6 +192,7 @@ steps:
   - emit_findings_with_open_fixed_or_accepted_status
   - sync_review_log_and_task_board
   - run_harness_validation
+  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-role-check --command cc-review --change <change-id>
