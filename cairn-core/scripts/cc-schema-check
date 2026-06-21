@@ -56,6 +56,9 @@ TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 KNOWLEDGE_CATEGORIES_SCHEMA = "knowledge-categories.schema.json"
 PROFILE_SCHEMA = "profile.schema.json"
 VALID_PROFILE_IDS = {"minimal", "standard", "strict"}
+
+from harness_runtime.enums import enum_set, load_enums as _load_enums
+_FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
     "**When To Use**",
@@ -1523,7 +1526,7 @@ def validate_review(path: Path, issues: list[Issue]) -> None:
             add(issues, "E_SCHEMA017", path, f"invalid or missing {key}")
     for row in finding_rows(text):
         status = row[4].strip("` ")
-        if row[0] != "无" and status not in {"open", "fixed", "accepted"}:
+        if row[0] != "无" and status not in _FINDING_STATUS:
             add(issues, "E_SCHEMA018", path, f"finding has invalid status {status}")
     accepted_rows = [row for row in finding_rows(text) if len(row) >= 5 and row[4].strip("` ") == "accepted"]
     confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}

@@ -10,12 +10,14 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.issues import Issue, add, issues_to_dicts
+from harness_runtime.enums import enum_set, load_enums
 
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
-VALID_FROM = {"none", "propose", "apply", "review", "done", "unchanged"}
-VALID_TO = {"unchanged", "propose", "apply", "review", "done"}
+_ENUMS = load_enums()
+VALID_FROM = enum_set(_ENUMS, "change_status", "from_set")
+VALID_TO = enum_set(_ENUMS, "change_status", "to_set")
 VALID_VERIFICATION_STATUS = {"passed", "failed", "partial", "not_run"}
 VALID_SCHEMA_VERSIONS = {1, 2}
 COMMAND_TO = {

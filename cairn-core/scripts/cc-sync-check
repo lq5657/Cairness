@@ -10,9 +10,11 @@ import sys
 from pathlib import Path
 
 from harness_runtime.issues import Issue, build_report
+from harness_runtime.enums import enum_set, load_enums
 
 
-VALID_CLOSED = {"apply-covered", "test-covered"}
+_ENUMS = load_enums()
+VALID_CLOSED = enum_set(_ENUMS, "validation_mapping_status", "closed")
 SYNC_ISSUE_CODE = "E_SYNC001"
 
 

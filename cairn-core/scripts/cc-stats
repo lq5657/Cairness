@@ -27,9 +27,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.enums import enum_set, load_enums as _load_enums
+
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+_FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")
+_FINDING_STATUS_PATTERN = "|".join(sorted(_FINDING_STATUS, key=len, reverse=True))
 ROOT_CAUSE_TAG_RE = re.compile(
     r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
     re.IGNORECASE,
@@ -135,11 +139,11 @@ def parse_review(path: Path) -> dict[str, Any] | None:
             finding_ids.add(fid)
             # Try to extract severity
             sev_match = re.search(r'\b(critical|important|minor|cosmetic)\b', title.lower())
-            status_match = re.search(r'\b(open|fixed|accepted)\b', title.lower())
+            status_match = re.search(rf'\b({_FINDING_STATUS_PATTERN})\b', title.lower())
             # Scan following lines for status/severity markers
             rest = content[m.end():m.end() + 500]
             sev2 = re.search(r'(?:severity|level)[:\s]*[`"]*(critical|important|minor|cosmetic)', rest, re.IGNORECASE)
-            status2 = re.search(r'(?:status)[:\s]*[`"]*(open|fixed|accepted)', rest, re.IGNORECASE)
+            status2 = re.search(rf'(?:status)[:\s]*[`"]*({_FINDING_STATUS_PATTERN})', rest, re.IGNORECASE)
             lens_match = re.search(r'(?:lens)[:\s]*[`"]*([a-z_]+)', rest, re.IGNORECASE)
             rc_match = ROOT_CAUSE_TAG_RE.search(rest)
             result["findings"].append({
