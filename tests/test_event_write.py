@@ -172,6 +172,33 @@ def test_bad_numeric_flag_rejected(tmp_path):
     assert any(i["code"] == "E_EVENTW003" for i in report["issues"])
 
 
+def test_error_codes_accepted(tmp_path):
+    change_dir = _change_dir(tmp_path)
+    proc = _run([*_BASE_ARGS, "--error-codes", "E_INPUT002", "--error-codes", "E_EVENT020"], tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    events = _read_events(change_dir)
+    assert events[-1]["error_codes"] == ["E_INPUT002", "E_EVENT020"]
+
+
+def test_malformed_error_code_rejected(tmp_path):
+    change_dir = _change_dir(tmp_path)
+    proc = _run([*_BASE_ARGS, "--error-codes", "BADCODE", "--event-id", "ec-bad"], tmp_path)
+    assert proc.returncode == 1
+    report = json.loads(proc.stdout)
+    assert any(i["code"] == "E_EVENTW005" and "BADCODE" in i["message"] for i in report["issues"])
+    assert not (change_dir / "events.jsonl").exists()
+
+
+def test_no_error_codes_flag_field_absent(tmp_path):
+    """Without --error-codes the event has no error_codes field (field is optional)."""
+    change_dir = _change_dir(tmp_path)
+    proc = _run(_BASE_ARGS, tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    events = _read_events(change_dir)
+    assert "error_codes" not in events[-1]
+
+
+
 def test_missing_required_flag_argparse_error(tmp_path):
     _change_dir(tmp_path)
     proc = subprocess.run(

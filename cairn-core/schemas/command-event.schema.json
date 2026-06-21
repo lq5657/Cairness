@@ -86,6 +86,15 @@
       "enum": ["passed", "failed", "partial", "not_run"],
       "description": "验证门禁结果"
     },
+    "error_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^E_[A-Z]+[0-9]+$"
+      },
+      "description": "本次命令遇到的错误码 (E_INPUT*/E_EVENT020/...)。与 verification_status 独立 — passed 事件可携带码,failed 事件可不携带"
+    },
     "files_changed": {
       "type": "integer",
       "minimum": 0,

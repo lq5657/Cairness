@@ -42,7 +42,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from harness_runtime.events import CHANGE_ID_RE, validate_event
+from harness_runtime.events import CHANGE_ID_RE, E_CODE_RE, validate_event
 from harness_runtime.issues import Issue, add, build_report, issues_to_dicts
 
 WRITER_ISSUE_PATH = "<cc-event-write>"  # synthetic path for writer-local issues
@@ -104,6 +104,8 @@ def build_event(args: argparse.Namespace, now: datetime) -> tuple[dict[str, Any]
         event["findings_summary"] = args.findings_summary
     if args.gate_effectiveness is not None:
         event["gate_effectiveness"] = args.gate_effectiveness
+    if args.error_codes:
+        event["error_codes"] = list(args.error_codes)
     return event, issues
 
 
@@ -204,6 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verification-status", choices=["passed", "failed", "partial", "not_run"], default=None, help="v2: verification outcome.")
     parser.add_argument("--findings-summary", default=None, help="v2: JSON object.")
     parser.add_argument("--gate-effectiveness", default=None, help="v2: JSON object.")
+    parser.add_argument("--error-codes", action="append", default=None, help="v2: error code (E_*), repeatable.")
     parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--dry-run", action="store_true", help="Validate and print without writing.")
@@ -226,6 +229,10 @@ def main(argv: list[str]) -> int:
         args.findings_summary = _parse_json_flag(args.findings_summary, "findings-summary", issues_pre)
     if args.gate_effectiveness is not None:
         args.gate_effectiveness = _parse_json_flag(args.gate_effectiveness, "gate-effectiveness", issues_pre)
+    if args.error_codes:
+        bad = [c for c in args.error_codes if not E_CODE_RE.match(c)]
+        if bad:
+            add(issues_pre, "E_EVENTW005", WRITER_ISSUE_PATH, f"--error-codes entries must match E_[A-Z]+[0-9]+: {bad}")
 
     if issues_pre:
         report = build_report("cc-event-write", issues_pre, status="failed", extra={"change_id": args.change_id})

@@ -35,6 +35,7 @@ from harness_runtime.issues import Issue, add
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+E_CODE_RE = re.compile(r"^E_[A-Z]+[0-9]+$")
 
 _ENUMS = load_enums()
 VALID_FROM = enum_set(_ENUMS, "change_status", "from_set")
@@ -117,3 +118,9 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
                     fv = fs.get(fk)
                     if fv is not None and (not isinstance(fv, int) or fv < 0):
                         add(issues, "E_EVENT019", path, f"line {line_no}: findings_summary.{fk} must be a non-negative integer")
+        ec = event.get("error_codes")
+        if ec is not None:
+            if not isinstance(ec, list) or not all(isinstance(c, str) and E_CODE_RE.match(c) for c in ec):
+                add(issues, "E_EVENT021", path, f"line {line_no}: error_codes must be a list of ^E_[A-Z]+[0-9]+$ codes")
+            elif len(set(ec)) != len(ec):
+                add(issues, "E_EVENT021", path, f"line {line_no}: error_codes must have unique entries")
