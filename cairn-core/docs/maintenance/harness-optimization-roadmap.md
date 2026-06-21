@@ -60,10 +60,10 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 
 | # | 方向 | 状态 | 实测证据 |
 |---|------|------|----------|
-| 1 | 显式校验失败硬失败 | 部分 | `.claude/evals/behavior/cc-verify-explicit-fixture.yaml` 已 gating explicit fixture;`--fixture` 解析失败硬失败覆盖面待核实 |
+| 1 | 显式校验失败硬失败 | ✅ 完成 | `cc-verify:944-963` 对未解析 `--fixture` 硬失败(exit 1);`.claude/evals/behavior/cc-verify-explicit-fixture.yaml` + `cc-behavior-check` 锁定 `expect_exit_code:1`。2026-06-21 核实:全仓唯 `cc-verify` 接受 `--fixture` CLI,无静默 pass 场景 |
 | 2 | Agent 命令协议 | 部分 | `schemas/command-protocol.schema.json`(16 引用)、`command-event.schema.json`(14 引用)已存在,协议骨架在位,完整输入校验/错误分类契约待补 |
 | 3 | 改进校验诊断 | ✅ 完成 | E2:统一 `Issue(code,path,message)` 契约 + `harness_runtime.issues` 单一来源 + cc-verify 聚合结构化 issues |
-| 4 | 强化项目接入检查 | 部分 | `cc-preflight` + `cc-doctor-check` 已存在;doctor 式 readiness(scaffold 布局/CI fixture 路径/可执行脚本/runtime 注册/项目入口)覆盖面待核实 |
+| 4 | 强化项目接入检查 | ✅ 完成 | 5 类 readiness 全覆盖:scaffold/CI fixture/可执行脚本由 `cc-doctor-check:67-182`;runtime 注册由 `cc-schema-check` E_SCHEMA120/121 + `cc-readset --check` + `cc-workflow-gen --check`(均经 `cc-verify:897-916` 串行);项目入口由新增 E_DOCTOR013(`cc-doctor-check` 校验 CLAUDE.md「已迁移命令」列表 ↔ `core.yaml:migrated_commands` SSOT)。2026-06-21 核实:runtime 注册原判"缺口"实为假缺口(已被 cc-verify 串行覆盖),唯一真缺口是 CLAUDE.md 文档漂移 |
 | 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
 | 6 | Subagent 证据质量闸门 | 部分 | A12 已完成合同文件形式收敛(`runtime/subagents/*.yaml` + schema 单形态);**证据空但结构合法判为无效**这条闸门尚未落地 |
 | 7 | eval 行为重放 | ✅ 完成 | `.claude/evals/behavior/` 6 case:explicit-fixture、knowledge-cli-roundtrip、role-check 写边界、sync-check done-without-review、deps-orphans(D2)、spec-scope(D3);覆盖缺失硬闸门/非法状态/禁止写场景 |
@@ -79,6 +79,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | E2 | 统一结构化错误处理 | #3 | `harness_runtime.issues` 单一来源,9 脚本收敛,cc-verify 聚合 | ✅ 完成 |
 | A2/A3 | topic_rules 样板/注册收敛 | #9 / 结构 | ❌ 描述错误(本轮证伪):`detection-patterns.yaml` 是 `cc-topic-trigger` 配置文件,属独立机制,本就不进 `core.yaml` topic_rules 注册(那 29 个是命令装载用 topic-rule)。非 drift | 不做 |
 | A4 | profiles 强制执行 | #9 | 项目 profile(minimal/standard/strict)补结构校验:cc-schema-check validate_runtime_core 对照 profile.schema 校验 3 个 profile 文件 + default 枚举(E_SCHEMA194/195),与 language-profile 校验对称。language-profile 原已由 cc-doctor-check E_DOCTOR006 强制 | ✅ 完成 |
+| A7 | doctor readiness 收口 | #4 | `cc-doctor-check` 新增 `check_command_entrypoints`(E_DOCTOR013):CLAUDE.md「已迁移命令」bullet 列表 ↔ `core.yaml:migrated_commands` SSOT 集合一致性。核实发现 runtime 注册(commands↔readsets↔workflow)已被 cc-schema-check/cc-readset/cc-workflow-gen 经 cc-verify 串行覆盖,非缺口;cc-lint `REQUIRED_RUNTIME_COMMANDS` 硬编码副本另立后续收敛项。守护测试 7 例(missing/extra/missing-section + 段缺失) | ✅ 完成 |
 | A5 | 去重 | #9 | ❌ 描述错误(本轮证伪):`profile.schema`(项目 profile,id/description/topic_rules/subagents/validation/interaction)与 `language-profile.schema`(语言 profile,version/language/project_detection/verification/fixtures)字段完全不重叠,不同概念 | 不做 |
 | A9 | 孤儿 schema 清理 | 结构 | 删除 `tasks.schema.json`、`test-spec.schema.json`(c5297c5 废弃蓝图:描述 JSON 但实际文档是 markdown,字段双错配,历史零引用)。保留 `review.schema`/`spec.schema`(结构契约:被 cc-gate-stats/validate_spec 对齐字段,非孤儿) | ✅ 完成 |
 | A6 | 生命周期枚举单一源 | 结构 | `runtime/enums.yaml` 为 5 组枚举(change/task/finding/validation_mapping status、test mode)单一源,核心集+命名子集;`harness_runtime.enums` 加载;change_docs/cc-workflow-gen/cc-event-check/cc-sync-check/cc-lint/cc-schema-check/cc-stats 全部派生去硬编码;schema enum+模板由守护测试绑定;cc-schema-check 校验 enums.yaml 自身(E_SCHEMA196-198)。收敛中暴露并修复 runtime-command.schema change_from 缺 unchanged 漂移 | ✅ 完成 |

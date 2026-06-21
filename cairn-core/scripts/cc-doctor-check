@@ -182,6 +182,61 @@ def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
             issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not resolve to a declared language profile"))
 
 
+_MIGRATED_SECTION_RE = re.compile(r"^## 已迁移命令\s*$", re.M)
+_BULLET_RE = re.compile(r"^-\s+`?(cc-[a-z0-9-]+)`?\s*$")
+
+
+def _parse_migrated_command_list(text: str) -> set[str] | None:
+    """Return the set of command names listed under CLAUDE.md's '## 已迁移命令'.
+
+    Returns None if the section is absent (so the caller can distinguish
+    'section missing' from 'section present but empty'). Bullets must match
+    `- cc-...` (backticks optional); any other format is ignored, which means
+    a reformatted list surfaces as a set-mismatch failure rather than a silent
+    pass.
+    """
+    match = _MIGRATED_SECTION_RE.search(text)
+    if match is None:
+        return None
+    body = text[match.end():]
+    next_heading = re.search(r"^## ", body, re.M)
+    section = body[: next_heading.start()] if next_heading else body
+    listed: set[str] = set()
+    for line in section.splitlines():
+        bullet = _BULLET_RE.match(line)
+        if bullet:
+            listed.add(bullet.group(1))
+    return listed
+
+
+def check_command_entrypoints(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    """CLAUDE.md '已迁移命令' 列表必须 == core.yaml migrated_commands SSOT.
+
+    The migrated-command list in CLAUDE.md is the human-facing entry doc; it
+    has no other machine check against core.yaml:migrated_commands. A drift
+    here is otherwise invisible until an agent reads stale docs.
+    """
+    core, _, _ = load_runtime_protocol(project_root)
+    migrated = set(core.get("migrated_commands") or []) if isinstance(core, dict) else set()
+    claude_md = claude_root / "CLAUDE.md"
+    if not claude_md.is_file():
+        issues.append(Issue("E_DOCTOR013", str(claude_md), "CLAUDE.md missing; migrated command entry list cannot be verified"))
+        return
+    listed = _parse_migrated_command_list(read(claude_md))
+    if listed is None:
+        issues.append(Issue("E_DOCTOR013", str(claude_md), "CLAUDE.md missing '## 已迁移命令' section"))
+        return
+    missing = sorted(migrated - listed)
+    extra = sorted(listed - migrated)
+    if missing or extra:
+        parts = []
+        if missing:
+            parts.append(f"missing from CLAUDE.md: {missing}")
+        if extra:
+            parts.append(f"extra in CLAUDE.md: {extra}")
+        issues.append(Issue("E_DOCTOR013", str(claude_md), "; ".join(parts)))
+
+
 def build_report() -> dict[str, Any]:
     claude_root = Path(__file__).resolve().parent.parent
     project_root = claude_root.parent
@@ -190,6 +245,7 @@ def build_report() -> dict[str, Any]:
     check_scripts_executable(claude_root, issues)
     check_protocol_assets(project_root, claude_root, issues)
     check_ci_fixture_paths(project_root, issues)
+    check_command_entrypoints(project_root, claude_root, issues)
     return {
         "tool": "cc-doctor-check",
         "status": "failed" if issues else "passed",
