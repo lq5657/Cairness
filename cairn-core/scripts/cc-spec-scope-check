@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""Spec scope boundary checks for cc_spec Harness change documents.
+
+D3 makes the spec-code-sync scenario B (spec_review_flag) executable: instead
+of relying on the cc-verify review-coverage warning (string-presence only), this
+tool emits structured issues for:
+
+  E_SCOPE001 — review.md file_review_scope marks a file out_of_scope_flagged
+               but log.md has no spec_review_flag record for it.
+  E_SCOPE002 — a file declared in tasks.md is missing from review.md's
+               file_review_scope table (scope under-review gap).
+
+Both reuse the file_review_scope table that cc-verify's check_review_coverage
+already parses, but cover gaps it leaves open (warning-vs-error on flags, and
+the tasks-declared-vs-reviewed completeness axis).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+from harness_runtime.issues import Issue, build_report
+
+
+SCOPE_FLAG_CODE = "E_SCOPE001"
+SCOPE_GAP_CODE = "E_SCOPE002"
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def table_rows(lines: list[str], start_idx: int) -> list[dict[str, str]]:
+    """Parse a markdown table starting at/after start_idx into row dicts.
+
+    Mirrors the lightweight table parsing used across cc-* checks: skip
+    comment/blank lines, stop at the first non-table line, drop separators.
+    """
+    idx = start_idx
+    while idx < len(lines) and (not lines[idx].strip() or lines[idx].strip().startswith("<!--")):
+        idx += 1
+    rows: list[dict[str, str]] = []
+    if idx >= len(lines) or not lines[idx].lstrip().startswith("|"):
+        return rows
+    headers: list[str] = []
+    for j in range(idx, len(lines)):
+        line = lines[j].strip()
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in cells) and any(c for c in cells):
+            continue  # separator row
+        if not headers:
+            headers = cells
+            continue
+        if len(cells) != len(headers):
+            continue
+        rows.append(dict(zip(headers, cells)))
+    return rows
+
+
+def parse_declared_files(tasks_text: str) -> set[str]:
+    """Extract file paths declared in tasks.md.
+
+    Reuses the same two patterns as cc-deps.parse_task_files:
+    `**涉及文件**:` blocks and `| 文件 | 操作 |` tables.
+    """
+    files: set[str] = set()
+    for m in re.finditer(
+        r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", tasks_text, re.DOTALL
+    ):
+        for line in m.group(1).splitlines():
+            cell = line.strip().lstrip("-* ").strip().strip("`")
+            if cell and not cell.startswith("("):
+                files.add(cell)
+    in_table = False
+    for line in tasks_text.splitlines():
+        if "| 文件 |" in line and "操作" in line:
+            in_table = True
+            continue
+        if in_table:
+            if line.startswith("|") and not line.startswith("|--"):
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 2:
+                    fname = parts[1].strip().strip("`")
+                    if fname and not fname.startswith("-"):
+                        files.add(fname)
+            elif not line.startswith("|"):
+                in_table = False
+    return {f for f in files if f and not f.isspace()}
+
+
+def review_scope_rows(review_text: str) -> list[dict[str, str]]:
+    """Parse the file_review_scope table from review.md."""
+    lines = review_text.splitlines()
+    for idx, line in enumerate(lines):
+        if "cc-verify-key: file_review_scope" in line:
+            return table_rows(lines, idx + 1)
+    return []
+
+
+def cell(row: dict[str, str], *keys: str) -> str:
+    for k in keys:
+        if k in row:
+            return row[k]
+    return ""
+
+
+def _log_references_file(log_text: str, filename: str) -> bool:
+    """True iff log.md references `filename` (exact or suffix match).
+
+    spec_review_flag is free-text, so we cannot parse a structured file list;
+    a suffix-tolerant substring check is the realistic precision ceiling.
+    """
+    if not filename:
+        return True  # nothing to anchor; treat as covered
+    if filename in log_text:
+        return True
+    return any(line.endswith("/" + filename) for line in log_text.splitlines())
+
+
+def check_change(change_dir: Path, issues: list[Issue]) -> None:
+    review_path = change_dir / "review.md"
+    tasks_path = change_dir / "tasks.md"
+    log_path = change_dir / "log.md"
+    if not review_path.exists() or not tasks_path.exists():
+        return
+
+    review_text = read(review_path)
+    rows = review_scope_rows(review_text)
+
+    # E_SCOPE001: out_of_scope_flagged must be backed by a log.md spec_review_flag.
+    # spec_review_flag is a free-text convention (no schema/template section),
+    # so the precision ceiling is: log.md mentions spec_review_flag AND the
+    # flagged file. This is stricter than cc-verify's review-coverage warning
+    # (which only checks for the literal string anywhere in log.md).
+    log_text = read(log_path) if log_path.exists() else ""
+    has_flag_marker = "spec_review_flag" in log_text
+    for row in rows:
+        status = cell(row, "Review Status", "review_status")
+        filename = cell(row, "File", "file") or "<unknown>"
+        if status != "out_of_scope_flagged":
+            continue
+        if not has_flag_marker:
+            issues.append(
+                Issue(
+                    SCOPE_FLAG_CODE,
+                    str(review_path),
+                    f"{filename}: marked out_of_scope_flagged but log.md has no spec_review_flag record",
+                )
+            )
+            continue
+        # log.md has the marker; verify it references this file (suffix-tolerant).
+        bare = filename.strip().strip("`")
+        if not _log_references_file(log_text, bare):
+            issues.append(
+                Issue(
+                    SCOPE_FLAG_CODE,
+                    str(review_path),
+                    f"{filename}: marked out_of_scope_flagged but log.md spec_review_flag does not reference this file",
+                )
+            )
+
+    # E_SCOPE002: every tasks-declared file must appear in the review scope table.
+    declared = parse_declared_files(read(tasks_path))
+    if not declared or not rows:
+        return
+    reviewed_files: set[str] = set()
+    for row in rows:
+        fname = cell(row, "File", "file").strip().strip("`")
+        if fname:
+            reviewed_files.add(fname)
+    for decl in sorted(declared):
+        if decl in reviewed_files:
+            continue
+        # Suffix/normalization tolerant match (declared relative, reviewed full or vice versa).
+        if any(decl == r or decl.endswith("/" + r) or r.endswith("/" + decl) for r in reviewed_files):
+            continue
+        issues.append(
+            Issue(
+                SCOPE_GAP_CODE,
+                str(review_path),
+                f"{decl}: declared in tasks.md but missing from review.md file_review_scope table",
+            )
+        )
+
+
+def discover_change_dirs(inputs: list[Path]) -> list[Path]:
+    dirs: set[Path] = set()
+    for item in inputs:
+        if (item / "spec.md").exists() and (item / "tasks.md").exists():
+            dirs.add(item)
+            continue
+        if item.is_dir():
+            for spec in item.rglob("spec.md"):
+                if "templates" in spec.parts:
+                    continue
+                parent = spec.parent
+                if (parent / "tasks.md").exists():
+                    dirs.add(parent)
+    return sorted(dirs)
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Spec scope boundary checks for change documents.")
+    parser.add_argument("paths", nargs="*", help="Change dirs or roots to check (default: .cairness/changes).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    inputs = [Path(arg) for arg in args.paths] if args.paths else [root / ".cairness" / "changes"]
+    issues: list[Issue] = []
+    for change_dir in discover_change_dirs(inputs):
+        check_change(change_dir, issues)
+
+    report = build_report(
+        "cc-spec-scope-check",
+        issues,
+        extra={"checked_roots": [str(path) for path in inputs]},
+    )
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-spec-scope-check: ok")
+    else:
+        for entry in report["issues"]:
+            print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

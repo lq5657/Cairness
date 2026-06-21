@@ -1,0 +1,11 @@
+id: cc-spec-scope-out-of-scope
+description: |
+  cc-spec-scope-check enforces the spec scope boundary gate: a review.md that
+  marks a file out_of_scope_flagged without a log.md spec_review_flag record
+  must fail (exit 1) with E_SCOPE001.
+command:
+  - bash
+  - .claude/evals/fixtures/spec-scope/run.sh
+expect_exit_code: 0
+expect_output_contains:
+  - "spec-scope fixture: OK"

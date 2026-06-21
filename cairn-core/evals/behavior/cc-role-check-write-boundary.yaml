@@ -1,0 +1,14 @@
+id: cc-role-check-write-boundary
+description: |
+  cc-role-check enforces the command write-scope contract: a command like
+  cc-apply that requires --change must fail (exit 1) with a structured
+  E_ROLE001 issue when invoked without it. This pins the role/write-boundary
+  hard gate.
+command:
+  - .claude/scripts/cc-role-check
+  - --command
+  - cc-apply
+expect_exit_code: 1
+expect_output_contains:
+  - "E_ROLE001"
+  - "missing --change"
