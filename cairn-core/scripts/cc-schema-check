@@ -54,6 +54,8 @@ COMMAND_PROTOCOL_SCHEMA = "command-protocol.schema.json"
 TECHNOLOGY_DECISION_CATALOG_SCHEMA = "technology-decision-catalog.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 KNOWLEDGE_CATEGORIES_SCHEMA = "knowledge-categories.schema.json"
+PROFILE_SCHEMA = "profile.schema.json"
+VALID_PROFILE_IDS = {"minimal", "standard", "strict"}
 TOPIC_RULE_REQUIRED_SECTIONS = [
     "#### Skill Anatomy",
     "**When To Use**",
@@ -984,6 +986,30 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
             if actual != expected:
                 add(issues, "E_SCHEMA121", core_path, f"runtime_commands.{command} must be {expected}")
             require_declared_path(project_root, core_path, actual, f"runtime_commands.{command}", issues)
+
+    # Project profiles (minimal/standard/strict) — validate structure against
+    # profile.schema, symmetric to language-profile validation. A4 closes the
+    # gap where these files were read (readsets.resolve_active_profile_path)
+    # but never schema-validated.
+    profiles_cfg = core.get("profiles")
+    if isinstance(profiles_cfg, dict):
+        profiles_dir = profiles_cfg.get("dir")
+        default_profile = profiles_cfg.get("default")
+        if isinstance(default_profile, str) and default_profile not in VALID_PROFILE_IDS:
+            add(issues, "E_SCHEMA194", core_path, f"profiles.default {default_profile!r} is not one of {sorted(VALID_PROFILE_IDS)}")
+        if isinstance(profiles_dir, str):
+            profiles_root = project_path(project_root, profiles_dir)
+            profile_schema_path = claude_root / "schemas" / PROFILE_SCHEMA
+            profile_schema = load_json_file(profile_schema_path, issues)
+            if profiles_root is not None and profile_schema is not None:
+                for profile_id in sorted(VALID_PROFILE_IDS):
+                    profile_file = profiles_root / f"{profile_id}.yaml"
+                    if not profile_file.exists():
+                        add(issues, "E_SCHEMA195", core_path, f"profiles.dir missing {profile_id}.yaml")
+                        continue
+                    profile = load_yaml_file(profile_file, issues)
+                    if isinstance(profile, dict):
+                        validate_against_schema(profile, profile_schema, profile_schema, [], profile_file, issues)
     return core
 
 
