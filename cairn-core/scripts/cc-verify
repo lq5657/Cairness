@@ -267,6 +267,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Align the command writes with workflow/runtime contracts and registered roles.",
             "doc_ref": ".claude/docs/maintenance/legacy/rules/role-contracts.md",
         }
+    if name == "cc-deps-orphans":
+        return {
+            "cause": "Git-diff contains files not declared in any change's tasks.md (orphan changes).",
+            "fix_hint": "Either cc-propose a retro spec, add the file to an existing change's tasks.md declaration, or record it as an intentional exception in task-board.md.",
+            "doc_ref": ".claude/runtime/topic-rules/spec-code-sync.yaml",
+        }
     if name == "change-dir":
         return {
             "cause": "The requested change directory does not exist.",
@@ -864,6 +870,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
         cc_index_check = claude_root / "scripts" / "cc-index-check"
+        cc_deps = claude_root / "scripts" / "cc-deps"
         knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
         if args.changed_only:
@@ -888,6 +895,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                 results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
                 if knowledge_index_path.is_file():
                     results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
+            results.append(run_step("cc-deps-orphans", "harness", [str(cc_deps), "orphans"], project_root, collect_issues=True))
         else:
             lint_targets = [str(claude_root)]
             if sync_target.exists():
@@ -904,6 +912,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
             results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
             if knowledge_index_path.is_file():
                 results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
+            results.append(run_step("cc-deps-orphans", "harness", [str(cc_deps), "orphans"], project_root, collect_issues=True))
         if args.command:
             command = [str(cc_role_check), "--command", args.command]
             if args.change:

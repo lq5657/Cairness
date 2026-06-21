@@ -50,3 +50,46 @@ This roadmap orders the next Harness improvements by risk reduction, user impact
 
 Do not build convenience layers before hardening failure semantics. Each stage should either reduce silent pass risk, standardize an agent-facing contract, or make cross-project adoption cheaper.
 
+## Status & Backlog Mapping (grounded 2026-06-21)
+
+本节是 roadmap 10 项的当前状态快照与 backlog 项(A*/D*/C*)的映射锚点。
+状态判定基于仓库实测,不基于推测;每条 backlog 都标注了实测证据。
+字母编号 backlog 来自历次会话分析,此前未落库,此处首次固化。
+
+### Roadmap 状态
+
+| # | 方向 | 状态 | 实测证据 |
+|---|------|------|----------|
+| 1 | 显式校验失败硬失败 | 部分 | `.claude/evals/behavior/cc-verify-explicit-fixture.yaml` 已 gating explicit fixture;`--fixture` 解析失败硬失败覆盖面待核实 |
+| 2 | Agent 命令协议 | 部分 | `schemas/command-protocol.schema.json`(16 引用)、`command-event.schema.json`(14 引用)已存在,协议骨架在位,完整输入校验/错误分类契约待补 |
+| 3 | 改进校验诊断 | ✅ 完成 | E2:统一 `Issue(code,path,message)` 契约 + `harness_runtime.issues` 单一来源 + cc-verify 聚合结构化 issues |
+| 4 | 强化项目接入检查 | 部分 | `cc-preflight` + `cc-doctor-check` 已存在;doctor 式 readiness(scaffold 布局/CI fixture 路径/可执行脚本/runtime 注册/项目入口)覆盖面待核实 |
+| 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
+| 6 | Subagent 证据质量闸门 | 部分 | A12 已完成合同文件形式收敛(`runtime/subagents/*.yaml` + schema 单形态);**证据空但结构合法判为无效**这条闸门尚未落地 |
+| 7 | eval 行为重放 | 部分 | `.claude/evals/behavior/` 已有 2 case(`cc-verify-explicit-fixture`、`knowledge-cli-roundtrip`);缺失硬闸门/非法状态/禁止写场景覆盖待扩 |
+| 8 | 增量校验模式 | 部分 | `cc-delta-check` 已存在(对比两份 verify 报告检测回归 = delta-verify);changed-only 本地迭代增量校验待办 |
+| 9 | 语言 profile 分离 | 部分 | `language-profile.schema.json` + `profile.schema.json` 双 schema 在位;topic-rules 按语言已拆分(go/python/java/cpp/typescript);生命周期命令语言中立度与 profile 强制执行待办 |
+| 10 | 升级安全机制 | 部分 | `cc-upgrade-check` 已存在;版本感知合并报告 + `.cairness/` 保护覆盖面待核实 |
+
+### Backlog 项映射
+
+| 编号 | 含义 | 锚定 roadmap | 实测证据 | 状态 |
+|------|------|--------------|----------|------|
+| A12 | subagent 合同形式收敛 | #6(契约部分) | `runtime/subagents/cc-inspect-codebase.yaml` + schema 仅允许 contract 形态 | ✅ 完成 |
+| E2 | 统一结构化错误处理 | #3 | `harness_runtime.issues` 单一来源,9 脚本收敛,cc-verify 聚合 | ✅ 完成 |
+| A2/A3 | topic_rules 样板/注册收敛 | #9 / 结构 | `detection-patterns.yaml` 在磁盘但**未注册**进 `core.yaml` topic_rules(实测 drift) | 待办 |
+| A4 | profiles 强制执行 | #9 | `profile.schema.json` + `language-profile.schema.json` 在位;运行时强制加载 profile 待办 | 待办 |
+| A5 | 去重 | #9 | `profile.schema.json`(81 行)与 `language-profile.schema.json`(135 行)标题不同,重叠度待确认是否合并 | 候选 |
+| A9 | 孤儿 schema 清理 | 结构 | `tasks.schema.json`、`test-spec.schema.json` 全仓**零引用**(实测孤儿) | 待办 |
+| D1 | hooks warn + 补 spec | In-loop 闸门 | `no-spec-no-code.py` 钩子已在位,warn 强度 + spec 补全方向待定 | 缓置 |
+| D2 | spec↔code drift 检测 | #3 / #6 | cc-deps orphans 已 Issue 契约化(E_ORPHAN001)+ 接入 cc-verify 两路;无声明源时 pass(框架自维护豁免) | ✅ 完成 |
+| D3 | delta-spec | #3 / #8 | ⚠️ 注意:已存在的 `cc-delta-check` 是 delta-**verify**(对比两份 verify 报告检测回归),**非** delta-spec(spec↔code 增量 diff);delta-spec 待办 | 待办 |
+| C1 | 行为 eval | #7 | `.claude/evals/behavior/` 已有 2 case;场景覆盖待扩 | 部分 |
+
+### 维护约定
+
+- 本节状态基于实测,改代码后必须同步复核对应行;不得凭记忆改状态。
+- 字母编号 backlog 项的新增/完成,须在此表登记并补实测证据。
+- ✅ 完成项保留行用于历史追溯,不删除。
+- 「部分」项需在备注中标明"已有什么、缺什么",禁止只标状态不给证据。
+

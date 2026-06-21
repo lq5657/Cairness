@@ -26,6 +26,10 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml
+from harness_runtime.issues import Issue, build_report
+
+
+ORPHAN_ISSUE_CODE = "E_ORPHAN001"
 
 
 @dataclass
@@ -536,6 +540,22 @@ def detect_orphans(
             "changes_with_files": len(all_declared),
         }
 
+    if not all_declared:
+        # No change has declared any files — there is no declaration source to
+        # judge orphans against (e.g. Harness self-maintenance, which is exempt
+        # from the cc-* change flow). Cannot detect orphans; report clean.
+        return {
+            "staged": staged,
+            "total_git_files": len(git_files),
+            "orphan_files": [],
+            "matched_files": [],
+            "matched_by_change": {},
+            "has_orphans": False,
+            "total_changes": len(changes),
+            "changes_with_files": 0,
+            "no_declared_source": True,
+        }
+
     orphan_files: list[str] = []
     matched_files: list[str] = []
     matched_by_change: dict[str, list[str]] = defaultdict(list)
@@ -676,10 +696,32 @@ def main() -> None:
         if args.working:
             result["staged"] = False
 
+        issues = [
+            Issue(ORPHAN_ISSUE_CODE, f, "git-diff file not declared in any change tasks")
+            for f in result["orphan_files"]
+        ]
         if args.json:
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            report = build_report(
+                "cc-deps-orphans",
+                issues,
+                extra={
+                    "staged": result["staged"],
+                    "total_git_files": result["total_git_files"],
+                    "orphan_files": result["orphan_files"],
+                    "matched_files": result["matched_files"],
+                    "matched_by_change": result["matched_by_change"],
+                    "has_orphans": result["has_orphans"],
+                    "total_changes": result["total_changes"],
+                    "changes_with_files": result["changes_with_files"],
+                    "no_declared_source": result.get("no_declared_source", False),
+                },
+            )
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+            sys.exit(1 if report["status"] == "failed" else 0)
         else:
             exit_code = print_orphans(result)
+            for f in result["orphan_files"]:
+                print(f"{ORPHAN_ISSUE_CODE} {f}: git-diff file not declared in any change tasks", file=sys.stderr)
             sys.exit(exit_code)
 
 
