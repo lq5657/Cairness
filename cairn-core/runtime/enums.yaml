@@ -1,0 +1,37 @@
+version: 1
+description: >-
+  Lifecycle enum single source of truth.
+  代码与生成器从此文件加载枚举,不得在各脚本硬编码副本。
+  schema enum 与模板枚举行由 tests/test_enums_single_source.py 守护一致。
+  变体(如 change_status 的 none/unchanged 边界标记)用命名子集表达,
+  不是独立枚举。
+
+change_status:
+  # 变更生命周期核心状态。
+  core: [propose, apply, review, done]
+  # 状态机边界标记:none=无前置, unchanged=本命令不改变状态。
+  boundaries: [none, unchanged]
+  # change_from 允许值(核心 + none + unchanged)。
+  from_set: [none, propose, apply, review, done, unchanged]
+  # change_to 允许值(核心 + unchanged)。
+  to_set: [unchanged, propose, apply, review, done]
+
+task_status:
+  # 单个 task 的执行状态。
+  core: [todo, in_progress, blocked, partial, aborted, done]
+
+finding_status:
+  # review finding 的处置状态。
+  core: [open, fixed, accepted]
+  # 空值标记:无 finding 时使用(代码先排除再校验核心集)。
+  empty_markers: [无, "-"]
+
+validation_mapping_status:
+  # spec validation_map 每行的闭环状态。
+  core: [todo, apply-covered, test-covered, gap]
+  # 已闭环子集(apply + test 两阶段覆盖)。
+  closed: [apply-covered, test-covered]
+
+test_mode:
+  # cc-test 的模式。
+  core: [supplement, recovery]
