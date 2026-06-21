@@ -77,10 +77,10 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 |------|------|--------------|----------|------|
 | A12 | subagent 合同形式收敛 | #6(契约部分) | `runtime/subagents/cc-inspect-codebase.yaml` + schema 仅允许 contract 形态 | ✅ 完成 |
 | E2 | 统一结构化错误处理 | #3 | `harness_runtime.issues` 单一来源,9 脚本收敛,cc-verify 聚合 | ✅ 完成 |
-| A2/A3 | topic_rules 样板/注册收敛 | #9 / 结构 | `detection-patterns.yaml` 在磁盘但**未注册**进 `core.yaml` topic_rules(实测 drift) | 待办 |
-| A4 | profiles 强制执行 | #9 | `profile.schema.json` + `language-profile.schema.json` 在位;运行时强制加载 profile 待办 | 待办 |
-| A5 | 去重 | #9 | `profile.schema.json`(81 行)与 `language-profile.schema.json`(135 行)标题不同,重叠度待确认是否合并 | 候选 |
-| A9 | 孤儿 schema 清理 | 结构 | `tasks.schema.json`、`test-spec.schema.json` 全仓**零引用**(实测孤儿) | 待办 |
+| A2/A3 | topic_rules 样板/注册收敛 | #9 / 结构 | ❌ 描述错误(本轮证伪):`detection-patterns.yaml` 是 `cc-topic-trigger` 配置文件,属独立机制,本就不进 `core.yaml` topic_rules 注册(那 29 个是命令装载用 topic-rule)。非 drift | 不做 |
+| A4 | profiles 强制执行 | #9 | language-profile 已被 cc-doctor-check 强制(E_DOCTOR006);项目 profile.schema 强制校验缺口待查 | 待查 |
+| A5 | 去重 | #9 | ❌ 描述错误(本轮证伪):`profile.schema`(项目 profile,id/description/topic_rules/subagents/validation/interaction)与 `language-profile.schema`(语言 profile,version/language/project_detection/verification/fixtures)字段完全不重叠,不同概念 | 不做 |
+| A9 | 孤儿 schema 清理 | 结构 | 删除 `tasks.schema.json`、`test-spec.schema.json`(c5297c5 废弃蓝图:描述 JSON 但实际文档是 markdown,字段双错配,历史零引用)。保留 `review.schema`/`spec.schema`(结构契约:被 cc-gate-stats/validate_spec 对齐字段,非孤儿) | ✅ 完成 |
 | D1 | hooks warn + 补 spec | In-loop 闸门 | `no-spec-no-code.py` 钩子已在位,warn 强度 + spec 补全方向待定 | 缓置 |
 | D2 | spec↔code drift 检测 | #3 / #6 | cc-deps orphans 已 Issue 契约化(E_ORPHAN001)+ 接入 cc-verify 两路;无声明源时 pass(框架自维护豁免) | ✅ 完成 |
 | D3 | delta-spec | #3 / #8 | `cc-spec-scope-check` 新建:E_SCOPE001(out_of_scope_flagged 无 spec_review_flag)+ E_SCOPE002(tasks 声明文件未入 review scope 表);接入 cc-verify 两路。注:已存在的 `cc-delta-check` 是 delta-verify(回归检测),非此项 | ✅ 完成 |
