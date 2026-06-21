@@ -1,0 +1,10 @@
+id: cc-sync-check-done-without-review
+description: |
+  cc-sync-check enforces the cross-document sync gate: a change whose spec is
+  status=done without a passing review must fail (exit 1) with E_SYNC001.
+command:
+  - bash
+  - .claude/evals/fixtures/sync-check/run.sh
+expect_exit_code: 0
+expect_output_contains:
+  - "sync-check fixture: OK"

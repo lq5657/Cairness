@@ -66,7 +66,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | 4 | 强化项目接入检查 | 部分 | `cc-preflight` + `cc-doctor-check` 已存在;doctor 式 readiness(scaffold 布局/CI fixture 路径/可执行脚本/runtime 注册/项目入口)覆盖面待核实 |
 | 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
 | 6 | Subagent 证据质量闸门 | 部分 | A12 已完成合同文件形式收敛(`runtime/subagents/*.yaml` + schema 单形态);**证据空但结构合法判为无效**这条闸门尚未落地 |
-| 7 | eval 行为重放 | 部分 | `.claude/evals/behavior/` 已有 2 case(`cc-verify-explicit-fixture`、`knowledge-cli-roundtrip`);缺失硬闸门/非法状态/禁止写场景覆盖待扩 |
+| 7 | eval 行为重放 | ✅ 完成 | `.claude/evals/behavior/` 6 case:explicit-fixture、knowledge-cli-roundtrip、role-check 写边界、sync-check done-without-review、deps-orphans(D2)、spec-scope(D3);覆盖缺失硬闸门/非法状态/禁止写场景 |
 | 8 | 增量校验模式 | 部分 | `cc-delta-check` 已存在(对比两份 verify 报告检测回归 = delta-verify);changed-only 本地迭代增量校验待办 |
 | 9 | 语言 profile 分离 | 部分 | `language-profile.schema.json` + `profile.schema.json` 双 schema 在位;topic-rules 按语言已拆分(go/python/java/cpp/typescript);生命周期命令语言中立度与 profile 强制执行待办 |
 | 10 | 升级安全机制 | 部分 | `cc-upgrade-check` 已存在;版本感知合并报告 + `.cairness/` 保护覆盖面待核实 |
@@ -84,7 +84,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | D1 | hooks warn + 补 spec | In-loop 闸门 | `no-spec-no-code.py` 钩子已在位,warn 强度 + spec 补全方向待定 | 缓置 |
 | D2 | spec↔code drift 检测 | #3 / #6 | cc-deps orphans 已 Issue 契约化(E_ORPHAN001)+ 接入 cc-verify 两路;无声明源时 pass(框架自维护豁免) | ✅ 完成 |
 | D3 | delta-spec | #3 / #8 | `cc-spec-scope-check` 新建:E_SCOPE001(out_of_scope_flagged 无 spec_review_flag)+ E_SCOPE002(tasks 声明文件未入 review scope 表);接入 cc-verify 两路。注:已存在的 `cc-delta-check` 是 delta-verify(回归检测),非此项 | ✅ 完成 |
-| C1 | 行为 eval | #7 | `.claude/evals/behavior/` 已有 2 case;场景覆盖待扩 | 部分 |
+| C1 | 行为 eval | #7 | `.claude/evals/behavior/` 6 case 覆盖 4 类硬闸门(role/sync/orphan/scope)+ 2 fixture;`tests/test_behavior_cases.py` 守护 | ✅ 完成 |
 
 ### 维护约定
 

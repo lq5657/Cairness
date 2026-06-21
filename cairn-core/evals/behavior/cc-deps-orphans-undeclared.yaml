@@ -1,0 +1,10 @@
+id: cc-deps-orphans-undeclared
+description: |
+  cc-deps orphans enforces the orphan-change gate: a staged file not declared
+  in any change's tasks.md must be detected and reported with E_ORPHAN001.
+command:
+  - bash
+  - .claude/evals/fixtures/deps-orphans/run.sh
+expect_exit_code: 0
+expect_output_contains:
+  - "deps-orphans fixture: OK"

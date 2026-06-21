@@ -82,7 +82,8 @@ def test_scope001_out_of_scope_flag_without_spec_review_flag(tmp_path):
 
 
 def test_scope001_satisfied_when_log_has_spec_review_flag(tmp_path):
-    """out_of_scope_flagged row backed by a log.md spec_review_flag → no E_SCOPE001."""
+    """out_of_scope_flagged row backed by a log.md spec_review_flag that references
+    the file → no E_SCOPE001."""
     changes = tmp_path / "changes" / "C-test"
     _write_change(
         changes,
@@ -94,6 +95,27 @@ def test_scope001_satisfied_when_log_has_spec_review_flag(tmp_path):
     assert proc.returncode == 0, proc.stderr
     report = json.loads(proc.stdout)
     assert not any(i["code"] == "E_SCOPE001" for i in report["issues"])
+
+
+def test_scope001_flag_marker_without_file_reference_still_fails(tmp_path):
+    """Precision lift: log.md has the spec_review_flag marker but does NOT
+    reference the flagged file → still E_SCOPE001. This is stricter than
+    cc-verify's review-coverage warning, which would pass on marker alone."""
+    changes = tmp_path / "changes" / "C-test"
+    _write_change(
+        changes,
+        tasks="**涉及文件**:\n- a.go\n",
+        review=_SCOPE_TABLE + "| a.go | no | out_of_scope_flagged | 0 | drifted |\n",
+        # marker present, but only mentions an unrelated file
+        log="# Log\n\n## spec_review_flag\n\n- other.go had a scope issue\n",
+    )
+    proc = _run(["--json", str(changes)])
+    assert proc.returncode == 1
+    report = json.loads(proc.stdout)
+    assert any(
+        i["code"] == "E_SCOPE001" and "a.go" in i["message"] and "does not reference" in i["message"]
+        for i in report["issues"]
+    )
 
 
 def test_scope002_declared_file_missing_from_review_table(tmp_path):

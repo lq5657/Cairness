@@ -133,3 +133,45 @@ def test_cc_deps_orphans_text_stderr_format(tmp_path, monkeypatch):
     code, _out, err = _run_main(mod, ["orphans"], monkeypatch)
     assert code == 1
     assert "E_ORPHAN001 rogue.go:" in err
+
+
+def test_cc_deps_orphans_root_hard_fails_on_missing_dir(tmp_path, monkeypatch):
+    """Explicit --root pointing at a missing directory must hard-fail (E_DEPS001),
+    not silently pass. An empty git diff from a broken path would otherwise mask
+    the error — this is the roadmap #1 silent-pass boundary."""
+    mod = _load_cc_deps()
+    monkeypatch.setattr(mod, "project_root", lambda: tmp_path)
+
+    code, out, _err = _run_main(mod, ["orphans", "--json", "--root", "/tmp/cc-deps-missing-xyz-9999"], monkeypatch)
+    assert code == 1
+    report = json.loads(out)
+    assert report["status"] == "failed"
+    assert any(i["code"] == "E_DEPS001" for i in report["issues"])
+
+
+def test_cc_deps_orphans_root_hard_fails_on_non_git_dir(tmp_path, monkeypatch):
+    """Explicit --root at an existing but non-git directory must hard-fail."""
+    mod = _load_cc_deps()
+    nongit = tmp_path / "not-a-repo"
+    nongit.mkdir()
+    monkeypatch.setattr(mod, "project_root", lambda: tmp_path)
+
+    code, out, _err = _run_main(mod, ["orphans", "--json", "--root", str(nongit)], monkeypatch)
+    assert code == 1
+    report = json.loads(out)
+    assert report["status"] == "failed"
+    assert any(i["code"] == "E_DEPS001" for i in report["issues"])
+
+
+def test_cc_deps_orphans_root_accepts_valid_git_repo(tmp_path, monkeypatch):
+    """Explicit --root at a real git repo works (no E_DEPS001); empty diff passes."""
+    mod = _load_cc_deps()
+    root = _make_git_repo(tmp_path)  # staged files committed-free: no staged diff
+    # Stage nothing extra → empty staged diff → passes (no declared source is a
+    # separate axis; here we only assert no E_DEPS001 root error).
+    monkeypatch.setattr(mod, "project_root", lambda: tmp_path)
+    code, out, _err = _run_main(mod, ["orphans", "--json", "--root", str(root)], monkeypatch)
+    assert code == 0
+    report = json.loads(out)
+    assert not any(i["code"] == "E_DEPS001" for i in report["issues"])
+

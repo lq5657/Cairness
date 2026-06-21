@@ -30,6 +30,7 @@ from harness_runtime.issues import Issue, build_report
 
 
 ORPHAN_ISSUE_CODE = "E_ORPHAN001"
+DEPS_ROOT_CODE = "E_DEPS001"
 
 
 @dataclass
@@ -493,6 +494,27 @@ def _get_git_diff_files(root: Path, staged: bool = True) -> list[str]:
         return []
 
 
+def _is_git_repo(root: Path) -> bool:
+    """True iff `root` exists and is inside a git working tree.
+
+    When --root is supplied explicitly we must hard-fail on a missing or
+    non-git target rather than silently passing (an empty git diff is
+    indistinguishable from a broken path, which would mask the error).
+    """
+    if not root.exists():
+        return False
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
 def _file_matches_declared(git_file: str, declared_files: set[str]) -> bool:
     """检查 git 文件是否匹配 change 中声明的任何文件路径。"""
     for df in declared_files:
@@ -655,6 +677,12 @@ def main() -> None:
         default=False,
         help="JSON 格式输出",
     )
+    orphans_p.add_argument(
+        "--root",
+        type=str,
+        default=None,
+        help="项目根目录 (默认: 脚本所在 cairn-core 的父目录)",
+    )
 
     args = parser.parse_args()
 
@@ -691,8 +719,28 @@ def main() -> None:
             sys.exit(1)
 
     elif args.command == "orphans":
+        orphan_root = Path(args.root) if args.root else root
+        if args.root and not _is_git_repo(orphan_root):
+            # Explicit --root must point at a real git working tree; an empty
+            # git diff from a missing/non-git path would silently pass and mask
+            # the error (roadmap #1: missing evidence must be visible).
+            issues = [
+                Issue(
+                    DEPS_ROOT_CODE,
+                    str(orphan_root),
+                    "explicit --root must be an existing directory inside a git working tree",
+                )
+            ]
+            report = build_report("cc-deps-orphans", issues)
+            if args.json:
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+            else:
+                for entry in report["issues"]:
+                    print(f"{entry['code']} {entry['path']}: {entry['message']}", file=sys.stderr)
+            sys.exit(1)
+        orphan_changes = discover_changes(orphan_root) if args.root else changes
         staged = not args.working
-        result = detect_orphans(root, staged=staged, changes=changes)
+        result = detect_orphans(orphan_root, staged=staged, changes=orphan_changes)
         if args.working:
             result["staged"] = False
 
