@@ -172,14 +172,16 @@ def capability_enabled(config: dict[str, object], profile: LanguageProfile, capa
 
 
 def capability_display_name(command: list[str], capability: str) -> str:
-    if command[:2] == ["go", "test"]:
-        return "go test"
-    if command[:2] == ["go", "vet"]:
-        return "go vet"
-    if command and command[0] == "golangci-lint":
-        return "golangci-lint"
+    """Display name for a verification command, language-neutral.
+
+    Takes the first two command tokens (e.g. 'go test', 'python -m',
+    'golangci-lint run') so every language's capability renders consistently
+    rather than special-casing Go commands.
+    """
+    if len(command) >= 2:
+        return " ".join(command[:2])
     if command:
-        return command[0] if len(command) == 1 else " ".join(command[:2])
+        return command[0]
     return capability
 
 
@@ -302,12 +304,6 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "cause": "The explicit fixture path does not resolve to a supported language profile.",
             "fix_hint": "Use a fixture path containing repository markers declared by an installed language profile.",
             "doc_ref": ".claude/runtime/protocol.yaml",
-        }
-    if name in {"go test", "go vet", "golangci-lint"}:
-        return {
-            "cause": f"{name} failed for the selected Go project.",
-            "fix_hint": "Inspect the command output, fix the Go failure, then rerun cc-verify.",
-            "doc_ref": ".claude/runtime/languages/golang.yaml",
         }
     if name == "project checks" and "language profile unresolved" in stderr:
         return {
