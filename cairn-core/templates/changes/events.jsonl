@@ -1,2 +1,0 @@
-{"schema_version":2,"event_id":"<event-id>","occurred_at":"<iso8601>","command":"cc-propose","change_id":"<change-id>","actor":"<agent-or-user>","transition":{"from":"none","to":"propose"},"summary":"<summary>","evidence":["<artifact-or-command>"],"duration_ms":0,"token_count":0,"subagent_count":0,"verification_status":"passed","files_changed":0}
-

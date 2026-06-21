@@ -1,0 +1,248 @@
+#!/usr/bin/env python3
+"""Write one schema-valid lifecycle event to a change's events.jsonl.
+
+This is the single write entry point for Harness lifecycle events (roadmap #5).
+The Claude agent decides *when* to record a transition and *what* it means; this
+script guarantees the recorded line is shape-valid before it lands, and prevents
+accidental duplicate writes.
+
+Contract:
+
+  - Resolves the change dir as ``<project-root>/.cairness/changes/<change-id>/``.
+    The project root defaults to the current working directory (the agent runs
+    this from the target project). ``--project-root`` overrides it.
+  - The change dir must already exist (cc-propose scaffolds it). Missing dir →
+    ``E_EVENTW002`` (the writer never creates change scaffolds).
+  - ``events.jsonl`` is created on first write (append mode). First write is
+    the opt-in moment — once a change logs events, ``cc-event-check`` E_EVENT020
+    holds it to event↔spec consistency.
+  - The event is validated in memory via the shared ``harness_runtime.events``
+    validator *before* append. Any E_EVENT00x violation refuses the write and is
+    surfaced (single contract, no writer-specific validation codes).
+  - ``event_id`` defaults to ``<command>-<change-id>-<YYYYMMDDhhmmss>``. A
+    pre-existing ``event_id`` in the log refuses the append (``E_EVENTW001``)
+    unless ``--force-duplicate`` is set. This brackets the write path against
+    ``cc-event-check``'s post-hoc E_EVENT015 duplicate detection.
+  - ``--dry-run`` validates and prints the event without writing.
+
+Exit codes: 0 on success, 1 on validation/duplicate/path failure, 2 on argparse
+error.
+
+The script deliberately does NOT mutate ``spec.md`` status (the agent's job per
+lifecycle command prose) or ``task-board.md``. It is event-only: spec status is
+intent, the event log is the audit trail.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from harness_runtime.events import CHANGE_ID_RE, validate_event
+from harness_runtime.issues import Issue, add, build_report, issues_to_dicts
+
+WRITER_ISSUE_PATH = "<cc-event-write>"  # synthetic path for writer-local issues
+
+
+def _parse_int_flag(value: str, field: str, issues: list[Issue]) -> int | None:
+    try:
+        n = int(value)
+    except ValueError:
+        add(issues, "E_EVENTW003", WRITER_ISSUE_PATH, f"--{field} must be an integer")
+        return None
+    if n < 0:
+        add(issues, "E_EVENTW003", WRITER_ISSUE_PATH, f"--{field} must be a non-negative integer")
+        return None
+    return n
+
+
+def _parse_json_flag(value: str, field: str, issues: list[Issue]) -> Any:
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as exc:
+        add(issues, "E_EVENTW004", WRITER_ISSUE_PATH, f"--{field} must be valid JSON: {exc}")
+        return None
+
+
+def default_event_id(command: str, change_id: str, now: datetime) -> str:
+    """Deterministic id: ``<command>-<change-id>-<YYYYMMDDhhmmss>``.
+
+    Collisions within the same second are expected (re-run of the same command
+    in the same minute); they are refused by the duplicate guard, forcing the
+    agent to pass ``--event-id`` explicitly or ``--force-duplicate``.
+    """
+    stamp = now.strftime("%Y%m%d%H%M%S")
+    return f"{command}-{change_id}-{stamp}"
+
+
+def build_event(args: argparse.Namespace, now: datetime) -> tuple[dict[str, Any], list[Issue]]:
+    """Assemble the event dict from CLI args, collecting writer-local issues."""
+    issues: list[Issue] = []
+    event: dict[str, Any] = {
+        "schema_version": args.schema_version,
+        "event_id": args.event_id or default_event_id(args.command, args.change_id, now),
+        "occurred_at": args.occurred_at or now.isoformat(),
+        "command": args.command,
+        "change_id": args.change_id,
+        "actor": args.actor,
+        "transition": {"from": args.from_state, "to": args.to_state},
+        "summary": args.summary,
+        "evidence": list(args.evidence),
+    }
+    # v2 optional fields, only set when provided (keeps schema-version-1 lines clean).
+    for field in ("duration_ms", "token_count", "subagent_count", "files_changed"):
+        val = getattr(args, field, None)
+        if val is not None:
+            event[field] = val
+    if args.verification_status is not None:
+        event["verification_status"] = args.verification_status
+    if args.findings_summary is not None:
+        event["findings_summary"] = args.findings_summary
+    if args.gate_effectiveness is not None:
+        event["gate_effectiveness"] = args.gate_effectiveness
+    return event, issues
+
+
+def existing_event_ids(events_file: Path) -> set[str]:
+    """Read existing event_id values from the log (best-effort, line-by-line)."""
+    ids: set[str] = set()
+    if not events_file.exists():
+        return ids
+    for line in events_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get("event_id"), str):
+            ids.add(obj["event_id"])
+    return ids
+
+
+def append_event(events_file: Path, event: dict[str, Any]) -> None:
+    """Append one JSON line + trailing newline, creating the file if absent."""
+    line = json.dumps(event, ensure_ascii=False)
+    with events_file.open("a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+
+def write_event(args: argparse.Namespace, now: datetime) -> dict[str, Any]:
+    """Validate + append the event. Returns the canonical JSON report.
+
+    The synthetic Issue path ``<cc-event-write>`` marks writer-local failures
+    (path missing, duplicate, flag-parse errors) so they surface in the same
+    contract as the shared validator's E_EVENT00x codes.
+    """
+    issues: list[Issue] = []
+
+    project_root = Path(args.project_root)
+    change_dir = project_root / ".cairness" / "changes" / args.change_id
+    events_file = change_dir / "events.jsonl"
+
+    if not change_dir.is_dir():
+        add(issues, "E_EVENTW002", WRITER_ISSUE_PATH, f"change dir not found: {change_dir} (cc-event-write does not create change scaffolds)")
+        return _report(args, events_file, issues)
+
+    event, build_issues = build_event(args, now)
+    issues.extend(build_issues)
+
+    # Shared shape validator — reuses cc-event-check's exact logic. We pass the
+    # real events_file path so any E_EVENT00x issue anchors to the log.
+    validate_event(events_file, 0, event, args.change_id, issues)
+
+    if not issues:
+        existing = existing_event_ids(events_file)
+        if event["event_id"] in existing and not args.force_duplicate:
+            add(issues, "E_EVENTW001", WRITER_ISSUE_PATH, f"duplicate event_id {event['event_id']} already in {events_file} (use --force-duplicate to append anyway)")
+
+    if issues:
+        return _report(args, events_file, issues, event_id=event.get("event_id"))
+
+    if not args.dry_run:
+        append_event(events_file, event)
+
+    return _report(args, events_file, issues, event_id=event["event_id"], written=not args.dry_run)
+
+
+def _report(args: argparse.Namespace, events_file: Path, issues: list[Issue], *, event_id: str | None = None, written: bool = False) -> dict[str, Any]:
+    status = "passed" if not issues else "failed"
+    return build_report(
+        "cc-event-write",
+        issues,
+        status=status,
+        extra={
+            "change_id": args.change_id,
+            "events_file": str(events_file),
+            "event_id": event_id,
+            "written": written,
+        },
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Append one schema-valid lifecycle event to a change's events.jsonl.")
+    parser.add_argument("--change-id", required=True, help="Change directory name (kebab-case).")
+    parser.add_argument("--command", required=True, help="Command that produced this transition (cc-<name>).")
+    parser.add_argument("--from", dest="from_state", required=True, help="transition.from state.")
+    parser.add_argument("--to", dest="to_state", required=True, help="transition.to state.")
+    parser.add_argument("--summary", required=True, help="One-line event summary.")
+    parser.add_argument("--evidence", action="append", required=True, help="Evidence reference (repeatable, >=1).")
+    parser.add_argument("--actor", default="claude-agent", help="Who/what performed the transition.")
+    parser.add_argument("--occurred-at", default=None, help="ISO8601 timestamp (default: now UTC).")
+    parser.add_argument("--event-id", default=None, help="Override the default generated event_id.")
+    parser.add_argument("--schema-version", type=int, choices=[1, 2], default=2, help="Event schema version (default 2).")
+    parser.add_argument("--duration-ms", default=None, help="v2: non-negative integer.")
+    parser.add_argument("--token-count", default=None, help="v2: non-negative integer.")
+    parser.add_argument("--subagent-count", default=None, help="v2: non-negative integer.")
+    parser.add_argument("--files-changed", default=None, help="v2: non-negative integer.")
+    parser.add_argument("--verification-status", choices=["passed", "failed", "partial", "not_run"], default=None, help="v2: verification outcome.")
+    parser.add_argument("--findings-summary", default=None, help="v2: JSON object.")
+    parser.add_argument("--gate-effectiveness", default=None, help="v2: JSON object.")
+    parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--dry-run", action="store_true", help="Validate and print without writing.")
+    parser.add_argument("--force-duplicate", action="store_true", help="Allow appending an event_id already present.")
+    return parser
+
+
+def main(argv: list[str]) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    now = datetime.now(timezone.utc)
+
+    # Parse v2 numeric/JSON flags through the issue contract (no exceptions).
+    issues_pre: list[Issue] = []
+    for field in ("duration_ms", "token_count", "subagent_count", "files_changed"):
+        raw = getattr(args, field, None)
+        if raw is not None:
+            setattr(args, field, _parse_int_flag(raw, field.replace("_", "-"), issues_pre))
+    if args.findings_summary is not None:
+        args.findings_summary = _parse_json_flag(args.findings_summary, "findings-summary", issues_pre)
+    if args.gate_effectiveness is not None:
+        args.gate_effectiveness = _parse_json_flag(args.gate_effectiveness, "gate-effectiveness", issues_pre)
+
+    if issues_pre:
+        report = build_report("cc-event-write", issues_pre, status="failed", extra={"change_id": args.change_id})
+    else:
+        report = write_event(args, now)
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        action = "would append" if args.dry_run else "appended"
+        print(f"cc-event-write: {action} {report['event_id']} to {report['events_file']}")
+    else:
+        for issue in report["issues"]:
+            path = issue["path"]
+            print(f"{issue['code']} {path}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

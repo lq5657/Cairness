@@ -4,32 +4,15 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
 
 from harness_runtime.issues import Issue, add, issues_to_dicts
-from harness_runtime.enums import enum_set, load_enums
-
-
-CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
-_ENUMS = load_enums()
-VALID_FROM = enum_set(_ENUMS, "change_status", "from_set")
-VALID_TO = enum_set(_ENUMS, "change_status", "to_set")
-VALID_VERIFICATION_STATUS = {"passed", "failed", "partial", "not_run"}
-VALID_SCHEMA_VERSIONS = {1, 2}
-COMMAND_TO = {
-    "cc-propose": "propose",
-    "cc-apply": "review",
-    "cc-review": "review",
-    "cc-fix": "review",
-    "cc-test": "unchanged",
-    "cc-archive": "done",
-    "cc-promote-audit": "unchanged",
-    "cc-discuss": "unchanged",
-}
+from harness_runtime.events import (
+    CHANGE_ID_RE,
+    validate_event,
+)
 
 
 def read(path: Path) -> str:
@@ -47,59 +30,83 @@ def discover_event_logs(project_root: Path, inputs: list[Path]) -> list[Path]:
     return sorted(logs)
 
 
-def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues: list[Issue]) -> None:
-    if not isinstance(event, dict):
-        add(issues, "E_EVENT001", path, f"line {line_no}: event must be an object")
-        return
-    required = {"schema_version", "event_id", "occurred_at", "command", "change_id", "actor", "transition", "summary", "evidence"}
-    missing = sorted(required - set(event))
-    if missing:
-        add(issues, "E_EVENT002", path, f"line {line_no}: missing {missing}")
-    if event.get("schema_version") not in VALID_SCHEMA_VERSIONS:
-        add(issues, "E_EVENT003", path, f"line {line_no}: schema_version must be 1 or 2")
-    if not isinstance(event.get("event_id"), str) or not CHANGE_ID_RE.match(event.get("event_id", "")):
-        add(issues, "E_EVENT004", path, f"line {line_no}: invalid event_id")
-    command = event.get("command")
-    if not isinstance(command, str) or not COMMAND_RE.match(command):
-        add(issues, "E_EVENT005", path, f"line {line_no}: invalid command")
-    if event.get("change_id") != change_id:
-        add(issues, "E_EVENT006", path, f"line {line_no}: change_id must match directory {change_id}")
-    for field in ("occurred_at", "actor", "summary"):
-        if not isinstance(event.get(field), str) or not event.get(field):
-            add(issues, "E_EVENT007", path, f"line {line_no}: {field} must be a non-empty string")
-    transition = event.get("transition")
-    if not isinstance(transition, dict):
-        add(issues, "E_EVENT008", path, f"line {line_no}: transition must be an object")
-    else:
-        from_state = transition.get("from")
+def _latest_meaningful_to(events: list[Any]) -> str | None:
+    """The most recent event's ``transition.to`` that carries lifecycle signal.
+
+    ``unchanged`` (cc-test/cc-discuss/cc-promote-audit) is a no-op marker that
+    washes out the latest asserted state, so we skip it. Only well-formed events
+    whose transition is a dict with a ``to`` value count — malformed lines are
+    already flagged by E_EVENT00x and must not feed the consistency check (else
+    E_EVENT020 would pile on behind a shape error).
+    """
+    latest: str | None = None
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        transition = event.get("transition")
+        if not isinstance(transition, dict):
+            continue
         to_state = transition.get("to")
-        if from_state not in VALID_FROM:
-            add(issues, "E_EVENT009", path, f"line {line_no}: invalid transition.from {from_state}")
-        if to_state not in VALID_TO:
-            add(issues, "E_EVENT010", path, f"line {line_no}: invalid transition.to {to_state}")
-        expected_to = COMMAND_TO.get(command)
-        if expected_to and to_state != expected_to:
-            add(issues, "E_EVENT011", path, f"line {line_no}: {command} must transition to {expected_to}")
-    evidence = event.get("evidence")
-    if not isinstance(evidence, list) or not evidence or not all(isinstance(item, str) and item for item in evidence):
-        add(issues, "E_EVENT012", path, f"line {line_no}: evidence must be a non-empty string list")
-    if event.get("schema_version") == 2:
-        for field in ("duration_ms", "token_count", "subagent_count", "files_changed"):
-            val = event.get(field)
-            if val is not None and (not isinstance(val, int) or val < 0):
-                add(issues, "E_EVENT016", path, f"line {line_no}: {field} must be a non-negative integer")
-        vs = event.get("verification_status")
-        if vs is not None and vs not in VALID_VERIFICATION_STATUS:
-            add(issues, "E_EVENT017", path, f"line {line_no}: invalid verification_status {vs}")
-        fs = event.get("findings_summary")
-        if fs is not None:
-            if not isinstance(fs, dict):
-                add(issues, "E_EVENT018", path, f"line {line_no}: findings_summary must be an object")
-            else:
-                for fk in ("total_open", "total_fixed", "total_accepted"):
-                    fv = fs.get(fk)
-                    if fv is not None and (not isinstance(fv, int) or fv < 0):
-                        add(issues, "E_EVENT019", path, f"line {line_no}: findings_summary.{fk} must be a non-negative integer")
+        if isinstance(to_state, str) and to_state != "unchanged":
+            latest = to_state
+    return latest
+
+
+# spec.md status <-> latest event transition.to compatibility.
+# ``apply`` is a transient mid-cc-apply status (no command terminates in apply
+# per COMMAND_TO); it is compatible with a latest event of propose or review so
+# the check does not fire on every in-flight cc-apply. Any spec status not in
+# this map (missing/malformed) opts out — pass silently (cc-schema-check owns
+# spec frontmatter validation).
+SPEC_STATUS_COMPATIBLE_EVENT_TO: dict[str, set[str]] = {
+    "propose": {"propose"},
+    "apply": {"propose", "review"},
+    "review": {"review"},
+    "done": {"done"},
+}
+
+
+def _parse_spec_status(spec_path: Path) -> str | None:
+    """Read the ``status`` field from spec.md YAML frontmatter.
+
+    Inlined (not imported from change_docs.parse_meta) deliberately: cc-event-check
+    has no other reason to reach into change_docs, and parse_meta is typed/list-aware
+    for a different caller surface. ~12 lines of frontmatter parsing is cheaper
+    than a cross-module coupling for one field.
+    """
+    if not spec_path.exists():
+        return None
+    text = spec_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if line.startswith("status:"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def check_event_spec_consistency(path: Path, events: list[Any], issues: list[Issue]) -> None:
+    """E_EVENT020: latest meaningful event transition.to must be compatible with spec.md status.
+
+    Opt-in by file presence: only asserts when events.jsonl has at least one
+    well-formed event AND a sibling spec.md exists with a parseable status.
+    Absent events.jsonl (the framework repo, historical changes that never
+    logged) → no assertion. This preserves the runtime-model opt-in policy.
+    """
+    latest_to = _latest_meaningful_to(events)
+    if latest_to is None:
+        return  # no well-formed lifecycle event recorded → nothing to assert
+    spec_status = _parse_spec_status(path.parent / "spec.md")
+    if spec_status is None:
+        return  # no spec.md or no status → out of scope (cc-schema-check owns this)
+    compatible = SPEC_STATUS_COMPATIBLE_EVENT_TO.get(spec_status)
+    if compatible is None:
+        return  # unrecognized spec status → don't double-report
+    if latest_to not in compatible:
+        add(issues, "E_EVENT020", path, f"events.jsonl latest non-unchanged transition.to is '{latest_to}' but spec.md status is '{spec_status}'")
 
 
 def validate_log(path: Path, issues: list[Issue]) -> None:
@@ -107,6 +114,7 @@ def validate_log(path: Path, issues: list[Issue]) -> None:
     if not CHANGE_ID_RE.match(change_id):
         add(issues, "E_EVENT013", path, f"invalid change directory name {change_id}")
     previous_ids: set[str] = set()
+    parsed_events: list[Any] = []
     for idx, raw_line in enumerate(read(path).splitlines(), start=1):
         line = raw_line.strip()
         if not line:
@@ -116,12 +124,16 @@ def validate_log(path: Path, issues: list[Issue]) -> None:
         except json.JSONDecodeError as exc:
             add(issues, "E_EVENT014", path, f"line {idx}: invalid JSON: {exc}")
             continue
+        parsed_events.append(event)
         event_id = event.get("event_id") if isinstance(event, dict) else None
         if isinstance(event_id, str):
             if event_id in previous_ids:
                 add(issues, "E_EVENT015", path, f"line {idx}: duplicate event_id {event_id}")
             previous_ids.add(event_id)
         validate_event(path, idx, event, change_id, issues)
+    # Event↔spec consistency is opt-in (only when events exist) and runs after
+    # per-line validation so it never piles on behind shape errors.
+    check_event_spec_consistency(path, parsed_events, issues)
 
 
 def build_report(inputs: list[Path]) -> dict[str, Any]:
