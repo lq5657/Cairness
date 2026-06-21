@@ -96,3 +96,13 @@ def test_missing_enum_or_subset_fails_loudly(enums):
         enum_set(enums, "nonexistent_enum", "core")
     with pytest.raises(SystemExit):
         enum_set(enums, "change_status", "nonexistent_subset")
+
+
+def test_change_docs_valid_sets_derive_from_enums_yaml(enums):
+    """Step 2: change_docs.VALID_* are now derived from enums.yaml, not
+    hard-coded. A drift between the two must fail here."""
+    import change_docs  # noqa: E402
+    assert change_docs.VALID_CHANGE_STATUS == enum_set(enums, "change_status", "core")
+    assert change_docs.VALID_TASK_STATUS == enum_set(enums, "task_status", "core")
+    assert change_docs.VALID_MAPPING_STATUS == enum_set(enums, "validation_mapping_status", "core")
+    assert change_docs.VALID_TEST_MODE == enum_set(enums, "test_mode", "core")
