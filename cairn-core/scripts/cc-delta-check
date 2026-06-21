@@ -29,6 +29,15 @@ def compare(before: dict[str, object], after: dict[str, object], fail_on_warning
     names = sorted(set(before_steps) | set(after_steps))
     entries: list[dict[str, object]] = []
 
+    # A missing step is only a real regression when both reports ran the full
+    # check set. Incremental reports (changed-only/harness-only/project-only)
+    # intentionally skip steps outside the changed surface, so a step absent
+    # from an incremental report is "skipped", not "failed". Reports without a
+    # mode field (older format) are treated as full to preserve prior behavior.
+    before_mode = before.get("mode") if isinstance(before, dict) else None
+    after_mode = after.get("mode") if isinstance(after, dict) else None
+    both_full = (before_mode in (None, "full")) and (after_mode in (None, "full"))
+
     for name in names:
         old = before_steps.get(name)
         new = after_steps.get(name)
@@ -42,7 +51,13 @@ def compare(before: dict[str, object], after: dict[str, object], fail_on_warning
         added_warnings = sorted(new_warn - old_warn)
 
         if new_status == "missing":
-            category = "new-failure"
+            # Absent from after. Only a regression if both ran full; otherwise
+            # the incremental report simply didn't cover this step.
+            category = "new-failure" if both_full else "skipped"
+        elif old_status == "missing" and not both_full:
+            # Absent from an incremental before, present now — newly run, not a
+            # fix (nothing was failing before that this could fix).
+            category = "newly-run"
         elif old_status != "failed" and new_status == "failed":
             category = "new-failure"
         elif old_status == "failed" and new_status == "passed":

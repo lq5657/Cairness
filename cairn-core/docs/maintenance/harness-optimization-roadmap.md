@@ -67,7 +67,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
 | 6 | Subagent 证据质量闸门 | 部分 | A12 合同形式收敛已完成;路线 B(运行时证据投影闸门)已落地:`cc-subagent-evidence-check` E_EVIDENCE001(Critical/Important finding 缺 `**Location**: \`path:line\`` 锚点)/ E_EVIDENCE002(Location 引用文件不存在)/ E_EVIDENCE003(验证映射声称通过但证据列为空),经 cc-verify 两路串行;模板占位由 finding_rows 真实行 + Finding #N 块 + 2.1 表三信号联合判定跳过,框架仓库 discover 自然豁免。**待办(路线 A)**:subagent payload 字面契约校验(evidence 数组 ≥ min_evidence_items)依赖 payload 落盘约定,本轮不动 |
 | 7 | eval 行为重放 | ✅ 完成 | `.claude/evals/behavior/` 6 case:explicit-fixture、knowledge-cli-roundtrip、role-check 写边界、sync-check done-without-review、deps-orphans(D2)、spec-scope(D3);覆盖缺失硬闸门/非法状态/禁止写场景 |
-| 8 | 增量校验模式 | 部分 | `cc-delta-check` 已存在(对比两份 verify 报告检测回归 = delta-verify);changed-only 本地迭代增量校验待办 |
+| 8 | 增量校验模式 | ✅ 完成 | `cc-verify --changed-only` 已落地(cc-verify:847-914 git diff+untracked 检测变更面,按 harness_changed/changed_dirs 裁剪 check 集合;README:185 示范)。`cc-delta-check`(delta-verify,对比两份 verify 报告检测回归)已加 mode 联动:增量报告(changed-only/harness-only/project-only)missing step 判 skipped 非回归,仅 both-full 时 missing 才算 new-failure;无 mode 字段(旧格式)视为 full 向后兼容。CI/发布仍跑 full 兜底;跨文件影响盲区由 CI 全量兜底(设计契约,runtime-model.md:118)。2026-06-21 核实:原"待办"为文档漂移,changed-only 代码早已达成功能目标 |
 | 9 | 语言 profile 分离 | 部分 | `language-profile.schema.json` + `profile.schema.json` 双 schema 在位;topic-rules 按语言已拆分(go/python/java/cpp/typescript);生命周期命令语言中立度与 profile 强制执行待办 |
 | 10 | 升级安全机制 | ✅ 完成 | `.cairness/` 保护:E_UPGRADE004/005 + 新增 `_replace_framework_dir` dst.name=`.cairness` 拒绝(UpgradeSafetyError)+ E_UPGRADE007 反向污染(`.cairness/` 下混入框架资产)。版本感知合并报告:`_replace_framework_dir` report-only——检测用户定制且新版本也不同的框架文件,stdout 报告 + sidecar `.merge-report.json`(不改覆盖语义,排除 VERSION/CHANGELOG/UPGRADE 元数据噪声)。2026-06-21 核实:保护基本到位,真缺口是静默覆盖无报告 |
 
@@ -89,6 +89,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | D3 | delta-spec | #3 / #8 | `cc-spec-scope-check` 新建:E_SCOPE001(out_of_scope_flagged 无 spec_review_flag)+ E_SCOPE002(tasks 声明文件未入 review scope 表);接入 cc-verify 两路。注:已存在的 `cc-delta-check` 是 delta-verify(回归检测),非此项 | ✅ 完成 |
 | D4 | subagent 证据投影闸门(路线 B) | #6 | `cc-subagent-evidence-check` 新建:E_EVIDENCE001(Critical/Important finding 缺 Location 锚点)/ E_EVIDENCE002(Location 引用文件不存在)/ E_EVIDENCE003(验证映射声称通过但证据列空),接入 cc-verify 两路。路线 B 只校验已落盘 review.md 的证据可观测投影;路线 A(payload 字面契约)待 payload 落盘约定,本轮不动。守护测试 17 例 | ✅ 完成 |
 | B1 | 命令协议契约(声明一致性 + taxonomy 映射) | #2 | `protocol.yaml.input_contracts` 正向回填 9 槽(不反向改 commands,避免 readset/workflow 扇出);cc-schema-check 新增 E_SCHEMA133(inputs 名未登记)/E_SCHEMA134(required 输入用 none 哨兵)/E_SCHEMA199(enum 缺 values),_PROTOCOL_CACHE 复用 merged protocol。放宽 command-protocol.schema errorContract 加 `error_codes`,error_taxonomy 9 项挂现有 E_*(N:1),E_SCHEMA131 守护形态。待办:运行时 argv 值校验 + events.jsonl 承载错误码。守护测试 8 例 | ✅ 完成 |
+| D5 | 增量校验收口 | #8 | `cc-delta-check` 加 mode 联动:增量报告(changed-only/harness-only/project-only)missing step 判 skipped 非回归,仅 both-full 时 missing 才算 new-failure;旧格式无 mode 视为 full 向后兼容。roadmap #8 原文档漂移(changed-only 早已落地)修正为 ✅。守护测试 8 例(原行为保持 + 增量 skipped + 向后兼容) | ✅ 完成 |
 | C1 | 行为 eval | #7 | `.claude/evals/behavior/` 6 case 覆盖 4 类硬闸门(role/sync/orphan/scope)+ 2 fixture;`tests/test_behavior_cases.py` 守护 | ✅ 完成 |
 
 ### 维护约定
