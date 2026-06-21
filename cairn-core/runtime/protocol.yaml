@@ -73,41 +73,93 @@ input_contracts:
     type: string
     missing_error: none
     invalid_error: invalid_input
+  # Per-command free-text inputs (registered so commands' inputs.* names are
+  # machine-checkable against input_contracts; no pattern = free text).
+  requirement_description:
+    type: string
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  topic_description:
+    type: string
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  project_idea:
+    type: string
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  fix_description:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+  research_depth:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+  discuss_mode:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+  continue_discussion:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
+  # Generic mode/scope slots: cc-test mode (supplement/recovery) and
+  # cc-inspect-codebase mode (architecture/logic/...) are different concepts,
+  # so no enum constraint; runtime argv validation is deferred.
+  mode:
+    type: string
+    missing_error: missing_required_input
+    invalid_error: invalid_input
+  scope:
+    type: string
+    missing_error: none
+    invalid_error: invalid_input
 
 error_taxonomy:
   missing_required_input:
     status: blocked
     blocking: true
+    error_codes: []  # awaits runtime argv validation (E_INPUT* deferred)
   invalid_input:
     status: blocked
     blocking: true
+    error_codes: []  # awaits runtime argv validation (E_INPUT* deferred)
   unresolved_path:
     status: blocked
     blocking: true
+    error_codes: [E_DOCTOR004, E_DOCTOR006, E_DOCTOR008, E_DOCTOR010, E_UPGRADE001, E_SCHEMA171]
   missing_required_artifact:
     status: blocked
     blocking: true
+    error_codes: [E_DOCTOR013, E_UPGRADE004, E_UPGRADE006, E_READSET007, E_SCHEMA117]
   invalid_state:
     status: blocked
     blocking: true
+    error_codes: [E_EVENT008, E_EVENT009, E_SCHEMA019, E_SCHEMA020]
   readset_drift:
     status: blocked
     blocking: true
+    error_codes: [E_READSET008, E_READSET009, E_SCHEMA150, E_SCHEMA151, E_SCHEMA152]
   workflow_runtime_drift:
     status: blocked
     blocking: true
+    error_codes: [E_SCHEMA150]
   validation_failed:
     status: blocked
     blocking: true
+    error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_INDEX001]
   user_confirmation_required:
     status: blocked
     blocking: true
+    error_codes: []  # interaction layer; no harness check emits this yet
   unsupported_command:
     status: blocked
     blocking: true
+    error_codes: []  # agent-facing; no harness check emits this yet
   legacy_fallback_required:
     status: partial
     blocking: false
+    error_codes: []  # non-blocking advisory; no harness check emits this yet
 
 result_rendering:
   success_template: .claude/templates/results/command-result.md

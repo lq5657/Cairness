@@ -55,6 +55,11 @@ TECHNOLOGY_DECISION_CATALOG_SCHEMA = "technology-decision-catalog.schema.json"
 TOPIC_RULE_SCHEMA = "topic-rule.schema.json"
 KNOWLEDGE_CATEGORIES_SCHEMA = "knowledge-categories.schema.json"
 PROFILE_SCHEMA = "profile.schema.json"
+
+# Merged protocol.yaml, cached by validate_agent_command_protocol for
+# validate_runtime_commands to check inputs.* names against input_contracts.
+# Reset per run; populated only when validate_agent_command_protocol runs first.
+_PROTOCOL_CACHE: dict[str, Any] | None = None
 VALID_PROFILE_IDS = {"minimal", "standard", "strict"}
 
 from harness_runtime.enums import enum_set, load_enums as _load_enums
@@ -847,6 +852,19 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
     path_roles = protocol.get("path_roles") if isinstance(protocol.get("path_roles"), dict) else {}
     error_taxonomy = protocol.get("error_taxonomy") if isinstance(protocol.get("error_taxonomy"), dict) else {}
     input_contracts = protocol.get("input_contracts") if isinstance(protocol.get("input_contracts"), dict) else {}
+    _E_CODE_RE = re.compile(r"^E_[A-Z]+[0-9]+$")
+    for taxon, contract in error_taxonomy.items():
+        if not isinstance(contract, dict):
+            continue
+        error_codes = contract.get("error_codes")
+        if error_codes is None:
+            continue
+        if not isinstance(error_codes, list):
+            add(issues, "E_SCHEMA131", protocol_path, f"error_taxonomy.{taxon}.error_codes must be a list")
+            continue
+        for code in error_codes:
+            if not isinstance(code, str) or not _E_CODE_RE.match(code):
+                add(issues, "E_SCHEMA131", protocol_path, f"error_taxonomy.{taxon}.error_codes entry {code!r} is not a valid E_* code")
     for name, contract in input_contracts.items():
         if not isinstance(contract, dict):
             continue
@@ -892,6 +910,12 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
         str(project_path(project_root, value)) for value in profiles.values() if isinstance(value, str)
     }:
         add(issues, "E_SCHEMA174", protocol_path, "runtime_protocol.default_language_profile must be declared in protocol language_profile.profiles")
+    # Cache the merged protocol so validate_runtime_commands can check
+    # inputs.* names against input_contracts without reloading assets.
+    # validate_runtime_manifests calls validate_agent_command_protocol before
+    # validate_runtime_commands (see that function).
+    global _PROTOCOL_CACHE
+    _PROTOCOL_CACHE = protocol if isinstance(protocol, dict) else None
     return checked
 
 
@@ -1362,6 +1386,41 @@ def validate_runtime_command_references(
         require_declared_path(project_root, path, result_contract.get("profile"), "result_contract.profile", issues)
 
 
+def validate_inputs_registered(command: str, manifest: dict[str, Any], manifest_path: Path, issues: list[Issue]) -> None:
+    """Check manifest.inputs.* names are registered in protocol.yaml input_contracts.
+
+    E_SCHEMA133: a required/optional input name is not declared in input_contracts.
+    E_SCHEMA134: a required input's contract uses missing_error: none (a required
+                 input cannot use the 'no error' sentinel).
+    E_SCHEMA199: an enum input contract is missing its values array.
+    Relies on _PROTOCOL_CACHE populated by validate_agent_command_protocol.
+    """
+    protocol = _PROTOCOL_CACHE
+    if not isinstance(protocol, dict):
+        return
+    input_contracts = protocol.get("input_contracts") if isinstance(protocol.get("input_contracts"), dict) else {}
+    inputs = manifest.get("inputs") if isinstance(manifest.get("inputs"), dict) else {}
+    for slot in ("required", "optional"):
+        names = inputs.get(slot)
+        if not isinstance(names, list):
+            continue
+        for name in names:
+            if not isinstance(name, str):
+                continue
+            contract = input_contracts.get(name)
+            if contract is None:
+                add(issues, "E_SCHEMA133", manifest_path, f"{command}.inputs.{slot}: '{name}' is not declared in protocol.yaml input_contracts")
+                continue
+            if not isinstance(contract, dict):
+                continue
+            if contract.get("type") == "enum":
+                values = contract.get("values")
+                if not isinstance(values, list) or not values:
+                    add(issues, "E_SCHEMA199", manifest_path, f"input_contracts.{name}: enum contract missing values array")
+            if slot == "required" and contract.get("missing_error") == "none":
+                add(issues, "E_SCHEMA134", manifest_path, f"{command}.inputs.required: '{name}' contract uses missing_error: none (required input cannot use the 'no error' sentinel)")
+
+
 def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     project_root = claude_root.parent
     schema_path = claude_root / "schemas" / RUNTIME_COMMAND_SCHEMA
@@ -1401,6 +1460,7 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         validate_subagent_runtime_contract(command, effective_manifest, resolved_path, issues, registered_roles)
         validate_result_contract(project_root, command, manifest, resolved_path, checked, issues)
         validate_interaction_contract(command, manifest, resolved_path, issues)
+        validate_inputs_registered(command, manifest, resolved_path, issues)
     return checked
 
 

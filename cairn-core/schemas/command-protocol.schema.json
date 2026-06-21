@@ -297,6 +297,14 @@
         },
         "blocking": {
           "type": "boolean"
+        },
+        "error_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^E_[A-Z]+[0-9]+$"
+          }
         }
       }
     }

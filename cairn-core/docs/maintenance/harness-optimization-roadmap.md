@@ -61,7 +61,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | # | 方向 | 状态 | 实测证据 |
 |---|------|------|----------|
 | 1 | 显式校验失败硬失败 | ✅ 完成 | `cc-verify:944-963` 对未解析 `--fixture` 硬失败(exit 1);`.claude/evals/behavior/cc-verify-explicit-fixture.yaml` + `cc-behavior-check` 锁定 `expect_exit_code:1`。2026-06-21 核实:全仓唯 `cc-verify` 接受 `--fixture` CLI,无静默 pass 场景 |
-| 2 | Agent 命令协议 | 部分 | `schemas/command-protocol.schema.json`(16 引用)、`command-event.schema.json`(14 引用)已存在,协议骨架在位,完整输入校验/错误分类契约待补 |
+| 2 | Agent 命令协议 | 部分 | 协议骨架在位。**声明一致性已闭环**:`protocol.yaml.input_contracts` 回填 9 槽(requirement_description/topic_description/project_idea/fix_description/research_depth/discuss_mode/continue_discussion/mode/scope),正向回填不反向改 commands(避免 readset 条件 key + workflow 重生扇出);cc-schema-check 新增 E_SCHEMA133(inputs 名未登记)/E_SCHEMA134(required 输入用 none 哨兵)/E_SCHEMA199(enum 槽缺 values),经 _PROTOCOL_CACHE 复用 merged protocol。**错误分类映射已闭环**:放宽 command-protocol.schema errorContract 加 `error_codes` optional 字段,protocol.yaml error_taxonomy 9 项挂现有 E_* 码(N:1 归类),E_SCHEMA131 守护字段形态。**待办**:运行时 argv 值校验(需 agent loop 集成)+ events.jsonl 承载错误码;missing_required_input/invalid_input 的 error_codes 待 argv 校验落地。澄清:protocol.yaml 顶层缺 technology_decisions/language_profile 是分层资产设计(load_protocol_assets 合并),非漂移 |
 | 3 | 改进校验诊断 | ✅ 完成 | E2:统一 `Issue(code,path,message)` 契约 + `harness_runtime.issues` 单一来源 + cc-verify 聚合结构化 issues |
 | 4 | 强化项目接入检查 | ✅ 完成 | 5 类 readiness 全覆盖:scaffold/CI fixture/可执行脚本由 `cc-doctor-check:67-182`;runtime 注册由 `cc-schema-check` E_SCHEMA120/121 + `cc-readset --check` + `cc-workflow-gen --check`(均经 `cc-verify:897-916` 串行);项目入口由新增 E_DOCTOR013(`cc-doctor-check` 校验 CLAUDE.md「已迁移命令」列表 ↔ `core.yaml:migrated_commands` SSOT)。2026-06-21 核实:runtime 注册原判"缺口"实为假缺口(已被 cc-verify 串行覆盖),唯一真缺口是 CLAUDE.md 文档漂移 |
 | 5 | 生命周期状态转换可执行化 | 部分 | `command-event.schema.json` 在位;event-backed status 转换记录尚未全量落地 |
@@ -88,6 +88,7 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 | D2 | spec↔code drift 检测 | #3 / #6 | cc-deps orphans 已 Issue 契约化(E_ORPHAN001)+ 接入 cc-verify 两路;无声明源时 pass(框架自维护豁免) | ✅ 完成 |
 | D3 | delta-spec | #3 / #8 | `cc-spec-scope-check` 新建:E_SCOPE001(out_of_scope_flagged 无 spec_review_flag)+ E_SCOPE002(tasks 声明文件未入 review scope 表);接入 cc-verify 两路。注:已存在的 `cc-delta-check` 是 delta-verify(回归检测),非此项 | ✅ 完成 |
 | D4 | subagent 证据投影闸门(路线 B) | #6 | `cc-subagent-evidence-check` 新建:E_EVIDENCE001(Critical/Important finding 缺 Location 锚点)/ E_EVIDENCE002(Location 引用文件不存在)/ E_EVIDENCE003(验证映射声称通过但证据列空),接入 cc-verify 两路。路线 B 只校验已落盘 review.md 的证据可观测投影;路线 A(payload 字面契约)待 payload 落盘约定,本轮不动。守护测试 17 例 | ✅ 完成 |
+| B1 | 命令协议契约(声明一致性 + taxonomy 映射) | #2 | `protocol.yaml.input_contracts` 正向回填 9 槽(不反向改 commands,避免 readset/workflow 扇出);cc-schema-check 新增 E_SCHEMA133(inputs 名未登记)/E_SCHEMA134(required 输入用 none 哨兵)/E_SCHEMA199(enum 缺 values),_PROTOCOL_CACHE 复用 merged protocol。放宽 command-protocol.schema errorContract 加 `error_codes`,error_taxonomy 9 项挂现有 E_*(N:1),E_SCHEMA131 守护形态。待办:运行时 argv 值校验 + events.jsonl 承载错误码。守护测试 8 例 | ✅ 完成 |
 | C1 | 行为 eval | #7 | `.claude/evals/behavior/` 6 case 覆盖 4 类硬闸门(role/sync/orphan/scope)+ 2 fixture;`tests/test_behavior_cases.py` 守护 | ✅ 完成 |
 
 ### 维护约定
