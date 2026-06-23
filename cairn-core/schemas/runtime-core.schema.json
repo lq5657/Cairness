@@ -184,6 +184,9 @@
         "deps": {
           "type": "string"
         },
+        "wave-plan": {
+          "type": "string"
+        },
         "gate-stats": {
           "type": "string"
         }

@@ -680,9 +680,13 @@ def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
 def _collect_issues_from_json(stdout: str) -> list[dict[str, str]]:
     """Parse a sub-check's --json stdout into a list of issue dicts.
 
-    Sub-checks that emit the canonical Issue report ({tool, status, issues: [...]}
-    where each issue is {code, path, message}) are parsed structurally. Returns
-    [] for unparseable/non-canonical output (caller keeps relying on
+    Accepts two canonical shapes:
+    - Object report: ``{tool, status, issues: [...]}`` where each issue is
+      ``{code, path, message}`` (used by cc-lint, cc-readset, ...).
+    - Bare array: ``[{code, path, message}, ...]`` (used by cc-wave-plan --check,
+      which emits issues directly without an envelope object).
+
+    Returns [] for unparseable/non-canonical output (caller keeps relying on
     fingerprints/exit code for those). Never raises — a parse failure just
     means no structured issues are collected.
     """
@@ -690,13 +694,16 @@ def _collect_issues_from_json(stdout: str) -> list[dict[str, str]]:
         report = json.loads(stdout)
     except (json.JSONDecodeError, TypeError):
         return []
-    if not isinstance(report, dict):
+    if isinstance(report, list):
+        raw_issues = report
+    elif isinstance(report, dict):
+        raw_issues = report.get("issues")
+    else:
         return []
-    issues = report.get("issues")
-    if not isinstance(issues, list):
+    if not isinstance(raw_issues, list):
         return []
     collected: list[dict[str, str]] = []
-    for item in issues:
+    for item in raw_issues:
         if isinstance(item, dict) and {"code", "path", "message"} <= item.keys():
             collected.append({
                 "code": str(item["code"]),
@@ -881,6 +888,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         cc_deps = claude_root / "scripts" / "cc-deps"
         cc_spec_scope_check = claude_root / "scripts" / "cc-spec-scope-check"
         cc_subagent_evidence_check = claude_root / "scripts" / "cc-subagent-evidence-check"
+        cc_wave_plan = claude_root / "scripts" / "cc-wave-plan"
         knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
         if args.changed_only:
@@ -941,6 +949,9 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
 
         if args.check_risk_triage and args.change and change_dir and change_dir.exists():
             results.append(check_risk_triage(project_root, args.change))
+
+        if args.check_wave_plan and args.change and change_dir and change_dir.exists():
+            results.append(run_step("cc-wave-plan-check", "project", [str(cc_wave_plan), "--check", "--change", args.change], project_root, collect_issues=True))
 
     run_project_checks = not args.harness_only
     if args.changed_only and not args.fixture and not args.project_only:
@@ -1047,6 +1058,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--check-review-coverage", action="store_true", help="Validate file_review_scope completeness in review.md.")
     parser.add_argument("--check-finding-locations", action="store_true", help="Validate finding existing_code matches actual file content.")
     parser.add_argument("--check-risk-triage", action="store_true", help="Validate risk_triage table is populated when present in review.md.")
+    parser.add_argument("--check-wave-plan", action="store_true", help="Validate wave-plan.json consistency with tasks.md declaration (E_WAVE003).")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--output", help="Write JSON report to this file.")
     parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")

@@ -1,0 +1,25 @@
+id: cc-wave-plan-overlap
+description: |
+  cc-wave-plan enforces the same-wave write-overlap gate: two parallel tasks
+  (no depends_on) placed in the same wave whose file ranges intersect must
+  fail (exit 1) with E_WAVE002.
+command:
+  - bash
+  - -c
+  - |
+    set +e
+    CHANGE_DIR="$PWD/.cairness/changes/chg-overlap"
+    trap 'rm -rf "$CHANGE_DIR" || true' EXIT
+    mkdir -p "$CHANGE_DIR"
+    cat > "$CHANGE_DIR/tasks.md" <<'TASKS'
+    #### Task 1: A
+    * **涉及文件**: a.go
+    #### Task 2: B
+    * **涉及文件**: a.go
+    TASKS
+    .claude/scripts/cc-wave-plan --change chg-overlap --json
+    code=$?
+    exit $code
+expect_exit_code: 1
+expect_output_contains:
+  - "E_WAVE002"

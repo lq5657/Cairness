@@ -104,6 +104,7 @@ scripts:
   knowledge-check: .claude/scripts/cc-knowledge-check
   budget-check: .claude/scripts/cc-budget-check
   deps: .claude/scripts/cc-deps
+  wave-plan: .claude/scripts/cc-wave-plan
   gate-stats: .claude/scripts/cc-gate-stats
 
 topic_rules:

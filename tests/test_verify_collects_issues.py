@@ -6,6 +6,7 @@ were not code-prefixed. After E2, cc-verify appends --json to canonical
 Issue-scripts and parses their `issues` into each result. These tests pin that.
 """
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -99,3 +100,55 @@ def test_collect_issues_helper_handles_garbage():
     assert mod._collect_issues_from_json("not json") == []
     assert mod._collect_issues_from_json(json.dumps({"findings": [{"level": "info"}]})) == []
     assert mod._collect_issues_from_json("") == []
+
+
+def test_collect_issues_helper_parses_bare_array():
+    """A bare JSON array of issue dicts (cc-wave-plan --check shape) is parsed
+    structurally, not rejected as non-canonical."""
+    from importlib.machinery import SourceFileLoader
+    mod = SourceFileLoader(
+        "_ccverify", str(REPO_ROOT / "cairn-core" / "scripts" / "cc-verify")
+    ).load_module()
+    stdout = json.dumps([
+        {"code": "E_WAVE003", "path": "wave-plan.json", "message": "stale"},
+    ])
+    assert mod._collect_issues_from_json(stdout) == [
+        {"code": "E_WAVE003", "path": "wave-plan.json", "message": "stale"},
+    ]
+
+
+def test_verify_aggregates_wave_plan_stale_issue():
+    """cc-verify --check-wave-plan surfaces E_WAVE003 as a structured issue when
+    wave-plan.json is stale relative to tasks.md (E_WAVE003). Exercises the full
+    cc-verify -> run_step -> cc-wave-plan --check -> _collect_issues_from_json
+    path, confirming the bare-array emitter's issue reaches result['issues']
+    (not just driving report status via exit code)."""
+    change_id = "chg-verify-wave-test"
+    change_dir = REPO_ROOT / ".cairness" / "changes" / change_id
+    change_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # tasks.md declaring one task writing a.go
+        (change_dir / "tasks.md").write_text(
+            "#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8"
+        )
+        # generate a fresh plan, then mutate tasks.md so the plan goes stale
+        from importlib.machinery import SourceFileLoader
+        cc_wave_plan = SourceFileLoader(
+            "_cc_wave_plan_verify", str(REPO_ROOT / "cairn-core" / "scripts" / "cc-wave-plan")
+        ).load_module()
+        plan = cc_wave_plan.generate(change_id, 10)
+        cc_wave_plan.write_plan_json(change_id, plan)
+        (change_dir / "tasks.md").write_text(
+            "#### Task 1: A\n* **涉及文件**: b.go\n", encoding="utf-8"
+        )
+
+        report = _verify_json(["--harness-only", "--check-wave-plan", "--change", change_id])
+        assert report["status"] == "failed"
+        wp_result = next(r for r in report["results"] if r["name"] == "cc-wave-plan-check")
+        assert wp_result["status"] == "failed"
+        assert wp_result["issues"], "cc-verify did not aggregate cc-wave-plan's E_WAVE003 issue"
+        issue = wp_result["issues"][0]
+        assert set(issue.keys()) == {"code", "path", "message"}
+        assert issue["code"] == "E_WAVE003"
+    finally:
+        shutil.rmtree(change_dir, ignore_errors=True)

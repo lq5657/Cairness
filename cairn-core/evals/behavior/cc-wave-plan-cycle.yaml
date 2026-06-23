@@ -1,0 +1,26 @@
+id: cc-wave-plan-cycle
+description: |
+  cc-wave-plan enforces the task-DAG cycle gate: a tasks.md whose depends_on
+  closes a cycle (T1 -> T2 -> T1) must fail (exit 1) with E_WAVE001.
+command:
+  - bash
+  - -c
+  - |
+    set +e
+    CHANGE_DIR="$PWD/.cairness/changes/chg-cycle"
+    trap 'rm -rf "$CHANGE_DIR" || true' EXIT
+    mkdir -p "$CHANGE_DIR"
+    cat > "$CHANGE_DIR/tasks.md" <<'TASKS'
+    #### Task 1: A
+    * **依赖 / Wave**: depends_on=[T2]
+    * **涉及文件**: a.go
+    #### Task 2: B
+    * **依赖 / Wave**: depends_on=[T1]
+    * **涉及文件**: b.go
+    TASKS
+    .claude/scripts/cc-wave-plan --change chg-cycle --json
+    code=$?
+    exit $code
+expect_exit_code: 1
+expect_output_contains:
+  - "E_WAVE001"
