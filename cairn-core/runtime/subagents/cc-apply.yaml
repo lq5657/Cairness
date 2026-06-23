@@ -67,6 +67,7 @@ agents:
         require_concrete_references: true
         allow_freeform: false
 merge_requirements:
-  - main_flow_keeps_one_task_in_progress
+  - main_flow_keeps_one_wave_in_progress
   - main_flow_records_baseline_delta_and_task_evidence
-  - subagents_may_parallelize_only_disjoint_file_subsets_within_selected_task
+  - subagents_may_parallelize_only_disjoint_tasks_within_one_wave
+  - wave_write_sets_must_be_disjoint_verified_by_cc_wave_plan

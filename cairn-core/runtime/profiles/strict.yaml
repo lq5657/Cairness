@@ -54,3 +54,8 @@ interaction:
   skip_task_split_confirmations: false
   accept_recommended_defaults: false
   require_written_risk_acceptance_for_accepted_findings: true
+
+wave_execution:
+  enabled: true
+  max_parallel: 10
+  double_confirmation: true

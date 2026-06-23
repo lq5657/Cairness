@@ -107,3 +107,19 @@ def test_inspect_codebase_manifest_points_at_contract():
     sa = manifest["subagents"]
     assert sa["enabled"] is True
     assert sa["contract"] == ".claude/runtime/subagents/cc-inspect-codebase.yaml"
+
+
+def test_cc_apply_task_worker_contract_unchanged():
+    """wave 改造不触碰 task-worker agent 契约(零改动断言)。
+
+    wave 改造把并行粒度从"单 task 内文件子集"提升到"波内 task 群",
+    只动 cc-apply 的 merge_requirements, 不动 task-worker agent 契约。
+    此测试锁住 task-worker 的 mode / output_contract 字段, 防止后续误改。
+    """
+    contract = _load_yaml(CONTRACTS_DIR / "cc-apply.yaml")
+    task_worker = next(a for a in contract["agents"] if a["name"] == "task-worker")
+    assert task_worker["mode"] == "scoped_write"
+    assert task_worker["output_contract"]["format"] == "structured_subagent_result"
+    assert set(task_worker["output_contract"]["required_fields"]) == {
+        "summary", "scope", "writes", "evidence", "risks", "merge_notes"
+    }

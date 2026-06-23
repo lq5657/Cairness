@@ -76,6 +76,16 @@
         "accept_recommended_defaults": {"type": "boolean"},
         "require_written_risk_acceptance_for_accepted_findings": {"type": "boolean"}
       }
+    },
+    "wave_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "max_parallel": {"type": "integer", "minimum": 1},
+        "double_confirmation": {"type": "boolean"}
+      }
     }
   }
 }

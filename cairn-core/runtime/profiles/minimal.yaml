@@ -33,3 +33,7 @@ interaction:
   skip_technology_confirmations: true
   skip_task_split_confirmations: true
   accept_recommended_defaults: true
+
+wave_execution:
+  enabled: false
+  max_parallel: 1

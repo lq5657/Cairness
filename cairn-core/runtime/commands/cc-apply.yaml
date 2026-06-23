@@ -52,6 +52,10 @@ forbids:
   - auto_push_or_merge
   - start_apply_with_stale_or_missing_hard_gate
   - treat_missing_hard_gate_as_user_confirmation
+  - dispatch_tasks_across_waves_in_parallel
+  - start_next_wave_with_unresolved_blocked_tasks
+  - skip_wave_confirmation_gate
+  - manually_edit_wave_plan_json
 
 required_reads:
   - .cairness/changes/<change-id>/spec.md
@@ -75,7 +79,8 @@ preconditions:
   - depends_on_satisfied_verified_by_cc_deps_check
   - branch_matches_change_and_is_not_main
   - save_pre_apply_baseline_before_first_code_edit
-  - only_one_task_may_be_in_progress
+  - wave_plan_generated_and_valid_or_resolution_presented
+  - only_one_wave_may_be_in_progress
   - run_deterministic_topic_rule_detection
   - run_cc_deps_check_before_first_task
 
@@ -163,6 +168,9 @@ anti_rationalizations:
   - silently_expand_scope_because_boundary_discovery_feels_obvious
   - skip_spec_review_flag_because_change_seems_trivial
   - skip_task_board_updated_by_because_governance_assets_are_not_code
+  - claim_tasks_are_independent_without_disjoint_write_check
+  - skip_wave_gate_because_all_tasks_in_wave_passed
+  - treat_single_task_failure_as_wave_failure
 
 red_flags:
   - dirty_worktree_contains_out_of_scope_files
@@ -172,27 +180,30 @@ red_flags:
   - spec_boundary_discovered_but_spec_review_flag_not_recorded_in_log
   - implementation_expanded_beyond_declared_scope_without_flag_or_user_choice
   - task_board_updated_by_not_cc_apply
+  - wave_contains_tasks_with_overlapping_write_sets
+  - blocked_task_in_wave_committed_anyway
+  - wave_plan_not_disjoint_verified
 
 steps:
   - verify_hard_gate_current_or_present_resolution_choices
   - mark_change_apply
-  - select_one_ready_task
-  - review_task_goal_scope_acceptance_and_verification
-  - implement_only_declared_scope
-  - when_spec_boundary_discovered_record_spec_review_flag_in_log
-  - when_spec_boundary_discovered_defer_out_of_scope_to_flag_not_implement
-  - load_test_spec_template_when_creating_test_spec
-  - sync_change_docs_and_governance_assets
-  - run_post_task_validation
-  - compare_baseline_delta
-  - mark_task_done_only_with_fresh_evidence
-  - repeat_until_all_tasks_closed
+  - generate_wave_plan_via_cc_wave_plan
+  - present_wave_confirmation_gate_and_wait
+  - capture_pre_wave_baseline
+  - dispatch_wave_task_workers_in_parallel
+  - merge_subagent_results
+  - run_per_task_validation_and_delta
+  - commit_passing_tasks_one_task_one_commit
+  - mark_failed_tasks_blocked_or_partial
+  - write_wave_summary_and_backfill_tasks_wave_overview
+  - present_wave_gate_proceed_or_block_next_wave
   - run_final_change_validation
   - promote_change_to_review
   - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-deps check --change <change-id>
+  - .claude/scripts/cc-wave-plan --check --change <change-id>
   - .claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/pre-apply.json --change <change-id>
   - .claude/scripts/cc-delta-check --before <before-report> --after <after-report>
   - .claude/scripts/cc-verify --change <change-id>
@@ -229,3 +240,6 @@ stop_conditions:
   - delta_reports_new_failure
   - final_validation_failed
   - spec_boundary_discovered_user_choice_required_for_flag_or_scope_update
+  - wave_plan_invalid_or_cycles_or_overlapping_writes
+  - wave_confirmation_not_granted
+  - unresolved_blocked_tasks_blocking_next_wave
