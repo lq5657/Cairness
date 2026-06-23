@@ -37,6 +37,25 @@ def test_overlapping_writes_invalid():
     assert plan["issues"][0]["code"] == "E_WAVE002"
 
 
+def test_dangling_dependency_invalid():
+    """task depends_on 引用不存在的 task → 悬空依赖 E_WAVE005,不静默丢弃。"""
+    tasks = [_node("T2", depends_on=["T1"], files=["b.go"])]
+    plan = plan_waves(tasks, max_parallel=10)
+    assert plan["valid"] is False
+    assert plan["waves"] == []
+    assert plan["issues"][0]["code"] == "E_WAVE005"
+    assert "T2" in plan["issues"][0]["tasks"]
+
+
+def test_wave_fields_complete():
+    """valid wave 含 disjoint/parallel_safe_all 字段(spec 2.2 schema)。"""
+    tasks = [_node("T1", files=["a.go"]), _node("T2", files=["b.go"])]
+    plan = plan_waves(tasks, max_parallel=10)
+    w = plan["waves"][0]
+    assert w["disjoint"] is True
+    assert w["parallel_safe_all"] is True
+
+
 def test_parallel_safe_false_solo_wave():
     tasks = [_node("T1", files=["a.go"]), _node("T2", files=["b.go"], parallel_safe=False)]
     plan = plan_waves(tasks, max_parallel=10)

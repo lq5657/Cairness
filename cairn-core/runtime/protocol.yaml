@@ -135,7 +135,7 @@ error_taxonomy:
   invalid_state:
     status: blocked
     blocking: true
-    error_codes: [E_EVENT008, E_EVENT009, E_SCHEMA019, E_SCHEMA020, E_WAVE001, E_WAVE002, E_WAVE003]
+    error_codes: [E_EVENT008, E_EVENT009, E_SCHEMA019, E_SCHEMA020, E_WAVE001, E_WAVE002, E_WAVE003, E_WAVE005]
   readset_drift:
     status: blocked
     blocking: true

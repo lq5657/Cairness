@@ -27,7 +27,14 @@ def plan_waves(tasks: list[TaskNode], max_parallel: int) -> dict:
     if cycle:
         return {"valid": False, "waves": [], "issues": [{"code": "E_WAVE001", "cycle": cycle}]}
 
-    layers = _layered_kahn(tasks)
+    layers, unscheduled = _layered_kahn(tasks)
+
+    if unscheduled:
+        return {
+            "valid": False,
+            "waves": [],
+            "issues": [{"code": "E_WAVE005", "tasks": unscheduled, "reason": "unresolvable dependency"}],
+        }
 
     overlap = _detect_layer_overlap(layers, by_id)
     if overlap:
@@ -73,8 +80,13 @@ def _detect_cycle(tasks: list[TaskNode], by_id: dict[str, TaskNode]) -> list[str
     return []
 
 
-def _layered_kahn(tasks: list[TaskNode]) -> list[list[str]]:
-    """分层拓扑:wave = 所有 in_degree=0 节点,逐层剥离。"""
+def _layered_kahn(tasks: list[TaskNode]) -> tuple[list[list[str]], list[str]]:
+    """分层拓扑:wave = 所有 in_degree=0 节点,逐层剥离。
+
+    返回 (layers, unscheduled)。unscheduled 是因 depends_on 引用了不存在的
+    task 而永远无法降到 in_degree=0 的 task(悬空依赖),调用方据此报
+    E_WAVE005,而非静默丢弃。
+    """
     in_degree = {t.id: len(t.depends_on) for t in tasks}
     dependents: dict[str, list[str]] = {t.id: [] for t in tasks}
     for t in tasks:
@@ -93,7 +105,8 @@ def _layered_kahn(tasks: list[TaskNode]) -> list[list[str]]:
             remaining.discard(tid)
             for dep_tid in dependents[tid]:
                 in_degree[dep_tid] -= 1
-    return layers
+    unscheduled = sorted(remaining)
+    return layers, unscheduled
 
 
 def _detect_layer_overlap(layers, by_id) -> dict | None:
@@ -139,5 +152,7 @@ def _make_wave(task_ids, by_id, parallelism):
         "tasks": task_ids,
         "write_sets": write_sets,
         "parallelism": parallelism,
+        "disjoint": True,
+        "parallel_safe_all": all(by_id[t].parallel_safe for t in task_ids),
         "rationale": "no depends_on, disjoint writes",
     }
