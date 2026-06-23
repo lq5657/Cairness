@@ -1,5 +1,33 @@
 # 升级指南
 
+## Wave-based 并行 cc-apply(manifest 变更)
+
+`cc-apply` 在 `standard`/`strict` profile 下新增 wave-based 并行执行:每波在 fresh context 起步、per-wave SUMMARY 写回。`cc-wave-plan` 从 `tasks.md` 的 task 依赖/文件范围确定性派生 wave 编排,wave-confirmation 闸门确认后逐波执行。失败语义为完成可成者:同波通过 task 照常 commit,失败 task 标 blocked,wave 闸门阻断下一波。
+
+### manifest 变更
+
+- `cc-apply` preconditions: `only_one_task_may_be_in_progress` → `only_one_wave_may_be_in_progress` + `wave_plan_generated_and_valid_or_resolution_presented`
+- `cc-apply` steps: 循环改 wave 粒度(generate_wave_plan → wave-confirmation → per-wave baseline/dispatch/merge/validate/commit/summary/gate)
+- `cc-apply` auto_validation: 增 `.claude/scripts/cc-wave-plan --check --change <change-id>`
+- `subagents/cc-apply.yaml` merge_requirements: 改 wave 粒度(task-worker 契约零改动)
+- `core.yaml` scripts: 注册 `wave-plan`
+- `runtime-core.schema.json` scripts: 加 `wave-plan` property
+- `protocol.yaml` error_taxonomy: `invalid_state` 挂 E_WAVE001/002/003
+- `profile.schema.json`: 加 `wave_execution` property
+- profiles: `wave_execution` 字段(minimal=false/1, standard=true/10, strict=true/10+double_confirmation)
+
+### 新增脚本与产物
+
+- `cairn-core/scripts/cc-wave-plan` — 调度器(`--change`/`--check`/`--json`/`--max-parallel`)
+- `cairn-core/scripts/harness_runtime/wave_plan.py` — 纯逻辑(TaskNode/plan_waves)
+- 执行期产物(目标项目): `.cairness/changes/<id>/wave-plan.json`、`.cairness/changes/<id>/waves/wave-N.md`
+
+### 迁移与回滚
+
+- 既有 change(无 `依赖 / Wave` 字段):cc-wave-plan 视所有 task 无依赖、`parallel_safe:true`,退化为按声明顺序每波单 task(等价现有串行),无需迁移。
+- 回滚:`minimal` profile 设 `wave_execution.enabled: false` 即回退串行;`wave-plan.json`/`wave-*.md` 是附加产物,删除不影响既有校验。
+- 详见 `docs/maintenance/wave-based-apply-design.md`。
+
 ## 升级到 1.0.0
 
 本版本将项目重命名为 Cairness，引入独立安装 CLI 工具链，并重组仓库目录结构。

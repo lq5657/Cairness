@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added `cc-wave-plan` scheduler — derives wave orchestration from task DAG (layered Kahn with cycle/overlapping-write detection).
+- Added wave-based parallel `cc-apply` — loosened single-task-in-progress to single-wave-in-progress; wave-confirmation gate; per-wave SUMMARY writeback; per-wave baseline only when wave parallelism > 1 (serial waves reuse pre-apply baseline).
+- Added `E_WAVE001`/`E_WAVE002`/`E_WAVE003` error codes (cycle / overlapping writes / stale wave-plan).
+- Added profile `wave_execution` gating (minimal off / standard+strict on); registered in `profile.schema.json`.
+- Added `cc-verify --check-wave-plan` consistency guard (E_WAVE003); enhanced issue collection to accept bare issue arrays.
+- Registered `cc-wave-plan` in `core.yaml` scripts + `runtime-core.schema.json`.
+- `cc-apply` subagent contract: `merge_requirements` moved to wave granularity; `task-worker` contract unchanged.
+
 ## 1.0.0 - 2026-06-08
 
 - Renamed project to Cairness with installable CLI toolchain.
