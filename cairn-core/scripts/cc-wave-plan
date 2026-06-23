@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""cc-wave-plan — 从 task DAG 派生 wave 编排。
+
+镜像 cc-deps 形态(无扩展名脚本,from harness_runtime import)。
+解析 tasks.md 的 task 依赖/文件范围,调 harness_runtime.wave_plan.plan_waves 调度。
+
+用法:
+  cc-wave-plan --change <id>           生成/重生成 wave-plan.json
+  cc-wave-plan --check --change <id>   声明↔编排一致性校验(E_WAVE003)
+  cc-wave-plan --json --change <id>    stdout JSON
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+from harness_runtime.issues import Issue
+from harness_runtime.wave_plan import TaskNode, plan_waves
+
+E_WAVE003 = "E_WAVE003"
+
+
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def change_dir(change_id: str) -> Path:
+    return project_root() / ".cairness" / "changes" / change_id
+
+
+def parse_tasks(tasks_path: Path) -> list[TaskNode]:
+    """解析 tasks.md:每个 #### Task N 段取 depends_on/parallel_safe/涉及文件。"""
+    content = tasks_path.read_text(encoding="utf-8")
+    nodes: list[TaskNode] = []
+    for m in re.finditer(r"^#### Task (\d+):\s*(.*?)$", content, re.MULTILINE):
+        tid = f"T{m.group(1)}"
+        start = m.end()
+        nxt = content.find("\n#### Task ", start)
+        section = content[start:nxt] if nxt != -1 else content[start:]
+        depends_on = _parse_depends_on(section)
+        parallel_safe = _parse_parallel_safe(section)
+        files = _parse_section_files(section)
+        nodes.append(TaskNode(id=tid, depends_on=depends_on, files=files, parallel_safe=parallel_safe))
+    return nodes
+
+
+def _parse_depends_on(section: str) -> list[str]:
+    m = re.search(r"依赖\s*/\s*Wave[^\n]*depends_on=\[([^\]]*)\]", section)
+    if not m:
+        return []
+    return [t.strip() for t in m.group(1).split(",") if t.strip()]
+
+
+def _parse_parallel_safe(section: str) -> bool:
+    m = re.search(r"依赖\s*/\s*Wave[^\n]*parallel_safe:\s*(true|false)", section)
+    if not m:
+        return True
+    return m.group(1) == "true"
+
+
+def _parse_section_files(section: str) -> set[str]:
+    """取 task 段内 **涉及文件** 行的文件路径。镜像 cc-deps.parse_task_files 的 Pattern 1。"""
+    files: set[str] = set()
+    for fm in re.finditer(r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", section, re.DOTALL):
+        for line in fm.group(1).splitlines():
+            line = line.strip().lstrip("-* ").strip().strip("`")
+            if line and not line.startswith("("):
+                files.add(line)
+    return files
+
+
+def generate(change_id: str, max_parallel: int) -> dict:
+    tasks_path = change_dir(change_id) / "tasks.md"
+    if not tasks_path.exists():
+        return {"valid": False, "waves": [], "issues": [{"code": E_WAVE003, "reason": "tasks.md not found"}]}
+    tasks = parse_tasks(tasks_path)
+    plan = plan_waves(tasks, max_parallel)
+    plan["change_id"] = change_id
+    plan["generator"] = "cc-wave-plan"
+    plan["source"] = str(tasks_path)
+    return plan
+
+
+def write_plan_json(change_id: str, plan: dict) -> Path:
+    out = change_dir(change_id) / "wave-plan.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(plan, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return out
+
+
+def check_consistency(change_id: str, max_parallel: int) -> list[Issue]:
+    """E_WAVE003:已存 wave-plan.json 与当前声明派生是否一致。"""
+    plan = generate(change_id, max_parallel)
+    existing = change_dir(change_id) / "wave-plan.json"
+    if not existing.exists():
+        return []
+    old = json.loads(existing.read_text(encoding="utf-8"))
+    issues = []
+    if plan["valid"] != old.get("valid") or plan["waves"] != old.get("waves"):
+        issues.append(Issue(code=E_WAVE003, path=str(existing), message="wave-plan.json stale:声明已变,需重生成"))
+    return issues
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Derive wave plan from task DAG.")
+    parser.add_argument("--change", required=True)
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--max-parallel", type=int, default=10)
+    args = parser.parse_args(argv)
+
+    if args.check:
+        issues = check_consistency(args.change, args.max_parallel)
+        if issues:
+            print(json.dumps([{"code": i.code, "path": i.path, "message": i.message} for i in issues], ensure_ascii=False, indent=2))
+            return 1
+        print("wave-plan consistent")
+        return 0
+
+    plan = generate(args.change, args.max_parallel)
+    if args.json:
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+    else:
+        write_plan_json(args.change, plan)
+        print(f"wave-plan.json written for {args.change}")
+    return 0 if plan["valid"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
