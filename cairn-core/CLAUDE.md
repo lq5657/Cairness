@@ -72,6 +72,7 @@
 | 修复 review finding | `cc-fix <change-id> [fix_description]` |
 | 补充测试或恢复验证 | `cc-test <change-id> [mode]` |
 | 归档 change | `cc-archive <change-id>` |
+| 命令速查（脚本型） | `cc-help` |
 
 ## 启动约束
 
