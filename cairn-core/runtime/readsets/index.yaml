@@ -16,4 +16,3 @@ commands:
   cc-archive: .claude/runtime/readsets/cc-archive.yaml
   cc-promote-audit: .claude/runtime/readsets/cc-promote-audit.yaml
   cc-discuss: .claude/runtime/readsets/cc-discuss.yaml
-  cc-help: .claude/runtime/readsets/cc-help.yaml

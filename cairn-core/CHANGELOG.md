@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added `cc-help` command — read-only catalog listing every migrated cc-* command with its function and invocation signature, drawn from runtime manifests rather than prose docs to avoid doc drift. Registered in `core.yaml` (`migrated_commands` / `runtime_commands` / `workflow_order`) with generated readset and workflow entry.
+- Added `cc-help` — deterministic script listing every cc-* command with its function and invocation signature, drawn from runtime manifests (not prose docs) to avoid drift. Registered in `core.yaml:scripts` + `runtime-core.schema.json:scripts.properties`. (Initially added as a migrated command; reworked to a script after the manifest/readset/result_contract ceremony proved too heavy for a pure lookup — ~0.1s vs ~100s.)
 - Added `cc-wave-plan` scheduler — derives wave orchestration from task DAG (layered Kahn with cycle/overlapping-write detection).
 - Added wave-based parallel `cc-apply` — loosened single-task-in-progress to single-wave-in-progress; wave-confirmation gate; per-wave SUMMARY writeback; per-wave baseline only when wave parallelism > 1 (serial waves reuse pre-apply baseline).
 - Added `E_WAVE001`/`E_WAVE002`/`E_WAVE003` error codes (cycle / overlapping writes / stale wave-plan).

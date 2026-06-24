@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""cc-help — 列出所有 cc-* 命令及功能用法(命令速查)。
+
+确定性脚本,不走治理命令合同(manifest/readset/result_contract)。
+数据源: .claude/runtime/core.yaml:runtime_commands + 各 manifest 的 summary/inputs 字段
+(manifest SSOT)。不读散文文档表,避免漂移。
+
+用法:
+  .claude/scripts/cc-help          可读 markdown 速查
+  .claude/scripts/cc-help --json   JSON 输出(便于 agent/工具消费)
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# 场景分组:按 core.yaml:workflow_order 的注释分组。
+# 与 cc-workflow-gen 的 section banner 同源;新命令加入 core.yaml 时须同步此处,
+# test_help_script.py 守护 SCENARIOS 覆盖 workflow_order 全集。
+SCENARIOS: list[tuple[str, list[str]]] = [
+    ("接入前自检", ["cc-preflight"]),
+    ("新项目入口路径", ["cc-discuss", "cc-new-project"]),
+    ("存量项目入口路径", ["cc-init", "cc-enrich-context", "cc-inspect-codebase", "cc-promote-audit"]),
+    ("共享变更主干 (propose → apply → review ⇄ fix → test → archive)",
+     ["cc-propose", "cc-apply", "cc-review", "cc-fix", "cc-test", "cc-archive"]),
+    ("跨切工具", ["cc-explain-system"]),
+]
+
+
+def load_yaml(path: Path) -> Any:
+    import yaml  # type: ignore
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def core_path() -> Path:
+    return PROJECT_ROOT / ".claude" / "runtime" / "core.yaml"
+
+
+def build_signature(command: str, manifest: dict[str, Any]) -> str:
+    inputs = manifest.get("inputs", {}) or {}
+    parts = [command]
+    for r in inputs.get("required", []) or []:
+        parts.append(f"<{r}>")
+    for o in inputs.get("optional", []) or []:
+        parts.append(f"[{o}]")
+    return " ".join(parts)
+
+
+def build_catalog() -> dict[str, dict[str, Any]]:
+    """枚举 core.yaml:runtime_commands,逐个读 manifest summary/inputs。"""
+    core = load_yaml(core_path())
+    runtime_commands = core["runtime_commands"]
+    catalog: dict[str, dict[str, Any]] = {}
+    for command, rel in runtime_commands.items():
+        manifest = load_yaml(PROJECT_ROOT / rel)
+        inputs = manifest.get("inputs", {}) or {}
+        catalog[command] = {
+            "summary": manifest.get("summary", ""),
+            "signature": build_signature(command, manifest),
+            "category": manifest.get("category", ""),
+            "required_inputs": inputs.get("required", []) or [],
+            "optional_inputs": inputs.get("optional", []) or [],
+        }
+    return catalog
+
+
+def render_markdown(catalog: dict[str, dict[str, Any]]) -> str:
+    lines = [
+        "# Cairness 命令速查",
+        "",
+        "数据源: 各 `runtime/commands/<cmd>.yaml` 的 summary + inputs(manifest SSOT)。",
+        "",
+    ]
+    accounted: set[str] = set()
+    for title, commands in SCENARIOS:
+        present = [c for c in commands if c in catalog]
+        if not present:
+            continue
+        lines.append(f"## {title}")
+        lines.append("")
+        for command in present:
+            entry = catalog[command]
+            lines.append(f"- `{entry['signature']}` — {entry['summary']}")
+            accounted.add(command)
+        lines.append("")
+    leftover = [c for c in catalog if c not in accounted]
+    if leftover:
+        lines.append("## 其他")
+        lines.append("")
+        for command in leftover:
+            entry = catalog[command]
+            lines.append(f"- `{entry['signature']}` — {entry['summary']}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="列出所有 cc-* 命令及功能用法(命令速查)。"
+    )
+    parser.add_argument("--json", action="store_true", help="JSON 格式输出。")
+    args = parser.parse_args(argv)
+
+    catalog = build_catalog()
+    if args.json:
+        print(json.dumps({"commands": catalog}, ensure_ascii=False, indent=2))
+    else:
+        print(render_markdown(catalog), end="")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

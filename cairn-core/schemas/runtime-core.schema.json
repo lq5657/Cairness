@@ -189,6 +189,9 @@
         },
         "gate-stats": {
           "type": "string"
+        },
+        "help": {
+          "type": "string"
         }
       }
     },
