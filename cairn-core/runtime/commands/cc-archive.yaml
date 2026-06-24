@@ -1,5 +1,6 @@
 command: cc-archive
 summary: Archive a reviewed change, optionally compound reusable knowledge, and set status to done only when closure is clean.
+summary_zh: 归档已审查的 change,可选沉淀可复用知识,仅在收尾干净时置为 done。
 
 category: change
 roles:

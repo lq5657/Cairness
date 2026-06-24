@@ -1,5 +1,6 @@
 command: cc-test
 summary: Add test design and fresh evidence to supplement or recover change validation without replacing apply minimum verification.
+summary_zh: 补充测试设计和新鲜证据以增补或恢复 change 验证,不替代 apply 的最小验证。
 
 category: change
 roles:

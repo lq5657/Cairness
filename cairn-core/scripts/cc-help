@@ -61,7 +61,7 @@ def build_catalog() -> dict[str, dict[str, Any]]:
         manifest = load_yaml(PROJECT_ROOT / rel)
         inputs = manifest.get("inputs", {}) or {}
         catalog[command] = {
-            "summary": manifest.get("summary", ""),
+            "summary": manifest.get("summary_zh") or manifest.get("summary", ""),
             "signature": build_signature(command, manifest),
             "category": manifest.get("category", ""),
             "required_inputs": inputs.get("required", []) or [],

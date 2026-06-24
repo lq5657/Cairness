@@ -1,5 +1,6 @@
 command: cc-promote-audit
 summary: Bridge selected audit findings into a bounded change candidate without creating formal change docs.
+summary_zh: 把选定的审查发现桥接为有边界的 change 候选,不创建正式 change 文档。
 
 category: audit_bridge
 roles:

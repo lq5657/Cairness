@@ -1,5 +1,6 @@
 command: cc-review
 summary: Review one change in two stages and record findings without modifying business code.
+summary_zh: 分两阶段审查一个 change 并记录发现,不修改业务代码。
 
 category: change
 roles:

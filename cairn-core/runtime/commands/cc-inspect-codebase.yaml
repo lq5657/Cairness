@@ -1,5 +1,6 @@
 command: cc-inspect-codebase
 summary: Perform an explicit evidence-based brownfield codebase audit and write an audit report without fixing code.
+summary_zh: 对存量代码库执行显式、有证据支撑的审查并产出审查报告,不修复代码。
 
 category: audit
 roles:

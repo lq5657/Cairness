@@ -1,5 +1,6 @@
 command: cc-apply
 summary: Implement one formal change task-by-task and promote the change to review only after evidence is fresh.
+summary_zh: 逐 task 实现一个正式 change,仅在证据新鲜后才推进到 review。
 
 category: change
 roles:

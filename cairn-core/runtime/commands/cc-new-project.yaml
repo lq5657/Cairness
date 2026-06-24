@@ -1,5 +1,6 @@
 command: cc-new-project
 summary: Convert an open-ended project idea into a project definition, MVP roadmap, and first backlog candidates without creating a formal change.
+summary_zh: 把开放式项目想法转化为项目定义、MVP 路线图和首批 backlog 候选,不创建正式 change。
 
 category: project
 roles:

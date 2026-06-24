@@ -1,5 +1,6 @@
 command: cc-init
 summary: Establish the minimum reusable project fact layer without creating changes, audits, or scaffold assets.
+summary_zh: 建立最小可复用项目事实层,不创建 change、审查或脚手架资产。
 
 category: context
 roles:

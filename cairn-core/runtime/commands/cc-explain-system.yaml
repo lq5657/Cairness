@@ -1,5 +1,6 @@
 command: cc-explain-system
 summary: Produce evidence-backed system orientation material without turning the work into an audit or change proposal.
+summary_zh: 产出有证据支撑的系统讲解材料,不把工作变成审查或 change 提案。
 
 category: context
 roles:

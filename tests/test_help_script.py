@@ -67,6 +67,22 @@ def test_catalog_has_summary_and_signature():
         )
 
 
+def test_catalog_prefers_summary_zh_when_present():
+    """build_catalog prefers manifest summary_zh over summary, falling back
+    to summary when summary_zh is absent. Guards the SSOT-zh design so a future
+    refactor can't silently revert output to English."""
+    mod = _load_help()
+    catalog = mod.build_catalog()
+    # Every shipped manifest now declares summary_zh, so each entry must be
+    # the Chinese text (heuristic: non-ASCII present).
+    for cmd in _workflow_order():
+        text = catalog[cmd]["summary"]
+        assert any(ord(ch) > 127 for ch in text), (
+            f"{cmd} summary is ASCII-only — summary_zh fallback may be broken: {text}"
+        )
+
+
+
 def test_json_output_is_valid_and_complete():
     """End-to-end: `cc-help --json` emits valid JSON with every command."""
     result = subprocess.run(

@@ -1,5 +1,6 @@
 command: cc-preflight
 summary: Validate that a project has the Harness scaffold, routing, and deterministic checks needed before normal use.
+summary_zh: 校验项目具备正常运行所需的 Harness 脚手架、路由和确定性检查。
 
 category: harness
 roles:

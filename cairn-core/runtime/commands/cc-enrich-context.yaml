@@ -1,5 +1,6 @@
 command: cc-enrich-context
 summary: Enrich the project fact layer with evidence-backed context while avoiding audit findings or change creation.
+summary_zh: 用有证据支撑的上下文丰富项目事实层,不产出审查发现或不创建 change。
 
 category: context
 roles:

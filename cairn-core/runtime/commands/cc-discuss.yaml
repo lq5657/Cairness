@@ -1,5 +1,6 @@
 command: cc-discuss
 summary: Refine a vague idea through interactive AI-guided discussion with proactive web research, existing project analysis, and deep reasoning before creating a formal spec or new project.
+summary_zh: 通过交互式 AI 引导讨论(主动网络调研、存量项目分析、深度推理)澄清模糊想法,再创建正式 spec 或新项目。
 
 category: discovery
 roles:

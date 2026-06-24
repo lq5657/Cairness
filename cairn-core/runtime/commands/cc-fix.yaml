@@ -1,5 +1,6 @@
 command: cc-fix
 summary: Resolve review findings with minimal scoped fixes and keep the change in review.
+summary_zh: 用最小范围修复解决 review 发现,保持 change 处于 review 状态。
 
 category: change
 roles:

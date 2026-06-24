@@ -1,5 +1,6 @@
 command: cc-propose
 summary: Create or update a formal change proposal without writing business code.
+summary_zh: 创建或更新正式 change 提案,不写业务代码。
 
 category: change
 roles:
