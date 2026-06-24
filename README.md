@@ -124,7 +124,7 @@ Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Sp
 ### 核心特色
 
 **结构化生命周期 + Hard Gate**
-14 个 `cc-*` 命令强制 `propose → apply → review → done` 四阶段流转。`cc-propose` 的 Hard Gate 是用户必须显式确认的结构化阻断点，LLM 无法自行绕过进入实现。
+15 个 `cc-*` 命令强制 `propose → apply → review → done` 四阶段流转。`cc-propose` 的 Hard Gate 是用户必须显式确认的结构化阻断点，LLM 无法自行绕过进入实现。
 
 **确定性验证矩阵**
 18 个脚本构成可复现的 CI 真相源：孤儿变更检测（`cc-deps orphans`）、实现前后基线对比（`cc-delta-check`）、跨 change 文件冲突检测、token/时间预算实时监控。不是散文式 checklist，是机器可运行的校验。
@@ -161,6 +161,7 @@ Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Sp
 - `cc-fix` — 修复 review finding
 - `cc-test` — 补充测试或恢复验证
 - `cc-archive` — 归档 change
+- `cc-help` — 列出所有 cc-* 命令及功能用法
 
 完整生命周期：`idea → cc-discuss (可选) → cc-new-project / cc-propose → cc-apply → cc-review ⇄ cc-fix → cc-archive (done)`
 

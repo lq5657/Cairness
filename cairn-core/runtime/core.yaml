@@ -18,6 +18,7 @@ migrated_commands:
   - cc-archive
   - cc-promote-audit
   - cc-discuss
+  - cc-help
 
 # Display order for the generated workflow.yaml view, organized by scenario.
 # Commands are not a single linear flow but two entry paths converging on a
@@ -48,6 +49,7 @@ workflow_order:
   - cc-archive
   # cross-cutting / tooling
   - cc-explain-system
+  - cc-help
 
 
 runtime_commands:
@@ -65,6 +67,7 @@ runtime_commands:
   cc-archive: .claude/runtime/commands/cc-archive.yaml
   cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
   cc-discuss: .claude/runtime/commands/cc-discuss.yaml
+  cc-help: .claude/runtime/commands/cc-help.yaml
 
 runtime_readsets:
   dir: .claude/runtime/readsets

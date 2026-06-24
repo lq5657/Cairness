@@ -29,6 +29,7 @@
 - `cc-archive`
 - `cc-promote-audit`
 - `cc-discuss`
+- `cc-help`
 
 ## 核心原则
 
@@ -72,6 +73,7 @@
 | 修复 review finding | `cc-fix <change-id> [fix_description]` |
 | 补充测试或恢复验证 | `cc-test <change-id> [mode]` |
 | 归档 change | `cc-archive <change-id>` |
+| 列出所有命令及用法 | `cc-help` |
 
 ## 启动约束
 

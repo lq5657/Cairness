@@ -53,6 +53,7 @@ def test_workflow_order_reflects_scenario_paths():
         "cc-init", "cc-enrich-context", "cc-inspect-codebase", "cc-promote-audit",
         "cc-propose", "cc-apply", "cc-review", "cc-fix", "cc-test", "cc-archive",
         "cc-explain-system",
+        "cc-help",
     ]
     assert order == expected, f"order mismatch:\n got {order}\n exp {expected}"
 

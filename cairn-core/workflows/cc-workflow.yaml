@@ -199,3 +199,15 @@ commands:
     validates: [code_evidence, config_evidence, flow_evidence, bounded_scope]
     forbids: [finding_output, change_creation, audit_creation, business_code_write, preference_as_fact]
     auto_validation: []
+
+  cc-help:
+    category: harness
+    roles: [harness-guide]
+    change_from: [none]
+    change_to: unchanged
+    inputs: []
+    outputs: [command_catalog_result]
+    writes: []
+    validates: [command_registry_consistency]
+    forbids: [write_any_files, change_change_state, perform_command_besides_listing, read_business_code]
+    auto_validation: []
