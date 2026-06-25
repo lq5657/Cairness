@@ -79,79 +79,130 @@ def test_all_topic_rules_pass_schema_validation():
         assert not issues, f"{topic_key} ({path.name}): {[i.message for i in issues]}"
 
 
-# --- coding-style language split (A2: skeleton always + per-language child rules) ---
-# The skeleton must stay language-neutral; Go-specific rules live in
-# go-coding-style.yaml (category: change_type, detection-triggered). These tests
-# guard the content boundary so a future edit can't silently leak Go idioms back
-# into the skeleton (which would re-introduce the "non-Go project gets Go rules"
-# bug) or drop the skeleton's always-loading contract.
+# --- coding-style language split (A2-Phase2: skeleton always + 5-lang child rules) ---
+# The skeleton stays language-neutral (always-loaded); per-language child rules are
+# change_type (detection-triggered). These tests guard the content boundary so a
+# future edit can't leak language-specific idioms back into the skeleton (which would
+# re-impose one language's rules on all projects) or silently drop the wiring that
+# makes language detection work.
+
+import yaml
+
+
+def _load_yaml(path):
+    return yaml.safe_load(path.read_text())
+
 
 _CODING_STYLE_DIR = REPO / "cairn-core" / "runtime" / "topic-rules"
-# Markers that only make sense in a Go-specific rule file, never in the skeleton.
-_GO_ONLY_MARKERS = ["log/slog", "fmt.Errorf", "*_test.go", "defer recover", "errgroup"]
+_CMD_DIR = REPO / "cairn-core" / "runtime" / "commands"
+
+# Per-language markers that only make sense in that language's child rule, never in
+# the skeleton. Each child must own its markers (proves content was actually moved there).
+_LANG_MARKERS = {
+    "go": ["log/slog", "fmt.Errorf", "*_test.go", "defer recover", "errgroup"],
+    "python": ["logging.getLogger", "except Exception", "raise ", "from err"],
+    "typescript": ["no-floating-promises", "console.log", "await", "tsconfig"],
+    "java": ["SLF4J", "System.out", "LoggerFactory", "try-with-resources"],
+    "cpp": ["RAII", "unique_ptr", "std::cout", "lock_guard"],
+}
+_LANGS = list(_LANG_MARKERS.keys())
+
+# Commands that touch code and therefore should load skeleton (always) + language
+# child rules (when_* detection). cc-propose/cc-archive don't write business code.
+_CODE_COMMANDS = ["cc-apply", "cc-fix", "cc-review", "cc-inspect-codebase"]
 
 
 def test_coding_style_skeleton_is_language_neutral():
-    """The coding-style.yaml skeleton must not carry Go-specific markers.
+    """The coding-style.yaml skeleton must not carry ANY language-specific markers.
 
-    The skeleton is loaded unconditionally (cc-apply topic_rules.always) across
-    all languages; leaking Go idioms here re-imposes Go rules on non-Go projects.
+    The skeleton is loaded unconditionally across all languages; leaking one
+    language's idioms here re-imposes that language's rules on all other projects.
     """
-    import yaml
     text = (_CODING_STYLE_DIR / "coding-style.yaml").read_text()
-    leaked = [m for m in _GO_ONLY_MARKERS if m in text]
-    assert not leaked, f"coding-style.yaml skeleton leaked Go-specific markers: {leaked}"
-    data = yaml.safe_load(text)
+    leaked = {}
+    for lang, markers in _LANG_MARKERS.items():
+        hits = [m for m in markers if m in text]
+        if hits:
+            leaked[lang] = hits
+    assert not leaked, f"coding-style.yaml skeleton leaked language-specific markers: {leaked}"
+    data = _load_yaml(_CODING_STYLE_DIR / "coding-style.yaml")
     assert data["relevance"]["category"] == "always", "skeleton must stay category=always"
-    assert "always_loaded_by_cc_apply" in data["relevance"]["triggers"], (
-        "skeleton must declare always_loaded_by_cc_apply so cc-apply keeps loading it"
-    )
+    triggers = data["relevance"]["triggers"]
+    for cmd in ["always_loaded_by_cc_apply", "always_loaded_by_cc_fix", "always_loaded_by_cc_review"]:
+        assert cmd in triggers, f"skeleton must declare {cmd} (now loaded by that command)"
 
 
-def test_coding_style_child_rules_are_change_type():
-    """Every *-coding-style.yaml child rule must be category=change_type and carry
-    Go-specific markers (i.e. it actually owns the Go content moved out of the
-    skeleton). Auto-extends when python/typescript/java/cpp children are added."""
-    import yaml
-    children = sorted(_CODING_STYLE_DIR.glob("*-coding-style.yaml"))
-    assert children, "expected at least go-coding-style.yaml child rule"
-    for child in children:
+def test_coding_style_child_rules_are_change_type_and_own_markers():
+    """Every *-coding-style.yaml child rule must be category=change_type AND own its
+    language's markers (proves the language content actually lives here, not lost)."""
+    for lang in _LANGS:
+        child = _CODING_STYLE_DIR / f"{lang}-coding-style.yaml"
+        assert child.exists(), f"missing child rule {child.name}"
         text = child.read_text()
-        data = yaml.safe_load(text)
+        data = _load_yaml(child)
         assert data["relevance"]["category"] == "change_type", (
-            f"{child.name}: child coding-style rule must be change_type (detection-triggered), "
-            "not always — only the skeleton is always"
+            f"{child.name}: child rule must be change_type (detection-triggered), not always"
         )
-        if child.name == "go-coding-style.yaml":
-            owned = [m for m in _GO_ONLY_MARKERS if m in text]
-            assert owned, (
-                f"{child.name}: expected to own Go-specific markers {_GO_ONLY_MARKERS}, "
-                "none found — Go content was not actually moved here"
+        owned = [m for m in _LANG_MARKERS[lang] if m in text]
+        assert owned, (
+            f"{child.name}: expected to own {lang} markers {_LANG_MARKERS[lang]}, none found "
+            f"— {lang} content was not actually written here"
+        )
+
+
+def test_all_coding_style_children_registered_in_core():
+    """All 5 language coding_style rules must be registered in core.yaml topic_rules."""
+    core = _load_yaml(REPO / "cairn-core" / "runtime" / "core.yaml")
+    for lang in _LANGS:
+        key = f"{lang}_coding_style"
+        assert key in core["topic_rules"], f"{key} must be registered in core.yaml"
+
+
+def test_detection_patterns_cover_all_coding_style_languages():
+    """detection-patterns.yaml must declare a *_coding_style pattern with non-empty
+    file_globs for every language, so detection can route by source extension."""
+    detection = _load_yaml(_CODING_STYLE_DIR / "detection-patterns.yaml")
+    for lang in _LANGS:
+        key = f"{lang}_coding_style"
+        assert key in detection["patterns"], f"detection-patterns.yaml missing {key} pattern"
+        globs = detection["patterns"][key].get("file_globs", [])
+        assert globs, f"{key} pattern must have non-empty file_globs (source extensions)"
+
+
+def test_code_commands_wire_skeleton_and_language_children():
+    """Every code-touching command loads the skeleton (always) + all 5 language
+    child rules (when_*_coding_style_pattern_is_detected). Guards the R3 symmetry:
+    review must not be weaker than inspect at language-specific coding checks."""
+    for cmd in _CODE_COMMANDS:
+        manifest = _load_yaml(_CMD_DIR / f"{cmd}.yaml")
+        tr = manifest["topic_rules"]
+        # skeleton loaded — via always (apply/fix/review) or via architecture mode (inspect)
+        skeleton = ".claude/runtime/topic-rules/coding-style.yaml"
+        if cmd == "cc-inspect-codebase":
+            # inspect is mode-driven, no `always` bucket; skeleton lives under architecture mode
+            assert skeleton in tr.get("when_mode_is_architecture", []), (
+                f"{cmd}: skeleton must be under when_mode_is_architecture (mode-driven, no always)"
             )
-
-
-def test_go_coding_style_registered_and_triggered():
-    """go_coding_style is registered in core.yaml and wired through cc-apply's
-    when_go_coding_style_pattern_is_detected + a detection-patterns file_glob,
-    so non-.go changes never load it."""
-    import yaml
-    core = yaml.safe_load((REPO / "cairn-core" / "runtime" / "core.yaml").read_text())
-    assert "go_coding_style" in core["topic_rules"], "go_coding_style must be registered in core.yaml"
-
-    apply_manifest = yaml.safe_load(
-        (REPO / "cairn-core" / "runtime" / "commands" / "cc-apply.yaml").read_text()
-    )
-    tr = apply_manifest["topic_rules"]
-    assert tr.get("when_go_coding_style_pattern_is_detected") == [
-        ".claude/runtime/topic-rules/go-coding-style.yaml"
-    ], "cc-apply must wire go-coding-style under when_go_coding_style_pattern_is_detected"
-    assert ".claude/runtime/topic-rules/coding-style.yaml" in tr["always"], (
-        "skeleton must remain in cc-apply topic_rules.always"
-    )
-
-    detection = yaml.safe_load(
-        (REPO / "cairn-core" / "runtime" / "topic-rules" / "detection-patterns.yaml").read_text()
-    )
-    assert "go_coding_style" in detection["patterns"], (
-        "detection-patterns.yaml must declare go_coding_style (file_glob **/*.go)"
-    )
+        else:
+            assert skeleton in tr["always"], (
+                f"{cmd}: skeleton (coding-style.yaml) must be in topic_rules.always"
+            )
+        # all 5 language child rules wired
+        for lang in _LANGS:
+            cond = f"when_{lang}_coding_style_pattern_is_detected"
+            assert tr.get(cond) == [f".claude/runtime/topic-rules/{lang}-coding-style.yaml"], (
+                f"{cmd}: must wire {cond} -> {lang}-coding-style.yaml"
+            )
+        # precondition pairing (R4): when_*_pattern_is_detected conditions are dead
+        # unless run_deterministic_topic_rule_detection precondition is declared.
+        # cc-readset/cc-verify do NOT enforce this pairing — this test is the guard.
+        has_detection_cond = any(
+            k.startswith("when_") and k.endswith("_coding_style_pattern_is_detected") for k in tr
+        )
+        if has_detection_cond:
+            preconditions = manifest.get("preconditions", [])
+            assert "run_deterministic_topic_rule_detection" in preconditions, (
+                f"{cmd}: declares when_*_coding_style_pattern_is_detected conditions but is "
+                "missing run_deterministic_topic_rule_detection precondition — conditions "
+                "would silently never fire (R4)"
+            )

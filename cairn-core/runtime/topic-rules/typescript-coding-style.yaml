@@ -1,0 +1,126 @@
+id: typescript_coding_style
+description: "TypeScript/JavaScript 源码编码约定 —— 命名、类型安全、错误处理、日志与依赖的 TS 专属规范"
+
+trigger:
+  - "cc-apply 检测到变更包含 .ts/.tsx/.js/.jsx 文件时加载"
+  - "cc-apply / cc-fix / cc-review / cc-inspect-codebase 阶段触及 TS/JS 源码命名、类型、错误处理或依赖变更"
+  - "新增组件、接口、Promise 链、第三方依赖或业务写操作"
+
+skip:
+  - "变更不涉及任何 TS/JS 源码（无 .ts/.tsx/.js/.jsx 文件）"
+  - "纯文档、纯 Harness 元数据或生成代码变更可只检查是否误改手写逻辑"
+  - "不替代 typescript-concurrency 的并发正确性细则（worker、async 边界），只约束编码约定"
+  - "不用局部编码偏好覆盖项目已确认的工程约定"
+
+process:
+  - "定位本次变更触及的 .ts/.tsx/.js/.jsx 手写代码、测试、日志和依赖"
+  - "按命名、类型安全、错误处理、日志和依赖规则逐项检查"
+  - "对 any 滥用、裸 throw、console.log、未 await 的 Promise、魔法值等问题先修正再继续"
+  - "若必须例外，记录原因、影响范围和验证证据"
+
+anti_rationalization:
+  - claim: "现有代码也这么写"
+    reality: "既有不一致不是新增问题的授权；遵守当前规则或记录兼容旧代码的最小例外"
+  - claim: "只是临时 console.log/临时 helper"
+    reality: "临时代码经常进入主干并形成生产风险；按正式代码处理或明确删除路径和验证结果"
+  - claim: "这个错误不会发生"
+    reality: "未处理失败会隐藏真实失败点；显式处理或记录不可达依据"
+
+red_flags:
+  - "业务路径新增 console.log/console.error 作为日志或裸 throw 当控制流"
+  - "新增 any 类型（用 unknown/泛型/具体类型替代）"
+  - "Promise 未 await 也未 .catch（floating promise）"
+  - "空 catch 块 {} 吞掉错误"
+  - "新增第三方依赖但没有说明标准库或现有依赖为什么不足"
+
+checks:
+  - "代码 diff 已按本规则检查，例外已记录"
+  - "受影响模块已运行 tsc --noEmit 与 eslint（如项目配置）声明的构建或测试证据"
+  - "cc-review 对命名、类型安全、错误处理和依赖风险给出结论"
+
+rules:
+  约束等级:
+    强制: "必须遵守，违反会引入缺陷"
+    警告: "应避免，特殊情况需注明原因"
+    验证: "完成后自检"
+
+  命名规范:
+    强制:
+      - 对象: 文件名
+        规范: "kebab-case 或与默认导出同名 PascalCase（项目需声明约定）"
+      - 对象: 类/接口/类型别名
+        规范: "大驼峰（PascalCase）"
+        禁止: "接口 I 前缀（如 IUser）"
+      - 对象: 函数/变量
+        规范: "小驼峰（camelCase）"
+      - 对象: 常量
+        规范: "全大写下划线（UPPER_SNAKE）或 PascalCase"
+      - 对象: React 组件
+        规范: "大驼峰（PascalCase）"
+      - 对象: 私有成员
+        规范: "使用 private 关键字或 # 私有字段，不靠 _ 前缀"
+
+  错误与异常处理:
+    强制:
+      - "禁止业务路径裸 throw new Error() 当正常控制流"
+      - "所有 Promise 必须 await 或 .catch()（对齐 no-floating-promises）"
+      - "禁止空 catch 块 {} 吞掉错误"
+      - "async 函数顶层应有错误边界处理"
+    警告:
+      - "优先使用 Result 模式或显式错误类型替代 throw"
+      - "错误应携带足够上下文，避免只抛底层原错"
+      - "可空返回优先用 Result/T|null，避免 throw 表达缺失"
+    验证:
+      - "是否有裸 throw 当控制流"
+      - "Promise 是否都 await 或 .catch"
+      - "是否有空 catch 块"
+      - "async 函数是否有错误边界"
+
+  类型安全:
+    强制:
+      - "禁用 any（用 unknown/泛型/具体类型替代）"
+      - "开启 tsconfig strict 模式"
+    警告:
+      - "慎用 as 类型断言，必要时注释说明理由"
+      - "可空类型用 T|null 或 optional chaining，慎用 ! 非空断言"
+      - "优先用类型守卫（typeof/in/instanceof）收窄类型而非断言"
+    验证:
+      - "是否有新增 any"
+      - "是否开启 strict"
+      - "as 断言是否有必要且注释"
+      - "是否滥用 ! 非空断言"
+
+  日志规范:
+    强制:
+      - "禁止业务路径 console.log/console.error 作为运行日志"
+      - "使用统一 logger（如 pino/winston），含时间、等级、消息、源码位置"
+      - "应用启动时初始化统一 logger，模块间复用"
+      - "禁止在日志中打印用户敏感信息"
+    警告:
+      - "运行时日志默认建议落盘或平台采集方案，必须在 project-context 中说明"
+      - "HTTP/任务入口、关键状态变更、外部调用失败应有可检索日志"
+    验证:
+      - "是否统一使用 logger 而非 console"
+      - "是否存在 logger 初始化"
+      - "日志是否包含时间、等级、消息、源码位置"
+      - "是否打印敏感信息"
+
+  其他TypeScript专属规范:
+    强制:
+      - "魔法值必须定义为常量"
+      - "写接口必须考虑幂等"
+    警告:
+      - "控制流优先使用早返回，避免无必要的 else 嵌套"
+      - "新增第三方依赖必须说明标准库或现有依赖为什么不满足需求"
+      - "优先使用不可变数据结构（const/readonly/Object.freeze）"
+    验证:
+      - "是否有魔法值未定义为常量"
+      - "接口是否考虑了幂等"
+      - "是否可通过早返回压平控制流"
+      - "新增第三方依赖是否有充分理由"
+
+relevance:
+  category: change_type
+  triggers:
+    - detected_by_cc_topic_trigger_typescript_coding_style
+    - when_typescript_coding_style_pattern_is_detected

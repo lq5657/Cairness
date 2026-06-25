@@ -1,0 +1,119 @@
+id: cpp_coding_style
+description: "C++ 源码编码约定 —— 命名、RAII、异常/错误处理、日志与依赖的 C++ 专属规范"
+
+trigger:
+  - "cc-apply 检测到变更包含 .cpp/.cc/.cxx/.hpp/.h 文件时加载"
+  - "cc-apply / cc-fix / cc-review / cc-inspect-codebase 阶段触及 C++ 源码命名、资源管理、异常或依赖变更"
+  - "新增类、模板、智能指针、第三方依赖或业务写操作"
+
+skip:
+  - "变更不涉及任何 C++ 源码（无 .cpp/.cc/.cxx/.hpp/.h 文件）"
+  - "纯文档、纯 Harness 元数据或生成代码变更可只检查是否误改手写逻辑"
+  - "不替代 cpp-concurrency 的并发正确性细则（锁顺序/原子序/memory_order），只约束编码约定"
+  - "不用局部编码偏好覆盖项目已确认的工程约定"
+
+process:
+  - "定位本次变更触及的 .cpp/.cc/.cxx/.hpp/.h 手写代码、测试、日志和依赖"
+  - "按命名、RAII、异常/错误处理、日志和依赖规则逐项检查"
+  - "对裸 new/delete、裸 lock/unlock、std::cout、忽略返回值、魔法值等问题先修正再继续"
+  - "若必须例外，记录原因、影响范围和验证证据"
+
+anti_rationalization:
+  - claim: "现有代码也这么写"
+    reality: "既有不一致不是新增问题的授权；遵守当前规则或记录兼容旧代码的最小例外"
+  - claim: "只是临时 std::cout/临时 helper"
+    reality: "临时代码经常进入主干并形成生产风险；按正式代码处理或明确删除路径和验证结果"
+  - claim: "这个错误不会发生"
+    reality: "未处理失败会隐藏真实失败点；检查返回值或显式记录不可达依据"
+
+red_flags:
+  - "业务路径新增 std::cout/printf 作为日志或裸 throw 跨 ABI/模块边界"
+  - "裸 new/delete（应使用 unique_ptr/make_unique 或 shared_ptr）"
+  - "裸 lock/unlock（应使用 lock_guard/scoped_lock）"
+  - "忽略 [[nodiscard]] 返回值"
+  - "新增第三方依赖但没有说明标准库或现有依赖为什么不足"
+
+checks:
+  - "代码 diff 已按本规则检查，例外已记录"
+  - "受影响模块已运行 make build 与声明的测试证据"
+  - "若配置了 clang-tidy，校验通过"
+  - "cc-review 对命名、RAII、异常和依赖风险给出结论"
+
+rules:
+  约束等级:
+    强制: "必须遵守，违反会引入缺陷"
+    警告: "应避免，特殊情况需注明原因"
+    验证: "完成后自检"
+
+  命名规范:
+    强制:
+      - 对象: 文件名
+        规范: "小写下划线或与类同名（项目需声明约定）"
+      - 对象: 类/结构体
+        规范: "PascalCase 或 snake_case（项目需声明并一致）"
+      - 对象: 函数
+        规范: "PascalCase（Google 风格）或 camelCase（项目需声明并一致）"
+      - 对象: 变量
+        规范: "snake_case"
+      - 对象: 常量
+        规范: "kCamelCase（Google）或 UPPER_SNAKE，constexpr/const"
+      - 对象: 成员变量
+        规范: "后缀 _（Google）或 m_ 前缀（项目需声明并一致）"
+      - 对象: 宏
+        规范: "全大写下划线（UPPER_SNAKE）"
+
+  错误与异常处理:
+    强制:
+      - "异常与错误码策略需在 project-context 声明（现代 C++ 倾向异常或 std::expected C++23）"
+      - "禁止跨 ABI/模块边界裸 throw（若 -fno-exceptions 则用错误码/std::expected/std::variant）"
+      - "禁止忽略返回值（标注 [[nodiscard]] 并开启 -Wunused-result）"
+      - "RAII 管理所有资源（禁止裸 new/delete/malloc/free/lock/unlock）"
+    警告:
+      - "智能指针管理生命周期：unique_ptr 表达单所有权，shared_ptr 共享需说明理由"
+      - "noexcept 标注不抛异常的函数（移动构造/析构等）"
+      - "不要用异常做正常控制流"
+    验证:
+      - "异常/错误码策略是否声明"
+      - "是否有跨边界裸 throw"
+      - "是否有忽略返回值"
+      - "是否有裸 new/delete 或 lock/unlock"
+      - "智能指针使用是否合理"
+
+  日志规范:
+    强制:
+      - "使用统一日志库（如 spdlog 或 glog，项目需声明并一致）"
+      - "禁止业务路径 std::cout/printf 作为日志"
+      - "应用启动时初始化统一 logger，模块间复用"
+      - "日志格式必须至少包含：时间、等级、消息、源码文件名:行号、线程ID"
+      - "禁止在日志中打印用户敏感信息"
+    警告:
+      - "运行时日志默认建议落盘或平台采集方案，必须在 project-context 中说明"
+      - "HTTP/任务入口、关键状态变更、外部调用失败应有可检索日志"
+    验证:
+      - "是否统一使用已声明的日志库"
+      - "是否存在 std::cout/printf"
+      - "日志是否包含时间、等级、消息、文件:行号、线程ID"
+      - "是否打印敏感信息"
+
+  其他C++专属规范:
+    强制:
+      - "魔法值必须定义为 constexpr/const 常量"
+      - "写接口必须考虑幂等"
+      - "RAII 是核心：所有资源（内存、锁、句柄）由对象生命周期管理"
+    警告:
+      - "优先使用 std::string_view/std::span 避免不必要的拷贝"
+      - "优先值语义与移动语义（std::move/std::forward，详见 cpp-performance）"
+      - "新增第三方依赖必须说明标准库或现有依赖为什么不满足需求"
+      - "并发场景必须说明同步策略（std::mutex RAII/atomic/memory_order，详见 cpp-concurrency）"
+    验证:
+      - "是否有魔法值未定义为 constexpr/const"
+      - "接口是否考虑了幂等"
+      - "是否优先用 string_view/span 避免拷贝"
+      - "新增第三方依赖是否有充分理由"
+      - "并发场景是否说明同步策略"
+
+relevance:
+  category: change_type
+  triggers:
+    - detected_by_cc_topic_trigger_cpp_coding_style
+    - when_cpp_coding_style_pattern_is_detected

@@ -366,8 +366,14 @@ cc-cairn init
 - `.claude/scripts/cc-schema-check`
 - `.claude/scripts/cc-lint`
 - `.claude/runtime/topic-rules/coding-style.yaml`
-  - 已改为语言无关骨架（`category: always`，仅保留通用编码原则）；Go 专用规范拆至 `go-coding-style.yaml`（`category: change_type`，由 `.go` 文件检测触发）。`coding_style` id 与 always 加载语义保留不变。其他语言子规则待补。
+  - 已改为语言无关骨架（`category: always`，仅保留通用编码原则）；语言特定规范拆至各语言子规则（`category: change_type`，由源码扩展名检测触发）。`coding_style` id 与 always 加载语义保留不变。
 - `.claude/runtime/topic-rules/go-coding-style.yaml`（新增）
+- `.claude/runtime/topic-rules/python-coding-style.yaml`（新增）
+- `.claude/runtime/topic-rules/typescript-coding-style.yaml`（新增）
+- `.claude/runtime/topic-rules/java-coding-style.yaml`（新增）
+- `.claude/runtime/topic-rules/cpp-coding-style.yaml`（新增）
+  - 5 语言 coding-style 子规则齐备，按 `.go/.py/.ts/.tsx/.js/.jsx/.java/.cpp/.cc/.cxx/.hpp/.h` 扩展名检测触发。
+  - cc-fix / cc-review 现加载编码骨架（`topic_rules.always`）+ 语言子规则（`when_*_coding_style_pattern_is_detected`），与 cc-apply 对称；cc-inspect-codebase 新增 `run_deterministic_topic_rule_detection` 前置 + 语言子规则平级桶，存量审查可按语言加载编码规范。
 - `.claude/runtime/topic-rules/database-changes.yaml`
 - `.claude/runtime/topic-rules/api-compatibility.yaml`
 - `.claude/runtime/topic-rules/configuration.yaml`

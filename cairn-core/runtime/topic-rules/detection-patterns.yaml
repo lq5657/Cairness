@@ -202,6 +202,12 @@ patterns:
       - "\"strings\""
       - "\"sync\""
 
+  python_coding_style:
+    file_globs:
+      - "**/*.py"
+    content_regex: []
+    import_regex: []
+
   python_concurrency:
     file_globs:
       - "**/*.py"
@@ -245,6 +251,12 @@ patterns:
       - "import numpy"
       - "import polars"
 
+  java_coding_style:
+    file_globs:
+      - "**/*.java"
+    content_regex: []
+    import_regex: []
+
   java_concurrency:
     file_globs:
       - "**/*.java"
@@ -283,6 +295,15 @@ patterns:
     import_regex:
       - "org\\.openjdk\\.jmh"
       - "java\\.lang\\.ref"
+
+  typescript_coding_style:
+    file_globs:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+    content_regex: []
+    import_regex: []
 
   typescript_concurrency:
     file_globs:
@@ -326,6 +347,16 @@ patterns:
       - "WeakMap|WeakSet|WeakRef"
     import_regex:
       - "react-window|@tanstack/virtual"
+
+  cpp_coding_style:
+    file_globs:
+      - "**/*.cpp"
+      - "**/*.cc"
+      - "**/*.cxx"
+      - "**/*.hpp"
+      - "**/*.h"
+    content_regex: []
+    import_regex: []
 
   cpp_concurrency:
     file_globs:

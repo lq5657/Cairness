@@ -1,0 +1,126 @@
+id: python_coding_style
+description: "Python 源码编码约定 —— PEP8 命名、异常处理、logging、类型注解与依赖的 Python 专属规范"
+
+trigger:
+  - "cc-apply 检测到变更包含 .py 文件时加载"
+  - "cc-apply / cc-fix / cc-review / cc-inspect-codebase 阶段触及 Python 源码命名、异常处理、日志或依赖变更"
+  - "新增模块、类、异常类型、第三方依赖或业务写操作"
+
+skip:
+  - "变更不涉及任何 Python 源码（无 .py 文件）"
+  - "纯文档、纯 Harness 元数据或生成代码变更可只检查是否误改手写逻辑"
+  - "不替代 python-concurrency 的并发正确性细则（asyncio 任务、锁、线程安全），只约束编码约定"
+  - "不用局部编码偏好覆盖项目已确认的工程约定"
+
+process:
+  - "定位本次变更触及的 .py 手写代码、测试、日志和依赖"
+  - "按命名、异常处理、日志、类型注解和依赖规则逐项检查"
+  - "对裸 except 吞异常、业务路径 print、敏感日志、魔法值等问题先修正再继续"
+  - "若必须例外，记录原因、影响范围和验证证据"
+
+anti_rationalization:
+  - claim: "现有代码也这么写"
+    reality: "既有不一致不是新增问题的授权；遵守当前规则或记录兼容旧代码的最小例外"
+  - claim: "只是临时 print/临时 helper"
+    reality: "临时代码经常进入主干并形成生产风险；按正式代码处理或明确删除路径和验证结果"
+  - claim: "这个异常不会发生"
+    reality: "未处理异常会隐藏真实失败点；捕获具体异常或显式记录不可达依据"
+
+red_flags:
+  - "业务路径新增 print() 或裸 except:/except Exception: 吞异常"
+  - "except: pass 或 except Exception: pass 吞掉错误不记录"
+  - "用异常做正常控制流（如 try/except 替代条件判断）"
+  - "新增第三方依赖但没有说明标准库或现有依赖为什么不足"
+
+checks:
+  - "代码 diff 已按本规则检查，例外已记录"
+  - "受影响模块已运行 ruff check 与声明的构建或测试证据"
+  - "若项目采用 mypy/pyright（见 technology decision），类型检查通过"
+  - "cc-review 对命名、异常、日志和依赖风险给出结论"
+
+rules:
+  约束等级:
+    强制: "必须遵守，违反会引入缺陷"
+    警告: "应避免，特殊情况需注明原因"
+    验证: "完成后自检"
+
+  命名规范:
+    强制:
+      - 对象: 文件名/模块名
+        规范: "全小写，下划线分隔（snake_case）"
+        禁止: "UserService.py, UserService.py"
+      - 对象: 包名
+        规范: "全小写，短名，不用下划线"
+      - 对象: 类
+        规范: "大驼峰（PascalCase）"
+        禁止: "拼音、中英混拼"
+      - 对象: 函数/变量
+        规范: "小写，下划线分隔（snake_case）"
+        禁止: "拼音、中英混拼"
+      - 对象: 常量
+        规范: "全大写下划线（UPPER_SNAKE）"
+      - 对象: 私有成员
+        规范: "单下划线 _ 前缀；名称改写用双下划线 __"
+      - 对象: 测试函数
+        规范: "test_ 前缀"
+        禁止: "其他命名"
+
+  错误与异常处理:
+    强制:
+      - "业务错误应使用自定义 Exception 子类，通过 raise 抛出"
+      - "禁止裸 except: 或 except Exception: 吞异常；必须捕获具体异常类型"
+      - "禁止 except: pass 或 except Exception: pass 不记录不重抛"
+      - "raise 新异常时保留原因：raise NewError(...) from err"
+    警告:
+      - "禁止用异常做正常控制流（如用 try/except 替代 if 判断）"
+      - "在合适边界统一捕获并记录，避免每层都 catch 后原样 raise"
+      - "finally 中不要吞掉异常或掩盖返回值"
+    验证:
+      - "是否捕获具体异常而非裸 except"
+      - "是否有 except: pass 吞错"
+      - "raise 链是否用 from 保留 cause"
+      - "是否用异常做控制流"
+
+  日志规范:
+    强制:
+      - "默认使用标准库 logging 模块"
+      - "禁止业务运行路径新增 print() 作为日志"
+      - "应用启动时必须初始化统一 logger 配置，模块间复用 logging.getLogger(__name__)"
+      - "日志格式必须至少包含：时间、等级、消息、模块名、行号"
+      - "禁止在日志中打印用户敏感信息（手机号、身份证、银行卡等）"
+    警告:
+      - "运行时日志默认建议落盘到日志文件；若改为 stdout/stderr + 平台采集，必须在 .cairness/context/project-context.md 中说明"
+      - "日志文件路径、切分策略、保留策略由使用者决定，但必须明确记录"
+      - "HTTP/任务入口、关键状态变更、外部调用失败应有可检索日志"
+      - "现代项目可选用 structlog/loguru，但必须在 project-context 中声明并保持一致"
+    验证:
+      - "是否统一使用 logging 或已声明的日志库"
+      - "是否存在应用级 logger 初始化"
+      - "日志是否包含时间、等级、消息、模块名、行号"
+      - "入口与错误路径是否打可检索日志"
+      - "是否声明了日志落盘或等价采集方案"
+      - "是否打印敏感信息"
+
+  其他Python专属规范:
+    强制:
+      - "魔法值必须定义为常量"
+      - "写接口必须考虑幂等"
+    警告:
+      - "类型注解（PEP 484）应标注函数签名与公开 API；如项目采用 mypy/pyright，必须通过"
+      - "优先使用 pathlib 替代 os.path 字符串拼接"
+      - "优先使用 f-string 替代 % 或 .format"
+      - "优先使用 dataclass 或 attrs 替代手写 __init__"
+      - "资源管理使用 with 语句（文件、锁、连接）"
+      - "新增第三方依赖必须说明标准库或现有依赖为什么不满足需求"
+    验证:
+      - "是否有魔法值未定义为常量"
+      - "接口是否考虑了幂等"
+      - "公开 API 是否有类型注解"
+      - "是否优先用 pathlib/f-string/dataclass/with"
+      - "新增第三方依赖是否有充分理由"
+
+relevance:
+  category: change_type
+  triggers:
+    - detected_by_cc_topic_trigger_python_coding_style
+    - when_python_coding_style_pattern_is_detected

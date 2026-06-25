@@ -53,18 +53,26 @@ conditional_reads:
   - .claude/runtime/topic-rules/go-concurrency.yaml
   when_go_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/go-performance.yaml
+  when_python_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/python-coding-style.yaml
   when_python_concurrency_pattern_is_detected:
   - .claude/runtime/topic-rules/python-concurrency.yaml
   when_python_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/python-performance.yaml
+  when_java_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/java-coding-style.yaml
   when_java_concurrency_pattern_is_detected:
   - .claude/runtime/topic-rules/java-concurrency.yaml
   when_java_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/java-performance.yaml
+  when_typescript_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/typescript-coding-style.yaml
   when_typescript_concurrency_pattern_is_detected:
   - .claude/runtime/topic-rules/typescript-concurrency.yaml
   when_typescript_performance_analysis_is_needed:
   - .claude/runtime/topic-rules/typescript-performance.yaml
+  when_cpp_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/cpp-coding-style.yaml
   when_cpp_concurrency_pattern_is_detected:
   - .claude/runtime/topic-rules/cpp-concurrency.yaml
   when_cpp_performance_analysis_is_needed:

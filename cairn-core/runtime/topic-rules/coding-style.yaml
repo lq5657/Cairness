@@ -2,7 +2,7 @@ id: coding_style
 description: "语言无关编码原则骨架，所有源码变更默认加载；语言特定规范见 go-coding-style 等子规则"
 
 trigger:
-  - "cc-apply 始终加载本骨架（topic_rules.always）"
+  - "cc-apply / cc-fix / cc-review 始终加载本骨架（topic_rules.always）"
   - "cc-inspect-codebase architecture 模式加载本骨架"
   - "语言特定子规则由 cc-topic-trigger 检测后按 when_*_coding_style_pattern_is_detected 加载"
 
@@ -66,4 +66,6 @@ relevance:
   category: always
   triggers:
     - always_loaded_by_cc_apply
+    - always_loaded_by_cc_fix
+    - always_loaded_by_cc_review
     - loaded_by_cc_inspect_codebase_architecture_mode

@@ -29,6 +29,16 @@ conditional_reads:
   when_mode_is_test_debt:
   - .claude/runtime/topic-rules/testing-strategy.yaml
   - .claude/runtime/topic-rules/verification.yaml
+  when_go_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/go-coding-style.yaml
+  when_python_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/python-coding-style.yaml
+  when_java_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/java-coding-style.yaml
+  when_typescript_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/typescript-coding-style.yaml
+  when_cpp_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/cpp-coding-style.yaml
   when_subagent_delegation_is_used:
   - .claude/docs/maintenance/subagent-model.md
   - .claude/runtime/subagents/cc-inspect-codebase.yaml

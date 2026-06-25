@@ -52,6 +52,7 @@ preconditions:
   - scope_is_explicit_or_defaults_to_whole_repo
   - confirm_this_is_not_cc_review_or_cc_init
   - select_only_mode_relevant_rules_and_code_scope
+  - run_deterministic_topic_rule_detection
 
 topic_rules:
   when_mode_is_architecture:
@@ -64,6 +65,16 @@ topic_rules:
   when_mode_is_test_debt:
     - .claude/runtime/topic-rules/testing-strategy.yaml
     - .claude/runtime/topic-rules/verification.yaml
+  when_go_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/go-coding-style.yaml
+  when_python_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/python-coding-style.yaml
+  when_java_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/java-coding-style.yaml
+  when_typescript_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/typescript-coding-style.yaml
+  when_cpp_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/cpp-coding-style.yaml
 
 subagents:
   enabled: true

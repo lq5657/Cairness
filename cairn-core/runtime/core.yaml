@@ -130,12 +130,16 @@ topic_rules:
   go_coding_style: .claude/runtime/topic-rules/go-coding-style.yaml
   go_concurrency: .claude/runtime/topic-rules/go-concurrency.yaml
   go_performance: .claude/runtime/topic-rules/go-performance.yaml
+  python_coding_style: .claude/runtime/topic-rules/python-coding-style.yaml
   python_concurrency: .claude/runtime/topic-rules/python-concurrency.yaml
   python_performance: .claude/runtime/topic-rules/python-performance.yaml
+  java_coding_style: .claude/runtime/topic-rules/java-coding-style.yaml
   java_concurrency: .claude/runtime/topic-rules/java-concurrency.yaml
   java_performance: .claude/runtime/topic-rules/java-performance.yaml
+  typescript_coding_style: .claude/runtime/topic-rules/typescript-coding-style.yaml
   typescript_concurrency: .claude/runtime/topic-rules/typescript-concurrency.yaml
   typescript_performance: .claude/runtime/topic-rules/typescript-performance.yaml
+  cpp_coding_style: .claude/runtime/topic-rules/cpp-coding-style.yaml
   cpp_concurrency: .claude/runtime/topic-rules/cpp-concurrency.yaml
   cpp_performance: .claude/runtime/topic-rules/cpp-performance.yaml
   discussion_assumptions_mode: .claude/runtime/topic-rules/discussion-assumptions-mode.yaml

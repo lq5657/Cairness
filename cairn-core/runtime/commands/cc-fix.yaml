@@ -81,6 +81,7 @@ preconditions:
   - select_open_findings_only_by_default
   - cc_fix_change_id_defaults_to_next_eligible_open_finding
   - explicit_finding_id_or_fix_description_locks_scope
+  - run_deterministic_topic_rule_detection
   - start_from_review_finding_before_loading_full_change_docs
   - load_spec_tasks_or_log_only_when_selected_finding_requires_that_context
   - restate_finding_in_technical_terms
@@ -131,6 +132,7 @@ interaction_contract:
 topic_rules:
   always:
     - .claude/runtime/topic-rules/verification.yaml
+    - .claude/runtime/topic-rules/coding-style.yaml
   when_reproduction_or_failure_localization_is_required:
     - .claude/runtime/topic-rules/debugging-workflow.yaml
   when_test_boundary_or_substitution_is_in_question:
@@ -153,22 +155,32 @@ topic_rules:
     - .claude/runtime/topic-rules/git-workflow.yaml
   when_gate_effectiveness_should_be_recorded:
     - .claude/runtime/topic-rules/gate-effectiveness.yaml
+  when_go_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/go-coding-style.yaml
   when_go_concurrency_pattern_is_detected:
     - .claude/runtime/topic-rules/go-concurrency.yaml
   when_go_performance_analysis_is_needed:
     - .claude/runtime/topic-rules/go-performance.yaml
+  when_python_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/python-coding-style.yaml
   when_python_concurrency_pattern_is_detected:
     - .claude/runtime/topic-rules/python-concurrency.yaml
   when_python_performance_analysis_is_needed:
     - .claude/runtime/topic-rules/python-performance.yaml
+  when_java_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/java-coding-style.yaml
   when_java_concurrency_pattern_is_detected:
     - .claude/runtime/topic-rules/java-concurrency.yaml
   when_java_performance_analysis_is_needed:
     - .claude/runtime/topic-rules/java-performance.yaml
+  when_typescript_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/typescript-coding-style.yaml
   when_typescript_concurrency_pattern_is_detected:
     - .claude/runtime/topic-rules/typescript-concurrency.yaml
   when_typescript_performance_analysis_is_needed:
     - .claude/runtime/topic-rules/typescript-performance.yaml
+  when_cpp_coding_style_pattern_is_detected:
+    - .claude/runtime/topic-rules/cpp-coding-style.yaml
   when_cpp_concurrency_pattern_is_detected:
     - .claude/runtime/topic-rules/cpp-concurrency.yaml
   when_cpp_performance_analysis_is_needed:

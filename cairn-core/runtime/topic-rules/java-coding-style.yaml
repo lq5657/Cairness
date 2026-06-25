@@ -1,0 +1,123 @@
+id: java_coding_style
+description: "Java 源码编码约定 —— 命名、异常处理、SLF4J 日志、资源管理与依赖的 Java 专属规范"
+
+trigger:
+  - "cc-apply 检测到变更包含 .java 文件时加载"
+  - "cc-apply / cc-fix / cc-review / cc-inspect-codebase 阶段触及 Java 源码命名、异常处理、日志或依赖变更"
+  - "新增类、接口、异常类型、第三方依赖或业务写操作"
+
+skip:
+  - "变更不涉及任何 Java 源码（无 .java 文件）"
+  - "纯文档、纯 Harness 元数据或生成代码变更可只检查是否误改手写逻辑"
+  - "不替代 java-concurrency 的并发正确性细则（synchronized/锁/原子类），只约束编码约定"
+  - "不用局部编码偏好覆盖项目已确认的工程约定"
+
+process:
+  - "定位本次变更触及的 .java 手写代码、测试、日志和依赖"
+  - "按命名、异常处理、日志、资源管理和依赖规则逐项检查"
+  - "对宽泛 catch 吞异常、System.out.println、printStackTrace、魔法值等问题先修正再继续"
+  - "若必须例外，记录原因、影响范围和验证证据"
+
+anti_rationalization:
+  - claim: "现有代码也这么写"
+    reality: "既有不一致不是新增问题的授权；遵守当前规则或记录兼容旧代码的最小例外"
+  - claim: "只是临时 System.out/临时 helper"
+    reality: "临时代码经常进入主干并形成生产风险；按正式代码处理或明确删除路径和验证结果"
+  - claim: "这个异常不会发生"
+    reality: "未处理异常会隐藏真实失败点；捕获具体异常或显式记录不可达依据"
+
+red_flags:
+  - "业务路径新增 System.out.println 或 e.printStackTrace()"
+  - "宽泛 catch (Exception e) / catch (Throwable t) 吞异常不记录不重抛"
+  - "空 catch 块吞掉错误"
+  - "新增第三方依赖但没有说明标准库或现有依赖为什么不足"
+
+checks:
+  - "代码 diff 已按本规则检查，例外已记录"
+  - "受影响模块已运行 maven/gradle compile 与声明的测试证据"
+  - "若配置了 checkstyle/check，校验通过"
+  - "cc-review 对命名、异常、日志和依赖风险给出结论"
+
+rules:
+  约束等级:
+    强制: "必须遵守，违反会引入缺陷"
+    警告: "应避免，特殊情况需注明原因"
+    验证: "完成后自检"
+
+  命名规范:
+    强制:
+      - 对象: 包名
+        规范: "全小写，倒域名（如 com.example.service）"
+      - 对象: 文件名
+        规范: "与 public 类同名，PascalCase"
+      - 对象: 类/接口
+        规范: "大驼峰（PascalCase）"
+        禁止: "接口 I 前缀（如 IUser）"
+      - 对象: 方法/变量
+        规范: "小驼峰（camelCase）"
+      - 对象: 常量
+        规范: "全大写下划线（UPPER_SNAKE），static final"
+      - 对象: 测试类
+        规范: "<Class>Test 后缀，方法用 @Test 标注"
+
+  错误与异常处理:
+    强制:
+      - "业务错误应使用自定义 Exception 子类（受检/非受检策略需在 project-context 声明）"
+      - "禁止宽泛 catch (Exception e) / catch (Throwable t) 吞异常"
+      - "禁止空 catch 块"
+      - "异常链应保留原因：throw new NewException(\"msg\", cause)"
+      - "禁止 e.printStackTrace()，异常走 logger"
+    警告:
+      - "方法声明 throws 要具体，避免 throws Exception 抛宽泛类型"
+      - "不要用异常做正常控制流"
+      - "在合适边界统一捕获并记录，避免每层 catch 后原样 throw"
+    验证:
+      - "是否捕获具体异常而非宽泛 Exception"
+      - "是否有空 catch 块"
+      - "异常链是否保留 cause"
+      - "是否有 printStackTrace"
+      - "是否用异常做控制流"
+
+  日志规范:
+    强制:
+      - "默认使用 SLF4J + Logback（org.slf4j.Logger / LoggerFactory.getLogger）"
+      - "禁止业务路径 System.out.println / System.err.println"
+      - "应用启动时初始化 logger 配置（logback.xml 等），模块间复用"
+      - "占位符使用 {} 而非字符串拼接（避免无谓的字符串构造与敏感信息泄露风险）"
+      - "日志格式必须至少包含：时间、等级、消息、类名、线程名"
+      - "禁止在日志中打印用户敏感信息"
+    警告:
+      - "运行时日志默认建议落盘或平台采集方案，必须在 project-context 中说明"
+      - "HTTP/任务入口、关键状态变更、外部调用失败应有可检索日志"
+      - "异常日志应包含完整堆栈（logger.error(\"msg\", e) 而非 logger.error(e.getMessage())）"
+    验证:
+      - "是否统一使用 SLF4J"
+      - "是否存在 System.out.println"
+      - "占位符是否用 {}"
+      - "日志是否包含时间、等级、消息、类名、线程名"
+      - "异常日志是否含完整堆栈"
+      - "是否打印敏感信息"
+
+  其他Java专属规范:
+    强制:
+      - "魔法值必须定义为 static final 常量"
+      - "写接口必须考虑幂等"
+      - "资源管理使用 try-with-resources（AutoCloseable）"
+    警告:
+      - "可空返回优先使用 Optional<T>，避免返回 null"
+      - "不可变优先：优先使用 record（Java 16+）或 final 字段"
+      - "新增第三方依赖必须说明标准库或现有依赖为什么不满足需求"
+      - "并发场景必须说明同步策略（synchronized/ReentrantLock/Atomic*，详见 java-concurrency）"
+    验证:
+      - "是否有魔法值未定义为常量"
+      - "接口是否考虑了幂等"
+      - "资源是否用 try-with-resources"
+      - "可空返回是否用 Optional"
+      - "新增第三方依赖是否有充分理由"
+      - "并发场景是否说明同步策略"
+
+relevance:
+  category: change_type
+  triggers:
+    - detected_by_cc_topic_trigger_java_coding_style
+    - when_java_coding_style_pattern_is_detected
