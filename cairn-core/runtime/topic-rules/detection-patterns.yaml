@@ -146,6 +146,12 @@ patterns:
       - "github\\.com/stretchr/testify"
       - "github\\.com/onsi/ginkgo"
 
+  go_coding_style:
+    file_globs:
+      - "**/*.go"
+    content_regex: []
+    import_regex: []
+
   go_concurrency:
     file_globs:
       - "**/*.go"

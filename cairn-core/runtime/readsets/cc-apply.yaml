@@ -47,6 +47,8 @@ conditional_reads:
   - .claude/runtime/topic-rules/git-workflow.yaml
   when_spec_boundary_divergence_detected_during_implementation:
   - .claude/runtime/topic-rules/spec-code-sync.yaml
+  when_go_coding_style_pattern_is_detected:
+  - .claude/runtime/topic-rules/go-coding-style.yaml
   when_go_concurrency_pattern_is_detected:
   - .claude/runtime/topic-rules/go-concurrency.yaml
   when_go_performance_analysis_is_needed:

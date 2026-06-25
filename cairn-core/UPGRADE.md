@@ -366,6 +366,8 @@ cc-cairn init
 - `.claude/scripts/cc-schema-check`
 - `.claude/scripts/cc-lint`
 - `.claude/runtime/topic-rules/coding-style.yaml`
+  - 已改为语言无关骨架（`category: always`，仅保留通用编码原则）；Go 专用规范拆至 `go-coding-style.yaml`（`category: change_type`，由 `.go` 文件检测触发）。`coding_style` id 与 always 加载语义保留不变。其他语言子规则待补。
+- `.claude/runtime/topic-rules/go-coding-style.yaml`（新增）
 - `.claude/runtime/topic-rules/database-changes.yaml`
 - `.claude/runtime/topic-rules/api-compatibility.yaml`
 - `.claude/runtime/topic-rules/configuration.yaml`
