@@ -21,6 +21,17 @@ REPO_ROOT = Path(__file__).resolve().parent
 CORE_SRC = REPO_ROOT / "cairn-core"
 VERSION_FILE = CORE_SRC / "VERSION"
 
+# Patterns excluded from every ship copy (system install + project init/update).
+# Dev-local or build artifacts that must never reach a target project:
+#   __pycache__/ + *.pyc  — Python bytecode (incl. malformed names produced by
+#                          extension-less scripts such as `cc-eval`)
+#   node_modules/         — JS deps bundled inside fixture samples
+#   settings.local.json   — the developer's local Claude Code permission whitelist
+# Keep in sync with SHIP_IGNORE in cairn-core/cc-cairn.py.
+SHIP_IGNORE = shutil.ignore_patterns(
+    "__pycache__", "*.pyc", "node_modules", "settings.local.json",
+)
+
 
 def check_python():
     if sys.version_info < MIN_PYTHON:
@@ -59,7 +70,7 @@ def install_core(data_dir: Path):
         os.rename(data_dir, backup)
 
     try:
-        shutil.copytree(CORE_SRC, data_dir)
+        shutil.copytree(CORE_SRC, data_dir, ignore=SHIP_IGNORE)
     except Exception:
         # Restore the backup if the fresh copy failed.
         if backup is not None and backup.exists():

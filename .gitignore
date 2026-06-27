@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .claude
 .cairness/
+# Developer-local Claude Code permission overrides; never ship to target projects.
+settings.local.json
+node_modules/

@@ -53,6 +53,16 @@ PRESERVE_ON_UPGRADE = {"settings.local.json"}
 # (reporting them would be noise on every upgrade).
 UPGRADE_META_FILES = {"VERSION", "CHANGELOG.md", "UPGRADE.md"}
 
+# Patterns excluded from every ship copy. Dev-local / build artifacts that must
+# never reach a target project. settings.local.json is also a PRESERVE_ON_UPGRADE
+# file: on upgrade the user's version is carried forward from the backup, so this
+# ignore only stops the release's own copy landing fresh — it never ships a dev
+# permission whitelist into a new project. Keep in sync with SHIP_IGNORE in
+# cairn_install.
+SHIP_IGNORE = shutil.ignore_patterns(
+    "__pycache__", "*.pyc", "node_modules", "settings.local.json",
+)
+
 
 class UpgradeSafetyError(Exception):
     """Raised when an upgrade would unsafely clobber state."""
@@ -143,7 +153,7 @@ def _replace_framework_dir(
     tmp = Path(tempfile.mkdtemp(prefix=dst.name + ".tmp-", dir=str(parent)))
     try:
         # tmp is an empty dir created by mkdtemp; copy into it.
-        shutil.copytree(src, tmp, dirs_exist_ok=True)
+        shutil.copytree(src, tmp, dirs_exist_ok=True, ignore=SHIP_IGNORE)
         os.rename(tmp, dst)
     except Exception:
         if tmp.exists():

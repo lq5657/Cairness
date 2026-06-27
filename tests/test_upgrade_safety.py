@@ -95,6 +95,34 @@ def test_upgrade_preserves_settings_local_json(tmp_path):
     assert (dst / "settings.local.json").read_text() == "user-local"
 
 
+def test_replace_framework_dir_filters_dev_artifacts(tmp_path):
+    """A fresh install must not carry dev-local / build artifacts from src into
+    the target: __pycache__, *.pyc, node_modules, or the dev settings.local.json
+    permission whitelist. These must never ship into a project's .claude/."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {
+        "VERSION": "1.0.0",
+        "scripts/cc-verify": "#!/bin/sh\n",
+        "settings.local.json": '{"permissions": {"allow": []}}',
+        "__pycache__/junk.cpython-313.pyc": "bytecode",
+        "scripts/__pycache__/cc-verifycpython-313.pyc": "bytecode",
+        "fixtures/ts/node_modules/pkg/index.js": "module",
+    })
+    dst = tmp_path / "project" / ".claude"
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    # Framework assets land.
+    assert (dst / "VERSION").exists()
+    assert (dst / "scripts" / "cc-verify").exists()
+    # Dev / build artifacts do not.
+    assert not (dst / "settings.local.json").exists()
+    assert not (dst / "__pycache__").exists()
+    assert not (dst / "scripts" / "__pycache__").exists()
+    assert not (dst / "fixtures" / "ts" / "node_modules").exists()
+
+
 def test_identity_check_refuses_foreign_directory(tmp_path):
     mod = _cc_cairn()
     src = tmp_path / "release"
@@ -250,6 +278,32 @@ def test_cairn_install_backs_up_previous_install(tmp_path, monkeypatch):
     backup = data_dir.with_name("cairness.bak")
     assert backup.exists()
     assert (backup / "VERSION").read_text() == "1.0.0"
+
+
+def test_install_core_filters_dev_artifacts(tmp_path, monkeypatch):
+    """cairn_install must not ship dev artifacts into the system data dir."""
+    mod = _cairn_install()
+    release = tmp_path / "release"
+    _make_tree(release, {
+        "VERSION": "2.0.0",
+        "scripts/cc-verify": "v2",
+        "settings.local.json": '{"permissions": {"allow": []}}',
+        "scripts/__pycache__/cc-verifycpython-313.pyc": "bytecode",
+        "fixtures/ts/node_modules/pkg/index.js": "module",
+    })
+    monkeypatch.setattr(mod, "CORE_SRC", release)
+    monkeypatch.setattr(mod, "REPO_ROOT", REPO)  # git rev-parse still works
+
+    data_dir = tmp_path / "cairness"
+    mod.install_core(data_dir)
+
+    # Framework assets land.
+    assert (data_dir / "VERSION").read_text() == "2.0.0"
+    assert (data_dir / "scripts" / "cc-verify").read_text() == "v2"
+    # Dev / build artifacts do not.
+    assert not (data_dir / "settings.local.json").exists()
+    assert not (data_dir / "scripts" / "__pycache__").exists()
+    assert not (data_dir / "fixtures" / "ts" / "node_modules").exists()
 
 
 # --- end-to-end init (integration) -----------------------------------------
