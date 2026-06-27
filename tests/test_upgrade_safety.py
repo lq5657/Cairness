@@ -327,10 +327,9 @@ def test_cmd_init_end_to_end(tmp_path, monkeypatch):
         assert (tmp_path / d).is_dir()
     # Knowledge index template copied.
     assert (tmp_path / ".cairness" / "knowledge" / "index.md").exists()
-    # CI templates: the release currently ships no templates/ci/ dir (pre-existing
-    # shipping gap — CI lives at repo-root .github/workflows/, outside cairn-core/).
-    # init must degrade gracefully: no crash, no spurious empty workflows dir.
-    assert not (tmp_path / ".github" / "workflows").exists()
+    # CI templates now ship under templates/ci/ and land in .github/workflows/.
+    assert (tmp_path / ".github" / "workflows").is_dir()
+    assert (tmp_path / ".github" / "workflows" / "cairness.yml").is_file()
     # .gitignore updated.
     assert ".claude/" in (tmp_path / ".gitignore").read_text()
     # No backup needed on fresh install.
