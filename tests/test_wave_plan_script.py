@@ -28,6 +28,57 @@ def test_generate_wave_plan(tmp_path, monkeypatch, cc_wave_plan):
     assert set(plan["waves"][0]["tasks"]) == {"T1", "T2"}
 
 
+# Realistic tasks.md shape: the full per-task field block from the template,
+# where **涉及文件** is immediately followed by more bulleted * **...**:
+# fields with NO blank line between them. (The oversimplified shape above
+# uses a blank line before the next task, which accidentally bounds the
+# capture and hides the parser bug.)
+
+_REALISTIC_FIELDS = """* **目标**: {name}
+* **不包含范围**: -
+* **涉及文件**:
+  - `{file}`
+* **上下游 Context**: none
+* **关键签名**: {name}()
+* **验收标准**: passes
+* **验证步骤**: run tests
+* **渐进可验证要求**: step
+* **测试要求**: unit
+* **依赖 / Wave**: depends_on=[] parallel_safe:true
+* **回退方式**: revert
+* **完成后状态**: `todo`
+* **Baseline / Delta**: -"""
+
+
+def _realistic_tasks_md() -> str:
+    body_a = _REALISTIC_FIELDS.format(name="A", file="a.go")
+    body_b = _REALISTIC_FIELDS.format(name="B", file="b.go")
+    return f"#### Task 1: A\n{body_a}\n\n#### Task 2: B\n{body_b}\n"
+
+
+def test_generate_wave_plan_realistic_template_shape(tmp_path, monkeypatch, cc_wave_plan):
+    """Two parallel tasks with disjoint files, written in the REAL template
+    shape (contiguous bulleted * **...**: fields). Must be valid with no
+    E_WAVE002 — the parser must not ingest the following field labels
+    (e.g. '完成后状态**: `todo') as bogus overlapping files."""
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(_realistic_tasks_md(), encoding="utf-8")
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    # Per-task files are exactly the declared ones — no field-label pollution.
+    nodes = cc_wave_plan.parse_tasks(change_dir / "tasks.md")
+    assert nodes[0].files == {"a.go"}
+    assert nodes[1].files == {"b.go"}
+
+    plan = cc_wave_plan.generate("chg-1", max_parallel=10)
+    assert plan["valid"] is True
+    assert len(plan["waves"]) == 1
+    assert set(plan["waves"][0]["tasks"]) == {"T1", "T2"}
+    codes = [i.get("code") for i in plan.get("issues", [])]
+    assert "E_WAVE002" not in codes
+
+
 def test_check_consistency_stale(tmp_path, monkeypatch, cc_wave_plan):
     """声明改后 wave-plan.json 过期 → E_WAVE003。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"

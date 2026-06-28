@@ -88,3 +88,33 @@ def test_parse_task_files_integration(tmp_path):
     )
     files = parse_task_files(tasks_md)
     assert files == {"a.go", "b.go"}
+
+
+def test_parse_task_files_realistic_template_shape(tmp_path):
+    """In the real template shape, **涉及文件** is immediately followed by
+    more bulleted * **...**: fields (no blank line). The parser must stop at
+    the next field header and return only the declared files — it must NOT
+    ingest field labels like '完成后状态**: `todo' as bogus files."""
+    from importlib.machinery import SourceFileLoader
+    from pathlib import Path
+    scripts = Path(__file__).resolve().parent.parent / "cairn-core" / "scripts"
+    cc_deps = SourceFileLoader("_cc_deps_realistic", str(scripts / "cc-deps")).load_module()
+    parse_task_files = cc_deps.parse_task_files
+
+    tasks_md = tmp_path / "tasks.md"
+    tasks_md.write_text(
+        "#### Task 1: A\n"
+        "* **目标**: do A\n"
+        "* **涉及文件**:\n"
+        "  - `a.go`\n"
+        "  - `b.go`\n"
+        "* **上下游 Context**: none\n"
+        "* **关键签名**: A()\n"
+        "* **完成后状态**: `todo`\n"
+        "* **Baseline / Delta**: -\n",
+        encoding="utf-8",
+    )
+    files = parse_task_files(tasks_md)
+    assert files == {"a.go", "b.go"}
+    # None of the field labels leak in.
+    assert not any("完成后状态" in f or "上下游" in f or "Baseline" in f for f in files)

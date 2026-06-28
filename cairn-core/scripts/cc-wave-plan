@@ -64,7 +64,14 @@ def _parse_parallel_safe(section: str) -> bool:
 def _parse_section_files(section: str) -> set[str]:
     """取 task 段内 **涉及文件** 行的文件路径。镜像 cc-deps.parse_task_files 的 Pattern 1。"""
     files: set[str] = set()
-    for fm in re.finditer(r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", section, re.DOTALL):
+    # Capture stops at the next field header. Task fields are bulleted as
+    # `* **label**:`, so the boundary must match a newline + bullet + `**`,
+    # not just a bare `**` at column 0. Without the bullet form, a `**涉及文件**`
+    # field followed immediately by more `* **...**:` fields (the real template
+    # shape, no blank line between fields) runs away and ingests every
+    # subsequent field label (e.g. '完成后状态**: `todo') as a bogus file,
+    # which then trips E_WAVE002 as a false overlap.
+    for fm in re.finditer(r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\s*[-*+]\s+\*\*|\n\*\*|\n\n|\Z)", section, re.DOTALL):
         for line in fm.group(1).splitlines():
             line = line.strip().lstrip("-* ").strip().strip("`")
             if line and not line.startswith("("):

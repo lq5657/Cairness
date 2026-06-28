@@ -69,9 +69,16 @@ def parse_task_files(tasks_path: Path) -> set[str]:
     content = tasks_path.read_text(encoding="utf-8")
     files: set[str] = set()
 
-    # Pattern 1: **涉及文件**: followed by file paths
+    # Pattern 1: **涉及文件**: followed by file paths.
+    # Capture stops at the next field header. Task fields are bulleted as
+    # `* **label**:`, so the boundary must match a newline + bullet + `**`,
+    # not just a bare `**` at column 0. Otherwise a `**涉及文件**` field
+    # followed immediately by more `* **...**:` fields (the real template
+    # shape, no blank line between fields) runs away and ingests every
+    # subsequent field label as a bogus file, which then trips false
+    # cross-change file conflicts. Keep in sync with cc-wave-plan._parse_section_files.
     for m in re.finditer(
-        r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", content, re.DOTALL
+        r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\s*[-*+]\s+\*\*|\n\*\*|\n\n|\Z)", content, re.DOTALL
     ):
         block = m.group(1).strip()
         for line in block.splitlines():
