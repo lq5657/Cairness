@@ -35,7 +35,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from change_docs import finding_rows
+from change_docs import finding_rows, parse_findings
 from harness_runtime.issues import Issue, build_report
 
 
@@ -43,8 +43,6 @@ EVIDENCE_TRACEABILITY_CODE = "E_EVIDENCE001"
 EVIDENCE_PHANTOM_REF_CODE = "E_EVIDENCE002"
 EVIDENCE_CLAIM_NO_PROOF_CODE = "E_EVIDENCE003"
 
-LOCATION_RE = re.compile(r"\*\*Location\*\*:\s*`([^`]+)`")
-FINDING_HDR_RE = re.compile(r"^###\s+Finding\s+#(\d+)\b[^\n]*\(([^,)]+)", re.M)
 MAPPING_SECTION_RE = re.compile(r"#### 2\.1 验证映射检查(.*?)(?:\n####|\Z)", re.S)
 
 PASSED_TOKENS = {"pass", "passed", "通过", "✅", "ok", "done", "完成"}
@@ -107,24 +105,13 @@ def finding_detail_blocks(review_text: str) -> list[dict[str, str]]:
 
     Returns one dict per block (in document order) with `number`, `level`,
     and `location` (empty string if the block has no **Location** anchor).
-    Walks forward from each header until the next `### Finding` or EOF.
+    Delegates to change_docs.parse_findings (single source for the blessed
+    `### Finding #N:` header + Location extraction).
     """
-    lines = review_text.splitlines()
-    headers = list(FINDING_HDR_RE.finditer(review_text))
-    blocks: list[dict[str, str]] = []
-    for i, m in enumerate(headers):
-        number = m.group(1)
-        level = m.group(2).strip()
-        start_line = review_text[: m.start()].count("\n")
-        end_line = review_text[: headers[i + 1].start()].count("\n") if i + 1 < len(headers) else len(lines)
-        location = ""
-        for line in lines[start_line:end_line]:
-            loc_m = LOCATION_RE.search(line)
-            if loc_m:
-                location = loc_m.group(1)
-                break
-        blocks.append({"number": number, "level": level, "location": location})
-    return blocks
+    return [
+        {"number": d.number, "level": d.level, "location": d.location}
+        for d in parse_findings(review_text)
+    ]
 
 
 def parse_location(loc: str) -> str | None:
@@ -161,7 +148,7 @@ def is_template_placeholder(review_text: str) -> bool:
         return False
     if any(row[0] in {"Minor", "无"} for row in finding_rows(review_text) if row):
         return False
-    if FINDING_HDR_RE.search(review_text):
+    if parse_findings(review_text):
         return False
     if mapping_rows(review_text):
         return False

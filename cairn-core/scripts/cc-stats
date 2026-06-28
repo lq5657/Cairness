@@ -29,15 +29,13 @@ from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums as _load_enums
 
+from change_docs import parse_findings
+
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
 _FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")
 _FINDING_STATUS_PATTERN = "|".join(sorted(_FINDING_STATUS, key=len, reverse=True))
-ROOT_CAUSE_TAG_RE = re.compile(
-    r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
-    re.IGNORECASE,
-)
 
 ROOT_CAUSE_SUGGESTIONS: dict[str, str] = {
     "missing_error_handling": "建议在 code review checklist 中增加错误处理检查项，或引入 errcheck/linter 规则",
@@ -130,29 +128,21 @@ def parse_review(path: Path) -> dict[str, Any] | None:
                 result["final_status"] = fm.get("final_status", "unknown")
         except Exception:
             pass
-    # Count findings by parsing markdown
-    finding_ids = set()
-    for m in re.finditer(r'^###\s+(F\d+):\s*(.+)', content, re.MULTILINE):
-        fid = m.group(1)
-        title = m.group(2)
-        if fid not in finding_ids:
-            finding_ids.add(fid)
-            # Try to extract severity
-            sev_match = re.search(r'\b(critical|important|minor|cosmetic)\b', title.lower())
-            status_match = re.search(rf'\b({_FINDING_STATUS_PATTERN})\b', title.lower())
-            # Scan following lines for status/severity markers
-            rest = content[m.end():m.end() + 500]
-            sev2 = re.search(r'(?:severity|level)[:\s]*[`"]*(critical|important|minor|cosmetic)', rest, re.IGNORECASE)
-            status2 = re.search(rf'(?:status)[:\s]*[`"]*({_FINDING_STATUS_PATTERN})', rest, re.IGNORECASE)
-            lens_match = re.search(r'(?:lens)[:\s]*[`"]*([a-z_]+)', rest, re.IGNORECASE)
-            rc_match = ROOT_CAUSE_TAG_RE.search(rest)
-            result["findings"].append({
-                "id": fid,
-                "severity": (sev_match.group(1) if sev_match else (sev2.group(1).lower() if sev2 else "unknown")),
-                "status": (status_match.group(1) if status_match else (status2.group(1).lower() if status2 else "open")),
-                "lens": lens_match.group(1) if lens_match else "unknown",
-                "root_cause_tag": rc_match.group(1) if rc_match else None,
-            })
+    # Findings: delegate to the shared parse_findings (blessed `### Finding #N:`
+    # header). The old `### F\d+` header matched no template/doc/test and
+    # returned 0 findings on review.md written per the template.
+    for detail in parse_findings(content):
+        sev = detail.level.lower()
+        if sev not in {"critical", "important", "minor", "cosmetic"}:
+            sev = "unknown"
+        status = detail.status if detail.status in _FINDING_STATUS else "open"
+        result["findings"].append({
+            "id": f"F{detail.number}",
+            "severity": sev,
+            "status": status,
+            "lens": detail.detected_by_gate or "unknown",
+            "root_cause_tag": detail.root_cause_tag,
+        })
     return result
 
 

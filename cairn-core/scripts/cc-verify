@@ -16,6 +16,8 @@ from pathlib import Path
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 
+from change_docs import parse_findings
+
 
 def profile_command(profile: dict[str, object], capability: str, fallback: list[str]) -> list[str]:
     verification = profile.get("verification")
@@ -379,24 +381,6 @@ def _find_section_marker(lines: list[str], marker: str) -> int:
     return -1
 
 
-def _extract_code_block(lines: list[str], start_idx: int) -> tuple[str, int]:
-    """Extract a fenced code block starting after start_idx. Returns (code, end_idx)."""
-    idx = start_idx
-    while idx < len(lines) and not lines[idx].strip().startswith("```"):
-        idx += 1
-    if idx >= len(lines):
-        return "", idx
-    fence = lines[idx].strip()
-    idx += 1
-    code_lines: list[str] = []
-    while idx < len(lines):
-        if lines[idx].strip() == fence.split()[0] if fence else "```":
-            break
-        code_lines.append(lines[idx])
-        idx += 1
-    return "\n".join(code_lines), idx
-
-
 def check_review_coverage(project_root: Path, change_id: str) -> dict[str, object]:
     """Check that review.md has a complete file_review_scope table."""
     review_path = project_root / ".cairness" / "changes" / change_id / "review.md"
@@ -508,11 +492,7 @@ def check_finding_locations(project_root: Path, change_id: str) -> dict[str, obj
         }
 
     lines = review_path.read_text(encoding="utf-8").splitlines()
-
-    # Find all location patterns: **Location**: `<path>:<line>-<line>`
-    location_pattern = re.compile(r"\*\*Location\*\*:\s*`([^`]+)`")
-    # Find finding headers: ### Finding #N: ... (level, status)
-    finding_header = re.compile(r"###\s+Finding\s+#\d+.*\(([^,)]+)\s*,?\s*[^)]*\)")
+    content = "\n".join(lines)
 
     mismatches: list[str] = []
     warnings_list: list[str] = []
@@ -520,38 +500,21 @@ def check_finding_locations(project_root: Path, change_id: str) -> dict[str, obj
     no_existing_code: int = 0
     important_with_location_no_code: list[str] = []
 
-    for i, line in enumerate(lines):
-        loc_match = location_pattern.search(line)
-        if not loc_match:
+    # Delegate Finding-detail parsing to the shared parse_findings (blessed
+    # `### Finding #N:` header, info-string-aware Existing Code extraction).
+    # The old inline parser's _extract_code_block swallowed ```go fences to EOF
+    # (closing-fence bug) and special-cased only Go via a `not startswith("```go")`
+    # band-aid that left the `**Existing Code**:` path broken.
+    for detail in parse_findings(content):
+        if not detail.location:
             continue
-
-        location = loc_match.group(1)
-        # Split path:line-line
-        parts = location.rsplit(":", 1)
+        # Split path:line-line (preserve the original guard: bare paths skip)
+        parts = detail.location.rsplit(":", 1)
         if len(parts) != 2:
             continue
         file_path = parts[0]
-
-        # Find the finding header preceding this location (search backwards)
-        finding_level = "unknown"
-        for j in range(i - 1, max(i - 40, 0), -1):
-            header_match = finding_header.search(lines[j])
-            if header_match:
-                finding_level = header_match.group(1).strip()
-                break
-
-        # Find the following Existing Code block (stop at next finding or next location)
-        code = ""
-        for j in range(i + 1, min(i + 30, len(lines))):
-            # Stop at boundaries: next finding header or another Location
-            if lines[j].strip().startswith("### Finding") or "**Location**:" in lines[j]:
-                break
-            if lines[j].strip().startswith("```") and not lines[j].strip().startswith("```go"):
-                code, _ = _extract_code_block(lines, j)
-                break
-            if "**Existing Code**:" in lines[j]:
-                code, _ = _extract_code_block(lines, j)
-                break
+        finding_level = detail.level or "unknown"
+        code = detail.existing_code
 
         if not code.strip():
             no_existing_code += 1
@@ -581,7 +544,7 @@ def check_finding_locations(project_root: Path, change_id: str) -> dict[str, obj
                 matched += 1
             else:
                 first_line = code.strip().split("\n")[0].strip() if code.strip() else ""
-                mismatches.append(f"{file_path}:{parts[1] if len(parts) > 1 else '?'} — existing_code not found in file (first line: {first_line[:80]})")
+                mismatches.append(f"{file_path}:{parts[1]} — existing_code not found in file (first line: {first_line[:80]})")
 
     status = "failed" if mismatches else "passed"
     stderr_lines = list(mismatches)

@@ -12,6 +12,8 @@ from pathlib import Path
 from harness_runtime.issues import Issue, build_report
 from harness_runtime.enums import enum_set, load_enums
 
+from change_docs import finding_rows, accepted_confirmation_rows
+
 
 _ENUMS = load_enums()
 VALID_CLOSED = enum_set(_ENUMS, "validation_mapping_status", "closed")
@@ -52,27 +54,6 @@ def table_rows(text: str) -> list[list[str]]:
 
 def validation_rows(text: str) -> list[list[str]]:
     return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
-
-
-def finding_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\. Findings(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    section = match.group(1)
-    return [
-        row for row in table_rows(section)
-        if len(row) >= 5 and row[0] in {"Critical", "Important", "Minor", "无"}
-    ]
-
-
-def accepted_confirmation_rows(text: str) -> list[list[str]]:
-    match = re.search(r"#### 5\.1 Accepted Findings 确认记录（按需）(.*?)(?:\n#### 6\.|\Z)", text, re.S)
-    if not match:
-        return []
-    return [
-        row for row in table_rows(match.group(1))
-        if len(row) >= 5 and row[0] != "Finding 描述（与上表一致）"
-    ]
 
 
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:

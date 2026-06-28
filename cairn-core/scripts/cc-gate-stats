@@ -29,19 +29,7 @@ from typing import Any
 
 from harness_runtime import require_yaml
 
-
-ROOT_CAUSE_TAG_RE = re.compile(
-    r'(?:root_cause_tag)[:\s]*[`"]*([a-z_]+)',
-    re.IGNORECASE,
-)
-DETECTED_BY_GATE_RE = re.compile(
-    r'(?:detected_by|gate)[:\s]*[`"]*([a-z0-9_-]+)',
-    re.IGNORECASE,
-)
-WAS_REAL_ERROR_RE = re.compile(
-    r'(?:was_real_error)[:\s]*[`"]*(true|false|yes|no)',
-    re.IGNORECASE,
-)
+from change_docs import parse_findings
 
 
 @dataclass
@@ -110,24 +98,13 @@ def parse_review_gates(path: Path) -> dict[str, Any]:
     change_id = path.parent.name
     findings: list[dict[str, Any]] = []
 
-    for m in re.finditer(r"^###\s+(F\d+):\s*(.+)", content, re.MULTILINE):
-        fid = m.group(1)
-        rest = content[m.end() : m.end() + 800]
-
-        rc_match = ROOT_CAUSE_TAG_RE.search(rest)
-        gate_match = DETECTED_BY_GATE_RE.search(rest)
-        err_match = WAS_REAL_ERROR_RE.search(rest)
-
-        was_real = None
-        if err_match:
-            was_real = err_match.group(1).lower() in ("true", "yes")
-
+    for detail in parse_findings(content):
         findings.append(
             {
-                "id": fid,
-                "root_cause_tag": rc_match.group(1) if rc_match else None,
-                "detected_by_gate": gate_match.group(1) if gate_match else None,
-                "was_real_error": was_real,
+                "id": f"F{detail.number}",
+                "root_cause_tag": detail.root_cause_tag,
+                "detected_by_gate": detail.detected_by_gate,
+                "was_real_error": detail.was_real_error,
             }
         )
 
