@@ -12,7 +12,7 @@ from pathlib import Path
 from harness_runtime.issues import Issue, build_report
 from harness_runtime.enums import enum_set, load_enums
 
-from change_docs import finding_rows, accepted_confirmation_rows
+from change_docs import finding_rows, accepted_confirmation_rows, validation_rows
 
 
 _ENUMS = load_enums()
@@ -40,20 +40,6 @@ def parse_meta(text: str) -> dict[str, str]:
         key, value = line.split(":", 1)
         meta[key.strip()] = value.strip().split("#", 1)[0].strip().strip('"').strip("'")
     return meta
-
-
-def table_rows(text: str) -> list[list[str]]:
-    rows: list[list[str]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|") or "---" in stripped:
-            continue
-        rows.append([cell.strip().strip("`") for cell in stripped.strip("|").split("|")])
-    return rows
-
-
-def validation_rows(text: str) -> list[list[str]]:
-    return [row for row in table_rows(text) if row and re.fullmatch(r"V[0-9]+", row[0])]
 
 
 def discover_change_dirs(inputs: list[Path]) -> list[Path]:

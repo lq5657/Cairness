@@ -165,6 +165,77 @@ def accepted_confirmation_rows(text: str) -> list[list[str]]:
     ]
 
 
+# --- review.md validation rules (single source for cc-lint + cc-schema-check)
+#
+# lint_review (cc-lint) and validate_review (cc-schema-check) were
+# byte-identical rule bodies emitting the same checks into different output
+# shapes (free-form strings vs Issue+E_SCHEMA*). Any rule change applied to
+# one would silently miss the other — the same drift hazard that produced
+# the ### F1: finding-header bug. collect_review_violations emits the checks
+# once as (code, message) tuples with the canonical schema codes; each
+# caller maps to its output shape. Requires the caller to supply
+# finding_status (the enum set) since it derives from runtime/enums.yaml.
+
+# Schema codes for the review rules (authoritative set; see review.schema.json).
+REVIEW_CODE_INVALID_STATUS = "E_SCHEMA017"
+REVIEW_CODE_INVALID_FINDING_STATUS = "E_SCHEMA018"
+REVIEW_CODE_ACCEPTED_NO_REASON = "E_SCHEMA186"
+REVIEW_CODE_ACCEPTED_NO_CONFIRMATION = "E_SCHEMA187"
+REVIEW_CODE_ACCEPTED_INCOMPLETE_CONFIRMATION = "E_SCHEMA188"
+
+
+def collect_review_violations(
+    text: str,
+    meta: dict[str, Any],
+    *,
+    valid_review_status: dict[str, set[str]],
+    valid_finding_status: set[str],
+) -> list[tuple[str, str]]:
+    """Run the review.md validation rules once.
+
+    Returns ``(code, message)`` tuples for each violation found. Codes are the
+    canonical schema codes (E_SCHEMA017/018/186/187/188). Callers map the
+    message into their output shape (cc-lint: ``f"{path}: {msg}"`` string;
+    cc-schema-check: ``add(issues, code, path, msg)``).
+
+    ``meta`` is the parsed frontmatter dict, passed in by the caller because
+    parse_meta is a per-script typed variant (see module docstring) — string
+    values in cc-lint/cc-sync-check, yaml-typed in cc-schema-check — but the
+    `meta.get(key) not in allowed` check works for both.
+    """
+    violations: list[tuple[str, str]] = []
+    for key, allowed in valid_review_status.items():
+        if meta.get(key) not in allowed:
+            violations.append((REVIEW_CODE_INVALID_STATUS, f"invalid or missing {key}"))
+    rows = finding_rows(text)
+    for row in rows:
+        status = row[4].strip("` ") if len(row) > 4 else ""
+        if row[0] != "无" and status not in valid_finding_status:
+            violations.append((REVIEW_CODE_INVALID_FINDING_STATUS, f"finding has invalid status {status}"))
+    accepted_rows = [row for row in rows if len(row) >= 5 and row[4].strip("` ") == "accepted"]
+    confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}
+    for row in accepted_rows:
+        description = row[1].strip()
+        reason_text = " ".join(row[:4]).strip()
+        if len(reason_text) < 20:
+            violations.append(
+                (REVIEW_CODE_ACCEPTED_NO_REASON, f"accepted finding '{description}' lacks reason")
+            )
+        confirmation = confirmations.get(description)
+        if not confirmation:
+            violations.append(
+                (REVIEW_CODE_ACCEPTED_NO_CONFIRMATION,
+                 f"accepted finding '{description}' missing accepted confirmation record")
+            )
+            continue
+        if any(not cell.strip() for cell in confirmation[:5]):
+            violations.append(
+                (REVIEW_CODE_ACCEPTED_INCOMPLETE_CONFIRMATION,
+                 f"accepted finding '{description}' has incomplete confirmation record")
+            )
+    return violations
+
+
 # --- Finding detail blocks (`### Finding #N:`) -----------------------------
 #
 # Single source of truth for parsing the per-Finding detail blocks in

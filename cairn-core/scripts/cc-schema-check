@@ -36,6 +36,7 @@ from change_docs import (
     VALID_TASK_STATUS,
     VALID_TEST_MODE,
     accepted_confirmation_rows,
+    collect_review_violations,
     finding_rows,
     parse_key_values,
     parse_scalar,
@@ -1638,26 +1639,14 @@ def validate_review(path: Path, issues: list[Issue]) -> None:
         return
     text = read(path)
     meta = parse_meta(text)
-    for key, allowed in VALID_REVIEW_STATUS.items():
-        if meta.get(key) not in allowed:
-            add(issues, "E_SCHEMA017", path, f"invalid or missing {key}")
-    for row in finding_rows(text):
-        status = row[4].strip("` ")
-        if row[0] != "无" and status not in _FINDING_STATUS:
-            add(issues, "E_SCHEMA018", path, f"finding has invalid status {status}")
-    accepted_rows = [row for row in finding_rows(text) if len(row) >= 5 and row[4].strip("` ") == "accepted"]
-    confirmations = {row[0].strip(): row for row in accepted_confirmation_rows(text) if row[0].strip()}
-    for row in accepted_rows:
-        description = row[1].strip()
-        reason_text = " ".join(row[:4]).strip()
-        if len(reason_text) < 20:
-            add(issues, "E_SCHEMA186", path, f"accepted finding '{description}' lacks reason")
-        confirmation = confirmations.get(description)
-        if not confirmation:
-            add(issues, "E_SCHEMA187", path, f"accepted finding '{description}' missing accepted confirmation record")
-            continue
-        if any(not cell.strip() for cell in confirmation[:5]):
-            add(issues, "E_SCHEMA188", path, f"accepted finding '{description}' has incomplete confirmation record")
+    # Delegate the review rules to the shared collect_review_violations (same
+    # body cc-lint.lint_review runs); only the output shape differs (Issue +
+    # E_SCHEMA* codes here). Keeps cc-lint and cc-schema-check in lockstep —
+    # a rule change applied to one can no longer silently miss the other.
+    for code, msg in collect_review_violations(
+        text, meta, valid_review_status=VALID_REVIEW_STATUS, valid_finding_status=_FINDING_STATUS
+    ):
+        add(issues, code, path, msg)
 
 
 def validate_test_spec(path: Path, issues: list[Issue]) -> None:
