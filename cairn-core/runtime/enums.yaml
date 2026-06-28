@@ -35,3 +35,29 @@ validation_mapping_status:
 test_mode:
   # cc-test 的模式。
   core: [supplement, recovery]
+
+human_review_status:
+  # hard_gate 的人工审核状态(spec.schema.json 迁移至此)。
+  core: [not_required, pending, approved, rejected]
+
+root_cause_tag:
+  # review finding 的根因标签(review.schema.json 迁移至此)。
+  core:
+    - missing_error_handling
+    - missing_validation
+    - missing_test
+    - incorrect_state_transition
+    - incorrect_amount_type
+    - incorrect_time_type
+    - missing_timeout
+    - missing_auth_check
+    - race_condition
+    - api_contract_break
+    - database_schema_mismatch
+    - config_drift
+    - observability_gap
+    - security_vulnerability
+    - performance_regression
+    - spec_implementation_gap
+    - dependency_order_error
+    - other

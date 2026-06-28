@@ -35,6 +35,8 @@ VALID_CHANGE_STATUS = enum_set(_ENUMS, "change_status", "core")
 VALID_TASK_STATUS = enum_set(_ENUMS, "task_status", "core")
 VALID_MAPPING_STATUS = enum_set(_ENUMS, "validation_mapping_status", "core")
 VALID_TEST_MODE = enum_set(_ENUMS, "test_mode", "core")
+VALID_HUMAN_REVIEW_STATUS = enum_set(_ENUMS, "human_review_status", "core")
+VALID_ROOT_CAUSE_TAGS = enum_set(_ENUMS, "root_cause_tag", "core")
 VALID_REVIEW_STATUS = {
     "stage1_status": {"pass", "fail", "partial"},
     "stage2_status": {"pass", "fail", "skipped", "partial"},
@@ -319,7 +321,7 @@ def parse_workflow_commands(text: str) -> dict[str, str]:
 # caller maps to its output shape. Requires the caller to supply
 # finding_status (the enum set) since it derives from runtime/enums.yaml.
 
-# Schema codes for the review rules (authoritative set; see review.schema.json).
+# Schema codes for the review rules (authoritative set; enums in runtime/enums.yaml).
 REVIEW_CODE_INVALID_STATUS = "E_SCHEMA017"
 REVIEW_CODE_INVALID_FINDING_STATUS = "E_SCHEMA018"
 REVIEW_CODE_ACCEPTED_NO_REASON = "E_SCHEMA186"
@@ -390,7 +392,7 @@ def collect_review_violations(
 # review.md template; the field regexes match the template's space-form
 # labels (`**Detected by**`, `**Root Cause Tag**`) — the old underscore-form
 # regexes never matched the template and silently returned None.
-# Field set aligns with review.schema.json's findings[] contract.
+# Field set aligns with runtime/enums.yaml finding_status + root_cause_tag.
 
 FINDING_HDR_RE = re.compile(r"^###\s+Finding\s+#(\d+):\s*(.*)$", re.M)
 _PAREN_TAIL_RE = re.compile(r"\s*\(([^)]*)\)\s*$")
@@ -415,9 +417,10 @@ _FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 class FindingDetail:
     """One `### Finding #N:` detail block from review.md.
 
-    Fields align with review.schema.json findings[]: level/status/description
-    are required by the schema; root_cause_tag and detected_by{gate,
-    was_real_error} are optional. `location` is the raw `path:line-line`;
+    Fields align with the review finding contract: level/status/description
+    are required; root_cause_tag (enums in runtime/enums.yaml) and
+    detected_by{gate, was_real_error} are optional. `location` is raw
+    `path:line-line`;
     `existing_code` is the fenced block under **Existing Code** (may be "").
     """
 

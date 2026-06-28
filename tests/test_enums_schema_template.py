@@ -58,19 +58,6 @@ def _find_enum(obj, predicate, path=""):
 
 # --- schema enum == enums.yaml subset --------------------------------------
 
-def test_spec_schema_change_status_matches(enums):
-    """spec.schema status enum == change_status.core."""
-    schema = _schema("spec.schema.json")
-    assert set(schema["properties"]["status"]["enum"]) == enum_set(enums, "change_status", "core")
-
-
-def test_spec_schema_validation_map_status_matches(enums):
-    """spec.schema validation_map.status == validation_mapping_status.core."""
-    schema = _schema("spec.schema.json")
-    enum = schema["properties"]["validation_map"]["items"]["properties"]["status"]["enum"]
-    assert set(enum) == enum_set(enums, "validation_mapping_status", "core")
-
-
 def test_runtime_command_change_from_matches(enums):
     """runtime-command.schema change_from.items == change_status.from_set."""
     schema = _schema("runtime-command.schema.json")
@@ -91,19 +78,6 @@ def test_command_event_transition_matches(enums):
     transition = schema["properties"]["transition"]["properties"]
     assert set(transition["from"]["enum"]) == enum_set(enums, "change_status", "from_set")
     assert set(transition["to"]["enum"]) == enum_set(enums, "change_status", "to_set")
-
-
-# --- schema enum ⊇ enums.yaml core (sentinel superset) ---------------------
-
-def test_review_schema_finding_status_covers_core(enums):
-    """review.schema findings.status enum must cover finding_status.core.
-    The schema also accepts empty markers (无/-); core must be a subset."""
-    schema = _schema("review.schema.json")
-    enum = set(schema["properties"]["findings"]["items"]["properties"]["status"]["enum"])
-    core = enum_set(enums, "finding_status", "core")
-    assert core <= enum, f"review.schema finding status missing core values: {core - enum}"
-    empties = enum_set(enums, "finding_status", "empty_markers")
-    assert empties <= enum, f"review.schema finding status missing empty markers: {empties - enum}"
 
 
 # --- template enum line == enums.yaml core ---------------------------------
@@ -146,3 +120,56 @@ def test_cc_workflow_gen_states_match_enums():
     assert mod._ENUMS is not None
     assert mod.enum_list(mod._ENUMS, "change_status", "core") == ["propose", "apply", "review", "done"]
     assert mod.enum_list(mod._ENUMS, "finding_status", "core") == ["open", "fixed", "accepted"]
+
+
+# --- post-schema-removal enum guards ----------------------------------------
+# spec.schema.json and review.schema.json were deleted (their enum values
+# migrated to enums.yaml). These tests guard the migrated enum groups.
+
+
+def test_human_review_status_core_values(enums):
+    """human_review_status.core has exactly the 4 values from old spec.schema.json."""
+    assert enum_set(enums, "human_review_status", "core") == {
+        "not_required", "pending", "approved", "rejected",
+    }
+
+
+def test_root_cause_tag_core_values(enums):
+    """root_cause_tag.core has exactly the 18 values from old review.schema.json."""
+    assert enum_set(enums, "root_cause_tag", "core") == {
+        "missing_error_handling",
+        "missing_validation",
+        "missing_test",
+        "incorrect_state_transition",
+        "incorrect_amount_type",
+        "incorrect_time_type",
+        "missing_timeout",
+        "missing_auth_check",
+        "race_condition",
+        "api_contract_break",
+        "database_schema_mismatch",
+        "config_drift",
+        "observability_gap",
+        "security_vulnerability",
+        "performance_regression",
+        "spec_implementation_gap",
+        "dependency_order_error",
+        "other",
+    }
+
+
+def test_change_docs_loads_new_enums():
+    """change_docs.py VALID_HUMAN_REVIEW_STATUS and VALID_ROOT_CAUSE_TAGS load from enums.yaml."""
+    from importlib.machinery import SourceFileLoader
+    cd = SourceFileLoader("_cd", str(SCRIPTS / "change_docs.py")).load_module()
+    assert cd.VALID_HUMAN_REVIEW_STATUS == {
+        "not_required", "pending", "approved", "rejected",
+    }
+    assert cd.VALID_ROOT_CAUSE_TAGS == {
+        "missing_error_handling", "missing_validation", "missing_test",
+        "incorrect_state_transition", "incorrect_amount_type", "incorrect_time_type",
+        "missing_timeout", "missing_auth_check", "race_condition",
+        "api_contract_break", "database_schema_mismatch", "config_drift",
+        "observability_gap", "security_vulnerability", "performance_regression",
+        "spec_implementation_gap", "dependency_order_error", "other",
+    }
