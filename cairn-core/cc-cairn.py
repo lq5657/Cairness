@@ -63,6 +63,25 @@ SHIP_IGNORE = shutil.ignore_patterns(
     "__pycache__", "*.pyc", "node_modules", "settings.local.json",
 )
 
+# Framework-controlled, non-user-extensible top-level dirs under .claude/.
+# A file absent from the new release inside one of these is a framework
+# removal, NOT a user file, and must not be carried forward on upgrade —
+# otherwise a removed artifact like runtime/readsets/cc-help.yaml resurrects
+# and trips E_READSET009 / E_SCHEMA152. User-extensible framework dirs
+# (hooks/, scripts/, skills/) are intentionally NOT listed, so user-added
+# files there still survive; so do root-level user CC config (settings.json,
+# agents/, commands/, mcp.json, ...).
+FRAMEWORK_OWNED_DIRS = frozenset({
+    "runtime", "schemas", "templates", "rules",
+    "references", "docs", "evals", "fixtures", "workflows",
+})
+
+
+def _is_framework_owned(rel: str) -> bool:
+    """True if ``rel`` lives under a framework-controlled, non-user-extensible dir."""
+    top = rel.split("/", 1)[0]
+    return top in FRAMEWORK_OWNED_DIRS
+
 
 class UpgradeSafetyError(Exception):
     """Raised when an upgrade would unsafely clobber state."""
@@ -121,7 +140,11 @@ def _replace_framework_dir(
         and renamed into place; on failure the backup is restored.
       * Preservation: files present in the old ``dst`` but absent from ``src``
         (user-added hooks/scripts) are copied back, and files in
-        ``PRESERVE_ON_UPGRADE`` keep the user's local version.
+        ``PRESERVE_ON_UPGRADE`` keep the user's local version. Files absent
+        from ``src`` inside ``FRAMEWORK_OWNED_DIRS`` are framework removals,
+        not user files — they are dropped (recoverable in the backup) so a
+        removed artifact like ``runtime/readsets/cc-help.yaml`` cannot
+        resurrect and trip ``E_READSET009`` / ``E_SCHEMA152``.
 
     Returns the backup ``Path`` if one was made, else ``None``.
     """
@@ -163,14 +186,27 @@ def _replace_framework_dir(
         raise
 
     # Carry forward user-added files and protected local files from the backup.
+    # Files absent from the new source inside FRAMEWORK_OWNED_DIRS are framework
+    # removals, not user files — drop them instead of resurrecting stale
+    # artifacts (e.g. a removed runtime/readsets/cc-help.yaml). Dropped files
+    # stay recoverable in the backup.
     if backup is not None and backup.exists():
         src_files = _rel_file_set(src)
+        dropped: list[str] = []
         for rel in sorted(_rel_file_set(backup)):
             if rel in PRESERVE_ON_UPGRADE or rel not in src_files:
+                if rel not in src_files and _is_framework_owned(rel):
+                    dropped.append(rel)
+                    continue
                 src_file = backup / rel
                 target = dst / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_file, target)
+        if dropped:
+            print(f"  {len(dropped)} stale framework file(s) removed by this upgrade "
+                  f"(retained in {backup.name}/):")
+            for rel in dropped:
+                print(f"    - {rel}")
 
     # Merge report: surface user-customized framework files that the fresh
     # swap overwrote. Report-only — overwrite semantics are unchanged; the

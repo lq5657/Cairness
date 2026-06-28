@@ -358,3 +358,106 @@ def test_cmd_init_preserves_local_additions_on_reinit(tmp_path, monkeypatch):
     assert hook.exists() and hook.read_text() == "user custom"
     assert (tmp_path / ".claude.bak").exists()
 
+
+# --- stale framework files are dropped, not carried forward ----------------
+
+def test_upgrade_drops_stale_readset_file(tmp_path):
+    """A readset removed upstream (cc-help was reworked into a script in
+    542f7eb) must not resurrect on upgrade — otherwise E_READSET009 /
+    E_SCHEMA152 fires on the next cc-readset --check."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0", "runtime/readsets/index.yaml": "v2"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {
+        "VERSION": "1.0.0",
+        "runtime/readsets/cc-help.yaml": "stale",
+    })
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    assert not (dst / "runtime" / "readsets" / "cc-help.yaml").exists()
+    # Fresh release file still landed.
+    assert (dst / "runtime" / "readsets" / "index.yaml").read_text() == "v2"
+
+
+def test_upgrade_drops_stale_manifest_file(tmp_path):
+    """A removed command manifest under runtime/ is dropped too. This is the
+    latent case: no check currently flags a stale commands/*.yaml, so without
+    the fix it survives silently as a long-term inconsistency."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {
+        "VERSION": "1.0.0",
+        "runtime/commands/cc-help.yaml": "stale",
+    })
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    assert not (dst / "runtime" / "commands" / "cc-help.yaml").exists()
+
+
+def test_upgrade_drops_stale_files_in_every_framework_dir(tmp_path):
+    """Absence-from-source inside any FRAMEWORK_OWNED_DIRS dir is a framework
+    removal, regardless of which dir."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0"})
+    dst = tmp_path / ".claude"
+    stale = {f"{d}/stale.yaml": "stale" for d in mod.FRAMEWORK_OWNED_DIRS}
+    _make_tree(dst, {"VERSION": "1.0.0", **stale})
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    for d in mod.FRAMEWORK_OWNED_DIRS:
+        assert not (dst / d / "stale.yaml").exists(), f"stale file under {d}/ not dropped"
+
+
+def test_upgrade_preserves_user_extensible_dirs_and_cc_config(tmp_path):
+    """The denylist must not touch user-extensible framework dirs (hooks/,
+    scripts/, skills/) or root-level user CC config (agents/, commands/,
+    mcp.json) — only framework-owned dirs are pruned."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {
+        "VERSION": "1.0.0",
+        "hooks/my-hook.sh": "user",
+        "scripts/my-script.py": "user",
+        "skills/my-skill/SKILL.md": "user",
+        "agents/my-agent.md": "user",
+        "commands/my-cmd.md": "user",
+        "mcp.json": "user",
+        "settings.local.json": "user",
+    })
+
+    mod._replace_framework_dir(src, dst, label="framework")
+
+    for rel in ["hooks/my-hook.sh", "scripts/my-script.py",
+                "skills/my-skill/SKILL.md", "agents/my-agent.md",
+                "commands/my-cmd.md", "mcp.json", "settings.local.json"]:
+        assert (dst / rel).exists(), f"{rel} should survive upgrade"
+        assert (dst / rel).read_text() == "user"
+
+
+def test_upgrade_reports_dropped_files(tmp_path, capsys):
+    """Dropped stale framework files are surfaced on stdout — no silent
+    deletion; the user can recover them from the backup."""
+    mod = _cc_cairn()
+    src = tmp_path / "release"
+    _make_tree(src, {"VERSION": "2.0.0"})
+    dst = tmp_path / ".claude"
+    _make_tree(dst, {
+        "VERSION": "1.0.0",
+        "runtime/readsets/cc-help.yaml": "stale",
+    })
+
+    mod._replace_framework_dir(src, dst, label="framework")
+    out = capsys.readouterr().out
+
+    assert "stale framework file(s) removed" in out
+    assert "runtime/readsets/cc-help.yaml" in out
+
