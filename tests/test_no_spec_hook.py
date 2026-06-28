@@ -103,9 +103,20 @@ def test_tests_dir_exempt(tmp_path):
 
 
 def test_config_files_exempt(tmp_path):
-    for name in ["pyproject.toml", ".gitignore", "README.md", "settings.json"]:
+    for name in ["pyproject.toml", ".gitignore", "README.md", "settings.json",
+                 "settings.local.json"]:
         rc, err = _run_hook(str(tmp_path / name), tmp_path)
         assert rc == 0 and err == "", f"{name} should be exempt"
+
+
+def test_settings_prefixed_business_file_not_exempt(tmp_path):
+    """A business file named like settings_secrets.py must NOT be exempt.
+    Regression: the hook used to exempt any name starting with "settings",
+    which wrongly swallowed settings_secrets.py / settings.cfg (business code)."""
+    target = tmp_path / "settings_secrets.py"
+    rc, err = _run_hook(str(target), tmp_path)
+    assert rc == 0
+    assert "No Spec, No Code" in err  # warned: not exempt
 
 
 # --- framework repo self-exempt --------------------------------------------

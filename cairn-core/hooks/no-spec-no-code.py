@@ -36,8 +36,10 @@ EXEMPT_PREFIXES = (
 EXEMPT_NAMES = {
     "pyproject.toml", ".gitignore", "README.md", "CHANGELOG.md",
     "cairn_install", "cairn_uninstall", "VERSION", "harness.config.yaml",
+    # Claude Code config (not business code). Matched by exact name, not a
+    # "settings" prefix — a prefix would wrongly exempt e.g. settings_secrets.py.
+    "settings.json", "settings.local.json",
 }
-EXEMPT_NAME_PREFIXES = ("settings",)
 
 # Change lifecycle statuses considered "in progress" (a spec is governing work).
 IN_PROGRESS_STATUSES = {"propose", "apply", "review"}
@@ -68,9 +70,6 @@ def _is_exempt(rel: str) -> bool:
     name = Path(rel_posix).name
     if name in EXEMPT_NAMES:
         return True
-    for np in EXEMPT_NAME_PREFIXES:
-        if name.startswith(np):
-            return True
     return False
 
 
