@@ -165,6 +165,149 @@ def accepted_confirmation_rows(text: str) -> list[list[str]]:
     ]
 
 
+# --- tasks.md file declaration parsers (single source for cc-deps + cc-wave-plan
+#     + cc-spec-scope-check) --------------------------------------------------
+#
+# cc-deps.parse_task_files, cc-wave-plan._parse_section_files, and
+# cc-spec-scope-check.parse_declared_files were three independent
+# implementations of the same **涉及文件** block + file-table extraction logic.
+# When commit 6c17992 fixed the bullet-boundary regex (preventing field-label
+# ingestion as bogus files), cc-spec-scope-check was missed because there was
+# no shared module. parse_involved_files and parse_file_table are the single
+# source now; callers compose them as needed.
+
+_INVOLVED_FILES_RE = re.compile(
+    # Boundary must match a newline + bullet + **, not just a bare ** at
+    # column 0, otherwise the capture runs away across subsequent bulleted
+    # * **...**: field headers (the real template shape, no blank line
+    # between fields) and ingests field labels as bogus files.
+    r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\s*[-*+]\s+\*\*|\n\*\*|\n\n|\Z)",
+    re.DOTALL,
+)
+
+_FILE_TABLE_HEADER_RE = re.compile(r"\|\s*文件\s*\|.*操作\s*\|")
+
+
+def parse_involved_files(text: str) -> set[str]:
+    """Extract file paths from ``**涉及文件**:`` blocks.
+
+    Returns a set of stripped, backtick-stripped file names. Handles both
+    bulleted lists (``- `file.go` ``) and inline lists. This is Pattern 1
+    shared by cc-deps, cc-wave-plan, and cc-spec-scope-check.
+    """
+    files: set[str] = set()
+    for m in _INVOLVED_FILES_RE.finditer(text):
+        for line in m.group(1).splitlines():
+            cell = line.strip().lstrip("-* ").strip().strip("`")
+            if cell and not cell.startswith("("):
+                files.add(cell)
+    return {f for f in files if f and not f.isspace()}
+
+
+def parse_file_table(text: str) -> set[str]:
+    """Extract file paths from ``| 文件 | 操作 |`` tables.
+
+    Returns a set of stripped, backtick-stripped file names from the second
+    column. This is Pattern 2 shared by cc-deps and cc-spec-scope-check
+    (cc-wave-plan operates on per-task sections and only needs Pattern 1).
+    """
+    files: set[str] = set()
+    in_table = False
+    for line in text.splitlines():
+        if _FILE_TABLE_HEADER_RE.search(line):
+            in_table = True
+            continue
+        if in_table:
+            if line.startswith("|") and not line.startswith("|--"):
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 2:
+                    fname = parts[1].strip().strip("`")
+                    if fname and not fname.startswith("-"):
+                        files.add(fname)
+            elif not line.startswith("|"):
+                in_table = False
+    return {f for f in files if f and not f.isspace()}
+
+
+def named_table_rows(lines: list[str], start_idx: int) -> list[dict[str, str]]:
+    """Parse a markdown table starting at/after ``start_idx`` into row dicts.
+
+    Returns a list of dicts keyed by header cell. Skips HTML comment lines
+    and blank lines before the table, separator rows, and rows whose cell
+    count doesn't match the header. Stops at the first non-table line after
+    the table body.
+
+    This is the dict-form table parser previously duplicated in
+    cc-spec-scope-check and cc-subagent-evidence-check (byte-identical).
+    """
+    idx = start_idx
+    while idx < len(lines) and (not lines[idx].strip() or lines[idx].strip().startswith("<!--")):
+        idx += 1
+    rows: list[dict[str, str]] = []
+    if idx >= len(lines) or not lines[idx].lstrip().startswith("|"):
+        return rows
+    headers: list[str] = []
+    for j in range(idx, len(lines)):
+        line = lines[j].strip()
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in cells) and any(c for c in cells):
+            continue  # separator row
+        if not headers:
+            headers = cells
+            continue
+        if len(cells) != len(headers):
+            continue
+        rows.append(dict(zip(headers, cells)))
+    return rows
+
+
+def parse_inline_list(raw: str) -> list[str]:
+    """Parse a ``[a, b, c]`` inline list into a list of strings.
+
+    Previously duplicated byte-identical in cc-lint and cc-role-check.
+    """
+    value = raw.strip()
+    if value == "[]":
+        return []
+    if not value.startswith("[") or not value.endswith("]"):
+        return []
+    body = value[1:-1].strip()
+    if not body:
+        return []
+    return [item.strip().strip('"').strip("'") for item in body.split(",")]
+
+
+def parse_key_value(block: str, key: str) -> str | None:
+    """Extract a single ``key: value`` from a YAML-ish block.
+
+    Returns the value as a string, or None if the key is not found.
+    Previously duplicated byte-identical in cc-lint and cc-role-check.
+    """
+    match = re.search(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$", block, re.M)
+    return match.group(1).strip() if match else None
+
+
+def parse_workflow_commands(text: str) -> dict[str, str]:
+    """Parse a workflow YAML ``commands:`` block into ``{cc-*: body}``.
+
+    Each value is the raw text block under the indented command key.
+    Previously duplicated byte-identical in cc-lint and cc-role-check.
+    """
+    match = re.search(r"^commands:\s*\n(?P<body>.*)\Z", text, re.S | re.M)
+    if not match:
+        return {}
+    body = match.group("body")
+    matches = list(re.finditer(r"^  (cc-[a-z0-9-]+):\s*$", body, re.M))
+    blocks: dict[str, str] = {}
+    for idx, item in enumerate(matches):
+        start = item.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
+        blocks[item.group(1)] = body[start:end]
+    return blocks
+
+
 # --- review.md validation rules (single source for cc-lint + cc-schema-check)
 #
 # lint_review (cc-lint) and validate_review (cc-schema-check) were

@@ -26,6 +26,8 @@ from typing import Any
 
 from harness_runtime.issues import Issue, build_report
 
+from change_docs import named_table_rows, parse_file_table, parse_involved_files
+
 
 SCOPE_FLAG_CODE = "E_SCOPE001"
 SCOPE_GAP_CODE = "E_SCOPE002"
@@ -35,64 +37,13 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def table_rows(lines: list[str], start_idx: int) -> list[dict[str, str]]:
-    """Parse a markdown table starting at/after start_idx into row dicts.
-
-    Mirrors the lightweight table parsing used across cc-* checks: skip
-    comment/blank lines, stop at the first non-table line, drop separators.
-    """
-    idx = start_idx
-    while idx < len(lines) and (not lines[idx].strip() or lines[idx].strip().startswith("<!--")):
-        idx += 1
-    rows: list[dict[str, str]] = []
-    if idx >= len(lines) or not lines[idx].lstrip().startswith("|"):
-        return rows
-    headers: list[str] = []
-    for j in range(idx, len(lines)):
-        line = lines[j].strip()
-        if not line.startswith("|"):
-            break
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        if all(set(c) <= set("-: ") for c in cells) and any(c for c in cells):
-            continue  # separator row
-        if not headers:
-            headers = cells
-            continue
-        if len(cells) != len(headers):
-            continue
-        rows.append(dict(zip(headers, cells)))
-    return rows
-
-
 def parse_declared_files(tasks_text: str) -> set[str]:
     """Extract file paths declared in tasks.md.
 
-    Reuses the same two patterns as cc-deps.parse_task_files:
-    `**涉及文件**:` blocks and `| 文件 | 操作 |` tables.
+    Delegates to change_docs shared parsers (Pattern 1: **涉及文件** blocks,
+    Pattern 2: | 文件 | 操作 | tables).
     """
-    files: set[str] = set()
-    for m in re.finditer(
-        r"\*\*涉及文件\*\*[:\s]*\n?(.*?)(?=\n\*\*|\n\n|\Z)", tasks_text, re.DOTALL
-    ):
-        for line in m.group(1).splitlines():
-            cell = line.strip().lstrip("-* ").strip().strip("`")
-            if cell and not cell.startswith("("):
-                files.add(cell)
-    in_table = False
-    for line in tasks_text.splitlines():
-        if "| 文件 |" in line and "操作" in line:
-            in_table = True
-            continue
-        if in_table:
-            if line.startswith("|") and not line.startswith("|--"):
-                parts = [p.strip() for p in line.split("|")]
-                if len(parts) >= 2:
-                    fname = parts[1].strip().strip("`")
-                    if fname and not fname.startswith("-"):
-                        files.add(fname)
-            elif not line.startswith("|"):
-                in_table = False
-    return {f for f in files if f and not f.isspace()}
+    return parse_involved_files(tasks_text) | parse_file_table(tasks_text)
 
 
 def review_scope_rows(review_text: str) -> list[dict[str, str]]:
@@ -100,7 +51,7 @@ def review_scope_rows(review_text: str) -> list[dict[str, str]]:
     lines = review_text.splitlines()
     for idx, line in enumerate(lines):
         if "cc-verify-key: file_review_scope" in line:
-            return table_rows(lines, idx + 1)
+            return named_table_rows(lines, idx + 1)
     return []
 
 

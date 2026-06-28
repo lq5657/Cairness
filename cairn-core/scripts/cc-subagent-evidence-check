@@ -35,7 +35,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from change_docs import finding_rows, parse_findings
+from change_docs import finding_rows, named_table_rows, parse_findings, parse_location
 from harness_runtime.issues import Issue, build_report
 
 
@@ -54,34 +54,6 @@ HIGH_SEVERITY_LEVELS = {"Critical", "Important"}
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def table_rows(lines: list[str], start_idx: int) -> list[dict[str, str]]:
-    """Parse a markdown table starting at/after start_idx into row dicts.
-
-    Mirrors cc-spec-scope-check's lightweight table parser.
-    """
-    idx = start_idx
-    while idx < len(lines) and (not lines[idx].strip() or lines[idx].strip().startswith("<!--")):
-        idx += 1
-    rows: list[dict[str, str]] = []
-    if idx >= len(lines) or not lines[idx].lstrip().startswith("|"):
-        return rows
-    headers: list[str] = []
-    for j in range(idx, len(lines)):
-        line = lines[j].strip()
-        if not line.startswith("|"):
-            break
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        if all(set(c) <= set("-: ") for c in cells) and any(c for c in cells):
-            continue  # separator row
-        if not headers:
-            headers = cells
-            continue
-        if len(cells) != len(headers):
-            continue
-        rows.append(dict(zip(headers, cells)))
-    return rows
 
 
 def cell(row: dict[str, str], *keys: str) -> str:
@@ -114,28 +86,13 @@ def finding_detail_blocks(review_text: str) -> list[dict[str, str]]:
     ]
 
 
-def parse_location(loc: str) -> str | None:
-    """`path:line-line` → 'path' (file part); None if no path separator.
-
-    Mirrors cc-verify:528 location.rsplit(':', 1) but only needs the file
-    part for existence checking.
-    """
-    if not loc:
-        return None
-    parts = loc.rsplit(":", 1)
-    # `path:line` → ['path', 'line']; bare `path` → ['path'] (still a file ref)
-    file_part = parts[0] if len(parts) == 2 else loc
-    file_part = file_part.strip().strip("`")
-    return file_part or None
-
-
 def mapping_rows(review_text: str) -> list[dict[str, str]]:
     """Rows of the 2.1 验证映射检查 table (映射编号 / ... / 证据 / 缺口 / 结果)."""
     match = MAPPING_SECTION_RE.search(review_text)
     if match is None:
         return []
     lines = match.group(1).splitlines()
-    return table_rows(lines, 0)
+    return named_table_rows(lines, 0)
 
 
 def is_template_placeholder(review_text: str) -> bool:
@@ -194,7 +151,7 @@ def check_change(change_dir: Path, project_root: Path, issues: list[Issue]) -> s
             )
             continue
         # E_EVIDENCE002: the referenced file must exist under project_root.
-        file_part = parse_location(location)
+        file_part = parse_location(location)[0] or None
         if file_part is None:
             issues.append(
                 Issue(

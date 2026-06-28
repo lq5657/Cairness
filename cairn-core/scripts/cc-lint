@@ -25,6 +25,9 @@ from change_docs import (
     accepted_confirmation_rows,
     collect_review_violations,
     finding_rows,
+    parse_inline_list,
+    parse_key_value,
+    parse_workflow_commands,
     table_rows,
     task_sections,
     validation_rows,
@@ -344,40 +347,9 @@ def parse_meta(text: str) -> dict[str, str]:
     return meta
 
 
-def parse_inline_list(raw: str) -> list[str]:
-    value = raw.strip()
-    if value == "[]":
-        return []
-    if not value.startswith("[") or not value.endswith("]"):
-        return []
-    body = value[1:-1].strip()
-    if not body:
-        return []
-    return [item.strip().strip('"').strip("'") for item in body.split(",")]
-
-
-def parse_key_value(block: str, key: str) -> str | None:
-    match = re.search(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$", block, re.M)
-    return match.group(1).strip() if match else None
-
-
 def parse_state_list(text: str, key: str) -> list[str]:
     value = parse_key_value(text, key)
     return parse_inline_list(value) if value is not None else []
-
-
-def parse_workflow_commands(text: str) -> dict[str, str]:
-    match = re.search(r"^commands:\s*\n(?P<body>.*)\Z", text, re.S | re.M)
-    if not match:
-        return {}
-    body = match.group("body")
-    matches = list(re.finditer(r"^  (cc-[a-z0-9-]+):\s*$", body, re.M))
-    blocks: dict[str, str] = {}
-    for idx, item in enumerate(matches):
-        start = item.end()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
-        blocks[item.group(1)] = body[start:end]
-    return blocks
 
 
 def line_allowed_for_slash(path: Path, line: str) -> bool:

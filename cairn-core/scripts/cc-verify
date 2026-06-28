@@ -16,7 +16,7 @@ from pathlib import Path
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 
-from change_docs import parse_findings
+from change_docs import named_table_rows, parse_findings
 
 
 def profile_command(profile: dict[str, object], capability: str, fallback: list[str]) -> list[str]:
@@ -344,35 +344,6 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
     }
 
 
-def _parse_markdown_table(lines: list[str], start_idx: int) -> tuple[list[dict[str, str]], int]:
-    """Parse a markdown table starting at start_idx. Returns (rows, end_idx)."""
-    rows: list[dict[str, str]] = []
-    if start_idx >= len(lines):
-        return rows, start_idx
-
-    header_line = lines[start_idx].strip()
-    if not header_line.startswith("|") or not header_line.endswith("|"):
-        return rows, start_idx
-    headers = [h.strip() for h in header_line.strip("|").split("|")]
-
-    idx = start_idx + 1
-    # Skip separator line
-    if idx < len(lines) and lines[idx].strip().startswith("|") and "---" in lines[idx]:
-        idx += 1
-
-    while idx < len(lines):
-        line = lines[idx].strip()
-        if not line.startswith("|"):
-            break
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        row: dict[str, str] = {}
-        for i, header in enumerate(headers):
-            row[header] = cells[i] if i < len(cells) else ""
-        rows.append(row)
-        idx += 1
-    return rows, idx
-
-
 def _find_section_marker(lines: list[str], marker: str) -> int:
     """Find the line index of a <!-- cc-verify-key: ... --> marker."""
     for i, line in enumerate(lines):
@@ -423,7 +394,7 @@ def check_review_coverage(project_root: Path, change_id: str) -> dict[str, objec
     table_start = marker_idx + 1
     while table_start < len(lines) and (not lines[table_start].strip() or lines[table_start].strip().startswith("<!--")):
         table_start += 1
-    rows, _ = _parse_markdown_table(lines, table_start)
+    rows = named_table_rows(lines, table_start)
     if not rows:
         return {
             "name": "review-coverage",
@@ -609,7 +580,7 @@ def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
     while table_start < len(lines) and (not lines[table_start].strip() or lines[table_start].strip().startswith("<!--")):
         table_start += 1
 
-    rows, _ = _parse_markdown_table(lines, table_start)
+    rows = named_table_rows(lines, table_start)
     if not rows:
         return {
             "name": "risk-triage",

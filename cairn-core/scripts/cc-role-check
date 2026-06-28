@@ -19,6 +19,8 @@ from harness_runtime.issues import (
     build_report as build_issue_report,
 )
 
+from change_docs import parse_inline_list, parse_key_value, parse_workflow_commands
+
 BASELINE_FILENAME = "role-baseline.json"
 
 
@@ -99,37 +101,6 @@ def reset_baseline(path: Path) -> bool:
         return True
     except OSError:
         return False
-
-
-def parse_inline_list(raw: str) -> list[str]:
-    value = raw.strip()
-    if value == "[]":
-        return []
-    if not value.startswith("[") or not value.endswith("]"):
-        return []
-    body = value[1:-1].strip()
-    if not body:
-        return []
-    return [item.strip().strip('"').strip("'") for item in body.split(",")]
-
-
-def parse_workflow_commands(text: str) -> dict[str, str]:
-    match = re.search(r"^commands:\s*\n(?P<body>.*)\Z", text, re.S | re.M)
-    if not match:
-        return {}
-    body = match.group("body")
-    matches = list(re.finditer(r"^  (cc-[a-z0-9-]+):\s*$", body, re.M))
-    blocks: dict[str, str] = {}
-    for idx, item in enumerate(matches):
-        start = item.end()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(body)
-        blocks[item.group(1)] = body[start:end]
-    return blocks
-
-
-def parse_key_value(block: str, key: str) -> str | None:
-    match = re.search(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$", block, re.M)
-    return match.group(1).strip() if match else None
 
 
 def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:

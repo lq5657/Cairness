@@ -13,10 +13,16 @@ closes those gaps as structured issues aggregated by cc-verify.
 import json
 import subprocess
 import sys
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = REPO_ROOT / "cairn-core" / "scripts" / "cc-spec-scope-check"
+SCRIPTS = REPO_ROOT / "cairn-core" / "scripts"
+SCRIPT = SCRIPTS / "cc-spec-scope-check"
+
+
+def _load_scope_check():
+    return SourceFileLoader("_cc_spec_scope_check", str(SCRIPT)).load_module()
 
 
 def _run(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -149,3 +155,52 @@ def test_text_stderr_line_format_on_failure(tmp_path):
     proc = _run([str(changes)])
     assert proc.returncode == 1
     assert proc.stderr.startswith("E_SCOPE002 "), proc.stderr
+
+
+# --- Regression: parse_declared_files must not ingest field labels ----------
+#
+# commit 6c17992 fixed the same regex in cc-deps.parse_task_files and
+# cc-wave-plan._parse_section_files but missed cc-spec-scope-check. In the
+# realistic template shape (contiguous bulleted * **...**: fields after
+# **涉及文件**), the old boundary only matched a bare ** at column 0, so the
+# non-greedy capture ran away and ingested every subsequent field label as a
+# bogus file. The fixed boundary also matches a newline + bullet + **.
+
+_REALISTIC_FIELDS = """* **目标**: {name}
+* **不包含范围**: -
+* **涉及文件**:
+  - `{file}`
+* **上下游 Context**: none
+* **关键签名**: {name}()
+* **验收标准**: passes
+* **验证步骤**: run tests
+* **渐进可验证要求**: step
+* **测试要求**: unit
+* **依赖 / Wave**: depends_on=[] parallel_safe:true
+* **回退方式**: revert
+* **完成后状态**: `todo`
+* **Baseline / Delta**: -"""
+
+
+def test_parse_declared_files_no_field_label_ingestion():
+    """Realistic template shape: contiguous bulleted fields after **涉及文件**
+    must NOT be ingested as fake files."""
+    scope = _load_scope_check()
+    tasks = (
+        "#### Task 1: A\n"
+        + _REALISTIC_FIELDS.format(name="A", file="a.go")
+        + "\n\n#### Task 2: B\n"
+        + _REALISTIC_FIELDS.format(name="B", file="b.go")
+        + "\n"
+    )
+    files = scope.parse_declared_files(tasks)
+    assert files == {"a.go", "b.go"}, f"ingested field labels: {files - {'a.go', 'b.go'}}"
+
+
+def test_parse_declared_files_simple_format_still_works():
+    """The simplified format used in existing tests (standalone **涉及文件** block)
+    must still work after the regex change."""
+    scope = _load_scope_check()
+    tasks = "**涉及文件**:\n- a.go\n- b.go\n"
+    files = scope.parse_declared_files(tasks)
+    assert files == {"a.go", "b.go"}
