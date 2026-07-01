@@ -201,8 +201,27 @@ def concretize_pattern(pattern: str) -> str:
     return pattern
 
 
+# Placeholders that name a *set* of subdirs (knowledge <category>, audit/
+# discuss ids) with no per-invocation CLI value. role-check has no tighter
+# bound than "some subdir under here", so they expand to the fnmatch wildcard.
+# <change-id> is handled separately in expand() because it resolves to a
+# concrete value passed via --change. Keep aligned with placeholders appearing
+# in manifests' `writes` lists (see runtime/commands/*.yaml).
+_PLACEHOLDER_RE = re.compile(r"<[a-z][a-z0-9-]*>")
+
+
 def expand(pattern: str, change_id: str | None) -> str:
-    return pattern.replace("<change-id>", change_id or "")
+    """Expand manifest write-scope placeholders for fnmatch comparison.
+
+    <change-id> resolves to the concrete change id. Any other <placeholder>
+    (e.g. <category>, <audit-id>, <discuss-id>) names a set of subdirs with no
+    per-invocation value, so it expands to `*` — the command may write under
+    any matching subdir, and role-check has no tighter bound to apply. Leaving
+    such placeholders literal would make fnmatch match nothing, flagging every
+    legitimately-written file as E_ROLE002 out-of-scope.
+    """
+    pattern = pattern.replace("<change-id>", change_id or "")
+    return _PLACEHOLDER_RE.sub("*", pattern)
 
 
 def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
@@ -235,6 +254,13 @@ def build_role_report(command: str, change_id: str | None, project_root: Path) -
     previous_paths: list[str] = []
     if change_id:
         bp = baseline_path(project_root, change_id)
+        baseline_rel = bp.relative_to(project_root).as_posix()
+        # role-baseline.json is cc-role-check's own bookkeeping, not a command
+        # write. Exclude it from both the new-dirty diff and the saved snapshot
+        # so it can never flag itself (E_ROLE002) and never mask a real
+        # out-of-scope file added in the same run (the snapshot must only
+        # record files the command under test actually wrote).
+        paths = [p for p in paths if p != baseline_rel]
         previous_paths = load_baseline(bp)
     new_paths = [p for p in paths if p not in previous_paths]
     issues = [
