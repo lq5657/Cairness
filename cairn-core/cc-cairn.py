@@ -41,7 +41,14 @@ KNOWLEDGE_TARGET = ".cairness/knowledge/index.md"
 GITIGNORE_ADDITIONS = """
 # Cairness framework (managed by cc-cairn)
 .claude/
+# Per-machine verification baselines: transient snapshots written by cc-role-check
+# (role-baseline.json) and cc-verify (pre-apply.json) during the apply/review loop.
+# Never shared or committed — they reflect local worktree state and diverge per machine.
+.cairness/changes/*/baseline/
 """
+
+
+BASELINE_GITIGNORE_RULE = ".cairness/changes/*/baseline/"
 
 
 # Files the release ships but whose local version must survive an upgrade
@@ -345,6 +352,10 @@ def cmd_init():
             f.write(GITIGNORE_ADDITIONS)
         print("  Updated .gitignore")
 
+    # Untrack any baseline files committed before this install (gitignore only
+    # blocks untracked files). Safe no-op when none exist.
+    _ensure_baseline_gitignored(project_root)
+
     version = (data_dir / "VERSION").read_text().strip()
     print(f"\nCairness v{version} initialized. Start Claude Code to begin.")
 
@@ -435,6 +446,75 @@ def sync_system_install(data_dir, repo):
     return data_dir
 
 
+def _ensure_baseline_gitignored(project_root):
+    """Ensure transient per-machine verification baselines stay out of git.
+
+    Two effects, both idempotent:
+      1. Append the baseline/ gitignore rule if missing (covers new installs and
+         projects whose .gitignore predates the rule).
+      2. `git rm --cached` any already-tracked baseline files (role-baseline.json,
+         pre-apply.json, ...) so the next commit removes them from version control.
+         gitignore only blocks untracked files; tracked ones must be unstaged.
+
+    Baselines are per-machine worktree snapshots, not team-shared truth —
+    committing them causes cross-machine noise and false conflicts. Safe to run
+    repeatedly; silently no-ops when there is nothing to do or git is absent.
+    """
+    gitignore = project_root / ".gitignore"
+    existing = gitignore.read_text() if gitignore.exists() else ""
+    if BASELINE_GITIGNORE_RULE not in existing:
+        # Ensure the rule sits under a Cairness header if we wrote one; append
+        # is sufficient since gitignore rules are order-independent.
+        if gitignore.exists():
+            with gitignore.open("a") as f:
+                if not existing.endswith("\n"):
+                    f.write("\n")
+                f.write(f"{BASELINE_GITIGNORE_RULE}\n")
+        else:
+            gitignore.write_text(f"{BASELINE_GITIGNORE_RULE}\n", encoding="utf-8")
+        print(f"  Updated .gitignore ({BASELINE_GITIGNORE_RULE})")
+
+    # Not every project is a git repo (e.g. init before `git init`); skip cleanup
+    # there. `git rev-parse --git-dir` is the standard repo probe.
+    probe = subprocess.run(
+        ["git", "rev-parse", "--git-dir"],
+        cwd=str(project_root), capture_output=True, text=True,
+    )
+    if probe.returncode != 0:
+        return
+
+    # List tracked files under any change's baseline/ dir, relative to repo root.
+    # Pathspec globs are unreliable across git versions when invoked without a
+    # shell (subprocess passes `*` literally and git's pathspec matching of the
+    # `baseline/` segment is inconsistent), so list all tracked files under the
+    # changes tree and filter in Python — paths are repo-root-relative already.
+    ls = subprocess.run(
+        ["git", "ls-files", "--", ".cairness/changes/"],
+        cwd=str(project_root), capture_output=True, text=True,
+    )
+    if ls.returncode != 0:
+        return
+    tracked = [
+        line.strip() for line in ls.stdout.splitlines()
+        if line.strip() and f"/baseline/" in f"{line.strip()}/"
+    ]
+    if not tracked:
+        return
+    rm = subprocess.run(
+        ["git", "rm", "--cached", "--quiet", "--", *tracked],
+        cwd=str(project_root), capture_output=True, text=True,
+    )
+    if rm.returncode == 0:
+        print(f"  Untracked {len(tracked)} committed baseline file(s) "
+              f"(kept on disk; will be dropped on next commit):")
+        for path in tracked:
+            print(f"    {path}")
+    else:
+        # Don't fail the install/update over a git index issue; surface it.
+        print(f"  warning: could not untrack committed baseline files: {rm.stderr.strip()}",
+              file=sys.stderr)
+
+
 def sync_project(data_dir, project_root):
     """Update project .claude/ from system installation. Returns True if updated."""
     claude_dir = project_root / ".claude"
@@ -471,6 +551,8 @@ def sync_project(data_dir, project_root):
         sys.exit(1)
     print(f"Project updated to v{new_ver}. Local additions were preserved; "
           f"previous .claude/ backed up to {claude_dir.name}.bak.")
+    # Untrack baselines committed before this rule shipped; backfill gitignore.
+    _ensure_baseline_gitignored(project_root)
     return True
 
 
