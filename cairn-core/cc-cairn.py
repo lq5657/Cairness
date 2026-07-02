@@ -356,6 +356,9 @@ def cmd_init():
     # blocks untracked files). Safe no-op when none exist.
     _ensure_baseline_gitignored(project_root)
 
+    # Install Cairness git hooks (pre-commit, etc.).
+    _install_git_hooks(project_root)
+
     version = (data_dir / "VERSION").read_text().strip()
     print(f"\nCairness v{version} initialized. Start Claude Code to begin.")
 
@@ -515,6 +518,55 @@ def _ensure_baseline_gitignored(project_root):
               file=sys.stderr)
 
 
+def _install_git_hooks(project_root: Path) -> None:
+    """Install Cairness git hooks from .claude/hooks/ into .git/hooks/.
+
+    Only the hooks listed in the hook_map are installed; framework hooks
+    (like no-spec-no-code.py) that are Claude Code PreToolUse hooks, not
+    git hooks, stay in .claude/hooks/ only.
+    """
+    hooks_src = project_root / ".claude" / "hooks"
+    git_hooks_dir = project_root / ".git" / "hooks"
+
+    # Not a git repo — skip (same guard as _ensure_baseline_gitignored).
+    probe = subprocess.run(
+        ["git", "rev-parse", "--git-dir"],
+        cwd=str(project_root), capture_output=True, text=True,
+    )
+    if probe.returncode != 0:
+        return
+
+    # Map: framework hook filename (under .claude/hooks/) → git hook name.
+    hook_map = {"pre-commit": "pre-commit"}
+
+    for fw_name, git_name in hook_map.items():
+        src = hooks_src / fw_name
+        if not src.is_file():
+            continue
+        dst = git_hooks_dir / git_name
+
+        if dst.exists():
+            try:
+                content = dst.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                content = ""
+            if "Cairness" in content:
+                # Existing Cairness-managed hook — update in place.
+                shutil.copy2(src, dst)
+                dst.chmod(0o755)
+            else:
+                # Non-Cairness hook exists — back up, warn, install.
+                backup = dst.with_suffix(".bak")
+                shutil.move(str(dst), str(backup))
+                shutil.copy2(src, dst)
+                dst.chmod(0o755)
+                print(f"  ⚠ Existing .git/hooks/{git_name} backed up to "
+                      f".git/hooks/{git_name}.bak")
+        else:
+            shutil.copy2(src, dst)
+            dst.chmod(0o755)
+
+
 def sync_project(data_dir, project_root):
     """Update project .claude/ from system installation. Returns True if updated."""
     claude_dir = project_root / ".claude"
@@ -553,6 +605,8 @@ def sync_project(data_dir, project_root):
           f"previous .claude/ backed up to {claude_dir.name}.bak.")
     # Untrack baselines committed before this rule shipped; backfill gitignore.
     _ensure_baseline_gitignored(project_root)
+    # Re-install / update git hooks.
+    _install_git_hooks(project_root)
     return True
 
 

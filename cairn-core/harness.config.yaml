@@ -14,7 +14,7 @@ git:
   allow_main_branch_apply: false
   require_clean_worktree_before_commit: true
   pre_commit_orphan_check: true
-  orphan_policy: warn
+  orphan_policy: strict
 
 workflow:
   definition: ".claude/workflows/cc-workflow.yaml"

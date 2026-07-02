@@ -1,0 +1,118 @@
+#!/bin/bash
+# Pre-commit hook: enforce "No Spec, No Code" at commit time.
+# Installed and managed by Cairness (cc-cairn init/update).
+#
+# Design:
+#   * HARD GATE at commit time — complements the non-blocking PreToolUse
+#     warn hook (no-spec-no-code.py) that fires at write time.
+#   * Runs cc-deps orphans --staged to detect files not declared in any
+#     change's tasks.md.
+#   * Framework self-exempt: the Cairness repo itself is not governed by
+#     the cc-* change flow.
+#   * Policy (from .claude/harness.config.yaml):
+#       strict  → block commit, must disposition orphan files
+#       warn    → show orphan files + options, allow commit
+#       minimal → silent skip
+
+set -euo pipefail
+
+# ── Framework self-exemption ────────────────────────────────────────────
+# The Cairness framework repo maintains itself outside the cc-* change flow.
+if [ -f "cairn_install" ] && [ -d "cairn-core" ]; then
+    exit 0
+fi
+
+# ── Read orphan_policy from harness config ──────────────────────────────
+orphan_policy="warn"
+config=".claude/harness.config.yaml"
+if [ -f "$config" ]; then
+    policy=$(grep -E '^[[:space:]]*orphan_policy:' "$config" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"\{0,1\}\([^"#]*\)"\{0,1\}.*/\1/' | tr -d '[:space:]')
+    if [ -n "$policy" ]; then
+        orphan_policy="$policy"
+    fi
+fi
+
+# ── Minimal: skip entirely ──────────────────────────────────────────────
+if [ "$orphan_policy" = "minimal" ]; then
+    exit 0
+fi
+
+# ── Run orphan detection ────────────────────────────────────────────────
+cc_deps=".claude/scripts/cc-deps"
+if [ ! -x "$cc_deps" ] && [ ! -f "$cc_deps" ]; then
+    # Framework not fully installed or scripts not executable; don't block.
+    exit 0
+fi
+
+# Use --json for machine-readable output; fall back to text mode on failure.
+json_output=$("$cc_deps" orphans --staged --json 2>/dev/null) || true
+rc=$?
+
+# If cc-deps itself failed (not orphan detection — actual script error),
+# don't block the commit.
+if [ -z "$json_output" ]; then
+    exit 0
+fi
+
+# Extract structured data from JSON output.
+has_orphans=$(echo "$json_output" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print('true' if d.get('has_orphans') else 'false')
+except Exception:
+    print('false')
+" 2>/dev/null || echo "false")
+
+# ── No orphans: pass ────────────────────────────────────────────────────
+if [ "$has_orphans" != "true" ]; then
+    exit 0
+fi
+
+# ── Orphans detected: report and decide ─────────────────────────────────
+orphan_count=$(echo "$json_output" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(len(d.get('orphan_files', [])))
+except Exception:
+    print(0)
+" 2>/dev/null || echo "0")
+
+echo ""
+echo "┌──────────────────────────────────────────────────────┐"
+echo "│  Cairness: No Spec, No Code — orphan files detected  │"
+echo "└──────────────────────────────────────────────────────┘"
+echo ""
+echo "  ${orphan_count} file(s) in staged changes are not declared"
+echo "  in any change's tasks.md under .cairness/changes/."
+
+# Print the orphan file list.
+echo "$json_output" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    for f in d.get('orphan_files', []):
+        print(f'    - {f}')
+except Exception:
+    pass
+" 2>/dev/null
+
+echo ""
+echo "  Disposition options:"
+echo "    1. cc-propose <desc>        — create retro spec from changes"
+echo "    2. Edit tasks.md            — add files to an existing change"
+echo "    3. Edit task-board.md       — mark as intentional exception"
+echo ""
+
+if [ "$orphan_policy" = "strict" ]; then
+    echo "  ❌ Commit BLOCKED (orphan_policy=strict)."
+    echo "     Resolve above, or bypass with: git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo "  ⚠️  Commit allowed (orphan_policy=warn)."
+echo "     Consider resolving the orphan files before your next commit."
+echo ""
+exit 0
