@@ -97,6 +97,7 @@ scripts:
   doctor: .claude/scripts/cc-doctor-check
   event: .claude/scripts/cc-event-check
   event-write: .claude/scripts/cc-event-write
+  state-transition: .claude/scripts/cc-state-transition
   behavior: .claude/scripts/cc-behavior-check
   upgrade: .claude/scripts/cc-upgrade-check
   topic-trigger: .claude/scripts/cc-topic-trigger

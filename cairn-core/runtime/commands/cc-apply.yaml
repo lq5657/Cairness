@@ -209,8 +209,7 @@ steps:
   - write_wave_summary_and_backfill_tasks_wave_overview
   - present_wave_gate_proceed_or_block_next_wave
   - run_final_change_validation
-  - promote_change_to_review
-  - record_state_transition_event_via_cc_event_write
+  - promote_change_to_review_via_cc_state_transition
 
 auto_validation:
   - .claude/scripts/cc-deps check --change <change-id>

@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+"""Atomically advance a change's lifecycle: spec.md status + events.jsonl.
+
+This is the single write entry point for lifecycle *state transitions* (roadmap
+#5). It closes the "double-write window" that existed when a command had to
+(a) hand-edit ``spec.md`` frontmatter ``status:`` AND (b) separately call
+``cc-event-write``. If either half ran without the other, ``cc-event-check``
+E_EVENT020 would later flag spec↔event drift with no standard repair path.
+
+This script performs both halves from one invocation, in an order chosen so a
+crash cannot leave a *silent* drift:
+
+  1. Precheck: read spec.md status, assert it equals ``--from`` (E_STATE001 on
+     mismatch — a re-run or wrong caller). ``--from none`` (change creation)
+     skips this: there is no prior status to match.
+  2. Write the event first (delegate to cc-event-write, the event SSOT). If the
+     event write fails, spec.md is untouched — nothing changed.
+  3. Write spec.md status second (only when the transition changes a core
+     status: ``to`` in the core set, ``to != from``, ``from != none``). A crash
+     between step 2 and step 3 leaves an event ahead of spec.md — which
+     ``cc-event-check`` E_EVENT020 detects and a future ``cc-reconcile`` can
+     repair. The reverse (spec ahead of event) is the silent-drift case we
+     avoid by ordering the event first.
+
+Why no temp-file rename for spec.md: the status write is a small, idempotent
+frontmatter edit; the event-first ordering already bounds the only crash window
+to a *detectable* direction, so a temp-file dance buys nothing here.
+
+Transition semantics are DERIVED, not flagged by the caller (minimal agent
+surface — same six flags as cc-event-write's core):
+
+  - write_event  = always (every lifecycle command records an audit event)
+  - change_spec  = (to in core) and (to != from) and (from != none)
+                   i.e. skip on ``to=unchanged`` (audit no-op: cc-review/fix/test)
+                   and on ``from=none`` (creation: cc-propose scaffolds spec.md
+                   itself, this script does not create it).
+
+``--from``/``--to`` must be the same values the command's manifest ``state``
+block declares; ``COMMAND_TO`` (imported from harness_runtime.events) is the
+authority for what ``to`` a given command may assert.
+
+Exit codes: 0 on success, 1 on precheck/event/spec failure, 2 on argparse error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+from harness_runtime.enums import enum_set, load_enums
+from harness_runtime.events import COMMAND_TO
+from harness_runtime.issues import Issue, add, build_report
+
+ISSUE_PATH = "<cc-state-transition>"  # synthetic path for transition-local issues
+
+_ENUMS = load_enums()
+CORE_STATUS = enum_set(_ENUMS, "change_status", "core")  # {propose, apply, review, done}
+
+# The event writer is the events.jsonl SSOT; we shell out to it rather than
+# duplicate append/validate logic. Resolved relative to this script's dir so a
+# deployed .claude/scripts/ copy and the cairn-core/scripts/ source both work.
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+EVENT_WRITE = _SCRIPTS_DIR / "cc-event-write"
+
+
+def read_spec_status(spec_path: Path) -> str | None:
+    """Read ``status`` from spec.md YAML frontmatter (None if absent/malformed).
+
+    Inlined frontmatter scan (mirrors cc-event-check._parse_spec_status) — a
+    dozen lines is cheaper than coupling to change_docs.parse_meta for one field.
+    """
+    if not spec_path.exists():
+        return None
+    lines = spec_path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        stripped = line.strip()
+        if stripped == "---":
+            break
+        if stripped.startswith("status:"):
+            return stripped.split(":", 1)[1].strip()
+    return None
+
+
+def write_spec_status(spec_path: Path, new_status: str) -> bool:
+    """Rewrite the ``status:`` line in spec.md frontmatter. False if not found.
+
+    Only the first ``status:`` line inside the leading frontmatter block is
+    touched; body content is preserved byte-for-byte otherwise.
+    """
+    if not spec_path.exists():
+        return False
+    text = spec_path.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        return False
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            break
+        if lines[i].strip().startswith("status:"):
+            # Preserve trailing newline style of the original line.
+            newline = "\n" if lines[i].endswith("\n") else ""
+            lines[i] = f"status: {new_status}{newline}"
+            spec_path.write_text("".join(lines), encoding="utf-8")
+            return True
+    return False
+
+
+def spec_changes(from_state: str, to_state: str) -> bool:
+    """Whether this transition should rewrite spec.md status.
+
+    True only for a real core-status advance: ``to`` is a core status, differs
+    from ``from``, and ``from`` is not the creation sentinel ``none``.
+    """
+    return to_state in CORE_STATUS and to_state != from_state and from_state != "none"
+
+
+def run_event_write(args: argparse.Namespace) -> tuple[bool, str]:
+    """Delegate the event append to cc-event-write. Returns (ok, output)."""
+    cmd = [
+        sys.executable, str(EVENT_WRITE),
+        "--change-id", args.change_id,
+        "--command", args.command,
+        "--from", args.from_state,
+        "--to", args.to_state,
+        "--summary", args.summary,
+        "--project-root", args.project_root,
+    ]
+    for ev in args.evidence:
+        cmd += ["--evidence", ev]
+    if args.actor:
+        cmd += ["--actor", args.actor]
+    if args.dry_run:
+        cmd.append("--dry-run")
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    output = (proc.stdout + proc.stderr).strip()
+    return proc.returncode == 0, output
+
+
+def transition(args: argparse.Namespace) -> dict[str, Any]:
+    """Precheck spec status, write the event, then advance spec status."""
+    issues: list[Issue] = []
+
+    project_root = Path(args.project_root)
+    change_dir = project_root / ".cairness" / "changes" / args.change_id
+    spec_path = change_dir / "spec.md"
+
+    if not change_dir.is_dir():
+        add(issues, "E_STATE002", ISSUE_PATH, f"change dir not found: {change_dir}")
+        return _report(args, spec_path, issues)
+
+    will_change_spec = spec_changes(args.from_state, args.to_state)
+
+    # 1. Precheck — spec status must match --from (unless creation from=none).
+    if will_change_spec:
+        current = read_spec_status(spec_path)
+        if current is None:
+            add(issues, "E_STATE003", ISSUE_PATH, f"cannot read status from {spec_path}")
+            return _report(args, spec_path, issues)
+        if current != args.from_state:
+            add(issues, "E_STATE001", ISSUE_PATH,
+                f"spec status {current!r} != --from {args.from_state!r} "
+                f"(already transitioned, or wrong --from; use cc-reconcile to diagnose)")
+            return _report(args, spec_path, issues)
+
+    # 2. Event first — a crash after this leaves event ahead of spec (detectable
+    #    by E_EVENT020), never spec ahead of event (silent).
+    ok, output = run_event_write(args)
+    if not ok:
+        add(issues, "E_STATE004", ISSUE_PATH, f"event write failed: {output}")
+        return _report(args, spec_path, issues)
+
+    # 3. Spec status second (only for real core advances; audit no-ops skip).
+    if will_change_spec and not args.dry_run:
+        if not write_spec_status(spec_path, args.to_state):
+            add(issues, "E_STATE005", ISSUE_PATH,
+                f"event recorded but spec status write failed at {spec_path} "
+                f"(event ahead of spec — run cc-reconcile)")
+            return _report(args, spec_path, issues, event_written=True)
+
+    return _report(args, spec_path, issues,
+                   event_written=True,
+                   spec_written=will_change_spec and not args.dry_run)
+
+
+def _report(args: argparse.Namespace, spec_path: Path, issues: list[Issue], *,
+            event_written: bool = False, spec_written: bool = False) -> dict[str, Any]:
+    status = "passed" if not issues else "failed"
+    return build_report(
+        "cc-state-transition",
+        issues,
+        status=status,
+        extra={
+            "change_id": args.change_id,
+            "command": args.command,
+            "from": args.from_state,
+            "to": args.to_state,
+            "spec_path": str(spec_path),
+            "event_written": event_written,
+            "spec_written": spec_written,
+            "dry_run": args.dry_run,
+        },
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Atomically advance a change's lifecycle status (spec.md + events.jsonl).")
+    parser.add_argument("--change-id", required=True, help="Change directory name (kebab-case).")
+    parser.add_argument("--command", required=True, help="Command performing this transition (cc-<name>).")
+    parser.add_argument("--from", dest="from_state", required=True, help="transition.from state (must match current spec status unless 'none').")
+    parser.add_argument("--to", dest="to_state", required=True, help="transition.to state.")
+    parser.add_argument("--summary", required=True, help="One-line transition summary.")
+    parser.add_argument("--evidence", action="append", required=True, help="Evidence reference (repeatable, >=1).")
+    parser.add_argument("--actor", default="claude-agent", help="Who/what performed the transition.")
+    parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--dry-run", action="store_true", help="Validate + precheck without writing spec or event.")
+    return parser
+
+
+def main(argv: list[str]) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    # Guard: --to must be consistent with the command's declared lifecycle.
+    expected_to = COMMAND_TO.get(args.command)
+    if expected_to and args.to_state != expected_to:
+        report = build_report(
+            "cc-state-transition",
+            [Issue("E_STATE006", ISSUE_PATH,
+                   f"{args.command} must transition to {expected_to!r}, got {args.to_state!r}")],
+            status="failed",
+            extra={"change_id": args.change_id, "command": args.command},
+        )
+    else:
+        report = transition(args)
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        action = "would transition" if args.dry_run else "transitioned"
+        print(f"cc-state-transition: {action} {args.change_id} {args.from_state} -> {args.to_state}")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if report["status"] == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

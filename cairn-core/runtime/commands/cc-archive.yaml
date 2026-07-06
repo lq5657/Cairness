@@ -112,11 +112,10 @@ steps:
   - load_knowledge_entry_template_before_writing
   - run_gate_degradation_check_and_report_findings
   - rerun_pre_archive_validation
-  - mark_spec_done
+  - transition_state_review_to_done_via_cc_state_transition
   - sync_log_and_task_board
   - rerun_post_archive_validation
   - remind_user_to_return_to_default_branch_before_next_change
-  - record_state_transition_event_via_cc_event_write
 
 auto_validation:
   - .claude/scripts/cc-verify --change <change-id>

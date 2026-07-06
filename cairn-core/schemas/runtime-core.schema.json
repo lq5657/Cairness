@@ -163,6 +163,9 @@
         "event-write": {
           "type": "string"
         },
+        "state-transition": {
+          "type": "string"
+        },
         "behavior": {
           "type": "string"
         },
