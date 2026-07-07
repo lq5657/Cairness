@@ -1,5 +1,48 @@
 # 升级指南
 
+## 升级到 1.1.0
+
+本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。
+
+### 新增功能
+
+- `profile: loop` — 自主循环执行 profile，将 Tier-1 gate 替换为 cc-self-eval 自评门 + 异步审计日志
+- `cc-cairn loop enable/disable/status` — 一条命令开关 loop 模式
+- `cc-self-eval` 脚本 — 结构化 6 项 checklist，对照信任包络打分（`APPROVED` / `ESCALATE:<reason>`）
+- `loop-config.schema.json` — 信任包络配置的 JSON Schema 校验
+- `templates/loop-config.yaml` — 信任包络模板
+
+### profile.schema.json 扩展
+
+- `id` enum 新增 `"loop"`
+- 顶层新增可选属性 `loop_mode`（含 `gate_overrides`、`circuit_breakers`、`audit` 子字段）
+
+### runtime-command.schema.json 扩展
+
+- `interaction_contract` 新增可选属性 `loop_mode_override`（类型 `interactionLoopOverride`）
+- cc-apply、cc-fix、cc-propose、cc-review、cc-archive 均已声明 `loop_mode_override`
+
+### 迁移步骤（仅需使用 loop 模式时）
+
+```bash
+# 在目标项目中开启 loop 模式
+cc-cairn loop enable
+
+# 编辑信任包络
+vim .cairness/loop-config.yaml
+
+# 验证就绪状态
+cc-cairn preflight
+```
+
+### 回滚
+
+```bash
+cc-cairn loop disable   # 恢复 standard profile，loop-config.yaml 保留不删
+```
+
+---
+
 ## Wave-based 并行 cc-apply(manifest 变更)
 
 `cc-apply` 在 `standard`/`strict` profile 下新增 wave-based 并行执行:每波在 fresh context 起步、per-wave SUMMARY 写回。`cc-wave-plan` 从 `tasks.md` 的 task 依赖/文件范围确定性派生 wave 编排,wave-confirmation 闸门确认后逐波执行。失败语义为完成可成者:同波通过 task 照常 commit,失败 task 标 blocked,wave 闸门阻断下一波。
