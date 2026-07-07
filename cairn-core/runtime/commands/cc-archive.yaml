@@ -80,7 +80,20 @@ preconditions:
   - check_gate_degradation_before_archive_and_surface_candidates
 
 interaction_contract:
+  # standard mode: knowledge decision and archive status require explicit user choice
+  # loop mode: auto-archives when conditions met; defaults knowledge to no_knowledge_compounding
   mode: interactive_required
+  loop_mode_override:
+    when: profile_is_loop_and_loop_config_exists
+    archive_handler: auto_archive
+    auto_approve_when:
+      - verification_green_and_no_open_findings_and_scope_within_envelope
+    knowledge_default: use_trust_envelope_knowledge_default
+    audit: write_archive_decision_to_loop_audit_file
+    escalate_when:
+      - verification_failed
+      - open_important_or_critical_findings_remain
+      - knowledge_has_obvious_high_value_candidate
   selection:
     when: knowledge_candidates_or_compounding_decision_required
     presentation:

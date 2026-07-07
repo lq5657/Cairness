@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+# cc-self-eval: Self-evaluation gate for Loop Engineering mode
+# Usage: cc-self-eval --command <command> --change-id <id> [--verbose]
+#
+# Returns:
+#   0 + "APPROVED" - all checks pass, agent can proceed
+#   1 + "ESCALATE: <reason>" - checks failed, escalate to human with targeted question
+#   2 + error message - configuration or runtime error
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Default values
+COMMAND=""
+CHANGE_ID=""
+VERBOSE=false
+LOOP_CONFIG="$PROJECT_ROOT/.cairness/loop-config.yaml"
+SPEC_FILE=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --command)
+      COMMAND="$2"
+      shift 2
+      ;;
+    --change-id)
+      CHANGE_ID="$2"
+      shift 2
+      ;;
+    --verbose)
+      VERBOSE=true
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$COMMAND" || -z "$CHANGE_ID" ]]; then
+  echo "Error: --command and --change-id are required" >&2
+  echo "Usage: cc-self-eval --command <command> --change-id <id> [--verbose]" >&2
+  exit 2
+fi
+
+SPEC_FILE="$PROJECT_ROOT/.cairness/changes/$CHANGE_ID/spec.md"
+
+# Check if loop config exists
+if [[ ! -f "$LOOP_CONFIG" ]]; then
+  echo "Error: Loop config not found at $LOOP_CONFIG" >&2
+  echo "Run: cp .claude/templates/loop-config.yaml .cairness/loop-config.yaml" >&2
+  exit 2
+fi
+
+# Check if spec exists
+if [[ ! -f "$SPEC_FILE" ]]; then
+  echo "Error: Spec file not found at $SPEC_FILE" >&2
+  exit 2
+fi
+
+# Logging helper
+log_verbose() {
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "[cc-self-eval] $*" >&2
+  fi
+}
+
+# Extract YAML field using grep/sed (no PyYAML dependency)
+extract_yaml_field() {
+  local file="$1"
+  local field="$2"
+  grep -E "^${field}:" "$file" | head -1 | sed "s/^${field}:[[:space:]]*//"
+}
+
+# Extract YAML array items
+extract_yaml_array() {
+  local file="$1"
+  local field="$2"
+  awk "/^${field}:/,/^[[:alpha:]]/ { if (/^[[:space:]]+-/) print \$2 }" "$file"
+}
+
+# Check if value is in array
+in_array() {
+  local needle="$1"
+  shift
+  local haystack=("$@")
+  for item in "${haystack[@]}"; do
+    if [[ "$item" == "$needle" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Self-evaluation checklist
+SCORE=0
+MAX_SCORE=6
+FAILURES=()
+
+log_verbose "Starting self-evaluation for $COMMAND / $CHANGE_ID"
+
+# === Check 1: Change type within trust envelope ===
+log_verbose "Check 1: Change type within trust envelope"
+
+CHANGE_TYPE=$(extract_yaml_field "$SPEC_FILE" "change_type" || echo "")
+if [[ -z "$CHANGE_TYPE" ]]; then
+  FAILURES+=("change_type_missing_in_spec")
+else
+  # Read allowed and disallowed types from loop config
+  DISALLOWED_TYPES=($(extract_yaml_array "$LOOP_CONFIG" "disallowed_change_types"))
+
+  if in_array "$CHANGE_TYPE" "${DISALLOWED_TYPES[@]}"; then
+    FAILURES+=("change_type_disallowed: $CHANGE_TYPE")
+  else
+    ALLOWED_TYPES=($(extract_yaml_array "$LOOP_CONFIG" "allowed_change_types"))
+    if in_array "$CHANGE_TYPE" "${ALLOWED_TYPES[@]}"; then
+      ((SCORE++))
+      log_verbose "  ✓ Change type $CHANGE_TYPE is allowed"
+    else
+      FAILURES+=("change_type_not_in_allowed_list: $CHANGE_TYPE")
+    fi
+  fi
+fi
+
+# === Check 2: Scope within trust envelope ===
+log_verbose "Check 2: Scope within trust envelope"
+
+CHANGE_SIZE=$(extract_yaml_field "$SPEC_FILE" "change_size" || echo "")
+MAX_SCOPE=$(extract_yaml_field "$LOOP_CONFIG" "max_scope" || echo "small")
+
+if [[ -z "$CHANGE_SIZE" ]]; then
+  FAILURES+=("change_size_missing_in_spec")
+else
+  # Size order: micro < small < medium < large < xlarge
+  declare -A SIZE_RANK=([micro]=1 [small]=2 [medium]=3 [large]=4 [xlarge]=5)
+
+  CHANGE_RANK=${SIZE_RANK[$CHANGE_SIZE]:-999}
+  MAX_RANK=${SIZE_RANK[$MAX_SCOPE]:-2}
+
+  if [[ $CHANGE_RANK -le $MAX_RANK ]]; then
+    ((SCORE++))
+    log_verbose "  ✓ Change size $CHANGE_SIZE ≤ $MAX_SCOPE"
+  else
+    FAILURES+=("scope_exceeds_envelope: $CHANGE_SIZE > $MAX_SCOPE")
+  fi
+fi
+
+# === Check 3: All clarifications resolved ===
+log_verbose "Check 3: Clarifications resolved"
+
+OPEN_CLARIFICATIONS=$(grep -c "status: open" "$SPEC_FILE" || echo "0")
+if [[ $OPEN_CLARIFICATIONS -eq 0 ]]; then
+  ((SCORE++))
+  log_verbose "  ✓ No open clarifications"
+else
+  FAILURES+=("unresolved_clarifications: $OPEN_CLARIFICATIONS open")
+fi
+
+# === Check 4: Validation mapping complete ===
+log_verbose "Check 4: Validation mapping complete"
+
+# Check if validation_map section exists and has no 'gap' status
+if grep -q "^## Validation Mapping" "$SPEC_FILE"; then
+  GAP_COUNT=$(grep -c "| gap |" "$SPEC_FILE" || echo "0")
+  if [[ $GAP_COUNT -eq 0 ]]; then
+    ((SCORE++))
+    log_verbose "  ✓ Validation mapping complete (no gaps)"
+  else
+    FAILURES+=("validation_mapping_has_gaps: $GAP_COUNT gaps")
+  fi
+else
+  FAILURES+=("validation_mapping_missing")
+fi
+
+# === Check 5: Residual risks within envelope ===
+log_verbose "Check 5: Residual risks within envelope"
+
+MAX_RISK=$(extract_yaml_field "$LOOP_CONFIG" "max_residual_risk" || echo "medium")
+
+# Count high/critical risks in spec
+HIGH_RISK_COUNT=$(grep -c "severity: high" "$SPEC_FILE" || echo "0")
+CRITICAL_RISK_COUNT=$(grep -c "severity: critical" "$SPEC_FILE" || echo "0")
+
+# Risk order: low < medium < high < critical
+declare -A RISK_RANK=([low]=1 [medium]=2 [high]=3 [critical]=4)
+MAX_RISK_RANK=${RISK_RANK[$MAX_RISK]:-2}
+
+EXCEEDS_RISK=false
+if [[ $MAX_RISK_RANK -lt 3 && $HIGH_RISK_COUNT -gt 0 ]]; then
+  EXCEEDS_RISK=true
+  FAILURES+=("residual_risk_exceeds_envelope: high risk > $MAX_RISK")
+fi
+
+if [[ $MAX_RISK_RANK -lt 4 && $CRITICAL_RISK_COUNT -gt 0 ]]; then
+  EXCEEDS_RISK=true
+  FAILURES+=("residual_risk_exceeds_envelope: critical risk > $MAX_RISK")
+fi
+
+if [[ "$EXCEEDS_RISK" == "false" ]]; then
+  ((SCORE++))
+  log_verbose "  ✓ Residual risks within envelope (≤ $MAX_RISK)"
+fi
+
+# === Check 6: No dependency conflicts ===
+log_verbose "Check 6: Dependency check"
+
+# Run cc-deps conflict check
+if "$SCRIPT_DIR/cc-deps" conflicts --change "$CHANGE_ID" >/dev/null 2>&1; then
+  ((SCORE++))
+  log_verbose "  ✓ No dependency conflicts"
+else
+  FAILURES+=("dependency_conflict_detected")
+fi
+
+# === Compute confidence score ===
+CONFIDENCE=$(awk "BEGIN {printf \"%.2f\", $SCORE / $MAX_SCORE}")
+
+log_verbose "Self-eval score: $SCORE/$MAX_SCORE (confidence: $CONFIDENCE)"
+
+# === Decision ===
+THRESHOLD=0.7  # from loop profile
+
+if (( $(awk "BEGIN {print ($CONFIDENCE >= $THRESHOLD)}") )); then
+  echo "APPROVED"
+  exit 0
+else
+  # Format escalation message
+  REASON="${FAILURES[0]}"  # First failure as primary reason
+  echo "ESCALATE: $REASON"
+
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "All failures:" >&2
+    printf '  - %s\n' "${FAILURES[@]}" >&2
+  fi
+
+  exit 1
+fi

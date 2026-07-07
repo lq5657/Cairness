@@ -2,6 +2,9 @@
 # Relative paths are interpreted from the project root.
 
 profile: standard
+# Loop Engineering profile: set to "loop" to enable autonomous execution
+# Requires: .cairness/loop-config.yaml (see .claude/templates/loop-config.yaml)
+# profile: loop
 
 paths:
   framework_root: ".claude"

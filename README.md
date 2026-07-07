@@ -172,11 +172,151 @@ Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Sp
 
 通过 `harness.config.yaml` 中的 `profile` 字段选择严格程度：
 
-| Profile | 适用场景 | Topic Rules | Subagents | 验证深度 |
-|---------|---------|-------------|-----------|---------|
-| `minimal` | 原型、个人项目 | 仅核心 | 关闭 | harness-only |
-| `standard` | 团队项目、生产代码（默认） | 核心 + 条件 | 启用 | 完整 |
-| `strict` | 合规、金融、安全敏感 | 全部始终加载 | 启用 + 额外校验 | 双轮完整 |
+| Profile | 适用场景 | Topic Rules | Subagents | 验证深度 | 人工确认 |
+|---------|---------|-------------|-----------|---------|---------|
+| `minimal` | 原型、个人项目 | 仅核心 | 关闭 | harness-only | 全部 |
+| `standard` | 团队项目、生产代码（默认） | 核心 + 条件 | 启用 | 完整 | Tier-1 Gate |
+| `strict` | 合规、金融、安全敏感 | 全部始终加载 | 启用 + 额外校验 | 双轮完整 | 全部 |
+| `loop` | 自主循环执行、CI/CD 集成 | 核心 + 条件 | 启用 | 完整 | 仅熔断时升级 |
+
+## Loop Engineering（自主循环执行）
+
+Loop Engineering 是一种让 AI agent 在人类划定的边界内**自主运转完整变更生命周期**的工程模式——从 `cc-propose` 到 `cc-archive`，无需在每个确认点等待人工响应。人类从"每个 gate 都要批准"（human-in-the-loop）退出，转为"异步审阅 audit 日志"（human-on-the-loop）。
+
+### 工作原理
+
+标准模式下框架有三个 Tier-1 阻塞 gate：`cc-propose` 的 Hard Gate、`cc-review` 的 finding 处置、`cc-archive` 的归档确认。Loop 模式用三项机制替代这些阻塞点：
+
+1. **信任包络（Trust Envelope）** — 人在循环开始前用 `.cairness/loop-config.yaml` 一次性声明允许的变更类型、范围上限、风险上限
+2. **自评门（cc-self-eval）** — 替代人工 Hard Gate，对照信任包络运行结构化 checklist，全部通过则自动放行
+3. **异步审计日志（Loop Audit）** — 所有自动决策写入 `.cairness/loop-audit/YYYY-MM-DD.md`，供人在任意时刻异步审查
+
+### 快速开始
+
+**第一步：配置信任包络**
+
+```bash
+# 从模板复制到项目状态目录
+cp .claude/templates/loop-config.yaml .cairness/loop-config.yaml
+
+# 按实际需求编辑（关键字段见下文）
+```
+
+`.cairness/loop-config.yaml` 示例：
+
+```yaml
+version: 1
+
+trust_envelope:
+  max_scope: small            # 允许的最大变更规模 (micro/small/medium/large/xlarge)
+  max_residual_risk: medium   # 允许的最大残余风险 (low/medium/high)
+
+  allowed_change_types:       # agent 可自动放行的变更类型
+    - refactor
+    - bugfix
+    - test
+    - doc
+    - feature_small
+
+  disallowed_change_types:    # 永远升级给人类，不走自动流程
+    - schema_migration
+    - security_change
+    - api_breaking_change
+    - architecture_change
+
+  accepted_finding_patterns:  # review 时 minor finding 自动 accept 的模式
+    - style_convention
+    - naming_preference
+    - comment_clarity
+
+  verification:
+    require_all_tests_pass: true
+    require_no_open_findings: true
+
+  knowledge:
+    default_action: no_knowledge_compounding  # 归档时知识沉淀的默认行为
+```
+
+**第二步：切换到 loop profile**
+
+编辑 `.claude/harness.config.yaml`，将 `profile` 行改为：
+
+```yaml
+profile: loop
+```
+
+**第三步：启动 Claude Code，发起变更**
+
+```bash
+cc-propose "修复登录接口的超时处理"
+```
+
+Loop 模式下，agent 会：
+1. 写好 spec 和 tasks
+2. 运行 `cc-self-eval` 对照信任包络打分
+3. 通过则自动进入 `cc-apply` → `cc-review` → `cc-archive`
+4. 每个自动决策记入 `.cairness/loop-audit/`
+5. 超出信任包络或遇到熔断条件时，给你一条精准问题，不展示全套 gate
+
+### 熔断器
+
+以下条件会立即停止循环，等待人工介入：
+
+| 条件 | 说明 |
+|------|------|
+| `change_type_disallowed` | 变更类型在 `disallowed_change_types` 中 |
+| `scope_exceeds_envelope` | 变更规模超过 `max_scope` |
+| `residual_risk_exceeds_envelope` | 残余风险超过 `max_residual_risk` |
+| `critical_finding_in_review` | 审查出 critical 级别 finding |
+| `security_finding_in_review` | 审查出安全相关 finding |
+| `verification_failed_twice_consecutively` | 验证连续失败 2 次 |
+| `state_inconsistency_detected` | 状态机检测到 E_STATE001 不一致 |
+| `self_eval_failed_three_times_same_reason` | 同一原因连续自评失败 3 次 |
+
+### 异步审计日志
+
+所有 loop 自动决策写入 `.cairness/loop-audit/YYYY-MM-DD.md`：
+
+```markdown
+## 2026-07-07
+
+### change-012 (bugfix: fix login timeout)
+- [11:34] cc-propose hard_gate: AUTO-APPROVED
+  - change_type: bugfix ✓ | scope: small ✓ | risks: none ✓ | validation_map: complete ✓
+- [11:52] cc-review: no acceptance-candidate findings
+- [12:01] cc-archive: AUTO-APPROVED
+  - verification: 38/38 green ✓ | open_findings: 0 ✓
+
+### change-013 (feature: add rate limiting)
+- [14:22] cc-propose hard_gate: ESCALATED
+  - reason: scope_exceeds_envelope (medium > small)
+  - question: "此变更规模评估为 medium，超出当前信任包络（small），请确认是否调整包络或拆分变更"
+```
+
+### cc-self-eval 直接使用
+
+```bash
+# 检查变更是否在信任包络内
+.claude/scripts/cc-self-eval --command cc-propose --change-id <id>
+
+# 详细输出（打印每项 checklist 结果）
+.claude/scripts/cc-self-eval --command cc-propose --change-id <id> --verbose
+```
+
+返回码：`0` = APPROVED，`1` = ESCALATE（含原因），`2` = 配置错误。
+
+### Loop 与 Standard 模式对比
+
+| 行为 | standard | loop |
+|------|----------|------|
+| cc-propose Hard Gate | ⏸ 等用户确认 | 🤖 cc-self-eval 自评，通过即放行 |
+| cc-review finding accept | ⏸ 等用户选择 | 🤖 minor 自动处置，important/critical 升级 |
+| cc-archive 归档确认 | ⏸ 等用户确认 | 🤖 验证绿/无发现时自动归档 |
+| 人工介入点 | 每个 gate | 仅熔断条件触发 |
+| 决策记录 | spec/review 文件 | 同上 + loop-audit 异步日志 |
+| 信任包络 | 不需要 | 必须配置 `.cairness/loop-config.yaml` |
+
+> **注意：** Loop 模式不降低验证要求。验证脚本（cc-verify、cc-schema-check 等）仍全量运行。区别只在于谁来判断 gate 条件：standard 是人，loop 是 cc-self-eval 对照信任包络打分。
 
 ## 常用校验
 

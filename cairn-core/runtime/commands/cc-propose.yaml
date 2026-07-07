@@ -87,7 +87,15 @@ preconditions:
   - map_major_requirements_and_risks_to_validation_ids
 
 interaction_contract:
+  # standard mode: all gates require explicit user confirmation
+  # loop mode: hard_gate is replaced by cc-self-eval; clarifications still block if unresolvable
   mode: interactive_required
+  loop_mode_override:
+    when: profile_is_loop_and_loop_config_exists
+    hard_gate_handler: cc-self-eval
+    hard_gate_behavior: auto_approve_or_escalate
+    clarification_behavior: escalate_blocking_unknowns_with_targeted_question
+    audit: write_decision_to_loop_audit_file
   clarification:
     when: blocking_unknowns_or_user_decision_required_risks_affect_scope_acceptance_or_task_split_or_validation_boundary
     presentation:

@@ -31,6 +31,7 @@ STATE_SKELETON = [
     ".cairness/audits",
     ".cairness/knowledge",
     ".cairness/discussions",
+    ".cairness/loop-audit",  # Loop Engineering async audit log (only written in loop profile)
 ]
 
 KNOWLEDGE_CATALOG_REL = "runtime/knowledge-categories.yaml"

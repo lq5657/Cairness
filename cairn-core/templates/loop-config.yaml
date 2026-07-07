@@ -1,0 +1,79 @@
+# Loop Engineering Trust Envelope Configuration
+# This file defines the pre-authorized boundary for autonomous agent execution.
+# Place this file at: .cairness/loop-config.yaml
+# The agent will check against these boundaries at each gate and escalate only when exceeded.
+
+version: 1
+
+trust_envelope:
+  # Allowed change scope sizes (from change-sizing.yaml: micro, small, medium, large, xlarge)
+  # Changes exceeding this scope will trigger human escalation
+  max_scope: small
+
+  # Maximum allowed residual risk level (low, medium, high)
+  # Risks above this level will trigger human escalation
+  max_residual_risk: medium
+
+  # Allowed change types - agent can auto-approve these types within scope/risk limits
+  allowed_change_types:
+    - refactor
+    - bugfix
+    - test
+    - doc
+    - feature_small
+    - optimization
+    - cleanup
+
+  # Disallowed change types - always escalate to human regardless of scope/risk
+  disallowed_change_types:
+    - schema_migration
+    - database_migration
+    - security_change
+    - api_breaking_change
+    - dependency_major_upgrade
+    - architecture_change
+    - release_change
+
+  # Auto-accept patterns for review findings
+  # Findings matching these patterns can be auto-accepted if severity is minor
+  accepted_finding_patterns:
+    - style_convention
+    - naming_preference
+    - comment_clarity
+    - test_coverage_non_critical_path
+    - logging_enhancement
+
+  # Verification requirements for auto-archive
+  verification:
+    require_all_tests_pass: true
+    require_no_open_findings: true
+    require_validation_mapping_closed: true
+
+  # Knowledge compounding defaults
+  knowledge:
+    auto_compound_when_obvious: false  # conservative default
+    default_action: no_knowledge_compounding
+
+# Loop execution limits
+limits:
+  # Maximum consecutive escalations before circuit breaker
+  max_consecutive_escalations: 3
+
+  # Maximum auto-approved changes per day (safety limit)
+  max_auto_approvals_per_day: 10
+
+  # Token budget multiplier for loop mode (loops consume more tokens)
+  token_budget_multiplier: 1.5
+
+# Notification preferences
+notifications:
+  # When to notify human (non-blocking, for async review)
+  notify_on:
+    - escalation
+    - circuit_breaker
+    - trust_envelope_exceeded
+    - verification_failed
+    - daily_audit_summary
+
+  # Notification channel (for future extension)
+  channel: loop_audit_file  # Currently only supports audit file

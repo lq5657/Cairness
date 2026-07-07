@@ -78,7 +78,21 @@ preconditions:
   - check_log_for_spec_review_flags_from_cc_apply_boundary_discovery
 
 interaction_contract:
+  # standard mode: finding acceptance always requires user choice
+  # loop mode: minor findings auto-disposed; important/critical always escalate (circuit breaker)
   mode: interactive_required
+  loop_mode_override:
+    when: profile_is_loop_and_loop_config_exists
+    finding_disposition_handler: auto_disposition
+    auto_accept_when:
+      - severity_minor_and_matches_accepted_pattern_in_trust_envelope
+    auto_fix_when:
+      - severity_minor_and_no_matching_accepted_pattern
+    escalate_when:
+      - severity_important
+      - severity_critical
+      - security_finding
+    audit: write_finding_decision_to_loop_audit_file
   confirmation:
     when: finding_should_be_accepted_or_archive_viability_depends_on_risk_acceptance
     presentation:

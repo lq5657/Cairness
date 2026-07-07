@@ -155,6 +155,9 @@
         },
         "selection": {
           "$ref": "#/$defs/interactionDecision"
+        },
+        "loop_mode_override": {
+          "$ref": "#/$defs/interactionLoopOverride"
         }
       }
     },
@@ -373,6 +376,57 @@
         },
         "blocking_behavior": {
           "$ref": "#/$defs/nonEmptySnakeList"
+        }
+      }
+    },
+    "interactionLoopOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["when"],
+      "properties": {
+        "when": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hard_gate_handler": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hard_gate_behavior": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clarification_behavior": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archive_handler": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auto_approve_when": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "finding_disposition_handler": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auto_accept_when": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "auto_fix_when": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "escalate_when": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "knowledge_default": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audit": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }
