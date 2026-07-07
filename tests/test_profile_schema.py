@@ -56,8 +56,39 @@ def test_corrupt_profile_structure_is_caught():
         target.write_text(original, encoding="utf-8")
 
 
+def test_loop_profile_validates_successfully():
+    """loop.yaml must pass profile.schema validation without any issues."""
+    report = _run_json()
+    loop_issues = [i for i in report["issues"] if "loop.yaml" in i.get("path", "")]
+    assert loop_issues == [], f"loop.yaml has unexpected schema issues: {loop_issues}"
+
+
+def test_loop_profile_invalid_gate_mode_is_caught():
+    """loop.yaml with an invalid gate mode enum value must fail schema validation."""
+    target = PROFILES_DIR / "loop.yaml"
+    if not target.exists():
+        import pytest
+        pytest.skip("loop.yaml not present; loop feature not installed")
+    original = target.read_text(encoding="utf-8")
+    try:
+        # Corrupt hard_gate_confirm.mode to an invalid enum value
+        corrupt = original.replace(
+            "mode: self_eval",
+            "mode: invalid_mode_xyz",
+        )
+        if corrupt == original:
+            import pytest
+            pytest.skip("mode: self_eval not found in loop.yaml; test env changed")
+        target.write_text(corrupt, encoding="utf-8")
+        report = _run_json()
+        assert report["status"] == "failed"
+        assert any("loop.yaml" in i.get("path", "") for i in report["issues"]), report["issues"]
+    finally:
+        target.write_text(original, encoding="utf-8")
+
+
 def test_invalid_default_profile_is_caught():
-    """core.yaml profiles.default not in {minimal,standard,strict} → E_SCHEMA194."""
+    """core.yaml profiles.default not in {minimal,standard,strict,loop} → E_SCHEMA194."""
     original = CORE_PATH.read_text(encoding="utf-8")
     try:
         corrupt = original.replace("  default: standard", "  default: bogus-mode")

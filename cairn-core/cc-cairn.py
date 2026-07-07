@@ -827,7 +827,7 @@ def _parse_existing_entries(index_text):
     for line in cleaned.splitlines():
         m = entry_re.search(line)
         if m:
-            kw, _desc, path = m.group(1).strip(), m.group(2), m.group(3).strip()
+            kw, _, path = m.group(1).strip(), m.group(2), m.group(3).strip()
             paths.add(path)
             keywords[kw] = path
     return paths, keywords
@@ -1013,7 +1013,7 @@ def _handle_remove(project_root, index_path, paths, apply):
         if not hits:
             not_found.append(rel)
             continue
-        for line_idx, kw, _desc in hits:
+        for line_idx, kw, _ in hits:
             removals.append((rel, line_idx, kw))
 
     if not removals:
@@ -1034,7 +1034,7 @@ def _handle_remove(project_root, index_path, paths, apply):
         print("Run with --apply to write changes.")
         return
 
-    for _rel, line_idx, _kw in removals:
+    for _, line_idx, _ in removals:
         if 0 <= line_idx < len(lines):
             del lines[line_idx]
             _strip_blank_pad(lines, line_idx)
@@ -1069,7 +1069,7 @@ def _handle_rename(project_root, index_path, old_raw, new_raw, apply):
         sys.exit(f"old path is not under .cairness/knowledge/: {old_raw}")
 
     try:
-        _new_subdir, new_rel = _resolve_knowledge_path(project_root, new_raw)
+        _, new_rel = _resolve_knowledge_path(project_root, new_raw)
     except ValueError as e:
         sys.exit(str(e))
 
@@ -1084,7 +1084,7 @@ def _handle_rename(project_root, index_path, old_raw, new_raw, apply):
         )
     line_idx, kw, desc = hits[0]
 
-    existing_paths, _existing_keywords = _parse_existing_entries(original_text)
+    existing_paths, _ = _parse_existing_entries(original_text)
     if new_rel != old_rel and new_rel in existing_paths:
         sys.exit(f"new path already registered: {new_rel}")
 
@@ -1242,11 +1242,11 @@ def cmd_add_knowledge(argv):
     for subdir, items in by_subdir.items():
         for rel, kw, desc in items:
             entry_line = f"- **{kw}** : {desc} → {rel}"
-            insert_at, _level = _find_section_insert_point("\n".join(lines), subdir)
+            insert_at, _ = _find_section_insert_point("\n".join(lines), subdir)
             if insert_at is None:
                 lines = _append_new_section(lines, subdir, category_map[subdir], entry_line)
             else:
-                lines, _shift = _insert_entry(lines, insert_at, entry_line)
+                lines, _ = _insert_entry(lines, insert_at, entry_line)
             inserted_count += 1
 
     new_text = "\n".join(lines)
@@ -1304,6 +1304,8 @@ LOOP_CONFIG_REL = ".cairness/loop-config.yaml"
 LOOP_CONFIG_TEMPLATE_REL = ".claude/templates/loop-config.yaml"
 
 VALID_PROFILES = ("minimal", "standard", "strict", "loop")
+DEFAULT_PROFILE = "standard"  # profile restored by 'cc-cairn loop disable'
+LOOP_PROFILE = "loop"
 
 
 def _read_current_profile(harness_cfg: Path) -> str:
@@ -1322,6 +1324,11 @@ def _read_current_profile(harness_cfg: Path) -> str:
 
 def _set_profile(harness_cfg: Path, new_profile: str) -> None:
     """Replace the active 'profile:' line in harness.config.yaml."""
+    if new_profile not in VALID_PROFILES:
+        raise ValueError(
+            f"Unknown profile '{new_profile}'. "
+            f"Valid profiles: {', '.join(VALID_PROFILES)}"
+        )
     text = harness_cfg.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
     replaced = False
@@ -1424,21 +1431,21 @@ def cmd_loop(argv: list[str]) -> None:
             )
 
         # Step 2: switch profile
-        if current_profile == "loop":
-            print("  Profile is already 'loop' — nothing changed.")
+        if current_profile == LOOP_PROFILE:
+            print(f"  Profile is already '{LOOP_PROFILE}' — nothing changed.")
         else:
-            _set_profile(harness_cfg, "loop")
-            print(f"  {HARNESS_CONFIG_REL}: profile set to 'loop'.")
+            _set_profile(harness_cfg, LOOP_PROFILE)
+            print(f"  {HARNESS_CONFIG_REL}: profile set to '{LOOP_PROFILE}'.")
 
         print("\nLoop Engineering enabled.")
         print("Next: review .cairness/loop-config.yaml, then start Claude Code.")
 
     elif args.action == "disable":
-        if current_profile == "standard":
-            print("  Profile is already 'standard' — nothing changed.")
+        if current_profile == DEFAULT_PROFILE:
+            print(f"  Profile is already '{DEFAULT_PROFILE}' — nothing changed.")
         else:
-            _set_profile(harness_cfg, "standard")
-            print(f"  {HARNESS_CONFIG_REL}: profile set to 'standard'.")
+            _set_profile(harness_cfg, DEFAULT_PROFILE)
+            print(f"  {HARNESS_CONFIG_REL}: profile set to '{DEFAULT_PROFILE}'.")
 
         print("\nLoop Engineering disabled (standard mode restored).")
         print(f"  {LOOP_CONFIG_REL} is preserved — re-enable with 'cc-cairn loop enable'.")

@@ -10,7 +10,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Allow tests (or CI) to override the project root via env var.
+# Default: two levels up from scripts/ → cairn-core/../ = project root.
+PROJECT_ROOT="${CAIRNESS_PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 
 # Default values
 COMMAND=""
@@ -69,18 +71,19 @@ log_verbose() {
   fi
 }
 
-# Extract YAML field using grep/sed (no PyYAML dependency)
+# Extract YAML field using grep/sed (no PyYAML dependency).
+# Matches both top-level and indented keys (e.g. fields under trust_envelope:).
 extract_yaml_field() {
   local file="$1"
   local field="$2"
-  grep -E "^${field}:" "$file" | head -1 | sed "s/^${field}:[[:space:]]*//"
+  grep -E "[[:space:]]*${field}:" "$file" | head -1 | sed "s/.*${field}:[[:space:]]*//"
 }
 
-# Extract YAML array items
+# Extract YAML array items for a given field (top-level or indented).
 extract_yaml_array() {
   local file="$1"
   local field="$2"
-  awk "/^${field}:/,/^[[:alpha:]]/ { if (/^[[:space:]]+-/) print \$2 }" "$file"
+  awk "/[[:space:]]*${field}:/,/^[^[:space:]-]/ { if (/^[[:space:]]+-[[:space:]]/) { sub(/^[[:space:]]+-[[:space:]]+/, \"\"); print } }" "$file"
 }
 
 # Check if value is in array
@@ -118,7 +121,7 @@ else
   else
     ALLOWED_TYPES=($(extract_yaml_array "$LOOP_CONFIG" "allowed_change_types"))
     if in_array "$CHANGE_TYPE" "${ALLOWED_TYPES[@]}"; then
-      ((SCORE++))
+      ((SCORE += 1))
       log_verbose "  ✓ Change type $CHANGE_TYPE is allowed"
     else
       FAILURES+=("change_type_not_in_allowed_list: $CHANGE_TYPE")
@@ -151,7 +154,7 @@ else
   MAX_RANK=$(size_rank "$MAX_SCOPE")
 
   if [[ $CHANGE_RANK -le $MAX_RANK ]]; then
-    ((SCORE++))
+    ((SCORE += 1))
     log_verbose "  ✓ Change size $CHANGE_SIZE ≤ $MAX_SCOPE"
   else
     FAILURES+=("scope_exceeds_envelope: $CHANGE_SIZE > $MAX_SCOPE")
@@ -161,9 +164,9 @@ fi
 # === Check 3: All clarifications resolved ===
 log_verbose "Check 3: Clarifications resolved"
 
-OPEN_CLARIFICATIONS=$(grep -c "status: open" "$SPEC_FILE" || echo "0")
+OPEN_CLARIFICATIONS=$(grep -c "status: open" "$SPEC_FILE" || true)
 if [[ $OPEN_CLARIFICATIONS -eq 0 ]]; then
-  ((SCORE++))
+  ((SCORE += 1))
   log_verbose "  ✓ No open clarifications"
 else
   FAILURES+=("unresolved_clarifications: $OPEN_CLARIFICATIONS open")
@@ -174,9 +177,9 @@ log_verbose "Check 4: Validation mapping complete"
 
 # Check if validation_map section exists and has no 'gap' status
 if grep -q "^## Validation Mapping" "$SPEC_FILE"; then
-  GAP_COUNT=$(grep -c "| gap |" "$SPEC_FILE" || echo "0")
+  GAP_COUNT=$(grep -c "| gap |" "$SPEC_FILE" || true)
   if [[ $GAP_COUNT -eq 0 ]]; then
-    ((SCORE++))
+    ((SCORE += 1))
     log_verbose "  ✓ Validation mapping complete (no gaps)"
   else
     FAILURES+=("validation_mapping_has_gaps: $GAP_COUNT gaps")
@@ -191,8 +194,8 @@ log_verbose "Check 5: Residual risks within envelope"
 MAX_RISK=$(extract_yaml_field "$LOOP_CONFIG" "max_residual_risk" || echo "medium")
 
 # Count high/critical risks in spec
-HIGH_RISK_COUNT=$(grep -c "severity: high" "$SPEC_FILE" || echo "0")
-CRITICAL_RISK_COUNT=$(grep -c "severity: critical" "$SPEC_FILE" || echo "0")
+HIGH_RISK_COUNT=$(grep -c "severity: high" "$SPEC_FILE" || true)
+CRITICAL_RISK_COUNT=$(grep -c "severity: critical" "$SPEC_FILE" || true)
 
 # Returns ordinal rank for a risk level; 999 = unknown
 risk_rank() {
@@ -219,7 +222,7 @@ if [[ $MAX_RISK_RANK -lt 4 && $CRITICAL_RISK_COUNT -gt 0 ]]; then
 fi
 
 if [[ "$EXCEEDS_RISK" == "false" ]]; then
-  ((SCORE++))
+  ((SCORE += 1))
   log_verbose "  ✓ Residual risks within envelope (≤ $MAX_RISK)"
 fi
 
@@ -229,16 +232,17 @@ log_verbose "Check 6: Dependency check"
 # Run cc-deps conflict check.
 # Only treat exit code 1 (confirmed conflict) as failure.
 # Exit code 2+ = script error (deps unavailable, no change found, etc.) → skip check.
-CC_DEPS_OUT=$("$SCRIPT_DIR/cc-deps" conflicts --change "$CHANGE_ID" 2>&1)
-CC_DEPS_RC=$?
+CC_DEPS_CMD="${CC_DEPS_CMD:-$SCRIPT_DIR/cc-deps}"
+CC_DEPS_RC=0
+CC_DEPS_OUT=$("$CC_DEPS_CMD" conflicts --change "$CHANGE_ID" 2>&1) || CC_DEPS_RC=$?
 if [[ $CC_DEPS_RC -eq 0 ]]; then
-  ((SCORE++))
+  ((SCORE += 1))
   log_verbose "  ✓ No dependency conflicts"
 elif [[ $CC_DEPS_RC -eq 1 ]]; then
   FAILURES+=("dependency_conflict_detected")
 else
   # Script error or change not found — do not penalise, award point with warning
-  ((SCORE++))
+  ((SCORE += 1))
   log_verbose "  ~ Dependency check skipped (cc-deps exit $CC_DEPS_RC): $CC_DEPS_OUT" >&2
 fi
 
@@ -250,17 +254,18 @@ log_verbose "Self-eval score: $SCORE/$MAX_SCORE (confidence: $CONFIDENCE)"
 # === Decision ===
 THRESHOLD=0.7  # from loop profile
 
-if (( $(awk "BEGIN {print ($CONFIDENCE >= $THRESHOLD)}") )); then
+if [[ ${#FAILURES[@]} -eq 0 ]]; then
   echo "APPROVED"
   exit 0
 else
-  # Format escalation message
-  REASON="${FAILURES[0]}"  # First failure as primary reason
+  # Report first failure as the primary escalation reason
+  REASON="${FAILURES[0]}"
   echo "ESCALATE: $REASON"
 
   if [[ "$VERBOSE" == "true" ]]; then
     echo "All failures:" >&2
     printf '  - %s\n' "${FAILURES[@]}" >&2
+    echo "Score: $SCORE/$MAX_SCORE (confidence: $CONFIDENCE)" >&2
   fi
 
   exit 1
