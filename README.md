@@ -51,6 +51,16 @@ cc-cairn init
 cc-cairn update       # 拉取最新版并更新系统安装和项目 .claude/（不触碰 .cairness/）
 ```
 
+## Loop Engineering（自主循环模式）快速开关
+
+```bash
+cc-cairn loop enable   # 开启 loop 模式（复制信任包络模板 + 切换 profile）
+cc-cairn loop disable  # 关闭 loop 模式（恢复 standard profile）
+cc-cairn loop status   # 查看当前 loop 模式状态与信任包络摘要
+```
+
+`enable` 会自动将 `.claude/templates/loop-config.yaml` 复制为 `.cairness/loop-config.yaml`（已存在则保留原文件），然后将 `.claude/harness.config.yaml` 的 `profile` 切换为 `loop`。`disable` 只改 profile，不删除 `loop-config.yaml`，方便随时重新开启。详细配置说明见下方「Loop Engineering」章节。
+
 ## 知识管理
 
 `.cairness/knowledge/index.md` 维护「关键词 → 知识文件」三元组索引（`**关键词** : 一句话说明 → 路径`）。LLM 通过语义匹配关键词来决定加载哪些知识文件，因此 index.md 必须保持格式合法、关键词唯一、路径存在。
@@ -193,13 +203,24 @@ Loop Engineering 是一种让 AI agent 在人类划定的边界内**自主运转
 
 ### 快速开始
 
-**第一步：配置信任包络**
+**第一步：开启 loop 模式（一条命令完成）**
 
 ```bash
-# 从模板复制到项目状态目录
-cp .claude/templates/loop-config.yaml .cairness/loop-config.yaml
+cc-cairn loop enable
+```
 
-# 按实际需求编辑（关键字段见下文）
+这条命令会自动：
+- 将 `.claude/templates/loop-config.yaml` 复制为 `.cairness/loop-config.yaml`（已存在则保留）
+- 将 `.claude/harness.config.yaml` 的 `profile` 切换为 `loop`
+
+**第二步：按需编辑信任包络**
+
+```bash
+# 查看当前状态和信任包络摘要
+cc-cairn loop status
+
+# 编辑信任包络配置（关键字段见下文）
+vim .cairness/loop-config.yaml
 ```
 
 `.cairness/loop-config.yaml` 示例：
@@ -235,14 +256,6 @@ trust_envelope:
 
   knowledge:
     default_action: no_knowledge_compounding  # 归档时知识沉淀的默认行为
-```
-
-**第二步：切换到 loop profile**
-
-编辑 `.claude/harness.config.yaml`，将 `profile` 行改为：
-
-```yaml
-profile: loop
 ```
 
 **第三步：启动 Claude Code，发起变更**

@@ -5,6 +5,9 @@ Usage:
     cc-cairn init                                Initialize Cairness in the current project
     cc-cairn update                              Pull latest release and update framework
     cc-cairn version                             Show installed and project versions
+    cc-cairn loop enable                         Enable Loop Engineering (autonomous) mode
+    cc-cairn loop disable                        Disable Loop Engineering, revert to standard
+    cc-cairn loop status                         Show current loop mode status
     cc-cairn add-knowledge [--apply] PATH...     Register knowledge files into index.md
     cc-cairn add-knowledge --remove [--apply] PATH...  Remove entries from index.md
     cc-cairn add-knowledge --rename [--apply] OLD NEW  Rename an entry's path
@@ -1289,13 +1292,162 @@ def _count_index_errors(project_root, index_text):
         return data.get("summary", {}).get("error", 0)
 
 
+# ---------------------------------------------------------------------------
+# Loop Engineering helpers
+# ---------------------------------------------------------------------------
+
+HARNESS_CONFIG_REL = ".claude/harness.config.yaml"
+LOOP_CONFIG_REL = ".cairness/loop-config.yaml"
+LOOP_CONFIG_TEMPLATE_REL = ".claude/templates/loop-config.yaml"
+
+VALID_PROFILES = ("minimal", "standard", "strict", "loop")
+
+
+def _read_current_profile(harness_cfg: Path) -> str:
+    """Return the active profile value from harness.config.yaml, or 'unknown'."""
+    if not harness_cfg.is_file():
+        return "unknown"
+    for line in harness_cfg.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        # Skip comment lines
+        if stripped.startswith("#"):
+            continue
+        if stripped.startswith("profile:"):
+            return stripped[len("profile:"):].strip()
+    return "unknown"
+
+
+def _set_profile(harness_cfg: Path, new_profile: str) -> None:
+    """Replace the active 'profile:' line in harness.config.yaml."""
+    text = harness_cfg.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    replaced = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        if stripped.startswith("profile:"):
+            # Preserve leading whitespace (there is none for this top-level key)
+            indent = line[: len(line) - len(line.lstrip())]
+            lines[i] = f"{indent}profile: {new_profile}\n"
+            replaced = True
+            break
+    if not replaced:
+        raise ValueError(
+            f"No 'profile:' key found in {harness_cfg}. "
+            "The file may be corrupted — re-run 'cc-cairn init' to restore it."
+        )
+    harness_cfg.write_text("".join(lines), encoding="utf-8")
+
+
+def _loop_config_summary(loop_cfg: Path) -> list[str]:
+    """Return a short human-readable summary of the trust envelope."""
+    lines_out = []
+    if not loop_cfg.is_file():
+        return lines_out
+    for line in loop_cfg.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") or not stripped:
+            continue
+        for key in ("max_scope:", "max_residual_risk:"):
+            if stripped.startswith(key):
+                lines_out.append(f"  {stripped}")
+    return lines_out
+
+
+def cmd_loop(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(
+        prog="cc-cairn loop",
+        description="Enable, disable, or inspect Loop Engineering mode.",
+    )
+    parser.add_argument(
+        "action",
+        choices=["enable", "disable", "status"],
+        help=(
+            "enable  — switch to loop profile and create loop-config.yaml if absent; "
+            "disable — revert to standard profile; "
+            "status  — show current loop mode state"
+        ),
+    )
+    args = parser.parse_args(argv)
+
+    project_root = Path.cwd()
+    harness_cfg = project_root / HARNESS_CONFIG_REL
+    loop_cfg = project_root / LOOP_CONFIG_REL
+
+    if not harness_cfg.is_file():
+        sys.exit(
+            f"{HARNESS_CONFIG_REL} not found. "
+            "Run 'cc-cairn init' first to initialize the framework."
+        )
+
+    current_profile = _read_current_profile(harness_cfg)
+
+    if args.action == "status":
+        print(f"profile      : {current_profile}")
+        loop_cfg_exists = loop_cfg.is_file()
+        print(f"loop-config  : {'found' if loop_cfg_exists else 'not found'} ({LOOP_CONFIG_REL})")
+        if current_profile == "loop":
+            print("loop mode    : ENABLED ✓")
+            summary = _loop_config_summary(loop_cfg)
+            if summary:
+                print("trust envelope:")
+                for s in summary:
+                    print(s)
+            elif not loop_cfg_exists:
+                print(
+                    "warning: loop profile active but loop-config.yaml is missing.\n"
+                    f"  Run 'cc-cairn loop enable' to create it from the template."
+                )
+        else:
+            print(f"loop mode    : disabled (profile={current_profile})")
+
+    elif args.action == "enable":
+        # Step 1: ensure loop-config.yaml exists
+        if loop_cfg.is_file():
+            print(f"  {LOOP_CONFIG_REL} already exists — keeping as-is.")
+        else:
+            template = project_root / LOOP_CONFIG_TEMPLATE_REL
+            if not template.is_file():
+                sys.exit(
+                    f"Template not found: {LOOP_CONFIG_TEMPLATE_REL}\n"
+                    "Your .claude/ may be outdated — run 'cc-cairn update' to refresh."
+                )
+            loop_cfg.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(template, loop_cfg)
+            print(f"  Created {LOOP_CONFIG_REL} from template.")
+            print(
+                f"  → Edit {LOOP_CONFIG_REL} to set your trust envelope before running loop."
+            )
+
+        # Step 2: switch profile
+        if current_profile == "loop":
+            print("  Profile is already 'loop' — nothing changed.")
+        else:
+            _set_profile(harness_cfg, "loop")
+            print(f"  {HARNESS_CONFIG_REL}: profile set to 'loop'.")
+
+        print("\nLoop Engineering enabled.")
+        print("Next: review .cairness/loop-config.yaml, then start Claude Code.")
+
+    elif args.action == "disable":
+        if current_profile == "standard":
+            print("  Profile is already 'standard' — nothing changed.")
+        else:
+            _set_profile(harness_cfg, "standard")
+            print(f"  {HARNESS_CONFIG_REL}: profile set to 'standard'.")
+
+        print("\nLoop Engineering disabled (standard mode restored).")
+        print(f"  {LOOP_CONFIG_REL} is preserved — re-enable with 'cc-cairn loop enable'.")
+
+
 def main():
     if sys.version_info < MIN_PYTHON:
         v = ".".join(map(str, MIN_PYTHON))
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|update|version|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -1305,11 +1457,13 @@ def main():
         cmd_update()
     elif cmd == "version":
         cmd_version()
+    elif cmd == "loop":
+        cmd_loop(sys.argv[2:])
     elif cmd == "add-knowledge":
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|update|version|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|loop|add-knowledge>")
         sys.exit(1)
 
 
