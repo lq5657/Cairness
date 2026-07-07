@@ -1,101 +1,78 @@
-version: 1
-profile_name: loop
-description: Loop Engineering profile for autonomous agent execution with human-on-the-loop oversight
-extends: standard
+id: loop
+description: >-
+  Loop Engineering 模式 — 适合自主循环执行与 CI/CD 集成。
+  将 Tier-1 阻塞 gate 替换为 cc-self-eval 自评门 + 异步审计日志。
+  human-on-the-loop：人在循环边界声明信任包络，异步审阅审计日志，
+  仅在熔断条件触发时介入。需要 .cairness/loop-config.yaml。
 
-# Loop mode converts blocking Tier-1 gates to self-evaluation + async audit
-loop_mode:
+topic_rules:
+  always:
+    - verification
+    - change_sizing
+    - coding_style
+  conditional: all
+  disabled: []
+
+subagents:
   enabled: true
 
-  # Trust envelope defines the pre-authorized boundary
-  trust_envelope:
-    config_file: .cairness/loop-config.yaml
-    required: true
+validation:
+  mode: full
+  run_on:
+    propose:
+      - cc-verify --harness-only
+    apply:
+      - cc-verify
+    fix:
+      - cc-verify
+    test:
+      - cc-verify
+    review:
+      - cc-verify --harness-only
+    archive:
+      - cc-verify
 
-  # Gate behavior overrides for Tier-1 confirmations
+interaction:
+  skip_technology_confirmations: true
+  skip_task_split_confirmations: true
+  accept_recommended_defaults: true
+
+wave_execution:
+  enabled: true
+  max_parallel: 10
+
+loop_mode:
+  trust_envelope_required: true
+  trust_envelope_path: .cairness/loop-config.yaml
+
   gate_overrides:
     hard_gate_confirm:
       mode: self_eval
-      handler: cc-self-eval
-      auto_approve_when: self_eval_passes_and_within_trust_envelope
-      escalate_when: self_eval_fails_or_exceeds_envelope
-      escalation_format: targeted_question  # not full gate presentation
-
+      handler: .claude/scripts/cc-self-eval
+      escalate_on_fail: true
+      audit: true
     finding_accepted:
       mode: auto_disposition
-      auto_accept_when:
-        - severity_minor_and_matches_accepted_pattern
-      auto_fix_when:
-        - severity_minor_and_no_pattern_match
-      escalate_when:
-        - severity_important
-        - severity_critical
-        - security_finding
-
+      auto_accept_severity_threshold: minor
+      always_escalate_severity:
+        - important
+        - critical
+        - security
     archive_done:
       mode: auto_archive
-      auto_approve_when:
-        - verification_green_and_no_open_findings_and_scope_small
       knowledge_compounding_default: no_knowledge_compounding
-      escalate_when:
-        - verification_failed
-        - open_important_or_critical_findings
 
-  # Confidence threshold for self-evaluation
-  self_eval:
-    confidence_threshold: 0.7  # score below this → escalate
-    checklist_required: true
-
-  # Audit trail configuration
-  audit:
-    enabled: true
-    output_dir: .cairness/loop-audit
-    file_pattern: "%Y-%m-%d.md"  # one file per day
-    record_events:
-      - hard_gate_auto_approved
-      - hard_gate_escalated
-      - finding_auto_accepted
-      - finding_auto_fix_initiated
-      - finding_escalated
-      - archive_auto_approved
-      - archive_escalated
-      - circuit_breaker_fired
-      - trust_envelope_exceeded
-    notification_on:
-      - escalation
-      - circuit_breaker
-      - trust_envelope_exceeded
-
-  # Circuit breakers - always stop the loop
   circuit_breakers:
-    - change_type_disallowed
-    - scope_exceeds_envelope
-    - residual_risk_exceeds_envelope
+    - change_type_disallowed_by_trust_envelope
+    - scope_exceeds_trust_envelope
+    - residual_risk_exceeds_trust_envelope
     - critical_finding_in_review
     - security_finding_in_review
     - verification_failed_twice_consecutively
     - state_inconsistency_detected
-    - schema_validation_failed
     - self_eval_failed_three_times_same_reason
 
-# Interaction tier overrides
-interaction:
-  confirmation_tiers:
-    tier1:
-      mode: self_eval_with_async_audit
-      escalate_on_fail: true
-      audit_all_decisions: true
-    tier2:
-      # Tier2 already has auto-accept, no change needed
-      auto_accept_after_consecutive_defaults: 3
-
-# Result contract enhancement for loop mode
-result_contract:
-  loop_evidence:
-    required: true
-    sources:
-      - self_eval_score
-      - trust_envelope_check
-      - auto_decisions_log
-      - escalation_triggers
-      - circuit_breaker_state
+  audit:
+    enabled: true
+    output_dir: .cairness/loop-audit
+    file_pattern: "%Y-%m-%d.md"

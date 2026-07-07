@@ -237,6 +237,72 @@ def check_command_entrypoints(project_root: Path, claude_root: Path, issues: lis
         issues.append(Issue("E_DOCTOR013", str(claude_md), "; ".join(parts)))
 
 
+def check_loop_mode_readiness(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+    """When profile=loop, validate that loop-config.yaml exists and is schema-valid."""
+    harness_cfg = claude_root / "harness.config.yaml"
+    if not harness_cfg.is_file():
+        return  # scaffold check will catch missing harness.config.yaml
+
+    # Read active profile (skip comment lines)
+    active_profile = ""
+    for line in harness_cfg.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        if stripped.startswith("profile:"):
+            active_profile = stripped[len("profile:"):].strip()
+            break
+
+    if active_profile != "loop":
+        return  # only applies to loop profile
+
+    loop_cfg_path = project_root / ".cairness" / "loop-config.yaml"
+    if not loop_cfg_path.is_file():
+        issues.append(Issue(
+            "E_DOCTOR014",
+            str(loop_cfg_path),
+            "profile=loop but .cairness/loop-config.yaml is missing; "
+            "run 'cc-cairn loop enable' to create it from the template",
+        ))
+        return
+
+    self_eval = claude_root / "scripts" / "cc-self-eval"
+    if not self_eval.is_file():
+        issues.append(Issue(
+            "E_DOCTOR015",
+            str(self_eval),
+            "profile=loop but .claude/scripts/cc-self-eval is missing",
+        ))
+
+    schema_path = claude_root / "schemas" / "loop-config.schema.json"
+    if not schema_path.is_file():
+        issues.append(Issue(
+            "E_DOCTOR016",
+            str(schema_path),
+            "loop-config.schema.json missing from .claude/schemas/",
+        ))
+        return
+
+    # Validate loop-config.yaml against its schema
+    loop_cfg = load_yaml(loop_cfg_path, issues)
+    if loop_cfg is None:
+        return
+
+    try:
+        import jsonschema  # type: ignore
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        try:
+            jsonschema.validate(loop_cfg, schema)
+        except jsonschema.ValidationError as exc:
+            issues.append(Issue(
+                "E_DOCTOR017",
+                str(loop_cfg_path),
+                f"loop-config.yaml schema violation: {exc.message}",
+            ))
+    except ImportError:
+        pass  # jsonschema not installed — skip deep validation, presence check is sufficient
+
+
 def build_report() -> dict[str, Any]:
     claude_root = Path(__file__).resolve().parent.parent
     project_root = claude_root.parent
@@ -246,6 +312,7 @@ def build_report() -> dict[str, Any]:
     check_protocol_assets(project_root, claude_root, issues)
     check_ci_fixture_paths(project_root, issues)
     check_command_entrypoints(project_root, claude_root, issues)
+    check_loop_mode_readiness(project_root, claude_root, issues)
     return {
         "tool": "cc-doctor-check",
         "status": "failed" if issues else "passed",

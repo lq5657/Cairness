@@ -8,6 +8,7 @@ default_scope:
   - command_entry
   - state_roots
   - deterministic_checks
+  - loop_mode_readiness
 
 checks:
   - id: scaffold_layout
@@ -45,3 +46,15 @@ checks:
       - .claude/scripts/cc-schema-check .cairness/changes
       - .claude/scripts/cc-lint
       - .claude/scripts/cc-eval .claude/evals
+  - id: loop_mode_readiness
+    condition: profile_is_loop
+    description: >-
+      When harness.config.yaml sets profile=loop, verify loop-config.yaml
+      exists and cc-self-eval script is present and executable.
+    require_when_profile_loop:
+      - .cairness/loop-config.yaml
+      - .claude/scripts/cc-self-eval
+      - .claude/schemas/loop-config.schema.json
+    warn_when_missing: >-
+      Loop Engineering profile is active but loop-config.yaml is missing.
+      Run 'cc-cairn loop enable' to create it from the template.

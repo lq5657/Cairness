@@ -8,7 +8,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "enum": ["minimal", "standard", "strict"]
+      "enum": ["minimal", "standard", "strict", "loop"]
     },
     "description": {
       "type": "string",
@@ -85,6 +85,66 @@
         "enabled": {"type": "boolean"},
         "max_parallel": {"type": "integer", "minimum": 1},
         "double_confirmation": {"type": "boolean"}
+      }
+    },
+    "loop_mode": {
+      "type": "object",
+      "description": "Loop Engineering configuration — only used when id=loop",
+      "additionalProperties": false,
+      "required": ["trust_envelope_required", "gate_overrides", "circuit_breakers"],
+      "properties": {
+        "trust_envelope_required": {"type": "boolean"},
+        "trust_envelope_path": {"type": "string"},
+        "gate_overrides": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hard_gate_confirm": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode"],
+              "properties": {
+                "mode": {"type": "string", "enum": ["self_eval", "interactive"]},
+                "handler": {"type": "string"},
+                "escalate_on_fail": {"type": "boolean"},
+                "audit": {"type": "boolean"}
+              }
+            },
+            "finding_accepted": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode"],
+              "properties": {
+                "mode": {"type": "string", "enum": ["auto_disposition", "interactive"]},
+                "auto_accept_severity_threshold": {"type": "string"},
+                "always_escalate_severity": {"type": "array", "items": {"type": "string"}}
+              }
+            },
+            "archive_done": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode"],
+              "properties": {
+                "mode": {"type": "string", "enum": ["auto_archive", "interactive"]},
+                "knowledge_compounding_default": {"type": "string"}
+              }
+            }
+          }
+        },
+        "circuit_breakers": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "output_dir": {"type": "string"},
+            "file_pattern": {"type": "string"}
+          }
+        }
       }
     }
   }

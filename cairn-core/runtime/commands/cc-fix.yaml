@@ -99,6 +99,14 @@ preconditions:
 
 interaction_contract:
   mode: interactive_required
+  loop_mode_override:
+    when: profile_is_loop_and_loop_config_exists
+    clarification_behavior: escalate_only_truly_blocking_clarifications
+    confirmation_behavior: auto_proceed_with_minimal_fix_when_severity_minor
+    audit: write_fix_decision_to_loop_audit_file
+    escalate_when:
+      - finding_unclear_and_cannot_be_resolved_from_context
+      - scope_expansion_required_beyond_trust_envelope
   clarification:
     when: finding_unclear_disputed_or_no_longer_reproducible
     presentation:

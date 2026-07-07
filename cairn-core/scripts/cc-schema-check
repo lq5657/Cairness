@@ -1465,6 +1465,28 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     return checked
 
 
+def validate_execution_profiles(claude_root: Path, issues: list[Issue]) -> list[str]:
+    """Validate all runtime/profiles/*.yaml files against profile.schema.json."""
+    profiles_dir = claude_root / "runtime" / "profiles"
+    schema_path = claude_root / "schemas" / PROFILE_SCHEMA
+    schema = load_json_file(schema_path, issues)
+    if schema is None:
+        return []
+
+    checked: list[str] = []
+    if not profiles_dir.is_dir():
+        return checked
+
+    for profile_file in sorted(profiles_dir.glob("*.yaml")):
+        profile = load_yaml_file(profile_file, issues)
+        checked.append(str(profile_file))
+        if profile is None:
+            continue
+        validate_against_schema(profile, schema, schema, [], profile_file, issues)
+
+    return checked
+
+
 def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[list[str], list[str]]:
     core = validate_runtime_core(claude_root, issues)
     checked = [str(claude_root / "runtime" / "core.yaml")]
@@ -1473,6 +1495,7 @@ def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[
     checked.extend(validate_runtime_readsets(claude_root, core, issues))
     checked.extend(validate_knowledge_categories(claude_root, issues))
     checked.extend(validate_enums(claude_root, issues))
+    checked.extend(validate_execution_profiles(claude_root, issues))
     checked_topic_rules = validate_topic_rules(claude_root, core, issues)
     return checked, checked_topic_rules
 

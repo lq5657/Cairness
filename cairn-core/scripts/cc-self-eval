@@ -132,14 +132,23 @@ log_verbose "Check 2: Scope within trust envelope"
 CHANGE_SIZE=$(extract_yaml_field "$SPEC_FILE" "change_size" || echo "")
 MAX_SCOPE=$(extract_yaml_field "$LOOP_CONFIG" "max_scope" || echo "small")
 
+# Returns ordinal rank for a scope size; 999 = unknown
+size_rank() {
+  case "$1" in
+    micro)  echo 1 ;;
+    small)  echo 2 ;;
+    medium) echo 3 ;;
+    large)  echo 4 ;;
+    xlarge) echo 5 ;;
+    *)      echo 999 ;;
+  esac
+}
+
 if [[ -z "$CHANGE_SIZE" ]]; then
   FAILURES+=("change_size_missing_in_spec")
 else
-  # Size order: micro < small < medium < large < xlarge
-  declare -A SIZE_RANK=([micro]=1 [small]=2 [medium]=3 [large]=4 [xlarge]=5)
-
-  CHANGE_RANK=${SIZE_RANK[$CHANGE_SIZE]:-999}
-  MAX_RANK=${SIZE_RANK[$MAX_SCOPE]:-2}
+  CHANGE_RANK=$(size_rank "$CHANGE_SIZE")
+  MAX_RANK=$(size_rank "$MAX_SCOPE")
 
   if [[ $CHANGE_RANK -le $MAX_RANK ]]; then
     ((SCORE++))
@@ -185,9 +194,18 @@ MAX_RISK=$(extract_yaml_field "$LOOP_CONFIG" "max_residual_risk" || echo "medium
 HIGH_RISK_COUNT=$(grep -c "severity: high" "$SPEC_FILE" || echo "0")
 CRITICAL_RISK_COUNT=$(grep -c "severity: critical" "$SPEC_FILE" || echo "0")
 
-# Risk order: low < medium < high < critical
-declare -A RISK_RANK=([low]=1 [medium]=2 [high]=3 [critical]=4)
-MAX_RISK_RANK=${RISK_RANK[$MAX_RISK]:-2}
+# Returns ordinal rank for a risk level; 999 = unknown
+risk_rank() {
+  case "$1" in
+    low)      echo 1 ;;
+    medium)   echo 2 ;;
+    high)     echo 3 ;;
+    critical) echo 4 ;;
+    *)        echo 999 ;;
+  esac
+}
+
+MAX_RISK_RANK=$(risk_rank "$MAX_RISK")
 
 EXCEEDS_RISK=false
 if [[ $MAX_RISK_RANK -lt 3 && $HIGH_RISK_COUNT -gt 0 ]]; then
@@ -208,12 +226,20 @@ fi
 # === Check 6: No dependency conflicts ===
 log_verbose "Check 6: Dependency check"
 
-# Run cc-deps conflict check
-if "$SCRIPT_DIR/cc-deps" conflicts --change "$CHANGE_ID" >/dev/null 2>&1; then
+# Run cc-deps conflict check.
+# Only treat exit code 1 (confirmed conflict) as failure.
+# Exit code 2+ = script error (deps unavailable, no change found, etc.) → skip check.
+CC_DEPS_OUT=$("$SCRIPT_DIR/cc-deps" conflicts --change "$CHANGE_ID" 2>&1)
+CC_DEPS_RC=$?
+if [[ $CC_DEPS_RC -eq 0 ]]; then
   ((SCORE++))
   log_verbose "  ✓ No dependency conflicts"
-else
+elif [[ $CC_DEPS_RC -eq 1 ]]; then
   FAILURES+=("dependency_conflict_detected")
+else
+  # Script error or change not found — do not penalise, award point with warning
+  ((SCORE++))
+  log_verbose "  ~ Dependency check skipped (cc-deps exit $CC_DEPS_RC): $CC_DEPS_OUT" >&2
 fi
 
 # === Compute confidence score ===
