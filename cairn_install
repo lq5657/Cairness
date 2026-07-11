@@ -20,6 +20,11 @@ MIN_PYTHON = (3, 9)
 REPO_ROOT = Path(__file__).resolve().parent
 CORE_SRC = REPO_ROOT / "cairn-core"
 VERSION_FILE = CORE_SRC / "VERSION"
+SCRIPTS_DIR = CORE_SRC / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from harness_runtime.versioning import VersionMetadataError, read_version
 
 # Patterns excluded from every ship copy (system install + project init/update).
 # Dev-local or build artifacts that must never reach a target project:
@@ -131,7 +136,10 @@ def check_path(bin_dir: Path):
 def main():
     check_python()
 
-    version = VERSION_FILE.read_text().strip()
+    try:
+        version = read_version(VERSION_FILE)
+    except VersionMetadataError as exc:
+        sys.exit(f"Invalid Cairness release metadata: {exc}")
     print(f"Cairness v{version} installer")
     print(f"Python {sys.version}")
     print()

@@ -23,6 +23,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+SCRIPTS_DIR = Path(__file__).resolve().parent / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from harness_runtime.versioning import VersionMetadataError, read_version
+
 MIN_PYTHON = (3, 9)
 REMOTE_URL = "https://github.com/lq5657/Cairness.git"
 
@@ -634,7 +640,10 @@ def cmd_version():
     if data_dir.exists():
         vf = data_dir / "VERSION"
         if vf.exists():
-            installed_ver = vf.read_text().strip()
+            try:
+                installed_ver = read_version(vf)
+            except VersionMetadataError:
+                installed_ver = "invalid metadata"
         cf = data_dir / "COMMIT"
         if cf.exists():
             installed_commit = cf.read_text().strip()[:7]
@@ -645,15 +654,36 @@ def cmd_version():
     if claude_dir.exists():
         vf = claude_dir / "VERSION"
         if vf.exists():
-            project_ver = vf.read_text().strip()
+            try:
+                project_ver = read_version(vf)
+            except VersionMetadataError:
+                project_ver = "invalid metadata"
         cf = claude_dir / "COMMIT"
         if cf.exists():
             project_commit = cf.read_text().strip()[:7]
 
     sys_commit = f" ({installed_commit})" if installed_commit else ""
     proj_commit = f" ({project_commit})" if project_commit else ""
-    print(f"cc-cairn (system): v{installed_ver}{sys_commit}")
-    print(f"Project ({Path.cwd()}): v{project_ver}{proj_commit}")
+    system_display = f"v{installed_ver}{sys_commit}" if installed_ver not in {"not installed", "invalid metadata"} else installed_ver
+    project_display = f"v{project_ver}{proj_commit}" if project_ver not in {"not initialized", "invalid metadata"} else project_ver
+    print(f"cc-cairn (system): {system_display}")
+    print(f"Project ({Path.cwd()}): {project_display}")
+
+    repo = find_repo()
+    if repo is None:
+        print("Source: not found (update availability unknown)")
+        return
+    source_version_file = repo / "cairn-core" / "VERSION"
+    try:
+        source_version = read_version(source_version_file)
+    except VersionMetadataError:
+        source_version = "invalid metadata"
+    source_display = f"v{source_version}" if source_version != "invalid metadata" else source_version
+    print(f"Source ({repo}): {source_display}")
+    if source_version != "invalid metadata" and installed_ver not in {"not installed", "invalid metadata", source_version}:
+        print(f"Update available: system v{installed_ver} → v{source_version}")
+    if source_version != "invalid metadata" and project_ver not in {"not initialized", "invalid metadata", source_version}:
+        print(f"Update available: project v{project_ver} → v{source_version}")
 
 
 KNOWLEDGE_INDEX_CATEGORIES_FALLBACK = [

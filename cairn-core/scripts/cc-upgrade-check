@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import tarfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +15,12 @@ from typing import Any
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
 from harness_runtime.issues import Issue, add, issues_to_dicts
+from harness_runtime.versioning import (
+    VersionMetadataError,
+    normalize_release_tag,
+    read_pyproject_version,
+    read_version,
+)
 
 
 def read(path: Path) -> str:
@@ -41,6 +49,76 @@ def check_version_docs(claude_root: Path, issues: list[Issue]) -> dict[str, str]
     if version and changelog_path.exists() and version not in read(changelog_path):
         add(issues, "E_UPGRADE003", changelog_path, f"missing changelog entry for current version {version}")
     return {"version": version}
+
+
+def check_repository_version_metadata(
+    repository_root: Path,
+    framework_root: Path,
+    *,
+    exact_tag: str = "",
+    require_release_tag: bool = False,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    version_path = framework_root / "VERSION"
+    pyproject_path = repository_root / "pyproject.toml"
+    try:
+        version = read_version(version_path)
+    except VersionMetadataError as exc:
+        add(issues, "E_UPGRADE008", version_path, str(exc))
+        return issues
+    try:
+        mirror = read_pyproject_version(pyproject_path)
+    except VersionMetadataError as exc:
+        add(issues, "E_UPGRADE008", pyproject_path, str(exc))
+    else:
+        if mirror != version:
+            add(
+                issues,
+                "E_UPGRADE009",
+                pyproject_path,
+                f"pyproject version {mirror} does not match VERSION {version}",
+            )
+    tag_version = normalize_release_tag(exact_tag) if exact_tag else None
+    if exact_tag and tag_version and tag_version != version:
+        add(issues, "E_UPGRADE010", repository_root, f"release tag {exact_tag} does not match VERSION {version}")
+    if require_release_tag and not tag_version:
+        add(issues, "E_UPGRADE011", repository_root, "HEAD must have an exact Cairness release tag")
+    return issues
+
+
+def exact_head_tag(repository_root: Path) -> str:
+    result = subprocess.run(
+        ["git", "describe", "--tags", "--exact-match", "HEAD"],
+        cwd=repository_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def check_release_artifact(artifact: Path, version: str, exact_tag: str) -> list[Issue]:
+    issues: list[Issue] = []
+    expected_stem = f"cairness-{version}"
+    artifact_name = artifact.name
+    if not artifact_name.startswith(expected_stem + "."):
+        add(issues, "E_UPGRADE012", artifact, f"artifact filename must start with {expected_stem}.")
+    try:
+        with tarfile.open(artifact, "r:*") as archive:
+            member = next(
+                (item for item in archive.getmembers() if item.name.rstrip("/").endswith("cairn-core/VERSION")),
+                None,
+            )
+            extracted = archive.extractfile(member) if member is not None else None
+            internal = extracted.read().decode("utf-8").strip() if extracted is not None else ""
+    except (OSError, tarfile.TarError, UnicodeDecodeError) as exc:
+        add(issues, "E_UPGRADE013", artifact, f"cannot read artifact VERSION: {exc}")
+    else:
+        if internal != version:
+            add(issues, "E_UPGRADE013", artifact, f"artifact VERSION {internal or 'missing'} does not match {version}")
+    tag_version = normalize_release_tag(exact_tag)
+    if tag_version != version:
+        add(issues, "E_UPGRADE010", artifact, f"release tag {exact_tag or 'missing'} does not match VERSION {version}")
+    return issues
 
 
 def check_state_separation(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
@@ -120,7 +198,13 @@ def check_upgrade_boundaries(project_root: Path, claude_root: Path, issues: list
         require(path, kind, issues, "E_UPGRADE006")
 
 
-def build_report(project_root: Path | None = None, claude_root: Path | None = None) -> dict[str, Any]:
+def build_report(
+    project_root: Path | None = None,
+    claude_root: Path | None = None,
+    *,
+    require_release_tag: bool = False,
+    release_artifact: Path | None = None,
+) -> dict[str, Any]:
     if claude_root is None:
         claude_root = Path(__file__).resolve().parent.parent
     if project_root is None:
@@ -130,6 +214,24 @@ def build_report(project_root: Path | None = None, claude_root: Path | None = No
     check_state_separation(project_root, claude_root, issues)
     check_state_pollution(project_root, issues)
     check_upgrade_boundaries(project_root, claude_root, issues)
+    repository_root = claude_root.parent
+    if (repository_root / "pyproject.toml").is_file() and (repository_root / "cairn_install").is_file():
+        exact_tag = exact_head_tag(repository_root)
+        issues.extend(
+            check_repository_version_metadata(
+                repository_root,
+                claude_root,
+                exact_tag=exact_tag,
+                require_release_tag=require_release_tag,
+            )
+        )
+        if release_artifact is not None:
+            try:
+                version = read_version(claude_root / "VERSION")
+            except VersionMetadataError:
+                pass
+            else:
+                issues.extend(check_release_artifact(release_artifact, version, exact_tag))
     return {
         "tool": "cc-upgrade-check",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -146,9 +248,22 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Check Harness upgrade safety boundaries.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--output", help="Write JSON report to this file.")
+    parser.add_argument(
+        "--require-release-tag",
+        action="store_true",
+        help="Require HEAD to have an exact release tag matching VERSION.",
+    )
+    parser.add_argument(
+        "--release-artifact",
+        type=Path,
+        help="Validate a Cairness tar archive name and internal VERSION against the exact Git tag.",
+    )
     args = parser.parse_args(argv)
 
-    report = build_report()
+    report = build_report(
+        require_release_tag=args.require_release_tag or args.release_artifact is not None,
+        release_artifact=args.release_artifact,
+    )
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)

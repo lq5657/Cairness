@@ -30,4 +30,4 @@ pythonpath = ["."]
 [tool.cairness]
 # Version of the shippable framework. Authoritative source is
 # cairn-core/VERSION; this is mirrored for tooling that reads pyproject.
-version = "1.0.0"
+version = "1.1.0"

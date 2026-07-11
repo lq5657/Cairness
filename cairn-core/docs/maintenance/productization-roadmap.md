@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`376 passed`
+- 测试：`399 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,13 +103,13 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 44 个受版本控制文件，376 个用例 |
+| Tests | 47 个受版本控制文件，399 个用例 |
 
 当前主要事实：
 
 1. 核心运行时仍以 Claude Code 为唯一正式宿主：`.claude/`、`CLAUDE.md`、Skill、`settings.json` 和 `PreToolUse` hook 都带有宿主语义。
 2. 目标项目 CI 模板要求 `.claude/scripts/cc-verify` 已存在；由于 `.claude/` 默认被忽略，标准 GitHub-hosted runner 上当前按设计会失败。
-3. `cairn-core/VERSION` 为 `1.1.0`，根 `pyproject.toml` 的镜像版本仍为 `1.0.0`，存在版本元数据漂移。
+3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. README 宣称支持原生 Windows，但运行面仍包含 Bash hook、POSIX executable bit 和 extensionless script 调用等 Unix 假设。
 5. `harness.config.yaml` 尚未拥有覆盖完整文件结构的独立 schema；不同脚本读取各自关心的字段。
 6. C++ language profile 的 detection、fixture 和 verification 存在已记录的不一致。
@@ -163,7 +163,7 @@ Phase 3：Agent Governance Platform
 | ID | 工作项 | 阶段 | 优先级 | 状态 | 关键依赖 |
 |---|---|---|---|---|---|
 | `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 待开始 | `P1-02` |
-| `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 待开始 | 无 |
+| `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 完成 | 无 |
 | `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 待开始 | 无 |
 | `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 待开始 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
@@ -267,7 +267,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.4 `P1-02` 版本与发布元数据单一源
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：所有版本号、升级说明、发布 artifact 和安装信息都从一个权威版本源派生。
 
@@ -294,6 +294,24 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - 测试覆盖版本一致、漂移和缺失三类情况。
 
 **非目标**：不在本项重写全部升级机制。
+
+#### 实施记录 2026-07-11
+
+- 状态：完成
+- Change/提交：`P1-02`（由本 change 的 Git 提交记录）
+- 已完成：
+  - 新增共享 `harness_runtime.versioning`，由安装器、`cc-cairn version` 和 `cc-upgrade-check` 共同使用。
+  - 根 `pyproject.toml` 镜像已同步为 `1.1.0`；源码仓检查会拒绝权威版本缺失/非法、镜像缺失/漂移和 release tag 漂移。
+  - 新增 `--require-release-tag` 与 `--release-artifact`，同时校验 artifact 文件名、归档内 `cairn-core/VERSION` 和精确 Git tag。
+  - `cc-cairn version` 同时报告系统安装、项目安装、本地源码和本地可用更新，且不依赖网络。
+- 验证：
+  - `rtk pytest -q tests/test_versioning.py tests/test_upgrade_version_metadata.py tests/test_cli_version.py tests/test_upgrade_check_pollution.py tests/test_upgrade_safety.py` → `52 passed`
+  - `rtk pytest -q` → `399 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`（全部 Harness 子检查通过）
+  - `rtk git diff --check` → `passed`
+- 剩余：无
+- 风险/决策：不引入新打包系统或联网版本查询；release workflow 在 `P1-01` 接入本项提供的严格检查入口。
+- 下一步：`P1-03`（无依赖 P0）；随后推进依赖本项的 `P1-01` 与 `P1-04`。
 
 ### 8.5 `P1-03` 平台支持矩阵与 Windows 边界
 
@@ -1041,12 +1059,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：`P1-02 版本与发布元数据单一源`。
+当前推荐下一项：`P1-03 平台支持矩阵与 Windows 边界`。
 
 开始前应先：
 
-1. 检查 `cairn-core/VERSION`、`pyproject.toml`、CHANGELOG、UPGRADE 和 release workflow；
-2. 确认未来是否计划发布 PyPI/GitHub Action artifact；
-3. 设计唯一版本源和生成/校验边界；
-4. 先增加能稳定复现 `1.1.0` vs `1.0.0` 漂移的失败测试；
-5. 只在设计确认后实施。
+1. 审计 README、安装器、hook 与 CI 中的平台假设；
+2. 采用“Linux、macOS、WSL 正式支持，原生 Windows 实验性”的可验证边界；
+3. 先增加 Doctor 平台诊断与文档/CI 支持矩阵的失败测试；
+4. 完成专项和全量验证后再更新状态。

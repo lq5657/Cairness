@@ -4,6 +4,22 @@
 
 本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。
 
+### 版本与发布元数据
+
+`cairn-core/VERSION` 现在是唯一权威版本源。根 `pyproject.toml` 的 `[tool.cairness].version` 是兼容工具镜像，并由 `cc-upgrade-check` 自动检查，不应独立决定版本。
+
+发布前在带精确 release tag 的提交上执行：
+
+```bash
+cairn-core/scripts/cc-upgrade-check \
+  --require-release-tag \
+  --release-artifact dist/cairness-1.1.0.tar.gz
+```
+
+该命令同时校验 Git tag、artifact 文件名和归档内 `cairn-core/VERSION`。普通安装项目仍可直接运行 `cc-upgrade-check`，不会因为不存在源码仓元数据或 release tag 而失败。`cc-cairn version` 不访问网络，只比较系统安装、当前项目与本地源码 checkout。
+
+回滚本检查只需移除发布命令的新增参数；不要通过手工维护多个版本号规避漂移诊断。
+
 ### 新增功能
 
 - `profile: loop` — 自主循环执行 profile，将 Tier-1 gate 替换为 cc-self-eval 自评门 + 异步审计日志
