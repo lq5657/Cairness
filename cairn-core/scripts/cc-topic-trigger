@@ -34,23 +34,28 @@ from typing import Any
 
 import yaml
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DETECTION_CONFIG = PROJECT_ROOT / ".claude" / "runtime" / "topic-rules" / "detection-patterns.yaml"
+from harness_runtime.context import HarnessContextError, load_harness_context
 
 
-def load_patterns() -> dict[str, Any]:
-    with open(DETECTION_CONFIG) as f:
+def default_project_root() -> Path:
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
+
+
+def load_patterns(framework_root: Path | None = None) -> dict[str, Any]:
+    root = framework_root or Path(__file__).resolve().parent.parent
+    with open(root / "runtime" / "topic-rules" / "detection-patterns.yaml") as f:
         return yaml.safe_load(f)
 
 
-def changed_files_from_git() -> list[str]:
+def changed_files_from_git(project_root: Path | None = None) -> list[str]:
     """从 git diff HEAD~1 获取变更文件列表。"""
     import subprocess
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", "HEAD~1"],
-            capture_output=True, text=True, cwd=PROJECT_ROOT
+            capture_output=True, text=True, cwd=project_root or default_project_root()
         )
         return [l for l in result.stdout.strip().split("\n") if l]
     except Exception:
@@ -70,9 +75,9 @@ def changed_files_from_diff(diff_text: str) -> list[str]:
     return sorted(files)
 
 
-def changed_files_from_tasks(change_id: str) -> list[str]:
+def changed_files_from_tasks(change_id: str, project_root: Path | None = None) -> list[str]:
     """从 change 的 tasks.md 和 spec.md 中推断相关文件。"""
-    change_dir = PROJECT_ROOT / ".cairness" / "changes" / change_id
+    change_dir = (project_root or default_project_root()) / ".cairness" / "changes" / change_id
     files = set()
 
     for doc in ["tasks.md", "spec.md"]:
@@ -100,9 +105,9 @@ def file_matches_glob(filepath: str, glob: str) -> bool:
     return fnmatch.fnmatch(filepath, glob)
 
 
-def file_matches_content_regex(filepath: str, pattern: str) -> bool:
+def file_matches_content_regex(filepath: str, pattern: str, project_root: Path | None = None) -> bool:
     """检查文件内容是否匹配正则。"""
-    full_path = PROJECT_ROOT / filepath
+    full_path = (project_root or default_project_root()) / filepath
     if not full_path.exists():
         return False
     try:
@@ -112,9 +117,9 @@ def file_matches_content_regex(filepath: str, pattern: str) -> bool:
         return False
 
 
-def file_matches_import_regex(filepath: str, pattern: str) -> bool:
+def file_matches_import_regex(filepath: str, pattern: str, project_root: Path | None = None) -> bool:
     """检查文件中的 import 语句是否匹配正则。"""
-    full_path = PROJECT_ROOT / filepath
+    full_path = (project_root or default_project_root()) / filepath
     if not full_path.exists():
         return False
     try:
@@ -138,6 +143,7 @@ def file_matches_import_regex(filepath: str, pattern: str) -> bool:
 def detect_triggers(
     changed_files: list[str],
     patterns: dict[str, Any],
+    project_root: Path | None = None,
 ) -> dict[str, Any]:
     """对变更文件列表执行检测，返回触发的 rule 列表。"""
 
@@ -164,14 +170,14 @@ def detect_triggers(
 
             # 内容级别正则匹配
             for cr in content_regexes:
-                if file_matches_content_regex(fpath, cr):
+                if file_matches_content_regex(fpath, cr, project_root):
                     evidence.append(f"content matches: {cr} (→ {fpath})")
                     if fpath not in matched_files:
                         matched_files.append(fpath)
 
             # import 匹配
             for ir in import_regexes:
-                if file_matches_import_regex(fpath, ir):
+                if file_matches_import_regex(fpath, ir, project_root):
                     evidence.append(f"import matches: {ir} (→ {fpath})")
                     if fpath not in matched_files:
                         matched_files.append(fpath)
@@ -215,23 +221,36 @@ def main() -> None:
     group.add_argument("--files", nargs="+", help="直接指定文件列表")
     group.add_argument("--diff", action="store_true", help="从 stdin 读取 diff")
     group.add_argument("--changed", action="store_true", help="从 git diff HEAD~1 获取")
+    parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现")
     args = parser.parse_args()
 
-    patterns = load_patterns()
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        raise SystemExit(2)
+
+    patterns = load_patterns(context.framework_root)
 
     if args.change_id:
-        changed_files = changed_files_from_tasks(args.change_id)
+        changed_files = changed_files_from_tasks(args.change_id, context.project_root)
     elif args.files:
         changed_files = args.files
     elif args.diff:
         diff_text = sys.stdin.read()
         changed_files = changed_files_from_diff(diff_text)
     elif args.changed:
-        changed_files = changed_files_from_git()
+        changed_files = changed_files_from_git(context.project_root)
     else:
         changed_files = []
 
-    result = detect_triggers(changed_files, patterns)
+    result = {
+        "project_root": str(context.project_root),
+        **detect_triggers(changed_files, patterns, context.project_root),
+    }
     json.dump(result, sys.stdout, indent=2, ensure_ascii=False)
     sys.stdout.write("\n")
 

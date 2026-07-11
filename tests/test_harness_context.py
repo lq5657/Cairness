@@ -829,6 +829,76 @@ def test_evidence_check_rejects_missing_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_topic_source(project_root: Path) -> None:
+    source = project_root / "src" / "service.go"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("package service\n\nfunc check() { bcrypt.GenerateFromPassword(nil, 1) }\n", encoding="utf-8")
+
+
+def run_topic_trigger(script: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_topic_trigger_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_topic_source(project)
+
+    completed = run_topic_trigger(
+        framework / "scripts" / "cc-topic-trigger",
+        project,
+        "--files",
+        "src/service.go",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(project.resolve())
+    assert "security" in {rule["rule_id"] for rule in report["triggered_rules"]}
+
+
+def test_topic_trigger_root_targets_another_project(harness_project: Path):
+    write_topic_source(harness_project)
+    change = harness_project / ".cairness" / "changes" / "topic-explicit"
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "tasks.md").write_text("files: [src/service.go]\n", encoding="utf-8")
+    (change / "spec.md").write_text("# Spec\n", encoding="utf-8")
+
+    completed = run_topic_trigger(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-topic-trigger",
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+        "--change-id",
+        "topic-explicit",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+    assert "security" in {rule["rule_id"] for rule in report["triggered_rules"]}
+
+
+def test_topic_trigger_rejects_missing_root(tmp_path: Path):
+    completed = run_topic_trigger(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-topic-trigger",
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+        "--files",
+        "src/service.go",
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
