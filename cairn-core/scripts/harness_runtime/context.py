@@ -23,7 +23,7 @@ class HarnessContext:
     project_root: Path
     framework_root: Path
     state_root: Path
-    config: HarnessConfig
+    config: HarnessConfig | None
     adapter: AdapterContext
 
     def resolve_path(self, declared: str) -> Path:
@@ -61,6 +61,7 @@ def load_harness_context(
     explicit_root: Path | None = None,
     start: Path | None = None,
     framework_hint: Path | None = None,
+    validate_config: bool = True,
 ) -> HarnessContext:
     if explicit_root is not None:
         project_root = _validate_directory(explicit_root, "explicit root")
@@ -81,10 +82,12 @@ def load_harness_context(
         if not framework_root.is_dir():
             raise HarnessContextError(f"framework root does not exist: {framework_root}")
 
-    try:
-        config = load_harness_config(framework_root / "harness.config.yaml")
-    except HarnessConfigError as exc:
-        raise HarnessContextError(str(exc)) from exc
+    config = None
+    if validate_config:
+        try:
+            config = load_harness_config(framework_root / "harness.config.yaml")
+        except HarnessConfigError as exc:
+            raise HarnessContextError(str(exc)) from exc
     return HarnessContext(
         project_root=project_root,
         framework_root=framework_root,

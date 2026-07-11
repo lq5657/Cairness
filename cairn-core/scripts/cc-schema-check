@@ -1789,6 +1789,7 @@ def main(argv: list[str]) -> int:
         context = load_harness_context(
             explicit_root=Path(args.root) if args.root else None,
             framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            validate_config=False,
         )
     except HarnessContextError as exc:
         print(f"E_CONTEXT001 {exc}", file=sys.stderr)
