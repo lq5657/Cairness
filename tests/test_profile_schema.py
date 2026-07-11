@@ -6,9 +6,8 @@ profile.schema — a symmetry gap vs language-profile, which cc-schema-check
 validates via validate_against_schema. A4 adds structure validation for the
 project profiles in validate_runtime_core.
 
-cc-schema-check locates its root from script location (hardcoded), so these
-tests corrupt real framework files and restore them, mirroring
-test_issue_reporting_contract's pattern.
+cc-schema-check locates its root from script location, so destructive cases
+run the script from an isolated tmp_path/.claude Harness installation.
 """
 import json
 import subprocess
@@ -17,14 +16,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CC_SCHEMA_CHECK = REPO_ROOT / "cairn-core" / "scripts" / "cc-schema-check"
-PROFILES_DIR = REPO_ROOT / "cairn-core" / "runtime" / "profiles"
-CORE_PATH = REPO_ROOT / "cairn-core" / "runtime" / "core.yaml"
 
 
-def _run_json() -> dict:
+def _run_json(project_root=REPO_ROOT) -> dict:
+    script = project_root / ".claude" / "scripts" / "cc-schema-check"
+    if project_root == REPO_ROOT:
+        script = CC_SCHEMA_CHECK
     proc = subprocess.run(
-        [sys.executable, str(CC_SCHEMA_CHECK), "--json"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
+        [sys.executable, str(script), "--json"],
+        capture_output=True, text=True, cwd=str(project_root),
     )
     return json.loads(proc.stdout)
 
@@ -40,20 +40,15 @@ def test_profiles_pass_on_clean_repo():
     assert _profile_issues(report) == []
 
 
-def test_corrupt_profile_structure_is_caught():
+def test_corrupt_profile_structure_is_caught(harness_project):
     """A profile missing required fields (e.g. topic_rules.always) must fail."""
-    target = PROFILES_DIR / "minimal.yaml"
+    target = harness_project / ".claude" / "runtime" / "profiles" / "minimal.yaml"
     original = target.read_text(encoding="utf-8")
-    try:
-        # Remove the required topic_rules.always key by mangling topic_rules.
-        corrupt = original.replace("topic_rules:\n  always:\n", "topic_rules:\n  NOT_ALWAYS:\n")
-        target.write_text(corrupt, encoding="utf-8")
-        report = _run_json()
-        assert report["status"] == "failed"
-        # validate_against_schema emits E_SCHEMA100-family for the structural failure.
-        assert any("minimal.yaml" in i["path"] for i in report["issues"]), report["issues"]
-    finally:
-        target.write_text(original, encoding="utf-8")
+    corrupt = original.replace("topic_rules:\n  always:\n", "topic_rules:\n  NOT_ALWAYS:\n")
+    target.write_text(corrupt, encoding="utf-8")
+    report = _run_json(harness_project)
+    assert report["status"] == "failed"
+    assert any("minimal.yaml" in i["path"] for i in report["issues"]), report["issues"]
 
 
 def test_loop_profile_validates_successfully():
@@ -63,53 +58,39 @@ def test_loop_profile_validates_successfully():
     assert loop_issues == [], f"loop.yaml has unexpected schema issues: {loop_issues}"
 
 
-def test_loop_profile_invalid_gate_mode_is_caught():
+def test_loop_profile_invalid_gate_mode_is_caught(harness_project):
     """loop.yaml with an invalid gate mode enum value must fail schema validation."""
-    target = PROFILES_DIR / "loop.yaml"
+    target = harness_project / ".claude" / "runtime" / "profiles" / "loop.yaml"
     if not target.exists():
         import pytest
         pytest.skip("loop.yaml not present; loop feature not installed")
     original = target.read_text(encoding="utf-8")
-    try:
-        # Corrupt hard_gate_confirm.mode to an invalid enum value
-        corrupt = original.replace(
-            "mode: self_eval",
-            "mode: invalid_mode_xyz",
-        )
-        if corrupt == original:
-            import pytest
-            pytest.skip("mode: self_eval not found in loop.yaml; test env changed")
-        target.write_text(corrupt, encoding="utf-8")
-        report = _run_json()
-        assert report["status"] == "failed"
-        assert any("loop.yaml" in i.get("path", "") for i in report["issues"]), report["issues"]
-    finally:
-        target.write_text(original, encoding="utf-8")
+    corrupt = original.replace("mode: self_eval", "mode: invalid_mode_xyz")
+    if corrupt == original:
+        import pytest
+        pytest.skip("mode: self_eval not found in loop.yaml; test env changed")
+    target.write_text(corrupt, encoding="utf-8")
+    report = _run_json(harness_project)
+    assert report["status"] == "failed"
+    assert any("loop.yaml" in i.get("path", "") for i in report["issues"]), report["issues"]
 
 
-def test_invalid_default_profile_is_caught():
+def test_invalid_default_profile_is_caught(harness_project):
     """core.yaml profiles.default not in {minimal,standard,strict,loop} → E_SCHEMA194."""
-    original = CORE_PATH.read_text(encoding="utf-8")
-    try:
-        corrupt = original.replace("  default: standard", "  default: bogus-mode")
-        # If the literal wasn't found, skip gracefully (test env drift).
-        if corrupt == original:
-            import pytest
-            pytest.skip("core.yaml profiles.default literal not found; test env changed")
-        CORE_PATH.write_text(corrupt, encoding="utf-8")
-        report = _run_json()
-        assert any(i["code"] == "E_SCHEMA194" for i in report["issues"]), report["issues"]
-    finally:
-        CORE_PATH.write_text(original, encoding="utf-8")
-
-
-def test_missing_profile_file_is_caught():
-    """A missing profile file under profiles.dir → E_SCHEMA195."""
-    target = PROFILES_DIR / "minimal.yaml"
+    target = harness_project / ".claude" / "runtime" / "core.yaml"
     original = target.read_text(encoding="utf-8")
-    try:
-        target.unlink()
-        report = _run_json()
-        assert any(i["code"] == "E_SCHEMA195" and "minimal" in i["message"] for i in report["issues"]), report["issues"]
-    finally:
-        target.write_text(original, encoding="utf-8")
+    corrupt = original.replace("  default: standard", "  default: bogus-mode")
+    if corrupt == original:
+        import pytest
+        pytest.skip("core.yaml profiles.default literal not found; test env changed")
+    target.write_text(corrupt, encoding="utf-8")
+    report = _run_json(harness_project)
+    assert any(i["code"] == "E_SCHEMA194" for i in report["issues"]), report["issues"]
+
+
+def test_missing_profile_file_is_caught(harness_project):
+    """A missing profile file under profiles.dir → E_SCHEMA195."""
+    target = harness_project / ".claude" / "runtime" / "profiles" / "minimal.yaml"
+    target.unlink()
+    report = _run_json(harness_project)
+    assert any(i["code"] == "E_SCHEMA195" and "minimal" in i["message"] for i in report["issues"]), report["issues"]

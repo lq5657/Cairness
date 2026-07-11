@@ -7,6 +7,8 @@ loader for the extensionless modules (which can't be imported by hyphenated
 name).
 """
 import sys
+import shutil
+import subprocess
 from pathlib import Path
 from importlib.machinery import SourceFileLoader
 
@@ -46,3 +48,25 @@ def harness_runtime():
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
     return REPO_ROOT
+
+
+@pytest.fixture
+def harness_project(tmp_path: Path) -> Path:
+    """Return an isolated project containing a complete installed Harness."""
+    shutil.copytree(REPO_ROOT / "cairn-core", tmp_path / ".claude")
+    (tmp_path / ".cairness" / "changes").mkdir(parents=True)
+    return tmp_path
+
+
+@pytest.fixture
+def run_harness_script():
+    """Run a script from an isolated project's own .claude installation."""
+    def run(project_root: Path, script: str, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(project_root / ".claude" / "scripts" / script), *args],
+            capture_output=True,
+            text=True,
+            cwd=str(project_root),
+        )
+
+    return run

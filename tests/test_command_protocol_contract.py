@@ -17,25 +17,30 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SCHEMA_CHECK = [sys.executable, str(REPO / "cairn-core" / "scripts" / "cc-schema-check"), "--json"]
 PROTOCOL = REPO / "cairn-core" / "runtime" / "protocol.yaml"
 COMMANDS = REPO / "cairn-core" / "runtime" / "commands"
 
 
-def _schema_issues() -> list[dict]:
-    proc = subprocess.run(SCHEMA_CHECK, capture_output=True, text=True, cwd=str(REPO))
+def _schema_issues(project_root=REPO) -> list[dict]:
+    script = project_root / ".claude" / "scripts" / "cc-schema-check"
+    if project_root == REPO:
+        script = REPO / "cairn-core" / "scripts" / "cc-schema-check"
+    proc = subprocess.run(
+        [sys.executable, str(script), "--json"],
+        capture_output=True,
+        text=True,
+        cwd=str(project_root),
+    )
     assert proc.returncode in (0, 1), proc.stderr
     return json.loads(proc.stdout)["issues"]
 
 
-def _run_with_protocol(corrupt: str) -> list[dict]:
-    original = PROTOCOL.read_text(encoding="utf-8")
+def _run_with_protocol(project_root: Path, corrupt: str) -> list[dict]:
+    protocol = project_root / ".claude" / "runtime" / "protocol.yaml"
+    original = protocol.read_text(encoding="utf-8")
     assert corrupt != original, "fixture did not change protocol.yaml"
-    try:
-        PROTOCOL.write_text(corrupt, encoding="utf-8")
-        return _schema_issues()
-    finally:
-        PROTOCOL.write_text(original, encoding="utf-8")
+    protocol.write_text(corrupt, encoding="utf-8")
+    return _schema_issues(project_root)
 
 
 # --- clean state ------------------------------------------------------------
@@ -60,56 +65,53 @@ def test_clean_taxonomy_carries_error_codes():
 
 # --- E_SCHEMA131: error_codes shape ----------------------------------------
 
-def test_schema131_rejects_malformed_error_code():
+def test_schema131_rejects_malformed_error_code(harness_project):
     original = PROTOCOL.read_text(encoding="utf-8")
     corrupt = original.replace(
         "error_codes: [E_DOCTOR004, E_DOCTOR006, E_DOCTOR008, E_DOCTOR010, E_UPGRADE001, E_SCHEMA171]",
         "error_codes: [E_DOCTOR004, BAD_CODE]",
     )
-    issues = _run_with_protocol(corrupt)
+    issues = _run_with_protocol(harness_project, corrupt)
     assert any(i["code"] == "E_SCHEMA131" and "BAD_CODE" in i["message"] for i in issues)
 
 
-def test_schema131_rejects_non_list_error_codes():
+def test_schema131_rejects_non_list_error_codes(harness_project):
     original = PROTOCOL.read_text(encoding="utf-8")
     corrupt = original.replace(
         "error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_INDEX001]",
         "error_codes: E_SCOPE001",
     )
-    issues = _run_with_protocol(corrupt)
+    issues = _run_with_protocol(harness_project, corrupt)
     assert any(i["code"] == "E_SCHEMA131" and "must be a list" in i["message"] for i in issues)
 
 
 # --- E_SCHEMA133: unregistered input name ----------------------------------
 
-def _run_with_command(command: str, corrupt: str) -> list[dict]:
-    path = COMMANDS / f"{command}.yaml"
+def _run_with_command(project_root: Path, command: str, corrupt: str) -> list[dict]:
+    path = project_root / ".claude" / "runtime" / "commands" / f"{command}.yaml"
     original = path.read_text(encoding="utf-8")
     assert corrupt != original
-    try:
-        path.write_text(corrupt, encoding="utf-8")
-        return _schema_issues()
-    finally:
-        path.write_text(original, encoding="utf-8")
+    path.write_text(corrupt, encoding="utf-8")
+    return _schema_issues(project_root)
 
 
-def test_schema133_unregistered_input():
+def test_schema133_unregistered_input(harness_project):
     original = (COMMANDS / "cc-review.yaml").read_text(encoding="utf-8")
     corrupt = original.replace("  required:\n    - change_id", "  required:\n    - change_id\n    - bogus_input")
-    issues = _run_with_command("cc-review", corrupt)
+    issues = _run_with_command(harness_project, "cc-review", corrupt)
     assert any(i["code"] == "E_SCHEMA133" and "bogus_input" in i["message"] for i in issues)
 
 
 # --- E_SCHEMA134: required input with none missing_error -------------------
 
-def test_schema134_required_input_with_none_error():
+def test_schema134_required_input_with_none_error(harness_project):
     original = PROTOCOL.read_text(encoding="utf-8")
     # change_id is required by 6 commands; flip its missing_error to none.
     corrupt = original.replace(
         "  change_id:\n    type: string\n    pattern: \"^[a-z0-9]+(-[a-z0-9]+)*$\"\n    resolves_to: change_dir\n    missing_error: missing_required_input",
         "  change_id:\n    type: string\n    pattern: \"^[a-z0-9]+(-[a-z0-9]+)*$\"\n    resolves_to: change_dir\n    missing_error: none",
     )
-    issues = _run_with_protocol(corrupt)
+    issues = _run_with_protocol(harness_project, corrupt)
     e134 = [i for i in issues if i["code"] == "E_SCHEMA134"]
     assert e134, "E_SCHEMA134 should fire for required change_id with missing_error: none"
     assert any("change_id" in i["message"] for i in e134)
@@ -117,10 +119,10 @@ def test_schema134_required_input_with_none_error():
 
 # --- E_SCHEMA199: enum contract missing values -----------------------------
 
-def test_schema199_enum_without_values():
+def test_schema199_enum_without_values(harness_project):
     original = PROTOCOL.read_text(encoding="utf-8")
     corrupt = original.replace("  mode:\n    type: string", "  mode:\n    type: enum")
-    issues = _run_with_protocol(corrupt)
+    issues = _run_with_protocol(harness_project, corrupt)
     assert any(i["code"] == "E_SCHEMA199" and "mode" in i["message"] for i in issues)
 
 

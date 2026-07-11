@@ -126,40 +126,29 @@ def test_cc_schema_check_validates_enums_yaml_passes_clean():
     assert enum_issues == [], enum_issues
 
 
-def test_cc_schema_check_rejects_empty_core_subset():
+def test_cc_schema_check_rejects_empty_core_subset(harness_project, run_harness_script):
     """An enum with an empty core subset must fail E_SCHEMA197."""
-    original = ENUMS_PATH.read_text(encoding="utf-8")
-    try:
-        corrupt = original.replace("  core: [todo, in_progress, blocked, partial, aborted, done]",
-                                   "  core: []")
-        assert corrupt != original, "fixture string not found; test env changed"
-        ENUMS_PATH.write_text(corrupt, encoding="utf-8")
-        import subprocess, json
-        proc = subprocess.run(
-            [sys.executable, str(REPO_ROOT / "cairn-core" / "scripts" / "cc-schema-check"), "--json"],
-            capture_output=True, text=True, cwd=str(REPO_ROOT),
-        )
-        report = json.loads(proc.stdout)
-        assert any(i["code"] == "E_SCHEMA197" and "task_status.core" in i["message"] for i in report["issues"])
-    finally:
-        ENUMS_PATH.write_text(original, encoding="utf-8")
+    target = harness_project / ".claude" / "runtime" / "enums.yaml"
+    original = target.read_text(encoding="utf-8")
+    corrupt = original.replace("  core: [todo, in_progress, blocked, partial, aborted, done]",
+                               "  core: []")
+    assert corrupt != original, "fixture string not found; test env changed"
+    target.write_text(corrupt, encoding="utf-8")
+    import json
+    proc = run_harness_script(harness_project, "cc-schema-check", "--json")
+    report = json.loads(proc.stdout)
+    assert any(i["code"] == "E_SCHEMA197" and "task_status.core" in i["message"] for i in report["issues"])
 
 
-def test_cc_schema_check_rejects_broken_subset_relationship():
+def test_cc_schema_check_rejects_broken_subset_relationship(harness_project, run_harness_script):
     """change_status.core not ⊆ from_set must fail E_SCHEMA198."""
-    original = ENUMS_PATH.read_text(encoding="utf-8")
-    try:
-        # Remove 'done' from from_set so core is no longer a subset.
-        corrupt = original.replace("  from_set: [none, propose, apply, review, done, unchanged]",
-                                   "  from_set: [none, propose, apply, review, unchanged]")
-        assert corrupt != original, "fixture string not found; test env changed"
-        ENUMS_PATH.write_text(corrupt, encoding="utf-8")
-        import subprocess, json
-        proc = subprocess.run(
-            [sys.executable, str(REPO_ROOT / "cairn-core" / "scripts" / "cc-schema-check"), "--json"],
-            capture_output=True, text=True, cwd=str(REPO_ROOT),
-        )
-        report = json.loads(proc.stdout)
-        assert any(i["code"] == "E_SCHEMA198" and "from_set" in i["message"] for i in report["issues"])
-    finally:
-        ENUMS_PATH.write_text(original, encoding="utf-8")
+    target = harness_project / ".claude" / "runtime" / "enums.yaml"
+    original = target.read_text(encoding="utf-8")
+    corrupt = original.replace("  from_set: [none, propose, apply, review, done, unchanged]",
+                               "  from_set: [none, propose, apply, review, unchanged]")
+    assert corrupt != original, "fixture string not found; test env changed"
+    target.write_text(corrupt, encoding="utf-8")
+    import json
+    proc = run_harness_script(harness_project, "cc-schema-check", "--json")
+    report = json.loads(proc.stdout)
+    assert any(i["code"] == "E_SCHEMA198" and "from_set" in i["message"] for i in report["issues"])

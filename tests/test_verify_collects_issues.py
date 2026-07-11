@@ -14,12 +14,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _verify_json(args: list[str]) -> dict:
+def _verify_json(args: list[str], project_root=REPO_ROOT) -> dict:
+    script = project_root / ".claude" / "scripts" / "cc-verify"
+    if project_root == REPO_ROOT:
+        script = REPO_ROOT / "cairn-core" / "scripts" / "cc-verify"
     proc = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "cairn-core" / "scripts" / "cc-verify"), *args, "--json"],
+        [sys.executable, str(script), *args, "--json"],
         capture_output=True,
         text=True,
-        cwd=str(REPO_ROOT),
+        cwd=str(project_root),
     )
     return json.loads(proc.stdout)
 
@@ -50,25 +53,22 @@ def test_all_harness_subchecks_are_canonical():
             assert "issues" in r, f"{r['name']} is a harness sub-check but has no structured issues field"
 
 
-def test_verify_aggregates_structured_issues_on_failure():
+def test_verify_aggregates_structured_issues_on_failure(harness_project):
     """When a canonical sub-check fails, cc-verify surfaces its structured
     issues (code/path/message), not just truncated stderr text."""
     # Corrupt a runtime manifest so cc-lint reports a missing field.
-    manifest = REPO_ROOT / "cairn-core" / "runtime" / "commands" / "cc-init.yaml"
+    manifest = harness_project / ".claude" / "runtime" / "commands" / "cc-init.yaml"
     original = manifest.read_text(encoding="utf-8")
-    try:
-        manifest.write_text(original.replace("\nsteps:\n", "\nSTEPS_REMOVED:\n", 1), encoding="utf-8")
-        report = _verify_json(["--harness-only"])
-        assert report["status"] == "failed"
-        lint_result = next(r for r in report["results"] if r["name"] == "cc-lint")
-        assert lint_result["status"] == "failed"
-        assert lint_result["issues"], "cc-verify did not aggregate cc-lint's structured issues"
-        issue = lint_result["issues"][0]
-        assert set(issue.keys()) == {"code", "path", "message"}
-        assert issue["code"] == "E_LINT001"
-        assert "steps" in issue["message"]
-    finally:
-        manifest.write_text(original, encoding="utf-8")
+    manifest.write_text(original.replace("\nsteps:\n", "\nSTEPS_REMOVED:\n", 1), encoding="utf-8")
+    report = _verify_json(["--harness-only"], harness_project)
+    assert report["status"] == "failed"
+    lint_result = next(r for r in report["results"] if r["name"] == "cc-lint")
+    assert lint_result["status"] == "failed"
+    assert lint_result["issues"], "cc-verify did not aggregate cc-lint's structured issues"
+    issue = lint_result["issues"][0]
+    assert set(issue.keys()) == {"code", "path", "message"}
+    assert issue["code"] == "E_LINT001"
+    assert "steps" in issue["message"]
 
 
 def test_collect_issues_helper_parses_canonical_report():

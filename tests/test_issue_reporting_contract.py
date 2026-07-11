@@ -16,12 +16,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = REPO_ROOT / "cairn-core" / "scripts"
 
 
-def _run(script: str, args: list[str]) -> subprocess.CompletedProcess:
+def _run(script: str, args: list[str], project_root=REPO_ROOT) -> subprocess.CompletedProcess:
+    scripts = SCRIPTS if project_root == REPO_ROOT else project_root / ".claude" / "scripts"
     return subprocess.run(
-        [sys.executable, str(SCRIPTS / script), *args],
+        [sys.executable, str(scripts / script), *args],
         capture_output=True,
         text=True,
-        cwd=str(REPO_ROOT),
+        cwd=str(project_root),
     )
 
 
@@ -59,29 +60,23 @@ def test_issue_scripts_emit_structured_json():
         assert isinstance(report["issues"], list)
 
 
-def test_issue_scripts_stderr_line_format_on_failure():
+def test_issue_scripts_stderr_line_format_on_failure(harness_project):
     """When issues exist, the non-json stderr line is `CODE path: message`.
 
     We can't easily force a real failure across all six, but we can force one
-    in cc-readset by corrupting a committed readset and restoring it.
+    in cc-readset by corrupting an isolated copy of a committed readset.
     """
-    readset = REPO_ROOT / "cairn-core" / "runtime" / "readsets" / "cc-readset.yaml"
+    readset = harness_project / ".claude" / "runtime" / "readsets" / "cc-readset.yaml"
     if not readset.exists():
         # Pick any committed readset to corrupt.
-        readset = next((REPO_ROOT / "cairn-core" / "runtime" / "readsets").glob("cc-*.yaml"))
-    original = readset.read_text(encoding="utf-8")
-    try:
-        readset.write_text("# corrupted by baseline test\n", encoding="utf-8")
-        proc = _run("cc-readset", [])
-        assert proc.returncode == 1, f"cc-readset should fail on stale readset: {proc.stdout}"
-        # Non-json failure prints `CODE path: message` to stderr, one per line.
-        assert proc.stderr, "cc-readset emitted no stderr on failure"
-        line = proc.stderr.strip().splitlines()[0]
-        # E_READSET### <path>: <message>
-        assert line.startswith("E_READSET"), f"stderr line not code-prefixed: {line!r}"
-        assert ": " in line, f"stderr line missing ': message': {line!r}"
-    finally:
-        readset.write_text(original, encoding="utf-8")
+        readset = next((harness_project / ".claude" / "runtime" / "readsets").glob("cc-*.yaml"))
+    readset.write_text("# corrupted by baseline test\n", encoding="utf-8")
+    proc = _run("cc-readset", [], harness_project)
+    assert proc.returncode == 1, f"cc-readset should fail on stale readset: {proc.stdout}"
+    assert proc.stderr, "cc-readset emitted no stderr on failure"
+    line = proc.stderr.strip().splitlines()[0]
+    assert line.startswith("E_READSET"), f"stderr line not code-prefixed: {line!r}"
+    assert ": " in line, f"stderr line missing ': message': {line!r}"
 
 
 def test_lint_emits_structured_issue_on_failure(tmp_path):
