@@ -44,6 +44,15 @@ def check_python():
         sys.exit(f"Cairness requires Python {v}+ (current: {sys.version})")
 
 
+def print_platform_support_notice(platform: str) -> None:
+    if platform == "win32":
+        print(
+            "WARNING: Native Windows support is EXPERIMENTAL. "
+            "Use WSL for the fully supported Bash hooks and runtime scripts."
+        )
+        print()
+
+
 def get_platform_paths():
     """Return (data_dir, bin_dir) for the current platform."""
     system = sys.platform
@@ -135,6 +144,7 @@ def check_path(bin_dir: Path):
 
 def main():
     check_python()
+    print_platform_support_notice(sys.platform)
 
     try:
         version = read_version(VERSION_FILE)

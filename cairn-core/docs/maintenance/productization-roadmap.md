@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`399 passed`
+- 测试：`408 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,14 +103,14 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 47 个受版本控制文件，399 个用例 |
+| Tests | 48 个受版本控制文件，408 个用例 |
 
 当前主要事实：
 
 1. 核心运行时仍以 Claude Code 为唯一正式宿主：`.claude/`、`CLAUDE.md`、Skill、`settings.json` 和 `PreToolUse` hook 都带有宿主语义。
 2. 目标项目 CI 模板要求 `.claude/scripts/cc-verify` 已存在；由于 `.claude/` 默认被忽略，标准 GitHub-hosted runner 上当前按设计会失败。
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
-4. README 宣称支持原生 Windows，但运行面仍包含 Bash hook、POSIX executable bit 和 extensionless script 调用等 Unix 假设。
+4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
 5. `harness.config.yaml` 尚未拥有覆盖完整文件结构的独立 schema；不同脚本读取各自关心的字段。
 6. C++ language profile 的 detection、fixture 和 verification 存在已记录的不一致。
 7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 已成为大型聚合脚本。
@@ -164,7 +164,7 @@ Phase 3：Agent Governance Platform
 |---|---|---|---|---|---|
 | `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 待开始 | `P1-02` |
 | `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 完成 | 无 |
-| `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 待开始 | 无 |
+| `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 完成 | 无 |
 | `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 待开始 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
 | `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 待开始 | `P1-04`、`P1-05` |
@@ -315,7 +315,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.5 `P1-03` 平台支持矩阵与 Windows 边界
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：平台支持声明与实际脚本、hook、安装器和 CI 证据一致。
 
@@ -334,6 +334,27 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - unsupported/experimental 平台不会被表述为完整支持。
 
 **非目标**：不为了“支持 Windows”引入无法验证的兼容分支。
+
+#### 实施记录 2026-07-11
+
+- 状态：完成
+- Change/提交：`P1-03`（由本 change 的 Git 提交记录）
+- 已完成：
+  - 新增 `runtime/platform-support.yaml`，明确 Linux、macOS、WSL 为 `supported`，原生 Windows 为 `experimental`。
+  - Doctor 输出检测平台、支持等级、CI 证据和限制；原生 Windows 不检查 POSIX executable bit。
+  - 根 Harness CI 使用 `ubuntu-latest`、`macos-latest` matrix；WSL 复用正式 Linux 运行面并明确边界。
+  - README 提供支持矩阵和 shell/runtime 限制；原生 Windows 安装器主动提示实验性并建议使用 WSL。
+- 验证：
+  - `rtk pytest -q tests/test_platform_support.py tests/test_doctor_command_entrypoints.py tests/test_upgrade_safety.py` → `38 passed`
+  - `rtk cairn-core/scripts/cc-doctor-check --json` → `passed`，当前环境识别为 `wsl/supported`
+  - `rtk pytest -q` → `408 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`（全部 Harness 子检查通过）
+  - `rtk cairn-core/scripts/cc-workflow-gen --check` → `ok`
+  - `rtk cairn-core/scripts/cc-readset --check` → `ok`
+  - `rtk git diff --check` → `passed`
+- 剩余：无
+- 风险/决策：不实现无 CI 证据的原生 Windows Bash hook/runtime 兼容层；未来转正式支持必须先增加 Windows CI 和原生 wrapper。
+- 下一步：`P1-01`（其依赖 `P1-02` 已完成）。
 
 ### 8.6 `P1-04` Harness 配置 schema 与有效配置诊断
 
@@ -1059,11 +1080,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：`P1-03 平台支持矩阵与 Windows 边界`。
+当前推荐下一项：`P1-01 GitHub-hosted CI 可直接运行`。
 
 开始前应先：
 
-1. 审计 README、安装器、hook 与 CI 中的平台假设；
-2. 采用“Linux、macOS、WSL 正式支持，原生 Windows 实验性”的可验证边界；
-3. 先增加 Doctor 平台诊断与文档/CI 支持矩阵的失败测试；
-4. 完成专项和全量验证后再更新状态。
+1. 选择可固定版本且带 checksum 的 ephemeral runner 分发方式；
+2. 让目标项目 CI 模板在干净 checkout 中无需 `.claude/` 预装即可运行；
+3. 用 fixture 覆盖 harness-only、project-only、失败 annotation 与网络/checksum 硬失败；
+4. 完成真实 GitHub Actions 验证后再更新状态。

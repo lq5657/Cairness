@@ -4,6 +4,12 @@
 
 本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。
 
+### 平台支持边界
+
+正式支持的平台为 Linux、macOS 和 WSL；原生 Windows 为实验性。原生 Windows 安装器和 `cc-cairn.cmd` 入口保留，但 Bash Git hook、POSIX executable bit 和 extensionless runtime script 尚无原生 CI 证据，完整治理能力应通过 WSL 使用。
+
+Doctor 从 `.claude/runtime/platform-support.yaml` 读取支持等级，在 Windows 不再错误要求 POSIX executable bit。CI 维护者应保持 Ubuntu/macOS matrix 与该矩阵同步；扩大正式支持前必须先增加对应 CI 证据。
+
 ### 版本与发布元数据
 
 `cairn-core/VERSION` 现在是唯一权威版本源。根 `pyproject.toml` 的 `[tool.cairness].version` 是兼容工具镜像，并由 `cc-upgrade-check` 自动检查，不应独立决定版本。

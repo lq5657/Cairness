@@ -1,0 +1,25 @@
+schema_version: 1
+platforms:
+  linux:
+    support: supported
+    requires_posix_executable_bit: true
+    ci_evidence: [ubuntu-latest]
+    limitations: []
+  macos:
+    support: supported
+    requires_posix_executable_bit: true
+    ci_evidence: [macos-latest]
+    limitations: []
+  wsl:
+    support: supported
+    requires_posix_executable_bit: true
+    ci_evidence: [ubuntu-latest]
+    limitations:
+      - Uses the Linux runtime and filesystem semantics; native Windows shells are not supported.
+  windows:
+    support: experimental
+    requires_posix_executable_bit: false
+    ci_evidence: []
+    limitations:
+      - The installer and cc-cairn.cmd entrypoint are available, but Bash hooks and extensionless runtime scripts require WSL or another POSIX environment.
+      - Native Windows governance and Git-hook behavior are not covered by CI.

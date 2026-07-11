@@ -71,6 +71,7 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "runtime" / "protocol" / "technology-decisions.yaml", "file"),
         (claude_root / "runtime" / "protocol" / "language-profile.yaml", "file"),
         (claude_root / "runtime" / "knowledge-categories.yaml", "file"),
+        (claude_root / "runtime" / "platform-support.yaml", "file"),
         (claude_root / "runtime" / "result-contracts" / "standard-command.yaml", "file"),
         (claude_root / "workflows" / "cc-workflow.yaml", "file"),
         (claude_root / "harness.config.yaml", "file"),
@@ -97,10 +98,51 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         require_path(path, kind, issues)
 
 
-def check_scripts_executable(claude_root: Path, issues: list[Issue]) -> None:
+def detect_platform(platform: str, environment: dict[str, str]) -> str:
+    if platform.startswith("linux"):
+        return "wsl" if environment.get("WSL_DISTRO_NAME") or environment.get("WSL_INTEROP") else "linux"
+    if platform == "darwin":
+        return "macos"
+    if platform in {"win32", "cygwin"}:
+        return "windows"
+    return platform
+
+
+def load_platform_support(claude_root: Path) -> dict[str, Any]:
+    path = claude_root / "runtime" / "platform-support.yaml"
+    if not path.is_file():
+        return {}
+    try:
+        import yaml  # type: ignore
+        loaded = yaml.safe_load(read(path))
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def platform_report(matrix: dict[str, Any], platform_id: str) -> dict[str, Any]:
+    platforms = matrix.get("platforms") if isinstance(matrix.get("platforms"), dict) else {}
+    declared = platforms.get(platform_id) if isinstance(platforms.get(platform_id), dict) else {}
+    return {
+        "id": platform_id,
+        "support": declared.get("support", "unsupported"),
+        "requires_posix_executable_bit": bool(declared.get("requires_posix_executable_bit", False)),
+        "ci_evidence": declared.get("ci_evidence", []),
+        "limitations": declared.get("limitations", []),
+    }
+
+
+def check_scripts_executable(
+    claude_root: Path,
+    issues: list[Issue],
+    *,
+    requires_executable_bit: bool = True,
+) -> None:
     scripts_dir = claude_root / "scripts"
     require_path(scripts_dir, "dir", issues)
     if not scripts_dir.exists():
+        return
+    if not requires_executable_bit:
         return
     for script in sorted(scripts_dir.glob("cc-*")):
         if script.is_file() and not os.access(script, os.X_OK):
@@ -307,8 +349,14 @@ def build_report() -> dict[str, Any]:
     claude_root = Path(__file__).resolve().parent.parent
     project_root = claude_root.parent
     issues: list[Issue] = []
+    platform_id = detect_platform(sys.platform, dict(os.environ))
+    platform = platform_report(load_platform_support(claude_root), platform_id)
     check_required_layout(project_root, claude_root, issues)
-    check_scripts_executable(claude_root, issues)
+    check_scripts_executable(
+        claude_root,
+        issues,
+        requires_executable_bit=platform["requires_posix_executable_bit"],
+    )
     check_protocol_assets(project_root, claude_root, issues)
     check_ci_fixture_paths(project_root, issues)
     check_command_entrypoints(project_root, claude_root, issues)
@@ -317,6 +365,7 @@ def build_report() -> dict[str, Any]:
         "tool": "cc-doctor-check",
         "status": "failed" if issues else "passed",
         "project_root": str(project_root),
+        "platform": platform,
         "issues": issues_to_dicts(issues),
     }
 

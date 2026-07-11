@@ -6,13 +6,17 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Create framework symlink
         run: ln -s cairn-core .claude
       - name: Create state skeleton
-        run: mkdir -p .cairness/{context,changes,audits,knowledge,discussions}
+        run: mkdir -p .cairness/context .cairness/changes .cairness/audits .cairness/knowledge .cairness/discussions
       - uses: actions/setup-go@v5
         with:
           go-version: "1.21"
