@@ -417,6 +417,62 @@ def test_role_check_rejects_missing_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_deps_change(project_root: Path, change_id: str) -> None:
+    change = project_root / ".cairness" / "changes" / change_id
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "spec.md").write_text(
+        f"---\nchange_id: {change_id}\nstatus: propose\ndepends_on: []\n---\n",
+        encoding="utf-8",
+    )
+
+
+def run_deps_graph(script: Path, cwd: Path, *root_args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *root_args, "graph", "--format", "json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_deps_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_deps_change(project, "ctx-nonstandard")
+
+    completed = run_deps_graph(framework / "scripts" / "cc-deps", project)
+
+    assert completed.returncode == 0, completed.stderr
+    assert "ctx-nonstandard" in completed.stdout
+
+
+def test_deps_project_root_targets_another_project(harness_project: Path):
+    write_deps_change(harness_project, "ctx-explicit")
+
+    completed = run_deps_graph(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-deps",
+        REPO_ROOT,
+        "--project-root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "ctx-explicit" in completed.stdout
+
+
+def test_deps_rejects_missing_project_root(tmp_path: Path):
+    completed = run_deps_graph(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-deps",
+        REPO_ROOT,
+        "--project-root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

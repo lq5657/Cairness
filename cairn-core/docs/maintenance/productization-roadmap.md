@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`491 passed`
+- 测试：`494 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，491 个用例 |
+| Tests | 54 个受版本控制文件，494 个用例 |
 
 当前主要事实：
 
@@ -795,6 +795,19 @@ cc-doctor-check --root <project>
 - 剩余：`cc-deps` 仍有两套 root 语义（全局脚本根与 orphans 子命令 root）；P2-05 保持部分完成。
 - 风险/决策：统一 `--root` 必须是完整 Cairness 项目并硬校验；兼容 `--project-root` 只验证目录存在，不改变历史最小 fixture/嵌入语义，且两参数互斥。
 - 下一步：迁移 `cc-deps`，区分全局 Context root 与 orphans 的 Git 工作树目标。
+
+#### 实施记录 2026-07-11（依赖图与 Git 扫描根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-deps` 默认项目发现通过 `HarnessContext`，并新增全局 `--project-root` 用于源码 CLI 跨项目目标和显式缺失根的 `E_CONTEXT001` 硬失败；`orphans --root` 继续只表示待扫描的 Git 工作树，保留既有 `E_DEPS001` 与 JSON 合同。非标准物理 framework 仍可从脚本位置发现项目。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'deps_'` → `3 passed`
+  - `rtk pytest -q tests/test_deps_orphans_contract.py tests/test_behavior_cases.py tests/test_wave_plan.py tests/test_wave_plan_script.py` → `30 passed`
+  - 最终全量 pytest、Harness/deps/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：help/stats/gate-stats/lint/wave 等入口仍需审计并迁移独立 root 推导；P2-05 保持部分完成。
+- 风险/决策：全局 Context root 与 `orphans` Git 扫描 root 是两个不同边界，不复用同名参数，避免破坏已有自动化和任意 Git fixture 扫描能力。
+- 下一步：搜索剩余 `__file__`/cwd 根推导，选择一个读边界清晰的脚本组继续迁移。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

@@ -28,11 +28,19 @@ from change_docs import parse_file_table, parse_involved_files
 from typing import Any
 
 from harness_runtime import require_yaml
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, build_report
 
 
 ORPHAN_ISSUE_CODE = "E_ORPHAN001"
 DEPS_ROOT_CODE = "E_DEPS001"
+
+
+def project_root() -> Path:
+    context = load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    )
+    return context.project_root
 
 
 @dataclass
@@ -47,10 +55,6 @@ class ChangeInfo:
 
     def __hash__(self) -> int:
         return hash(self.change_id)
-
-
-def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
 
 
 def parse_spec(spec_path: Path) -> dict[str, Any] | None:
@@ -613,6 +617,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="跨 Change 依赖管理"
     )
+    parser.add_argument(
+        "--project-root",
+        help="显式 Cairness 项目根目录；默认自动发现",
+    )
     sub = parser.add_subparsers(dest="command")
 
     graph_p = sub.add_parser("graph", help="依赖图可视化")
@@ -663,7 +671,16 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    root = project_root()
+    try:
+        root = (
+            load_harness_context(explicit_root=Path(args.project_root)).project_root
+            if args.project_root
+            else project_root()
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        sys.exit(2)
+
     changes = discover_changes(root)
 
     if args.command == "graph":
