@@ -1,6 +1,8 @@
 # cc_spec Harness runtime policy.
 # Relative paths are interpreted from the project root.
 
+schema_version: 1
+
 profile: standard
 # Loop Engineering profile: set to "loop" to enable autonomous execution
 # Requires: .cairness/loop-config.yaml (see .claude/templates/loop-config.yaml)

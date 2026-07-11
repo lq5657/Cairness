@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
+from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.issues import Issue, build_report
 
 from change_docs import (
@@ -749,50 +750,10 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
     if not path.exists():
         errors.append(f"{path}: missing harness config")
         return
-    text = read(path)
-    for key in (
-        "paths:",
-        "framework_root:",
-        "state_root:",
-        "framework_docs_root:",
-        "workflow:",
-        "definition:",
-        "runtime:",
-        "core:",
-        "core_schema:",
-        "command_dir:",
-        "command_schema:",
-        "readset_dir:",
-        "readset_schema:",
-        "topic_rule_schema:",
-        "memory:",
-        "dev_map:",
-        "task_board:",
-        "policy:",
-        "docs:",
-        "examples_dir:",
-        "adoption_dir:",
-        "maintenance_dir:",
-        "validation:",
-        "auto_run:",
-        "fail_on_error:",
-        "verify_command:",
-        "delta_command:",
-        "schema_command:",
-        "role_command:",
-        "eval_command:",
-        "readset_command:",
-        "baseline_dir:",
-        "fixture_dir:",
-        "verification:",
-        "go:",
-        "run_on:",
-    ):
-        if key not in text:
-            errors.append(f"{path}: missing {key.rstrip(':')}")
-    for command in AUTO_VALIDATION_COMMANDS:
-        if re.search(rf"^\s{{4}}{re.escape(command)}:", text, re.M) is None:
-            errors.append(f"{path}: validation.run_on missing {command}")
+    try:
+        load_harness_config(path)
+    except HarnessConfigError as exc:
+        errors.append(f"{path}: {exc}")
     for script in ("cc-lint", "cc-sync-check", "cc-verify", "cc-delta-check", "cc-schema-check", "cc-role-check", "cc-eval", "cc-readset"):
         script_path = root / "scripts" / script
         if not script_path.exists():

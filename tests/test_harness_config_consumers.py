@@ -42,3 +42,13 @@ def test_readset_profile_resolution_reports_invalid_config(repo_root: Path):
 
     assert path.endswith("standard.yaml")
     assert any(issue.code == "E_CONFIG001" for issue in issues)
+
+
+def test_schema_check_reports_invalid_harness_config(harness_project, run_harness_script):
+    config = harness_project / ".claude" / "harness.config.yaml"
+    config.write_text("schema_version: 1\nprofile: invalid\n", encoding="utf-8")
+
+    result = run_harness_script(harness_project, "cc-schema-check", "--json")
+
+    assert result.returncode == 1
+    assert "E_SCHEMA199" in result.stdout

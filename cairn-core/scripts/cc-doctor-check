@@ -287,15 +287,10 @@ def check_loop_mode_readiness(project_root: Path, claude_root: Path, issues: lis
     if not harness_cfg.is_file():
         return  # scaffold check will catch missing harness.config.yaml
 
-    # Read active profile (skip comment lines)
-    active_profile = ""
-    for line in harness_cfg.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            continue
-        if stripped.startswith("profile:"):
-            active_profile = stripped[len("profile:"):].strip()
-            break
+    try:
+        active_profile = str(load_harness_config(harness_cfg).values["profile"])
+    except (HarnessConfigError, KeyError):
+        return  # build_report emits E_DOCTOR018 for the same invalid config
 
     if active_profile != "loop":
         return  # only applies to loop profile

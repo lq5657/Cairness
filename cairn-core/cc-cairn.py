@@ -689,11 +689,26 @@ def cmd_version():
 
 def cmd_config(argv):
     parser = argparse.ArgumentParser(prog="cc-cairn config")
-    parser.add_argument("action", choices=("validate", "explain"))
+    parser.add_argument("action", choices=("validate", "explain", "migrate"))
     parser.add_argument("key", nargs="?")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
     path = Path.cwd() / ".claude" / "harness.config.yaml"
+    if args.action == "migrate":
+        if not path.is_file():
+            print(f"E_CONFIG001 {path}: missing harness config", file=sys.stderr)
+            raise SystemExit(1)
+        content = path.read_text(encoding="utf-8")
+        if any(line.strip().startswith("schema_version:") for line in content.splitlines()):
+            print("harness config: already at schema_version 1")
+            return
+        if not args.apply:
+            print("[dry-run] add schema_version: 1 as the first config field")
+            return
+        path.write_text("schema_version: 1\n" + content, encoding="utf-8")
+        print("harness config: migrated to schema_version 1")
+        return
     try:
         config = load_harness_config(path)
     except HarnessConfigError as exc:

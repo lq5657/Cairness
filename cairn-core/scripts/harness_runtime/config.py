@@ -52,8 +52,16 @@ def _validate(value: Any, schema: dict[str, Any], path: str = "", root_schema: d
         raise HarnessConfigError(f"{location}: expected {expected}")
     if "enum" in schema and value not in schema["enum"]:
         raise HarnessConfigError(f"{location}: value {value!r} is not allowed")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            raise HarnessConfigError(f"{location}: value is below minimum {schema['minimum']}")
+        if "maximum" in schema and value > schema["maximum"]:
+            raise HarnessConfigError(f"{location}: value is above maximum {schema['maximum']}")
     if isinstance(value, dict):
         properties = schema.get("properties", {})
+        for key in schema.get("required", []):
+            if key not in value:
+                raise HarnessConfigError(f"{location}: missing required field {key}")
         if schema.get("additionalProperties") is False:
             for key in value:
                 if key not in properties:
@@ -68,15 +76,15 @@ def _validate(value: Any, schema: dict[str, Any], path: str = "", root_schema: d
             _validate(item, schema["items"], f"{location}[{index}]", root_schema)
 
 
-def _merge(defaults: dict[str, Any], configured: dict[str, Any], sources: dict[str, str], prefix: str = "") -> dict[str, Any]:
+def _merge(defaults: dict[str, Any], configured: dict[str, Any], sources: dict[str, str], source: str, prefix: str = "") -> dict[str, Any]:
     result = deepcopy(defaults)
     for key, value in configured.items():
         dotted = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict) and isinstance(result.get(key), dict):
-            result[key] = _merge(result[key], value, sources, dotted)
+            result[key] = _merge(result[key], value, sources, source, dotted)
         else:
             result[key] = deepcopy(value)
-            sources[dotted] = "framework_config"
+            sources[dotted] = source
     return result
 
 
@@ -136,7 +144,15 @@ def load_harness_config(
     _validate(configured, schema)
     sources: dict[str, str] = {}
     _record_defaults(defaults, sources)
-    values = _merge(defaults, configured, sources)
+    values = _merge(defaults, configured, sources, "framework_config")
+    override_path = path.parent.parent / ".cairness" / "harness.config.yaml"
+    if override_path.is_file():
+        override = yaml.safe_load(override_path.read_text(encoding="utf-8"))
+        if not isinstance(override, dict):
+            raise HarnessConfigError(f"{override_path}: project override must be a mapping")
+        _validate_known_shape(override, defaults)
+        _validate(override, schema)
+        values = _merge(values, override, sources, "project_override")
     env = environment if environment is not None else dict(os.environ)
     if "CAIRNESS_PROFILE" in env:
         values["profile"] = env["CAIRNESS_PROFILE"]

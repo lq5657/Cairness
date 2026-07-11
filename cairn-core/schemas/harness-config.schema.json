@@ -2,30 +2,32 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://cairness.dev/schemas/harness-config.schema.json",
   "title": "Cairness Harness Configuration",
-  "type": "object",
-  "additionalProperties": false,
+  "type": "object", "additionalProperties": false,
   "properties": {
+    "schema_version": {"type": "integer", "enum": [1]},
     "profile": {"type": "string", "enum": ["minimal", "standard", "strict", "loop"]},
-    "paths": {"$ref": "#/$defs/stringMap"},
-    "git": {
-      "type": "object", "additionalProperties": false,
-      "properties": {
-        "auto_commit": {"type": "boolean"}, "commit_per_task": {"type": "boolean"},
-        "allow_main_branch_apply": {"type": "boolean"}, "require_clean_worktree_before_commit": {"type": "boolean"},
-        "pre_commit_orphan_check": {"type": "boolean"}, "orphan_policy": {"type": "string", "enum": ["strict", "warn"]}
-      }
-    },
-    "workflow": {"$ref": "#/$defs/stringMap"},
-    "runtime": {"$ref": "#/$defs/stringMap"},
-    "memory": {"$ref": "#/$defs/stringMap"},
-    "docs": {"$ref": "#/$defs/stringMap"},
-    "interaction": {"type": "object"},
-    "budgets": {"type": "object"},
-    "gate_effectiveness": {"type": "object"},
-    "dependencies": {"type": "object"},
-    "validation": {"type": "object"}
+    "paths": {"$ref": "#/$defs/paths"}, "git": {"$ref": "#/$defs/git"},
+    "workflow": {"$ref": "#/$defs/workflow"}, "runtime": {"$ref": "#/$defs/runtime"},
+    "memory": {"$ref": "#/$defs/memory"}, "docs": {"$ref": "#/$defs/docs"},
+    "interaction": {"$ref": "#/$defs/interaction"}, "budgets": {"$ref": "#/$defs/budgets"},
+    "gate_effectiveness": {"$ref": "#/$defs/gate"}, "dependencies": {"$ref": "#/$defs/dependencies"},
+    "validation": {"$ref": "#/$defs/validation"}
   },
   "$defs": {
-    "stringMap": {"type": "object", "additionalProperties": {"type": "string"}}
+    "string": {"type": "string"}, "boolean": {"type": "boolean"},
+    "paths": {"type":"object","additionalProperties":false,"properties":{"framework_root":{"$ref":"#/$defs/string"},"state_root":{"$ref":"#/$defs/string"},"framework_docs_root":{"$ref":"#/$defs/string"}}},
+    "git": {"type":"object","additionalProperties":false,"properties":{"auto_commit":{"$ref":"#/$defs/boolean"},"commit_per_task":{"$ref":"#/$defs/boolean"},"allow_main_branch_apply":{"$ref":"#/$defs/boolean"},"require_clean_worktree_before_commit":{"$ref":"#/$defs/boolean"},"pre_commit_orphan_check":{"$ref":"#/$defs/boolean"},"orphan_policy":{"type":"string","enum":["strict","warn"]}}},
+    "workflow": {"type":"object","additionalProperties":false,"properties":{"definition":{"$ref":"#/$defs/string"}}},
+    "runtime": {"type":"object","additionalProperties":false,"properties":{"core":{"$ref":"#/$defs/string"},"core_schema":{"$ref":"#/$defs/string"},"command_dir":{"$ref":"#/$defs/string"},"command_schema":{"$ref":"#/$defs/string"},"readset_dir":{"$ref":"#/$defs/string"},"readset_schema":{"$ref":"#/$defs/string"},"topic_rule_schema":{"$ref":"#/$defs/string"}}},
+    "memory": {"type":"object","additionalProperties":false,"properties":{"project_summary":{"$ref":"#/$defs/string"},"project_context":{"$ref":"#/$defs/string"},"domain_language":{"$ref":"#/$defs/string"},"dev_map":{"$ref":"#/$defs/string"},"task_board":{"$ref":"#/$defs/string"},"policy":{"$ref":"#/$defs/string"}}},
+    "docs": {"type":"object","additionalProperties":false,"properties":{"examples_dir":{"$ref":"#/$defs/string"},"adoption_dir":{"$ref":"#/$defs/string"},"maintenance_dir":{"$ref":"#/$defs/string"}}},
+    "stringArray": {"type":"array","items":{"type":"string"}},
+    "interaction": {"type":"object","additionalProperties":false,"properties":{"confirmation_tiers":{"type":"object","additionalProperties":false,"properties":{"tier1":{"$ref":"#/$defs/tier"},"tier2":{"$ref":"#/$defs/tier2"}}},"fatigue_detection":{"type":"object","additionalProperties":false,"properties":{"enabled":{"$ref":"#/$defs/boolean"},"reset_on_new":{"$ref":"#/$defs/string"}}}}},
+    "tier": {"type":"object","additionalProperties":false,"properties":{"description":{"$ref":"#/$defs/string"},"blocks":{"$ref":"#/$defs/stringArray"}}},
+    "tier2": {"allOf":[{"$ref":"#/$defs/tier"},{"type":"object","properties":{"auto_accept_after_consecutive_defaults":{"type":"integer","minimum":0},"on_auto_accept":{"$ref":"#/$defs/string"}}}]},
+    "budgets": {"type":"object","additionalProperties":false,"properties":{"token":{"type":"object","additionalProperties":false,"properties":{"warn_ratio":{"type":"number","minimum":0,"maximum":1},"block_ratio":{"type":"number","minimum":0,"maximum":1},"limits":{"type":"object","additionalProperties":{"type":"integer","minimum":1}}}},"duration":{"type":"object","additionalProperties":false,"properties":{"warn_seconds":{"type":"integer","minimum":0},"block_seconds":{"type":"integer","minimum":0}}},"auto_check":{"type":"object","additionalProperties":false,"properties":{"enabled":{"$ref":"#/$defs/boolean"},"min_events_for_baseline":{"type":"integer","minimum":0}}}}},
+    "gate": {"type":"object","additionalProperties":false,"properties":{"degradation_window":{"type":"integer","minimum":1},"degradation_threshold":{"type":"number","minimum":0,"maximum":1},"min_samples_before_judge":{"type":"integer","minimum":0},"auto_check_on_archive":{"$ref":"#/$defs/boolean"}}},
+    "dependencies": {"type":"object","additionalProperties":false,"properties":{"auto_check_on_propose":{"$ref":"#/$defs/boolean"},"auto_check_on_apply":{"$ref":"#/$defs/boolean"},"conflict_detection":{"type":"string","enum":["strict","warn"]},"circular_dependency":{"type":"string","enum":["block","warn"]},"max_parallel_changes":{"type":"integer","minimum":1}}},
+    "validation": {"type":"object","additionalProperties":false,"properties":{"auto_run":{"$ref":"#/$defs/boolean"},"fail_on_error":{"$ref":"#/$defs/boolean"},"verify_command":{"$ref":"#/$defs/string"},"delta_command":{"$ref":"#/$defs/string"},"schema_command":{"$ref":"#/$defs/string"},"role_command":{"$ref":"#/$defs/string"},"eval_command":{"$ref":"#/$defs/string"},"readset_command":{"$ref":"#/$defs/string"},"deps_command":{"$ref":"#/$defs/string"},"gate_stats_command":{"$ref":"#/$defs/string"},"baseline_dir":{"$ref":"#/$defs/string"},"fixture_dir":{"$ref":"#/$defs/string"},"require_structured_hard_gate":{"$ref":"#/$defs/boolean"},"require_traceability_check":{"$ref":"#/$defs/boolean"},"verification":{"type":"object","additionalProperties":false,"properties":{"capabilities":{"type":"object","additionalProperties":false,"properties":{"unit":{"$ref":"#/$defs/boolean"},"static":{"$ref":"#/$defs/boolean"},"lint":{"$ref":"#/$defs/boolean"}}}}},"go":{"type":"object","additionalProperties":false,"properties":{"test":{"$ref":"#/$defs/boolean"},"vet":{"$ref":"#/$defs/boolean"},"golangci_lint":{"$ref":"#/$defs/boolean"}}},"run_on":{"type":"object","additionalProperties":false,"properties":{"discuss":{"$ref":"#/$defs/stringArray"},"propose":{"$ref":"#/$defs/stringArray"},"apply":{"$ref":"#/$defs/stringArray"},"fix":{"$ref":"#/$defs/stringArray"},"test":{"$ref":"#/$defs/stringArray"},"review":{"$ref":"#/$defs/stringArray"},"archive":{"$ref":"#/$defs/stringArray"}}}}}
   }
 }

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`426 passed`
+- 测试：`433 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 51 个受版本控制文件，426 个用例 |
+| Tests | 51 个受版本控制文件，433 个用例 |
 
 当前主要事实：
 
@@ -111,7 +111,7 @@ cairn-core/scripts/cc-behavior-check
 2. 目标项目 CI 模板要求 `.claude/scripts/cc-verify` 已存在；由于 `.claude/` 默认被忽略，标准 GitHub-hosted runner 上当前按设计会失败。
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
-5. `harness.config.yaml` 尚未拥有覆盖完整文件结构的独立 schema；不同脚本读取各自关心的字段。
+5. `harness.config.yaml` 已拥有完整 schema、effective config 与来源诊断；完整安装中的配置消费者通过共享 loader 读取，项目覆盖位于 `.cairness/harness.config.yaml`。
 6. C++ language profile 的 detection、fixture 和 verification 存在已记录的不一致。
 7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 已成为大型聚合脚本。
 8. Migrated command 使用 runtime-first，但部分维护规则、角色和 eval 说明仍引用 legacy 文档。
@@ -165,7 +165,7 @@ Phase 3：Agent Governance Platform
 | `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 部分完成 | `P1-02` |
 | `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 完成 | 无 |
 | `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 完成 | 无 |
-| `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 部分完成 | `P1-02` |
+| `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 完成 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
 | `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 待开始 | `P1-04`、`P1-05` |
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -428,6 +428,24 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - 剩余：将 schema 中 interaction、budgets、gate_effectiveness、dependencies、validation 的开放 object 展开为逐字段合同；加入 schema version 与兼容迁移策略；提供项目覆盖层来源。
 - 风险/决策：不再有完整安装中的静默 YAML fallback；旧的极简 hook 安装在未携带 CLI/config 时保留 warn 兼容，不宣称其具备完整配置诊断。
 - 下一步：继续 P1-04 schema 收紧与项目覆盖层。
+
+#### 实施记录 2026-07-11（合同完成）
+
+- 状态：完成
+- Change/提交：`P1-04`（由本 change 的 Git 提交记录）
+- 已完成：完整嵌套 schema、`schema_version: 1`、`.cairness/harness.config.yaml` 项目覆盖层、来源顺序 `default → framework_config → project_override → environment`、无删除的 `config migrate`、以及 lint/Doctor/schema-check/verify/readset/budget/gate-stats/loop/hook 的统一 loader 接入。
+- 验证：
+  - `rtk pytest -q tests/test_harness_config.py tests/test_harness_config_consumers.py tests/test_doctor_command_entrypoints.py tests/test_loop_command.py tests/test_pre_commit_hook.py tests/test_readset_derivation.py` → `49 passed`
+  - `rtk python3 cairn-core/cc-cairn.py config validate --json` → `passed`
+  - `rtk python3 cairn-core/cc-cairn.py config explain git.auto_commit --json` → value `true`，source `framework_config`
+  - `rtk pytest -q` → `433 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`
+  - `rtk cairn-core/scripts/cc-schema-check --json` → `passed`，列出 config/schema 资产
+  - `rtk cairn-core/scripts/cc-lint --json cairn-core` → `passed`
+  - `rtk git diff --check` → `passed`
+- 剩余：无
+- 风险/决策：保持 schema version 1 对旧配置可显式迁移，不会自动写入或删除用户字段。
+- 下一步：`P1-05` 五语言 profile/fixture 对称验收。
 
 ### 8.7 `P1-05` 五语言 profile/fixture 对称验收
 
@@ -1121,7 +1139,7 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：`P1-01 GitHub-hosted CI 可直接运行`。
+当前推荐下一项：`P1-05 五语言 profile/fixture 对称验收`。`P1-01` 的本地实现已交付，待 release 发布后补真实 GitHub-hosted fixture 证据。
 
 开始前应先：
 

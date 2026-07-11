@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import protocol_language_assets
+from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.issues import Issue, add, issues_to_dicts
 from harness_runtime.readsets import (
     derive_readsets as _derive_readsets_shared,
@@ -1490,6 +1491,13 @@ def validate_execution_profiles(claude_root: Path, issues: list[Issue]) -> list[
 def validate_runtime_manifests(claude_root: Path, issues: list[Issue]) -> tuple[list[str], list[str]]:
     core = validate_runtime_core(claude_root, issues)
     checked = [str(claude_root / "runtime" / "core.yaml")]
+    config_path = claude_root / "harness.config.yaml"
+    config_schema_path = claude_root / "schemas" / "harness-config.schema.json"
+    checked.extend([str(config_path), str(config_schema_path)])
+    try:
+        load_harness_config(config_path, schema_path=config_schema_path)
+    except HarnessConfigError as exc:
+        add(issues, "E_SCHEMA199", config_path, str(exc))
     checked.extend(validate_agent_command_protocol(claude_root, core, issues))
     checked.extend(validate_runtime_commands(claude_root, core, issues))
     checked.extend(validate_runtime_readsets(claude_root, core, issues))
