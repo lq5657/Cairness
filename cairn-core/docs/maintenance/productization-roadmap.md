@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`524 passed`
+- 测试：`530 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，524 个用例 |
+| Tests | 54 个受版本控制文件，530 个用例 |
 
 当前主要事实：
 
@@ -911,6 +911,19 @@ cc-doctor-check --root <project>
 - 剩余：需重新搜索全部脚本的独立 root 推导，确认 event/state 写入口和纯任意路径工具是否属于 Context 范围；在清零审计前 P2-05 保持部分完成。
 - 风险/决策：显式位置 paths 仍是任意 lint 文件/目录，不重解释为项目 root；Context loader 使用 `validate_config=False`，让无效配置继续由 lint 产出 `E_LINT001`，避免被入口抢先转换成 `E_CONTEXT001`。
 - 下一步：全仓复审 `Path.cwd()`、`__file__` 向上推导和 `.claude/.cairness` 拼接，形成 P2-05 剩余清单并迁移最后入口。
+
+#### 实施记录 2026-07-12（事件与状态写入口根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-event-write` 与 `cc-state-transition` 新增严格 `--root`、缺失根的 `E_CONTEXT001`、源码 CLI 跨项目与非标准物理 framework 支持；解析后的项目根贯穿 state change、events append 和 state→event 委托，JSON 增加 `project_root`，event-first/spec-second 原子顺序保持不变。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'state_writer_'` → `6 passed`
+  - `rtk pytest -q tests/test_event_write.py tests/test_state_transition.py tests/test_event_check.py tests/test_event_check_baseline.py tests/test_behavior_cases.py` → `42 passed`
+  - 最终全量 pytest、Harness、真实 state transition、behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：需复核 shell `cc-self-eval`、共享 enums 默认资产根和仅接受任意文件的 delta 工具是否属于 P2-05；完成清零审计前保持部分完成。
+- 风险/决策：旧 `--project-root` 保留为最小目录/嵌入 fixture 兼容接口，仅规范化路径；新 `--root` 才要求完整 Cairness 项目并与旧参数互斥，避免破坏已发布 writer API。
+- 下一步：完成最后 root 审计，按验收标准验证非标准安装、显式越界和默认兼容，再决定 P2-05 状态。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

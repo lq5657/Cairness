@@ -51,6 +51,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.enums import enum_set, load_enums
 from harness_runtime.events import COMMAND_TO
 from harness_runtime.issues import Issue, add, build_report
@@ -196,6 +197,7 @@ def _report(args: argparse.Namespace, spec_path: Path, issues: list[Issue], *,
         issues,
         status=status,
         extra={
+            "project_root": str(Path(args.project_root).resolve()),
             "change_id": args.change_id,
             "command": args.command,
             "from": args.from_state,
@@ -218,7 +220,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", required=True, help="One-line transition summary.")
     parser.add_argument("--evidence", action="append", required=True, help="Evidence reference (repeatable, >=1).")
     parser.add_argument("--actor", default="claude-agent", help="Who/what performed the transition.")
-    parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
+    root_group = parser.add_mutually_exclusive_group()
+    root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
+    root_group.add_argument("--project-root", default=None, help="Legacy project directory override.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--dry-run", action="store_true", help="Validate + precheck without writing spec or event.")
     return parser
@@ -227,6 +231,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.project_root:
+        args.project_root = str(Path(args.project_root).expanduser().resolve())
+    else:
+        try:
+            context = load_harness_context(
+                explicit_root=Path(args.root) if args.root else None,
+                framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            )
+        except HarnessContextError as exc:
+            print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+            return 2
+        args.project_root = str(context.project_root)
 
     # Guard: --to must be consistent with the command's declared lifecycle.
     expected_to = COMMAND_TO.get(args.command)

@@ -951,6 +951,83 @@ def test_lint_rejects_missing_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_transition_change(project_root: Path, change_id: str) -> None:
+    change = project_root / ".cairness" / "changes" / change_id
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "spec.md").write_text(
+        f"---\nchange_id: {change_id}\nstatus: apply\n---\n",
+        encoding="utf-8",
+    )
+
+
+def run_state_writer(script: Path, cwd: Path, change_id: str, *root_args: str) -> subprocess.CompletedProcess[str]:
+    common = [
+        "--change-id", change_id,
+        "--command", "cc-apply",
+        "--from", "apply",
+        "--to", "review",
+        "--summary", "Context transition",
+        "--evidence", "pytest",
+        "--dry-run",
+        "--json",
+    ]
+    return subprocess.run(
+        [sys.executable, str(script), *common, *root_args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize("script", ["cc-event-write", "cc-state-transition"])
+def test_state_writer_uses_context_from_nonstandard_framework(script: str, tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_transition_change(project, "writer-nonstandard")
+
+    completed = run_state_writer(
+        framework / "scripts" / script,
+        project,
+        "writer-nonstandard",
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-event-write", "cc-state-transition"])
+def test_state_writer_root_targets_another_project(script: str, harness_project: Path):
+    write_transition_change(harness_project, "writer-explicit")
+
+    completed = run_state_writer(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "writer-explicit",
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-event-write", "cc-state-transition"])
+def test_state_writer_rejects_missing_root(script: str, tmp_path: Path):
+    completed = run_state_writer(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "writer-missing",
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

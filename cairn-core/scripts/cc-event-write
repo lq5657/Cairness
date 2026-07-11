@@ -42,6 +42,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.events import CHANGE_ID_RE, E_CODE_RE, validate_event
 from harness_runtime.issues import Issue, add, build_report, issues_to_dicts
 
@@ -179,6 +180,7 @@ def _report(args: argparse.Namespace, events_file: Path, issues: list[Issue], *,
         issues,
         status=status,
         extra={
+            "project_root": str(Path(args.project_root).resolve()),
             "change_id": args.change_id,
             "events_file": str(events_file),
             "event_id": event_id,
@@ -207,7 +209,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--findings-summary", default=None, help="v2: JSON object.")
     parser.add_argument("--gate-effectiveness", default=None, help="v2: JSON object.")
     parser.add_argument("--error-codes", action="append", default=None, help="v2: error code (E_*), repeatable.")
-    parser.add_argument("--project-root", default=".", help="Project root (default: cwd).")
+    root_group = parser.add_mutually_exclusive_group()
+    root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
+    root_group.add_argument("--project-root", default=None, help="Legacy project directory override.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--dry-run", action="store_true", help="Validate and print without writing.")
     parser.add_argument("--force-duplicate", action="store_true", help="Allow appending an event_id already present.")
@@ -218,6 +222,19 @@ def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     now = datetime.now(timezone.utc)
+
+    if args.project_root:
+        args.project_root = str(Path(args.project_root).expanduser().resolve())
+    else:
+        try:
+            context = load_harness_context(
+                explicit_root=Path(args.root) if args.root else None,
+                framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            )
+        except HarnessContextError as exc:
+            print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+            return 2
+        args.project_root = str(context.project_root)
 
     # Parse v2 numeric/JSON flags through the issue contract (no exceptions).
     issues_pre: list[Issue] = []
