@@ -18,6 +18,7 @@ from harness_runtime.issues import (
     Issue,
     build_report as build_issue_report,
 )
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 from change_docs import parse_inline_list, parse_key_value, parse_workflow_commands
 
@@ -103,14 +104,18 @@ def reset_baseline(path: Path) -> bool:
         return False
 
 
-def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
+def _load_manifest_writes(
+    claude_root: Path,
+    command: str,
+    context: HarnessContext | None = None,
+) -> list[str] | None:
     """Read the `writes` list from the command's runtime manifest.
 
     Returns None if the manifest cannot be resolved/loaded (caller falls back
     to workflow during the A1 transition). The manifest is the SSOT for write
     scope; this is the authoritative source going forward.
     """
-    project_root = claude_root.parent
+    project_root = context.project_root if context is not None else claude_root.parent
     core_path = claude_root / "runtime" / "core.yaml"
     if not core_path.exists():
         return None
@@ -127,7 +132,11 @@ def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
     declared = runtime_commands.get(command)
     if not isinstance(declared, str):
         return None
-    manifest_path = project_root / declared if declared.startswith(".claude/") else None
+    manifest_path = (
+        context.resolve_path(declared)
+        if context is not None and declared.startswith((".claude/", ".cairness/"))
+        else project_root / declared if declared.startswith(".claude/") else None
+    )
     if manifest_path is None or not manifest_path.exists():
         return None
     try:
@@ -142,12 +151,16 @@ def _load_manifest_writes(claude_root: Path, command: str) -> list[str] | None:
     return [w for w in writes if isinstance(w, str)]
 
 
-def load_command_writes(claude_root: Path, command: str) -> tuple[list[str], bool]:
+def load_command_writes(
+    claude_root: Path,
+    command: str,
+    context: HarnessContext | None = None,
+) -> tuple[list[str], bool]:
     # Manifest is the SSOT for write scope (A1). Prefer it; fall back to the
     # generated workflow view only if the manifest can't be resolved (e.g.
     # core.yaml unreadable / PyYAML missing) so the write-permission gate
     # never silently degrades to "allow all".
-    writes = _load_manifest_writes(claude_root, command)
+    writes = _load_manifest_writes(claude_root, command, context)
     if writes is None:
         writes = _load_workflow_writes(claude_root, command)
     has_abstract = any(item in ABSTRACT_WRITE_PATTERNS for item in writes)
@@ -229,15 +242,20 @@ def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in expanded)
 
 
-def build_role_report(command: str, change_id: str | None, project_root: Path) -> dict[str, Any]:
-    claude_root = project_root / ".claude"
-    patterns, has_abstract = load_command_writes(claude_root, command)
+def build_role_report(
+    command: str,
+    change_id: str | None,
+    project_root: Path,
+    context: HarnessContext | None = None,
+) -> dict[str, Any]:
+    claude_root = context.framework_root if context is not None else project_root / ".claude"
+    patterns, has_abstract = load_command_writes(claude_root, command, context)
     if any("<change-id>" in pattern for pattern in patterns) and not change_id:
         return build_issue_report(
             "cc-role-check",
             [Issue("E_ROLE001", "", "missing --change")],
             status="failed",
-            extra={"reason": f"{command} requires --change", "dirty_paths": []},
+            extra={"project_root": str(project_root.resolve()), "reason": f"{command} requires --change", "dirty_paths": []},
         )
     if has_abstract:
         return build_issue_report(
@@ -245,6 +263,7 @@ def build_role_report(command: str, change_id: str | None, project_root: Path) -
             [],
             status="skipped",
             extra={
+                "project_root": str(project_root.resolve()),
                 "reason": f"{command} has task-dependent or abstract write scope",
                 "allowed": [expand(pattern, change_id) for pattern in patterns],
                 "dirty_paths": [],
@@ -274,6 +293,7 @@ def build_role_report(command: str, change_id: str | None, project_root: Path) -
         "cc-role-check",
         issues,
         extra={
+            "project_root": str(project_root.resolve()),
             "command": command,
             "change_id": change_id or "",
             "allowed": [expand(pattern, change_id) for pattern in patterns],
@@ -287,12 +307,29 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--command", help="cc-* command, for example cc-review.")
     parser.add_argument("--change", help="Formal change-id when the command is change-scoped.")
     parser.add_argument("--project-root", help="Project root. Defaults to parent of .claude.")
+    parser.add_argument("--root", help="Explicit Cairness project root; preferred alias for --project-root.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--reset-baseline", action="store_true", help="Clear the role baseline for --change.")
     args = parser.parse_args(argv)
 
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = Path(args.project_root) if args.project_root else claude_root.parent
+    if args.root and args.project_root:
+        parser.error("--root and --project-root are mutually exclusive")
+    context: HarnessContext | None = None
+    if args.project_root:
+        project_root = Path(args.project_root).expanduser().resolve()
+        if not project_root.is_dir():
+            print(f"E_CONTEXT001 legacy project root is not a directory: {args.project_root}", file=sys.stderr)
+            return 2
+    else:
+        try:
+            context = load_harness_context(
+                explicit_root=Path(args.root) if args.root else None,
+                framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            )
+        except HarnessContextError as exc:
+            print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+            return 2
+        project_root = context.project_root
 
     if args.reset_baseline:
         if not args.change:
@@ -322,7 +359,7 @@ def main(argv: list[str]) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else "cc-role-check: --command is required", file=sys.stderr)
         return 1
     try:
-        report = build_role_report(args.command, args.change, project_root)
+        report = build_role_report(args.command, args.change, project_root, context)
     except RuntimeError as exc:
         report = build_issue_report(
             "cc-role-check",

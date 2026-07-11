@@ -369,6 +369,54 @@ def test_change_validation_cli_rejects_missing_root(script: str, tmp_path: Path)
     assert "E_CONTEXT001" in completed.stderr
 
 
+def run_role_context_check(script: Path, project_root: Path, *root_args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), "--command", "cc-apply", *root_args, "--json"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_role_check_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+    (project / ".cairness" / "changes").mkdir(parents=True, exist_ok=True)
+
+    completed = run_role_context_check(framework / "scripts" / "cc-role-check", project)
+
+    assert completed.returncode == 1
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(project.resolve())
+    assert report["issues"][0]["code"] == "E_ROLE001"
+
+
+def test_role_check_root_targets_another_project(harness_project: Path):
+    completed = run_role_context_check(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-role-check",
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["project_root"] == str(harness_project.resolve())
+
+
+def test_role_check_rejects_missing_root(tmp_path: Path):
+    completed = run_role_context_check(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-role-check",
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
