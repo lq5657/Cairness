@@ -252,6 +252,11 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 ## 下一步
 
+跨多个版本推进的产品化与平台化工作统一跟踪于
+`docs/maintenance/productization-roadmap.md`。该路线图按
+Trustworthy Runtime、Product & Core Boundaries、Agent Governance Platform
+三个阶段组织，后续维护会话应先从其中选择一个独立工作项，不在本节继续扩展长期 backlog。
+
 优先继续收口：
 
 1. 逐步把 legacy command / checkpoint 文档移动到维护参考区或删除重复内容。

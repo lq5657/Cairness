@@ -2,6 +2,10 @@
 
 This roadmap orders the next Harness improvements by risk reduction, user impact, and dependency shape.
 
+> 本文档主要记录已经开展的 Harness 底层硬化工作和历史 backlog。
+> 后续“可信 CI → 产品化与核心解耦 → 多 Agent 平台化”三阶段工作统一跟踪于
+> `docs/maintenance/productization-roadmap.md`。新增产品化工作项不得继续堆入本文档。
+
 ## Priority Order
 
 1. **Make explicit validation failures hard**
@@ -100,4 +104,3 @@ Do not build convenience layers before hardening failure semantics. Each stage s
 - 字母编号 backlog 项的新增/完成,须在此表登记并补实测证据。
 - ✅ 完成项保留行用于历史追溯,不删除。
 - 「部分」项需在备注中标明"已有什么、缺什么",禁止只标状态不给证据。
-
