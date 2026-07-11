@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`512 passed`
+- 测试：`515 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，512 个用例 |
+| Tests | 54 个受版本控制文件，515 个用例 |
 
 当前主要事实：
 
@@ -859,6 +859,19 @@ cc-doctor-check --root <project>
 - 剩余：index/lint/subagent-evidence 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
 - 风险/决策：保留 `project_root()` 作为既有纯函数/monkeypatch seam，通过调用期 `ContextVar` 激活 CLI 项目根并在 `finally` 复位，避免全局状态泄漏和大范围函数签名变更。
 - 下一步：迁移已有 `--root` 但尚未使用 Context 的 `cc-index-check`，明确保留其业务错误 `E_INDEX001` 与 Context 错误 `E_CONTEXT001` 的边界。
+
+#### 实施记录 2026-07-12（知识索引根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-index-check` 的项目、state index 和知识分类 catalog 通过 `HarnessContext` 统一；已有 `--root` 升级为完整项目 root 合同，缺失/非法 root 返回 `E_CONTEXT001/2`，有效项目缺失 `index.md` 仍返回 `E_INDEX001/1`。源码 CLI 跨项目和非标准物理 framework 使用目标 framework catalog，默认 JSON 增加 `project_root`。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'index_check_'` → `3 passed`
+  - `rtk pytest -q tests/test_issue_reporting_contract.py tests/test_behavior_cases.py tests/test_require_yaml.py` → `passed`
+  - 最终全量 pytest、Harness/index/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：lint/subagent-evidence/topic-trigger 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
+- 风险/决策：知识分类必须从目标 `context.framework_root` 加载，不能优先使用源码脚本旁 catalog；`lint_index` 增加可选 framework root，保留现有两参数嵌入调用兼容。
+- 下一步：审计 `cc-lint` 的任意路径位置参数与默认 Context root，避免把显式 lint target 误当项目 root。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

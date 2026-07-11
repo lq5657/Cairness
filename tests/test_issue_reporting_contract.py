@@ -109,11 +109,10 @@ def test_lint_emits_structured_issue_on_failure(tmp_path):
     assert proc_text.stderr.startswith("E_LINT001 "), proc_text.stderr
 
 
-def test_index_check_collapses_exit2_to_exit1_with_structured_issue(tmp_path):
-    """E2 stage 5: cc-index-check previously returned exit 2 for a missing
-    index.md (an isolated code). It now returns exit 1 + a structured
-    E_INDEX001 issue, matching the standard Issue-script contract."""
-    proc = _run("cc-index-check", ["--json", "--root", str(tmp_path)])
+def test_index_check_reports_missing_index_in_valid_project(harness_project):
+    """A valid Cairness project missing index.md returns the structured
+    E_INDEX001 business issue; invalid project roots use E_CONTEXT001."""
+    proc = _run("cc-index-check", ["--json", "--root", str(harness_project)])
     assert proc.returncode == 1, f"missing index.md should exit 1, got {proc.returncode}"
     report = json.loads(proc.stdout)
     assert report["status"] == "failed"

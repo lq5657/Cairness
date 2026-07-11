@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, build_report, issues_to_dicts
 
 
@@ -43,11 +44,10 @@ KNOWLEDGE_CATALOG_REL = "runtime/knowledge-categories.yaml"
 HARNESS_REFERENCE_PREFIX = ".claude/"
 
 
-def _load_catalog(root: Path) -> tuple[set[str], set[str]]:
+def _load_catalog(root: Path, framework_root: Path | None = None) -> tuple[set[str], set[str]]:
     """Load (known_categories, forbidden_in_index) from runtime YAML or fall back."""
     candidates = [
-        Path(__file__).resolve().parent.parent / KNOWLEDGE_CATALOG_REL,
-        root / ".claude" / KNOWLEDGE_CATALOG_REL,
+        (framework_root or root / ".claude") / KNOWLEDGE_CATALOG_REL,
     ]
     catalog_path = next((c for c in candidates if c.is_file()), None)
     if catalog_path is None:
@@ -89,7 +89,9 @@ def _is_in_inline_code(line: str, match_start: int) -> bool:
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def strip_comments(text: str) -> str:
@@ -108,8 +110,12 @@ def find_section_for_line(lines: list[str], lineno: int) -> str | None:
     return None
 
 
-def lint_index(index_path: Path, project_root: Path) -> dict[str, Any]:
-    known_categories, forbidden_in_index = _load_catalog(project_root)
+def lint_index(
+    index_path: Path,
+    project_root: Path,
+    framework_root: Path | None = None,
+) -> dict[str, Any]:
+    known_categories, forbidden_in_index = _load_catalog(project_root, framework_root)
     text = index_path.read_text(encoding="utf-8")
     cleaned = strip_comments(text)
     lines = cleaned.splitlines()
@@ -256,7 +262,15 @@ def main() -> int:
     parser.add_argument("--root", help="override project root")
     args = parser.parse_args()
 
-    root = Path(args.root).resolve() if args.root else project_root()
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    root = context.project_root
     index_path = root / ".cairness" / "knowledge" / "index.md"
 
     if not index_path.is_file():
@@ -267,7 +281,13 @@ def main() -> int:
             "cc-index-check",
             [Issue("E_INDEX001", str(index_path), "index.md not found")],
             status="failed",
-            extra={"index_path": str(index_path), "entry_count": 0, "findings": [], "summary": {}},
+            extra={
+                "project_root": str(root),
+                "index_path": str(index_path),
+                "entry_count": 0,
+                "findings": [],
+                "summary": {},
+            },
         )
         if args.json:
             print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -275,7 +295,10 @@ def main() -> int:
             print(f"cc-index-check: error: index.md not found at {index_path}", file=sys.stderr)
         return 1
 
-    result = lint_index(index_path, root)
+    result = {
+        "project_root": str(root),
+        **lint_index(index_path, root, context.framework_root),
+    }
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
