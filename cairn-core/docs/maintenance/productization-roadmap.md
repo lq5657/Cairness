@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`440 passed`
+- 测试：`445 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 52 个受版本控制文件，440 个用例 |
+| Tests | 53 个受版本控制文件，445 个用例 |
 
 当前主要事实：
 
@@ -167,7 +167,7 @@ Phase 3：Agent Governance Platform
 | `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 完成 | 无 |
 | `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 完成 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
-| `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 待开始 | `P1-04`、`P1-05` |
+| `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 完成 | `P1-04`、`P1-05` |
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
@@ -496,11 +496,11 @@ declared
   - `rtk cairn-core/scripts/cc-eval cairn-core/evals` → `ok`
 - 剩余：在 GitHub-hosted Ubuntu/macOS matrix 上观察并记录五种 fixture smoke 的 run URL；本地不将未观察到的远端 run URL 作为证据。
 - 风险/决策：没有把工具链缺失伪装成成功或静默跳过；项目若明确关闭 capability，仍不执行该 capability。
-- 下一步：先补 GitHub-hosted fixture matrix 证据，再推进 `P1-06` 的正式 `cc-cairn doctor` 产品入口。
+- 下一步：先补 GitHub-hosted fixture matrix 证据，再复核 Phase 1 完成定义。
 
 ### 8.8 `P1-06` `cc-cairn doctor` 产品入口
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：用户不需要知道内部 `cc-doctor-check`、schema/readset/workflow 关系，也能获得完整接入诊断。
 
@@ -521,6 +521,21 @@ cc-cairn doctor --fix
 - `--fix` 在变更前展示计划，支持 dry-run；
 - 修复失败可回滚；
 - doctor 通过后，Phase 1 的标准验证路径应可运行。
+
+#### 实施记录 2026-07-11
+
+- 状态：完成
+- Change/提交：`P1-06`（由本 change 的 Git 提交记录）
+- 已完成：新增正式 `cc-cairn doctor`、`--json`、`--fix` 和 `--fix --apply` 入口；产品报告统一汇总系统/项目版本、effective config、Claude Code adapter、CI、语言 profile、workflow/readset 生成视图和项目状态。内部 `cc-doctor-check` 继续作为静态检查器，产品层为所有问题补充稳定 code、cause、fix hint 和 doc ref。
+- 安全修复：默认 `--fix` 仅输出 dry-run 计划；首批自动修复仅创建缺失的 `.cairness` 状态目录，`--apply` 显式执行，任一步失败会撤销本次已创建目录。标准 profile 不强制 loop 专用的 `loop-audit`，loop profile 才纳入检查。
+- 验证：
+  - `rtk pytest -q tests/test_cli_doctor.py` → `5 passed`
+  - `rtk pytest -q tests/test_cli_doctor.py tests/test_doctor_command_entrypoints.py tests/test_platform_support.py` → `19 passed`
+  - `rtk python3 cairn-core/cc-cairn.py doctor --json` → `passed`
+  - 最终全量 pytest、Harness/readset/eval 与 diff 检查见本 change 完成验证。
+- 剩余：无。P1-05/P1-01 尚缺的真实 GitHub-hosted run 证据不伪计入本项完成证据。
+- 风险/决策：不让产品 CLI 重复实现底层静态检查；不提供会修改业务代码、自动接受风险或改变治理策略的修复动作。
+- 下一步：取得 P1-05/P1-01 的 GitHub-hosted 证据后复核 Phase 1 完成定义；本地产品化开发可进入 `P2-01` 或优先建设 P0 的 `P2-05 HarnessContext`。
 
 ## 9. Phase 2 — Product & Core Boundaries
 
@@ -1160,7 +1175,7 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：补 `P1-05` 的 GitHub-hosted fixture matrix 证据，然后推进 `P1-06 cc-cairn doctor 产品入口`。`P1-01` 的本地实现已交付，待 release 发布后补真实 GitHub-hosted fixture 证据。
+当前推荐下一项：补 `P1-05` 与 `P1-01` 的真实 GitHub-hosted 证据，并逐条复核 Phase 1 完成定义；本地下一项优先考虑 P0 的 `P2-05 统一 HarnessContext 与 root 解析`。
 
 开始前应先：
 

@@ -5,6 +5,7 @@ Usage:
     cc-cairn init                                Initialize Cairness in the current project
     cc-cairn update                              Pull latest release and update framework
     cc-cairn version                             Show installed and project versions
+    cc-cairn doctor [--json] [--fix] [--apply]   Diagnose and safely repair readiness
     cc-cairn loop enable                         Enable Loop Engineering (autonomous) mode
     cc-cairn loop disable                        Disable Loop Engineering, revert to standard
     cc-cairn loop status                         Show current loop mode status
@@ -28,6 +29,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.doctor import apply_fix_plan, build_doctor_report, fix_plan
 from harness_runtime.versioning import VersionMetadataError, read_version
 
 MIN_PYTHON = (3, 9)
@@ -685,6 +687,59 @@ def cmd_version():
         print(f"Update available: system v{installed_ver} → v{source_version}")
     if source_version != "invalid metadata" and project_ver not in {"not initialized", "invalid metadata", source_version}:
         print(f"Update available: project v{project_ver} → v{source_version}")
+
+
+def cmd_doctor(argv):
+    parser = argparse.ArgumentParser(prog="cc-cairn doctor")
+    parser.add_argument("--json", action="store_true", help="emit the complete structured readiness report")
+    parser.add_argument("--fix", action="store_true", help="show a safe repair plan (dry-run by default)")
+    parser.add_argument("--apply", action="store_true", help="apply the safe repair plan; requires --fix")
+    args = parser.parse_args(argv)
+    if args.apply and not args.fix:
+        parser.error("--apply requires --fix")
+
+    project_root = Path.cwd().resolve()
+    project_framework = project_root / ".claude"
+    framework_root = project_framework if (project_framework / "VERSION").is_file() else Path(__file__).resolve().parent
+    system_root = get_data_dir()
+    report = build_doctor_report(project_root, framework_root, system_root)
+
+    if args.fix:
+        actions = fix_plan(report)
+        if args.apply:
+            try:
+                apply_fix_plan(actions)
+            except OSError as exc:
+                print(f"E_DOCTOR_FIX {exc}", file=sys.stderr)
+                raise SystemExit(1)
+            report = build_doctor_report(project_root, framework_root, system_root)
+            report["fix"] = {"mode": "applied", "actions": actions}
+        else:
+            report["fix"] = {"mode": "dry-run", "actions": actions}
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(f"Cairness Doctor: {report['status']}")
+        summary = report["summary"]
+        print(f"  Version: project={summary['versions']['project']} system={summary['versions']['system']}")
+        print(f"  Config: {summary['config']['status']}")
+        print(f"  Adapter: {summary['adapter']['name']} ({summary['adapter']['status']})")
+        print(f"  CI: {summary['ci']['status']}")
+        language = summary["language_profile"]
+        print(f"  Language: {language['name'] or language['status']} ({language['source']})")
+        if report["fix"]["mode"] == "dry-run":
+            print("Safe repair plan (dry-run):")
+            for action in report["fix"]["actions"]:
+                print(f"  {action['code']} {action['action']} {action['path']}")
+            if report["fix"]["actions"]:
+                print("Run cc-cairn doctor --fix --apply to apply this plan.")
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+            print(f"  cause: {issue['cause']}", file=sys.stderr)
+            print(f"  fix: {issue['fix_hint']}", file=sys.stderr)
+            print(f"  docs: {issue['doc_ref']}", file=sys.stderr)
+    raise SystemExit(1 if report["status"] == "failed" else 0)
 
 
 def cmd_config(argv):
@@ -1523,7 +1578,7 @@ def main():
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|update|version|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|doctor|config|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -1533,6 +1588,8 @@ def main():
         cmd_update()
     elif cmd == "version":
         cmd_version()
+    elif cmd == "doctor":
+        cmd_doctor(sys.argv[2:])
     elif cmd == "config":
         cmd_config(sys.argv[2:])
     elif cmd == "loop":
@@ -1541,7 +1598,7 @@ def main():
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|update|version|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|doctor|config|loop|add-knowledge>")
         sys.exit(1)
 
 

@@ -46,6 +46,24 @@ cc-cairn init
 
 在当前项目下生成 `.claude/`（框架运行时）、`.cairness/`（项目状态目录）和 `.github/workflows/`（CI 模板）。初始化后启动 Claude Code，框架自动生效。
 
+## 环境诊断
+
+使用正式 Doctor 入口检查安装版本、项目版本、有效配置、Claude Code adapter、CI、语言 profile、生成视图和项目状态：
+
+```bash
+cc-cairn doctor
+cc-cairn doctor --json
+```
+
+每个问题都包含稳定 code、cause、修复建议和文档引用。安全修复默认只展示计划；明确添加 `--apply` 后才会执行：
+
+```bash
+cc-cairn doctor --fix          # dry-run，展示计划
+cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
+```
+
+当前自动修复范围限于缺失的 Cairness 项目状态目录；不会修改业务代码、接受风险或改变治理策略。修复过程中发生错误时，本次已经创建的目录会回滚。
+
 ## 框架升级
 
 ```bash

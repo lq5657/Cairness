@@ -2,6 +2,7 @@
 
 ## 1.1.0 - 2026-07-07
 
+- Added the product-facing `cc-cairn doctor` entrypoint with version/config/adapter/CI/language/generated-view/project-state summaries, actionable structured issues, and dry-run-first rollback-safe repairs.
 - Completed the Harness configuration contract: schema version 1 now defines every shipped field and validates nested boundaries, project overrides live at `.cairness/harness.config.yaml`, and `cc-cairn config migrate` explicitly adds a missing version field only on `--apply`. All complete-install configuration consumers now resolve the same effective configuration and source trace.
 - Added the first formal Harness configuration contract: `schemas/harness-config.schema.json`, shared `harness_runtime.config` loading with recursive unknown-field/type checks, centralized defaults from the shipped `harness.config.yaml`, explicit `CAIRNESS_PROFILE` source tracking, and `cc-cairn config validate|explain`. Doctor and `cc-verify` now hard-fail invalid effective configuration instead of silently falling back.
 - Added a checksum-pinned GitHub composite Action and ephemeral CI runner. Target-project workflows now bootstrap an exact Cairness release from an immutable archive/SHA256SUMS pair, cache the archive, support full/harness-only/project-only modes, and emit GitHub annotations plus Job Summary without requiring a committed or preinstalled `.claude/`. A tag-driven release workflow builds the versioned archive and checksum file and validates tag/artifact/internal VERSION consistency before publishing.
