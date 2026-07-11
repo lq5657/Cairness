@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`476 passed`
+- 测试：`482 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，476 个用例 |
+| Tests | 54 个受版本控制文件，482 个用例 |
 
 当前主要事实：
 
@@ -757,6 +757,19 @@ cc-doctor-check --root <project>
 - 剩余：仍有 behavior/event/help/stats/deps 等脚本从 `__file__` 或 cwd 独立推导 root；P2-05 保持部分完成。
 - 风险/决策：`cc-eval` 的位置参数是 eval 资产根而非项目根，保留兼容并用独立 `--root` 表达项目；release 元数据检查仍只在识别到源码仓资产时启用。
 - 下一步：审计剩余核心脚本，按读写边界分批迁移并最终清零重复 root loader。
+
+#### 实施记录 2026-07-11（行为与事件入口迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-behavior-check` 与 `cc-event-check` 支持共享 Context、显式 `--root`、跨项目源码 CLI、缺失 root 硬失败和统一 `project_root` JSON。Behavior 默认从物理 framework 加载 case，并在回放前映射作为完整 token 出现的逻辑 `.claude/.cairness` 命令路径；Event 默认从 Context state root 发现事件日志。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k runtime_evidence_cli` → `6 passed`
+  - `rtk pytest -q tests/test_behavior_cases.py tests/test_event_check.py tests/test_event_check_baseline.py` → `17 passed`
+  - 最终全量 pytest、Harness/behavior/event/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：Behavior 在非标准 framework 下回放完整内置矩阵仍依赖 role/deps/spec-scope/sync 等下游脚本完成 Context 迁移；P2-05 保持部分完成。
+- 风险/决策：不通过临时创建 `.claude` symlink 伪造兼容；入口只映射独立逻辑路径 token，不改写任意 shell 字符串。
+- 下一步：迁移 Behavior 下游的 `cc-role-check`、`cc-deps`、`cc-spec-scope-check` 与 `cc-sync-check`，再恢复非标准 framework 全矩阵验收。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

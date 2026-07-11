@@ -234,6 +234,85 @@ def test_boundary_cli_rejects_missing_explicit_root(script: str, tmp_path: Path)
     assert "E_CONTEXT001" in completed.stderr
 
 
+@pytest.mark.parametrize("script", ["cc-behavior-check", "cc-event-check"])
+def test_runtime_evidence_cli_runs_when_framework_directory_is_not_named_claude(tmp_path: Path, script: str):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+    (project / ".cairness" / "changes").mkdir(parents=True, exist_ok=True)
+    paths: list[str] = []
+    if script == "cc-behavior-check":
+        cases = project / "behavior-cases"
+        cases.mkdir()
+        (cases / "smoke.yaml").write_text(
+            "id: smoke\ncommand:\n  - " + sys.executable + "\n  - -c\n  - \"print('context-smoke')\"\n"
+            "expect_exit_code: 0\nexpect_output_contains:\n  - context-smoke\n",
+            encoding="utf-8",
+        )
+        paths.append(str(cases))
+
+    completed = subprocess.run(
+        [sys.executable, str(framework / "scripts" / script), *paths, "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["status"] == "passed"
+    assert report["project_root"] == str(project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-behavior-check", "cc-event-check"])
+def test_runtime_evidence_cli_explicit_root_targets_another_project(harness_project: Path, script: str):
+    paths: list[str] = []
+    if script == "cc-behavior-check":
+        cases = harness_project / "behavior-cases"
+        cases.mkdir()
+        (cases / "smoke.yaml").write_text(
+            "id: smoke\ncommand:\n  - " + sys.executable + "\n  - -c\n  - \"print('context-smoke')\"\n"
+            "expect_exit_code: 0\nexpect_output_contains:\n  - context-smoke\n",
+            encoding="utf-8",
+        )
+        paths.append(str(cases))
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            *paths,
+            "--root",
+            str(harness_project),
+            "--json",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    assert json.loads(completed.stdout)["project_root"] == str(harness_project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-behavior-check", "cc-event-check"])
+def test_runtime_evidence_cli_rejects_missing_explicit_root(script: str, tmp_path: Path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            "--root",
+            str(tmp_path / "missing"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

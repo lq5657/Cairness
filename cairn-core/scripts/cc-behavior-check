@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.issues import Issue, issues_to_dicts
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 
 def read(path: Path) -> str:
@@ -30,11 +32,15 @@ def load_yaml(path: Path, issues: list[Issue]) -> Any:
         return None
 
 
-def discover_cases(project_root: Path, inputs: list[Path]) -> list[Path]:
+def discover_cases(project_root: Path, inputs: list[Path], context: HarnessContext | None = None) -> list[Path]:
     if inputs:
         candidates = inputs
     else:
-        candidates = [project_root / ".claude" / "evals" / "behavior"]
+        candidates = [
+            context.resolve_path(".claude/evals/behavior")
+            if context is not None
+            else project_root / ".claude" / "evals" / "behavior"
+        ]
     cases: set[Path] = set()
     for item in candidates:
         if item.is_file() and item.suffix in {".yaml", ".yml"}:
@@ -68,11 +74,23 @@ def validate_case_shape(path: Path, case: Any, issues: list[Issue]) -> dict[str,
     return case
 
 
-def run_case(path: Path, case: dict[str, Any], project_root: Path, issues: list[Issue]) -> None:
+def run_case(
+    path: Path,
+    case: dict[str, Any],
+    project_root: Path,
+    issues: list[Issue],
+    context: HarnessContext | None = None,
+) -> None:
     env = os.environ.copy()
     env["CC_BEHAVIOR_REPLAY"] = "1"
+    command = [
+        str(context.resolve_path(token))
+        if context is not None and token.startswith((".claude/", ".cairness/"))
+        else token
+        for token in case["command"]
+    ]
     completed = subprocess.run(
-        case["command"],
+        command,
         cwd=str(project_root),
         text=True,
         capture_output=True,
@@ -94,28 +112,40 @@ def run_case(path: Path, case: dict[str, Any], project_root: Path, issues: list[
             issues.append(Issue("E_BEHAVIOR009", str(path), f"missing expected output {expected!r}"))
 
 
-def build_report(inputs: list[Path]) -> dict[str, Any]:
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = claude_root.parent
+def build_report(inputs: list[Path], context: HarnessContext | None = None) -> dict[str, Any]:
+    context = context or load_harness_context(framework_hint=Path(__file__).resolve().parent.parent)
+    project_root = context.project_root
     issues: list[Issue] = []
-    cases = discover_cases(project_root, inputs)
+    cases = discover_cases(project_root, inputs, context)
     for path in cases:
         case = validate_case_shape(path, load_yaml(path, issues), issues)
         if case is not None:
-            run_case(path, case, project_root, issues)
+            run_case(path, case, project_root, issues, context)
     return {
         "tool": "cc-behavior-check",
         "status": "failed" if issues else "passed",
+        "project_root": str(project_root),
         "checked_cases": [str(path) for path in cases],
         "issues": issues_to_dicts(issues),
     }
 
 
 def main(argv: list[str]) -> int:
-    json_output = "--json" in argv
-    paths = [Path(arg) for arg in argv if arg != "--json"]
-    report = build_report(paths)
-    if json_output:
+    parser = argparse.ArgumentParser(description="Replay Harness behavior eval cases.")
+    parser.add_argument("paths", nargs="*", help="Behavior case files or directories.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
+    args = parser.parse_args(argv)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    report = build_report([Path(path) for path in args.paths], context)
+    if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report["status"] == "passed":
         print("cc-behavior-check: ok")
@@ -127,4 +157,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-
