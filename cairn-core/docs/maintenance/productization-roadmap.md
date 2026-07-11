@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`515 passed`
+- 测试：`518 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，515 个用例 |
+| Tests | 54 个受版本控制文件，518 个用例 |
 
 当前主要事实：
 
@@ -872,6 +872,19 @@ cc-doctor-check --root <project>
 - 剩余：lint/subagent-evidence/topic-trigger 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
 - 风险/决策：知识分类必须从目标 `context.framework_root` 加载，不能优先使用源码脚本旁 catalog；`lint_index` 增加可选 framework root，保留现有两参数嵌入调用兼容。
 - 下一步：审计 `cc-lint` 的任意路径位置参数与默认 Context root，避免把显式 lint target 误当项目 root。
+
+#### 实施记录 2026-07-12（Subagent 证据检查根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-subagent-evidence-check` 新增 `--root`、缺失根的 `E_CONTEXT001`、源码 CLI 跨项目与非标准物理 framework 支持；默认检查目录来自 `context.state_root/changes`，Finding Location 相对 `context.project_root` 校验，JSON 增加 `project_root`。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'evidence_check_'` → `3 passed`
+  - `rtk pytest -q tests/test_subagent_evidence_check.py tests/test_review_parse.py tests/test_verify_collects_issues.py tests/test_behavior_cases.py` → `passed`
+  - 最终全量 pytest、Harness/evidence/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：topic-trigger/lint 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
+- 风险/决策：显式位置 paths 继续作为任意 change 目录/根传入，不重解释为项目 root；只有 `--root` 和默认输入使用完整 Context 合同，避免破坏已有临时 fixture 与嵌入调用。
+- 下一步：迁移 `cc-topic-trigger` 的项目、framework patterns、Git cwd 和内容扫描根，清除模块级硬编码源码根。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

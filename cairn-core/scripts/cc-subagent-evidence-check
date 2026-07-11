@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from change_docs import finding_rows, named_table_rows, parse_findings, parse_location
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, build_report
 
 
@@ -209,10 +210,19 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Runtime evidence-projection checks for subagent output.")
     parser.add_argument("paths", nargs="*", help="Change dirs or roots to check (default: .cairness/changes).")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
     args = parser.parse_args(argv)
 
-    root = Path.cwd()
-    inputs = [Path(arg) for arg in args.paths] if args.paths else [root / ".cairness" / "changes"]
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    root = Path.cwd().resolve() if args.paths and not args.root else context.project_root
+    inputs = [Path(arg) for arg in args.paths] if args.paths else [context.state_root / "changes"]
     issues: list[Issue] = []
     checked = 0
     skipped = 0
@@ -227,6 +237,7 @@ def main(argv: list[str]) -> int:
         "cc-subagent-evidence-check",
         issues,
         extra={
+            "project_root": str(root),
             "checked_roots": [str(path) for path in inputs],
             "checked_changes": checked,
             "skipped_changes": skipped,

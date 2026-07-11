@@ -754,6 +754,81 @@ def test_index_check_rejects_missing_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_evidence_change(project_root: Path, change_id: str) -> None:
+    change = project_root / ".cairness" / "changes" / change_id
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "spec.md").write_text("# Spec\n", encoding="utf-8")
+    (change / "tasks.md").write_text("# Tasks\n", encoding="utf-8")
+    (change / "review.md").write_text(
+        """#### 2.1 验证映射检查
+
+| 映射编号 | spec.md 声明状态 | 审查结论 | 证据 / 缺口 | 结果 |
+|----------|--------------------|----------|-------------|------|
+
+#### 5. Findings
+
+| 级别 | 描述 | 位置 | 建议动作 | 状态 |
+|------|------|------|----------|------|
+| 无 | | | | |
+""",
+        encoding="utf-8",
+    )
+
+
+def run_evidence_check(script: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *args, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_evidence_check_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_evidence_change(project, "evidence-nonstandard")
+
+    completed = run_evidence_check(
+        framework / "scripts" / "cc-subagent-evidence-check",
+        project,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(project.resolve())
+    assert report["checked_changes"] == 1
+
+
+def test_evidence_check_root_targets_another_project(harness_project: Path):
+    write_evidence_change(harness_project, "evidence-explicit")
+
+    completed = run_evidence_check(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-subagent-evidence-check",
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+    assert report["checked_changes"] == 1
+
+
+def test_evidence_check_rejects_missing_root(tmp_path: Path):
+    completed = run_evidence_check(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-subagent-evidence-check",
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
