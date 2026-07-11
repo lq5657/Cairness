@@ -4,6 +4,12 @@
 
 本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。
 
+### GitHub-hosted CI 自举
+
+新生成的目标项目 workflow 不再要求 runner 预装 `.claude/`。它固定 Action 与 framework 版本，从同一 GitHub release 下载 archive 和 `SHA256SUMS`，校验后临时运行。已有项目可重新运行 `cc-cairn init`，若 CI 模板有本地修改，新模板会写为 `.cairness.new` 供人工合并。
+
+发布者必须通过 tag-driven `release.yml` 生成 `cairness-<version>.tar.gz` 和 `SHA256SUMS`；在 release 资产可下载并通过一次真实 GitHub-hosted fixture workflow 前，不应宣称该版本 CI 分发完整可用。
+
 ### 平台支持边界
 
 正式支持的平台为 Linux、macOS 和 WSL；原生 Windows 为实验性。原生 Windows 安装器和 `cc-cairn.cmd` 入口保留，但 Bash Git hook、POSIX executable bit 和 extensionless runtime script 尚无原生 CI 证据，完整治理能力应通过 WSL 使用。

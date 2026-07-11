@@ -52,6 +52,21 @@ cc-cairn init
 cc-cairn update       # 拉取最新版并更新系统安装和项目 .claude/（不触碰 .cairness/）
 ```
 
+## GitHub Actions
+
+`cc-cairn init` 生成的 `.github/workflows/cairness.yml` 使用固定版本 Action，从对应 release 下载 `cairness-<version>.tar.gz` 和 `SHA256SUMS`，校验后临时安装 `.claude/`。标准 GitHub-hosted runner 不需要预装 Cairness，也不会隐式跟随 `main` 或 `latest`。
+
+```yaml
+- uses: lq5657/Cairness/.github/actions/cairness@v1.1.0
+  with:
+    version: 1.1.0
+    archive-url: https://github.com/lq5657/Cairness/releases/download/v1.1.0/cairness-1.1.0.tar.gz
+    checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.1.0/SHA256SUMS
+    mode: full
+```
+
+`mode` 可设为 `full`、`harness-only` 或 `project-only`。下载、checksum 或内部 VERSION 不一致会硬失败；验证问题以 GitHub annotation 和 Job Summary 输出。
+
 ## Loop Engineering（自主循环模式）快速开关
 
 ```bash

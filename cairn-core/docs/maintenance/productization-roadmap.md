@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`408 passed`
+- 测试：`417 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 48 个受版本控制文件，408 个用例 |
+| Tests | 49 个受版本控制文件，417 个用例 |
 
 当前主要事实：
 
@@ -162,7 +162,7 @@ Phase 3：Agent Governance Platform
 
 | ID | 工作项 | 阶段 | 优先级 | 状态 | 关键依赖 |
 |---|---|---|---|---|---|
-| `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 待开始 | `P1-02` |
+| `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 部分完成 | `P1-02` |
 | `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 完成 | 无 |
 | `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 完成 | 无 |
 | `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 待开始 | `P1-02` |
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -264,6 +264,21 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - 本项不实现 Dashboard；
 - 本项不实现多 Agent adapter；
 - 不允许 CI 隐式升级到最新 `main`。
+
+#### 实施记录 2026-07-11
+
+- 状态：部分完成
+- Change/提交：`P1-01`（由本 change 的 Git 提交记录）
+- 已完成：checksum 固定的 ephemeral runner、composite Action、archive cache、annotation/Job Summary、full/harness-only/project-only 模式、release archive/SHA256SUMS workflow，以及无需预装 `.claude/` 的目标项目模板。
+- 验证：
+  - `rtk pytest -q tests/test_cairness_action.py` → `9 passed`
+  - 本地 clean Git checkout 从 archive + SHA256SUMS 自举并执行真实 `cc-verify --harness-only` → `passed`
+  - `rtk pytest -q` → `417 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`（全部 Harness 子检查通过）
+  - `rtk git diff --check` → `passed`
+- 剩余：发布 Action 与 `v1.1.0` archive/checksum 后，在 `ubuntu-latest` 对 fixture 执行一次真实 GitHub-hosted workflow 并记录 run URL。
+- 风险/决策：没有远端 workflow 证据前不得标记完成；模板不追随 `main/latest`。
+- 下一步：提交本地已验证基础设施；发布后补远端验收，期间可并行推进 `P1-04`。
 
 ### 8.4 `P1-02` 版本与发布元数据单一源
 

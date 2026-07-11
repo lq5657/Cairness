@@ -1,0 +1,35 @@
+name: Cairness Verify
+description: Download a checksum-pinned Cairness release and run deterministic verification.
+inputs:
+  version:
+    description: Exact Cairness release version.
+    required: true
+  checksums-url:
+    description: Immutable SHA256SUMS URL from the same release.
+    required: true
+  archive-url:
+    description: Immutable release archive URL.
+    required: true
+  mode:
+    description: full, harness-only, or project-only.
+    required: false
+    default: full
+runs:
+  using: composite
+  steps:
+    - name: Restore Cairness archive cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/cairness-cache
+        key: cairness-${{ inputs.version }}
+    - name: Run Cairness verification
+      shell: bash
+      run: >-
+        python3 "${{ github.action_path }}/cairness-ci.py"
+        --version "${{ inputs.version }}"
+        --archive "${{ inputs.archive-url }}"
+        --checksums-url "${{ inputs.checksums-url }}"
+        --mode "${{ inputs.mode }}"
+        --project-root "${{ github.workspace }}"
+        --cache-dir "${{ runner.temp }}/cairness-cache"
+        --summary "${{ github.step_summary }}"

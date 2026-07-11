@@ -1,0 +1,42 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build versioned release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(<cairn-core/VERSION)"
+          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          mkdir -p dist
+          tar \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='node_modules' \
+            --exclude='settings.local.json' \
+            -czf "dist/cairness-${VERSION}.tar.gz" cairn-core cairn_install cairn_uninstall
+          (
+            cd dist
+            sha256sum "cairness-${VERSION}.tar.gz" > SHA256SUMS
+          )
+          cairn-core/scripts/cc-upgrade-check --require-release-tag \
+            --release-artifact "dist/cairness-${VERSION}.tar.gz"
+      - name: Publish immutable release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cairness-*.tar.gz
+            dist/SHA256SUMS

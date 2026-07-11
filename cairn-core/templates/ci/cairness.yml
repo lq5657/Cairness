@@ -6,17 +6,10 @@ name: cairness
 # from .claude/templates/ci/). Turns Cairness's deterministic checks into a
 # push/PR gate.
 #
-# IMPORTANT — the .claude/ bootstrap gap:
-#   .claude/ is git-ignored (it is an upgradeable framework root, not project
-#   state), so a fresh `git checkout` on a CI runner contains NO .claude/. The
-#   cc-verify script therefore does not exist until Cairness is installed on the
-#   runner. This workflow does NOT auto-install (no clone, no cairn_install) by
-#   design — install is a human-supported step (run `cc-cairn init`).
-#
-#   Consequence: on a stock GitHub-hosted runner this gate will FAIL with a clear
-#   message telling you to install Cairness. To actually run the checks, run on a
-#   runner where `cc-cairn init` has been executed (a self-hosted runner / dev
-#   machine), so .claude/scripts/cc-verify is present.
+# The action downloads an exact release archive, verifies SHA-256, installs it
+# ephemerally into .claude/, and caches the archive. Update version, URL, and
+# checksums URL together; checksum/network failures
+# are hard failures and the action never follows main/latest implicitly.
 #
 # Scope (per CLAUDE.md defaults, minus what is redundant for target projects):
 #   * cc-verify --harness-only  — project-compliance sub-checks (change/spec
@@ -37,20 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Guard — Cairness framework must be installed on the runner
-        run: |
-          if [ ! -x .claude/scripts/cc-verify ]; then
-            echo "::error::Cairness framework is not installed on this runner."
-            echo "::error::.claude/scripts/cc-verify is missing (the .claude/ directory is git-ignored and is not part of the checkout)."
-            echo "::error::Install Cairness on the runner first, then re-run:"
-            echo "::error::    git clone https://github.com/lq5657/Cairness.git /tmp/cairness && python3 /tmp/cairness/cairn_install && cc-cairn init"
-            echo "::error::On a stock GitHub-hosted runner this gate is expected to fail; use a runner where Cairness is already installed."
-            exit 1
-          fi
-          echo "Cairness framework present: $(.claude/scripts/cc-verify --version 2>/dev/null || echo 'cc-verify')"
-
-      - name: Verify — harness compliance (spec/change/knowledge consistency)
-        run: .claude/scripts/cc-verify --harness-only --verbose
-
-      - name: Verify — project code (language profile checks)
-        run: .claude/scripts/cc-verify --project-only --verbose
+      - name: Verify with pinned Cairness
+        uses: lq5657/Cairness/.github/actions/cairness@v1.1.0
+        with:
+          version: 1.1.0
+          archive-url: https://github.com/lq5657/Cairness/releases/download/v1.1.0/cairness-1.1.0.tar.gz
+          checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.1.0/SHA256SUMS
+          mode: full
