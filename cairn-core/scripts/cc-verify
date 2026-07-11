@@ -16,6 +16,7 @@ from pathlib import Path
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 from change_docs import named_table_rows, parse_findings
 
@@ -797,9 +798,10 @@ def resolution_error_message(status: str, errors: tuple[str, ...]) -> str:
     return f"language profile status={status}"
 
 
-def build_report(args: argparse.Namespace) -> dict[str, object]:
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = claude_root.parent
+def build_report(args: argparse.Namespace, context: HarnessContext | None = None) -> dict[str, object]:
+    context = context or load_harness_context(framework_hint=Path(__file__).resolve().parent.parent)
+    claude_root = context.framework_root
+    project_root = context.project_root
     changes_root = project_root / ".cairness" / "changes"
     target_project_root = (project_root / args.fixture).resolve() if args.fixture else project_root
     config_path = claude_root / "harness.config.yaml"
@@ -814,9 +816,14 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
     harness_changed = has_harness_changes(changed_paths, project_root) if args.changed_only else False
     resolution = (
-        resolve_language_profile(project_root, target_root=target_project_root, include_project_state=False)
+        resolve_language_profile(
+            project_root,
+            target_root=target_project_root,
+            include_project_state=False,
+            framework_root=claude_root,
+        )
         if args.fixture
-        else resolve_language_profile(project_root)
+        else resolve_language_profile(project_root, framework_root=claude_root)
     )
 
     results: list[dict[str, object]] = []
@@ -1032,9 +1039,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--output", help="Write JSON report to this file.")
     parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
     args = parser.parse_args(argv)
 
-    report = build_report(args)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    report = build_report(args, context)
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`445 passed`
+- 测试：`463 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 53 个受版本控制文件，445 个用例 |
+| Tests | 54 个受版本控制文件，463 个用例 |
 
 当前主要事实：
 
@@ -172,7 +172,7 @@ Phase 3：Agent Governance Platform
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 待开始 | `P2-05`、`P1-04` |
-| `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 待开始 | Phase 1 |
+| `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 部分完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 待开始 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 待开始 | `P2-05`、`P2-06` |
@@ -559,7 +559,7 @@ cc-cairn doctor --fix
 
 ### 9.3 `P2-01` Onboarding wizard
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：提供一个从环境检测到首条可执行命令的引导入口。
 
@@ -704,6 +704,19 @@ cc-doctor-check --root <project>
 - 路径解析不再依赖目录名必须为 `.claude`；
 - 所有显式 root 都有越界和不存在校验；
 - 现有命令默认行为保持兼容。
+
+#### 实施记录 2026-07-11（Context 基础层与入口合同）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：新增共享 `HarnessContext`、`AdapterContext` 与统一 loader；支持从项目子目录发现、显式 `--root` 优先、root 不存在/非目录/越界硬失败，以及逻辑 `.claude`/`.cairness` 声明到物理 framework/state root 的映射。`cc-verify`、`cc-schema-check`、`cc-doctor-check` 已提供 `--root` 并保留默认行为；Doctor 和语言解析可在 framework 目录不叫 `.claude` 时运行。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py` → `16 passed`（在新增非标准 framework fixture 前）
+  - `rtk pytest -q tests/test_harness_context.py::test_verify_runs_fixture_when_framework_directory_is_not_named_claude tests/test_language_profile_parity.py tests/test_harness_context.py -k 'not source_cli_explicit_root_targets_another_project'` → `22 passed`
+  - 最终全量 pytest、Harness/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：`cc-schema-check` 内部仍有自有 `project_path`，其他核心脚本也尚未全部迁移；在这些消费者清零前 P2-05 不标完成。
+- 风险/决策：不通过目录名猜测物理 framework；显式 root 从目标项目加载 `.claude`，脚本自运行使用物理 framework hint。
+- 下一步：继续迁移 `cc-schema-check` 的内部声明路径解析，再逐批迁移 readset/workflow/eval/upgrade 等核心消费者。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

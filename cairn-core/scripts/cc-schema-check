@@ -17,6 +17,7 @@ from typing import Any
 
 from harness_runtime import protocol_language_assets
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, add, issues_to_dicts
 from harness_runtime.readsets import (
     derive_readsets as _derive_readsets_shared,
@@ -1717,16 +1718,18 @@ def discover_change_dirs(inputs: list[Path]) -> list[Path]:
     return sorted(dirs)
 
 
-def default_input() -> Path:
+def default_input(context: HarnessContext | None = None) -> Path:
+    if context is not None:
+        return context.state_root / "changes"
     cwd = Path.cwd()
     if (cwd / ".cairness" / "changes").exists():
         return cwd / ".cairness" / "changes"
     return Path(__file__).resolve().parent.parent.parent / ".cairness" / "changes"
 
 
-def build_report(inputs: list[Path]) -> dict[str, Any]:
+def build_report(inputs: list[Path], context: HarnessContext | None = None) -> dict[str, Any]:
     issues: list[Issue] = []
-    claude_root = Path(__file__).resolve().parent.parent
+    claude_root = context.framework_root if context is not None else Path(__file__).resolve().parent.parent
     checked_runtime, checked_topic_rules = validate_runtime_manifests(claude_root, issues)
     change_dirs = discover_change_dirs(inputs)
     for change_dir in change_dirs:
@@ -1737,6 +1740,7 @@ def build_report(inputs: list[Path]) -> dict[str, Any]:
     return {
         "tool": "cc-schema-check",
         "status": "failed" if issues else "passed",
+        "project_root": str(context.project_root) if context is not None else str(claude_root.parent),
         "checked_runtime": checked_runtime,
         "checked_topic_rules": checked_topic_rules,
         "checked_changes": [str(path) for path in change_dirs],
@@ -1748,10 +1752,19 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Check cc_spec Harness document metadata and shape.")
     parser.add_argument("paths", nargs="*", help="Change directories, files, or changes root.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
     args = parser.parse_args(argv)
 
-    inputs = [Path(path) for path in args.paths] if args.paths else [default_input()]
-    report = build_report(inputs)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    inputs = [Path(path) for path in args.paths] if args.paths else [default_input(context)]
+    report = build_report(inputs, context)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report["status"] == "passed":

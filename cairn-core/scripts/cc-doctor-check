@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -15,6 +16,7 @@ from typing import Any
 from harness_runtime import load_runtime_protocol, project_path, resolve_language_profile, runtime_protocol_asset_declarations
 from harness_runtime.issues import Issue, issues_to_dicts
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 
 def read(path: Path) -> str:
@@ -151,11 +153,12 @@ def check_scripts_executable(
             issues.append(Issue("E_DOCTOR005", str(script), "script must be executable"))
 
 
-def check_language_profiles(project_root: Path, protocol_path: Path, protocol: dict[str, Any], issues: list[Issue]) -> None:
+def check_language_profiles(context: HarnessContext, protocol_path: Path, protocol: dict[str, Any], issues: list[Issue]) -> None:
+    project_root = context.project_root
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     for profile_name, declared in sorted(profiles.items()):
-        profile_path = project_path(project_root, declared)
+        profile_path = context.resolve_path(declared) if isinstance(declared, str) else None
         if profile_path is None:
             issues.append(Issue("E_DOCTOR006", str(protocol_path), f"language profile {profile_name} has unsupported path {declared}"))
             continue
@@ -165,10 +168,10 @@ def check_language_profiles(project_root: Path, protocol_path: Path, protocol: d
             continue
         default_fixture = string_at(profile, ["fixtures", "default"])
         if default_fixture:
-            fixture_root = project_root / default_fixture
+            fixture_root = context.resolve_path(default_fixture)
             require_path(fixture_root, "dir", issues, "E_DOCTOR007")
             if fixture_root.exists():
-                resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False)
+                resolution = resolve_language_profile(project_root, target_root=fixture_root, include_project_state=False, framework_root=context.framework_root)
                 if resolution.profile_name != profile_name:
                     issues.append(
                         Issue(
@@ -179,13 +182,15 @@ def check_language_profiles(project_root: Path, protocol_path: Path, protocol: d
                     )
         catalog = string_at(profile, ["technology_decisions", "catalog"])
         if catalog:
-            require_path(project_root / catalog, "file", issues, "E_DOCTOR011")
+            require_path(context.resolve_path(catalog), "file", issues, "E_DOCTOR011")
 
 
-def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
-    core, protocol, protocol_path = load_runtime_protocol(project_root)
+def check_protocol_assets(context: HarnessContext, issues: list[Issue]) -> None:
+    project_root = context.project_root
+    claude_root = context.framework_root
+    core, protocol, protocol_path = load_runtime_protocol(project_root, claude_root)
     for declared in runtime_protocol_asset_declarations(core):
-        asset_path = project_path(project_root, declared)
+        asset_path = context.resolve_path(declared) if isinstance(declared, str) else None
         if asset_path is not None:
             require_path(asset_path, "file", issues, "E_DOCTOR008")
     protocol_path = protocol_path or claude_root / "runtime" / "protocol.yaml"
@@ -196,17 +201,17 @@ def check_protocol_assets(project_root: Path, claude_root: Path, issues: list[Is
         for key in ("success_template", "error_template"):
             value = rendering.get(key)
             if isinstance(value, str):
-                require_path(project_root / value, "file", issues, "E_DOCTOR008")
+                require_path(context.resolve_path(value), "file", issues, "E_DOCTOR008")
     technology_decisions = protocol.get("technology_decisions") if isinstance(protocol.get("technology_decisions"), dict) else {}
     catalog_schema = technology_decisions.get("catalog_schema")
     if isinstance(catalog_schema, str):
-        require_path(project_root / catalog_schema, "file", issues, "E_DOCTOR008")
+        require_path(context.resolve_path(catalog_schema), "file", issues, "E_DOCTOR008")
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     profile = language_profile.get("default")
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     if not isinstance(profile, str) or profile not in profiles:
         issues.append(Issue("E_DOCTOR009", str(protocol_path), "default language profile must be declared"))
-    check_language_profiles(project_root, protocol_path, protocol, issues)
+    check_language_profiles(context, protocol_path, protocol, issues)
 
 
 def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
@@ -253,14 +258,16 @@ def _parse_migrated_command_list(text: str) -> set[str] | None:
     return listed
 
 
-def check_command_entrypoints(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
+def check_command_entrypoints(context: HarnessContext, issues: list[Issue]) -> None:
     """CLAUDE.md '已迁移命令' 列表必须 == core.yaml migrated_commands SSOT.
 
     The migrated-command list in CLAUDE.md is the human-facing entry doc; it
     has no other machine check against core.yaml:migrated_commands. A drift
     here is otherwise invisible until an agent reads stale docs.
     """
-    core, _, _ = load_runtime_protocol(project_root)
+    project_root = context.project_root
+    claude_root = context.framework_root
+    core, _, _ = load_runtime_protocol(project_root, claude_root)
     migrated = set(core.get("migrated_commands") or []) if isinstance(core, dict) else set()
     claude_md = claude_root / "CLAUDE.md"
     if not claude_md.is_file():
@@ -342,9 +349,10 @@ def check_loop_mode_readiness(project_root: Path, claude_root: Path, issues: lis
         pass  # jsonschema not installed — skip deep validation, presence check is sufficient
 
 
-def build_report() -> dict[str, Any]:
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = claude_root.parent
+def build_report(context: HarnessContext | None = None) -> dict[str, Any]:
+    context = context or load_harness_context(framework_hint=Path(__file__).resolve().parent.parent)
+    claude_root = context.framework_root
+    project_root = context.project_root
     issues: list[Issue] = []
     platform_id = detect_platform(sys.platform, dict(os.environ))
     platform = platform_report(load_platform_support(claude_root), platform_id)
@@ -358,9 +366,9 @@ def build_report() -> dict[str, Any]:
         issues,
         requires_executable_bit=platform["requires_posix_executable_bit"],
     )
-    check_protocol_assets(project_root, claude_root, issues)
+    check_protocol_assets(context, issues)
     check_ci_fixture_paths(project_root, issues)
-    check_command_entrypoints(project_root, claude_root, issues)
+    check_command_entrypoints(context, issues)
     check_loop_mode_readiness(project_root, claude_root, issues)
     return {
         "tool": "cc-doctor-check",
@@ -372,9 +380,20 @@ def build_report() -> dict[str, Any]:
 
 
 def main(argv: list[str]) -> int:
-    json_output = "--json" in argv
-    report = build_report()
-    if json_output:
+    parser = argparse.ArgumentParser(description="Check Cairness adoption readiness.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
+    args = parser.parse_args(argv)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    report = build_report(context)
+    if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report["status"] == "passed":
         print("cc-doctor-check: ok")

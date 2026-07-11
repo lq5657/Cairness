@@ -89,11 +89,19 @@ def load_yaml_mapping(path: Path) -> dict[str, Any]:
     return loaded if isinstance(loaded, dict) else {}
 
 
-def project_path(project_root: Path, declared: Any) -> Path | None:
+def project_path(
+    project_root: Path,
+    declared: Any,
+    *,
+    framework_root: Path | None = None,
+    state_root: Path | None = None,
+) -> Path | None:
     if not isinstance(declared, str):
         return None
-    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        return project_root / declared
+    if declared.startswith(".claude/"):
+        return (framework_root or project_root / ".claude") / declared.removeprefix(".claude/")
+    if declared.startswith(".cairness/"):
+        return (state_root or project_root / ".cairness") / declared.removeprefix(".cairness/")
     return None
 
 
@@ -121,8 +129,8 @@ def runtime_protocol_asset_declarations(core: dict[str, Any]) -> list[str]:
     ]
 
 
-def merge_protocol_asset(project_root: Path, protocol: dict[str, Any], declared: str) -> None:
-    path = project_path(project_root, declared)
+def merge_protocol_asset(project_root: Path, protocol: dict[str, Any], declared: str, framework_root: Path | None = None) -> None:
+    path = project_path(project_root, declared, framework_root=framework_root)
     asset = load_yaml_mapping(path) if path is not None else {}
     if not isinstance(asset, dict):
         return
@@ -130,29 +138,30 @@ def merge_protocol_asset(project_root: Path, protocol: dict[str, Any], declared:
         protocol[key] = value
 
 
-def load_runtime_protocol(project_root: Path) -> tuple[dict[str, Any], dict[str, Any], Path | None]:
-    core = load_yaml_mapping(project_root / ".claude" / "runtime" / "core.yaml")
+def load_runtime_protocol(project_root: Path, framework_root: Path | None = None) -> tuple[dict[str, Any], dict[str, Any], Path | None]:
+    framework_root = framework_root or project_root / ".claude"
+    core = load_yaml_mapping(framework_root / "runtime" / "core.yaml")
     config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
+    protocol_path = project_path(project_root, config["protocol"], framework_root=framework_root)
     protocol = load_yaml_mapping(protocol_path) if protocol_path is not None else {}
     for declared in (config["technology_decisions"], config["language_profile"]):
         if declared and declared != config["protocol"]:
-            merge_protocol_asset(project_root, protocol, declared)
+            merge_protocol_asset(project_root, protocol, declared, framework_root)
     return core, protocol, protocol_path
 
 
-def protocol_language_profiles(project_root: Path, protocol: dict[str, Any]) -> list[LanguageProfile]:
+def protocol_language_profiles(project_root: Path, protocol: dict[str, Any], framework_root: Path | None = None) -> list[LanguageProfile]:
     language_profile = protocol.get("language_profile") if isinstance(protocol.get("language_profile"), dict) else {}
     profiles = language_profile.get("profiles") if isinstance(language_profile.get("profiles"), dict) else {}
     loaded_profiles: list[LanguageProfile] = []
     for name, declared in sorted(profiles.items()):
-        path = project_path(project_root, declared)
+        path = project_path(project_root, declared, framework_root=framework_root)
         if path is None:
             continue
         data = load_yaml_mapping(path)
         technology_decisions = data.get("technology_decisions") if isinstance(data.get("technology_decisions"), dict) else {}
         catalog_declared = technology_decisions.get("catalog") if isinstance(technology_decisions.get("catalog"), str) else ""
-        catalog_path = project_path(project_root, catalog_declared)
+        catalog_path = project_path(project_root, catalog_declared, framework_root=framework_root)
         loaded_profiles.append(
             LanguageProfile(
                 name=name,
@@ -200,9 +209,10 @@ def resolve_language_profile(
     *,
     target_root: Path | None = None,
     include_project_state: bool = True,
+    framework_root: Path | None = None,
 ) -> LanguageResolution:
-    _, protocol, _ = load_runtime_protocol(project_root)
-    profiles = protocol_language_profiles(project_root, protocol)
+    _, protocol, _ = load_runtime_protocol(project_root, framework_root)
+    profiles = protocol_language_profiles(project_root, protocol, framework_root)
     resolution = (
         protocol.get("language_profile", {}).get("resolution")
         if isinstance(protocol.get("language_profile"), dict)
