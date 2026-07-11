@@ -29,6 +29,7 @@ from typing import Any
 
 from harness_runtime import require_yaml
 from harness_runtime.config import load_harness_config
+from harness_runtime.context import HarnessContextError, load_harness_context
 
 from change_docs import parse_findings
 
@@ -70,7 +71,9 @@ class RootCauseCluster:
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def load_config(root: Path) -> dict[str, Any]:
@@ -386,10 +389,19 @@ def main() -> None:
         "--root-causes", action="store_true", help="根因聚类分布"
     )
     parser.add_argument("--trend", action="store_true", help="时间趋势")
+    parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现")
     args = parser.parse_args()
 
-    root = project_root()
-    config = load_config(root)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        sys.exit(2)
+    root = context.project_root
+    config = context.config.values
     gate_config = get_gate_config(config)
 
     reviews = discover_reviews(root)
@@ -400,6 +412,7 @@ def main() -> None:
 
     if args.json:
         output: dict[str, Any] = {
+            "project_root": str(root),
             "gates": {
                 gid: {
                     "trigger_count": g.trigger_count,

@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums as _load_enums
+from harness_runtime.context import HarnessContextError, load_harness_context
 
 from change_docs import parse_findings
 
@@ -60,7 +61,9 @@ ROOT_CAUSE_SUGGESTIONS: dict[str, str] = {
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -328,9 +331,18 @@ def main() -> None:
     parser.add_argument("--findings", action="store_true", help="仅输出 finding 统计")
     parser.add_argument("--root-causes", action="store_true", help="根因聚类与改进建议")
     parser.add_argument("--trend", action="store_true", help="输出时间趋势")
+    parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现")
     args = parser.parse_args()
 
-    root = project_root()
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        sys.exit(2)
+    root = context.project_root
     events = discover_events(root)
     reviews = discover_reviews(root)
     stats = compute_stats(events, reviews)
@@ -343,7 +355,7 @@ def main() -> None:
         elif args.trend:
             print(json.dumps(stats["trends"], indent=2, ensure_ascii=False))
         else:
-            print(json.dumps(stats, indent=2, ensure_ascii=False))
+            print(json.dumps({"project_root": str(root), **stats}, indent=2, ensure_ascii=False))
     else:
         if args.findings:
             f = stats["findings"]

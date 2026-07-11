@@ -473,6 +473,73 @@ def test_deps_rejects_missing_project_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_stats_event(project_root: Path, command: str) -> None:
+    change = project_root / ".cairness" / "changes" / "stats-context"
+    change.mkdir(parents=True, exist_ok=True)
+    event = {
+        "command": command,
+        "change_id": "stats-context",
+        "gate_effectiveness": {
+            "gates_triggered": [
+                {"gate_id": command, "was_real_error": True, "finding_ids": []}
+            ]
+        },
+    }
+    (change / "events.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+
+
+def run_stats(script: Path, cwd: Path, *root_args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *root_args, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize("script", ["cc-stats", "cc-gate-stats"])
+def test_stats_uses_context_from_nonstandard_framework(script: str, tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_stats_event(project, "cc-nonstandard")
+
+    completed = run_stats(framework / "scripts" / script, project)
+
+    assert completed.returncode == 0, completed.stderr
+    assert "cc-nonstandard" in completed.stdout
+
+
+@pytest.mark.parametrize("script", ["cc-stats", "cc-gate-stats"])
+def test_stats_root_targets_another_project(script: str, harness_project: Path):
+    write_stats_event(harness_project, "cc-explicit-stats")
+
+    completed = run_stats(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+    assert "cc-explicit-stats" in completed.stdout
+
+
+@pytest.mark.parametrize("script", ["cc-stats", "cc-gate-stats"])
+def test_stats_rejects_missing_root(script: str, tmp_path: Path):
+    completed = run_stats(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
