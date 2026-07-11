@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`509 passed`
+- 测试：`512 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，509 个用例 |
+| Tests | 54 个受版本控制文件，512 个用例 |
 
 当前主要事实：
 
@@ -846,6 +846,19 @@ cc-doctor-check --root <project>
 - 剩余：index/wave/lint/subagent-evidence 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
 - 风险/决策：保留 `load_harness_config(root)` 和领域纯函数作为既有测试/嵌入 API；产品入口直接消费 `context.config`，避免在自定义 framework 下重新拼接 `.claude`。
 - 下一步：单独迁移具有生成写边界的 `cc-wave-plan`，保留既有 `project_root()` monkeypatch seam。
+
+#### 实施记录 2026-07-12（Wave 生成写边界迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-wave-plan` 新增 `--root`、缺失根的 `E_CONTEXT001`、源码 CLI 跨项目与非标准物理 framework 支持；生成、写入与一致性检查在单次调用内共享 Context 项目根，默认 JSON 增加 `project_root`，`--check` 的 bare issue array/文本合同保持不变。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'wave_plan_'` → `3 passed`
+  - `rtk pytest -q tests/test_wave_plan.py tests/test_wave_plan_script.py tests/test_verify_collects_issues.py tests/test_behavior_cases.py` → `passed`
+  - 最终全量 pytest、Harness/wave/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：index/lint/subagent-evidence 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
+- 风险/决策：保留 `project_root()` 作为既有纯函数/monkeypatch seam，通过调用期 `ContextVar` 激活 CLI 项目根并在 `finally` 复位，避免全局状态泄漏和大范围函数签名变更。
+- 下一步：迁移已有 `--root` 但尚未使用 Context 的 `cc-index-check`，明确保留其业务错误 `E_INDEX001` 与 Context 错误 `E_CONTEXT001` 的边界。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

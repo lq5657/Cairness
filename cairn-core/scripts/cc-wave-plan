@@ -15,18 +15,26 @@ import argparse
 import json
 import re
 import sys
+from contextvars import ContextVar
 from pathlib import Path
 
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue
 from harness_runtime.wave_plan import TaskNode, plan_waves
 
 from change_docs import parse_involved_files
 
 E_WAVE003 = "E_WAVE003"
+_ACTIVE_PROJECT_ROOT: ContextVar[Path | None] = ContextVar("wave_plan_project_root", default=None)
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    active_root = _ACTIVE_PROJECT_ROOT.get()
+    if active_root is not None:
+        return active_root
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def change_dir(change_id: str) -> Path:
@@ -106,23 +114,37 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--max-parallel", type=int, default=10)
+    parser.add_argument("--root", help="Explicit Cairness project root; defaults to discovery")
     args = parser.parse_args(argv)
 
-    if args.check:
-        issues = check_consistency(args.change, args.max_parallel)
-        if issues:
-            print(json.dumps([{"code": i.code, "path": i.path, "message": i.message} for i in issues], ensure_ascii=False, indent=2))
-            return 1
-        print("wave-plan consistent")
-        return 0
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
 
-    plan = generate(args.change, args.max_parallel)
-    if args.json:
-        print(json.dumps(plan, ensure_ascii=False, indent=2))
-    else:
-        write_plan_json(args.change, plan)
-        print(f"wave-plan.json written for {args.change}")
-    return 0 if plan["valid"] else 1
+    token = _ACTIVE_PROJECT_ROOT.set(context.project_root)
+    try:
+        if args.check:
+            issues = check_consistency(args.change, args.max_parallel)
+            if issues:
+                print(json.dumps([{"code": i.code, "path": i.path, "message": i.message} for i in issues], ensure_ascii=False, indent=2))
+                return 1
+            print("wave-plan consistent")
+            return 0
+
+        plan = generate(args.change, args.max_parallel)
+        if args.json:
+            print(json.dumps({"project_root": str(context.project_root), **plan}, ensure_ascii=False, indent=2))
+        else:
+            write_plan_json(args.change, plan)
+            print(f"wave-plan.json written for {args.change}")
+        return 0 if plan["valid"] else 1
+    finally:
+        _ACTIVE_PROJECT_ROOT.reset(token)
 
 
 if __name__ == "__main__":

@@ -615,6 +615,75 @@ def test_readonly_check_rejects_missing_root(script: str, tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_wave_tasks(project_root: Path, change_id: str) -> None:
+    change = project_root / ".cairness" / "changes" / change_id
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "tasks.md").write_text(
+        "#### Task 1: Context\n* **涉及文件**: context.go\n",
+        encoding="utf-8",
+    )
+
+
+def run_wave_plan(
+    script: Path,
+    cwd: Path,
+    change_id: str,
+    *root_args: str,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *root_args, "--change", change_id, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_wave_plan_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_wave_tasks(project, "wave-nonstandard")
+
+    completed = run_wave_plan(
+        framework / "scripts" / "cc-wave-plan",
+        project,
+        "wave-nonstandard",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout)["change_id"] == "wave-nonstandard"
+
+
+def test_wave_plan_root_targets_another_project(harness_project: Path):
+    write_wave_tasks(harness_project, "wave-explicit")
+
+    completed = run_wave_plan(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-wave-plan",
+        REPO_ROOT,
+        "wave-explicit",
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["change_id"] == "wave-explicit"
+    assert report["project_root"] == str(harness_project.resolve())
+
+
+def test_wave_plan_rejects_missing_root(tmp_path: Path):
+    completed = run_wave_plan(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-wave-plan",
+        REPO_ROOT,
+        "wave-missing",
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
