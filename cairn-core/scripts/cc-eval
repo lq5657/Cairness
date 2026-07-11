@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextvars import ContextVar
 import json
 import re
 import sys
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.issues import Issue, issues_to_dicts
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 
 CASE_REQUIRED_KEYS = {"id", "input", "expected_reads", "forbidden_actions", "expected_checks", "rubric"}
@@ -83,6 +85,8 @@ INTENT_TOKENS = {
     "write",
 }
 
+_ACTIVE_CONTEXT: ContextVar[HarnessContext | None] = ContextVar("eval_context", default=None)
+
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -127,7 +131,8 @@ def project_path(project_root: Path, declared: str) -> Path | None:
     if declared == "README.md":
         return project_root / declared
     if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        return project_root / declared
+        context = _ACTIVE_CONTEXT.get()
+        return context.resolve_path(declared) if context is not None else project_root / declared
     return None
 
 
@@ -319,47 +324,52 @@ def validate_case_semantics(
             issues.append(Issue("E_EVAL031", str(path), f"expected check is not grounded in expected runtime/rule reads: {check}"))
 
 
-def build_report(root: Path) -> dict[str, Any]:
+def build_report(root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
     issues: list[Issue] = []
-    claude_root = root.parent
-    project_root = claude_root.parent
-    core = load_runtime_core(claude_root, issues)
-    cases_dir = root / "cases"
-    rubrics_dir = root / "rubrics"
-    if not cases_dir.exists():
-        issues.append(Issue("E_EVAL002", str(cases_dir), "missing cases directory"))
-        cases = []
-    else:
-        cases = sorted(cases_dir.glob("*.yaml"))
-        if not cases:
-            issues.append(Issue("E_EVAL003", str(cases_dir), "no eval cases found"))
+    claude_root = context.framework_root if context is not None else root.parent
+    project_root = context.project_root if context is not None else claude_root.parent
+    token = _ACTIVE_CONTEXT.set(context)
+    try:
+        core = load_runtime_core(claude_root, issues)
+        cases_dir = root / "cases"
+        rubrics_dir = root / "rubrics"
+        if not cases_dir.exists():
+            issues.append(Issue("E_EVAL002", str(cases_dir), "missing cases directory"))
+            cases = []
+        else:
+            cases = sorted(cases_dir.glob("*.yaml"))
+            if not cases:
+                issues.append(Issue("E_EVAL003", str(cases_dir), "no eval cases found"))
 
-    rubric_ids: set[str] = set()
-    if not rubrics_dir.exists():
-        issues.append(Issue("E_EVAL004", str(rubrics_dir), "missing rubrics directory"))
-        rubrics = []
-    else:
-        rubrics = sorted(rubrics_dir.glob("*.yaml"))
-        if not rubrics:
-            issues.append(Issue("E_EVAL005", str(rubrics_dir), "no rubrics found"))
-        for path in rubrics:
-            rubric = load_yaml(path, issues)
-            if rubric is None:
+        rubric_ids: set[str] = set()
+        if not rubrics_dir.exists():
+            issues.append(Issue("E_EVAL004", str(rubrics_dir), "missing rubrics directory"))
+            rubrics = []
+        else:
+            rubrics = sorted(rubrics_dir.glob("*.yaml"))
+            if not rubrics:
+                issues.append(Issue("E_EVAL005", str(rubrics_dir), "no rubrics found"))
+            for path in rubrics:
+                rubric = load_yaml(path, issues)
+                if rubric is None:
+                    continue
+                rubric_id = validate_rubric(path, rubric, issues)
+                if rubric_id:
+                    rubric_ids.add(rubric_id)
+
+        for path in cases:
+            case = load_yaml(path, issues)
+            if case is None:
                 continue
-            rubric_id = validate_rubric(path, rubric, issues)
-            if rubric_id:
-                rubric_ids.add(rubric_id)
-
-    for path in cases:
-        case = load_yaml(path, issues)
-        if case is None:
-            continue
-        validate_case_semantics(path, case, project_root, core, rubric_ids, issues)
+            validate_case_semantics(path, case, project_root, core, rubric_ids, issues)
+    finally:
+        _ACTIVE_CONTEXT.reset(token)
 
     return {
         "tool": "cc-eval",
         "status": "failed" if issues else "passed",
         "mode": "semantic",
+        "project_root": str(project_root.resolve()),
         "cases": [str(path) for path in cases],
         "rubrics": [str(path) for path in rubrics],
         "issues": issues_to_dicts(issues),
@@ -370,9 +380,19 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Validate cc_spec Harness eval case structure and semantic grounding.")
     parser.add_argument("root", nargs="?", default=".claude/evals", help="Eval root containing cases/ and rubrics/.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", dest="project_root", help="Explicit Cairness project root; overrides automatic discovery.")
     args = parser.parse_args(argv)
 
-    report = build_report(Path(args.root))
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.project_root) if args.project_root else None,
+            framework_hint=None if args.project_root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    eval_root = context.resolve_path(".claude/evals") if args.root == ".claude/evals" else Path(args.root).resolve()
+    report = build_report(eval_root, context)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report["status"] == "passed":

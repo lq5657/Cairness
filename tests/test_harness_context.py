@@ -171,6 +171,69 @@ def test_generator_cli_rejects_missing_explicit_root(script: str, tmp_path: Path
     assert "E_CONTEXT001" in completed.stderr
 
 
+@pytest.mark.parametrize("script", ["cc-eval", "cc-upgrade-check"])
+def test_boundary_cli_runs_when_framework_directory_is_not_named_claude(tmp_path: Path, script: str):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+    for relative in (".cairness/changes", ".cairness/audits", ".cairness/discussions"):
+        (project / relative).mkdir(parents=True, exist_ok=True)
+
+    completed = subprocess.run(
+        [sys.executable, str(framework / "scripts" / script), "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["status"] == "passed"
+    assert report["project_root"] == str(project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-eval", "cc-upgrade-check"])
+def test_boundary_cli_explicit_root_targets_another_project(harness_project: Path, script: str):
+    prepare_initialized_project(harness_project)
+    for relative in (".cairness/audits", ".cairness/discussions"):
+        (harness_project / relative).mkdir(parents=True, exist_ok=True)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            "--root",
+            str(harness_project),
+            "--json",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    assert json.loads(completed.stdout)["project_root"] == str(harness_project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-eval", "cc-upgrade-check"])
+def test_boundary_cli_rejects_missing_explicit_root(script: str, tmp_path: Path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            "--root",
+            str(tmp_path / "missing"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

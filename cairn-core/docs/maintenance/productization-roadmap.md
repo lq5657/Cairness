@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`470 passed`
+- 测试：`476 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，470 个用例 |
+| Tests | 54 个受版本控制文件，476 个用例 |
 
 当前主要事实：
 
@@ -743,6 +743,20 @@ cc-doctor-check --root <project>
 - 剩余：`cc-eval`、`cc-upgrade-check` 及其他核心入口仍需迁移；P2-05 保持部分完成。
 - 风险/决策：生成结果的逻辑路径是稳定公开合同，不能因安装目录变化而写入机器相关绝对路径。
 - 下一步：迁移 `cc-eval` 与 `cc-upgrade-check` 的 root 解析，覆盖 CI ephemeral 与升级边界。
+
+#### 实施记录 2026-07-11（Eval 与升级边界迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-eval` 与 `cc-upgrade-check` 直接消费 `HarnessContext` 并支持 `--root`。Eval 的默认 `.claude/evals` 和语义 grounding 路径映射到物理 framework，同时保留位置参数作为自定义 eval 目录；upgrade 的 protocol/language assets、framework/state 边界和版本文档检查支持 symlink、源码 CLI 跨项目及非标准 framework。
+- 验证：
+  - `rtk pytest -q <cc-eval Context nodes> tests/test_behavior_cases.py` → `7 passed`
+  - `rtk cairn-core/scripts/cc-eval cairn-core/evals` → `ok`
+  - `rtk pytest -q <cc-upgrade-check Context nodes> tests/test_upgrade_safety.py tests/test_upgrade_check_pollution.py tests/test_upgrade_version_metadata.py tests/test_platform_support.py` → `49 passed`
+  - 最终全量 pytest、Harness/readset/workflow/eval/upgrade 与 diff 检查见本子任务完成验证。
+- 剩余：仍有 behavior/event/help/stats/deps 等脚本从 `__file__` 或 cwd 独立推导 root；P2-05 保持部分完成。
+- 风险/决策：`cc-eval` 的位置参数是 eval 资产根而非项目根，保留兼容并用独立 `--root` 表达项目；release 元数据检查仍只在识别到源码仓资产时启用。
+- 下一步：审计剩余核心脚本，按读写边界分批迁移并最终清零重复 root loader。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
