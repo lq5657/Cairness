@@ -4,6 +4,10 @@
 
 本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。
 
+### Harness 配置合同
+
+`harness.config.yaml` 现在由正式 schema 和共享 loader 校验。拼错字段、非法 profile、错误类型和非法 policy 值会硬失败；`cc-cairn config validate` 可用于 CI，`cc-cairn config explain <key> --json` 会报告 effective value 与 `default/framework_config/environment` 来源。当前仅 `CAIRNESS_PROFILE` 是正式环境覆盖项。
+
 ### GitHub-hosted CI 自举
 
 新生成的目标项目 workflow 不再要求 runner 预装 `.claude/`。它固定 Action 与 framework 版本，从同一 GitHub release 下载 archive 和 `SHA256SUMS`，校验后临时运行。已有项目可重新运行 `cc-cairn init`，若 CI 模板有本地修改，新模板会写为 `.cairness.new` 供人工合并。

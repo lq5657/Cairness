@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairness.dev/schemas/harness-config.schema.json",
+  "title": "Cairness Harness Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile": {"type": "string", "enum": ["minimal", "standard", "strict", "loop"]},
+    "paths": {"$ref": "#/$defs/stringMap"},
+    "git": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "auto_commit": {"type": "boolean"}, "commit_per_task": {"type": "boolean"},
+        "allow_main_branch_apply": {"type": "boolean"}, "require_clean_worktree_before_commit": {"type": "boolean"},
+        "pre_commit_orphan_check": {"type": "boolean"}, "orphan_policy": {"type": "string", "enum": ["strict", "warn"]}
+      }
+    },
+    "workflow": {"$ref": "#/$defs/stringMap"},
+    "runtime": {"$ref": "#/$defs/stringMap"},
+    "memory": {"$ref": "#/$defs/stringMap"},
+    "docs": {"$ref": "#/$defs/stringMap"},
+    "interaction": {"type": "object"},
+    "budgets": {"type": "object"},
+    "gate_effectiveness": {"type": "object"},
+    "dependencies": {"type": "object"},
+    "validation": {"type": "object"}
+  },
+  "$defs": {
+    "stringMap": {"type": "object", "additionalProperties": {"type": "string"}}
+  }
+}

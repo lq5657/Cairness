@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
+from harness_runtime.config import HarnessConfigError, load_harness_config
 
 from change_docs import named_table_rows, parse_findings
 
@@ -779,7 +780,12 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     changes_root = project_root / ".cairness" / "changes"
     target_project_root = (project_root / args.fixture).resolve() if args.fixture else project_root
     config_path = claude_root / "harness.config.yaml"
-    config = load_yaml_mapping(config_path) if config_path.exists() else {}
+    try:
+        config = load_harness_config(config_path).values
+        config_error = ""
+    except HarnessConfigError as exc:
+        config = {}
+        config_error = str(exc)
     change_dir = changes_root / args.change if args.change else None
     changed_paths = git_changed_paths(project_root) if args.changed_only else []
     changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
@@ -791,6 +797,8 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
     )
 
     results: list[dict[str, object]] = []
+    if config_error:
+        results.append(failed_step("harness-config", "harness", config_error, project_root))
     if args.change and change_dir and not change_dir.exists():
         results.append(
             {

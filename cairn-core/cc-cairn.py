@@ -27,6 +27,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.versioning import VersionMetadataError, read_version
 
 MIN_PYTHON = (3, 9)
@@ -684,6 +685,32 @@ def cmd_version():
         print(f"Update available: system v{installed_ver} → v{source_version}")
     if source_version != "invalid metadata" and project_ver not in {"not initialized", "invalid metadata", source_version}:
         print(f"Update available: project v{project_ver} → v{source_version}")
+
+
+def cmd_config(argv):
+    parser = argparse.ArgumentParser(prog="cc-cairn config")
+    parser.add_argument("action", choices=("validate", "explain"))
+    parser.add_argument("key", nargs="?")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    path = Path.cwd() / ".claude" / "harness.config.yaml"
+    try:
+        config = load_harness_config(path)
+    except HarnessConfigError as exc:
+        print(f"E_CONFIG001 {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    if args.action == "validate":
+        payload = {"status": "passed", "path": str(path)}
+        print(json.dumps(payload) if args.json else "harness config: valid")
+        return
+    value = config.values
+    if args.key:
+        for part in args.key.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        payload = {"key": args.key, "value": value, "source": config.source(args.key)}
+    else:
+        payload = {"values": config.values, "sources": config.sources}
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 KNOWLEDGE_INDEX_CATEGORIES_FALLBACK = [
@@ -1497,6 +1524,8 @@ def main():
         cmd_update()
     elif cmd == "version":
         cmd_version()
+    elif cmd == "config":
+        cmd_config(sys.argv[2:])
     elif cmd == "loop":
         cmd_loop(sys.argv[2:])
     elif cmd == "add-knowledge":

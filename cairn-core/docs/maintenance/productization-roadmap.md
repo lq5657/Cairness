@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`417 passed`
+- 测试：`423 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 49 个受版本控制文件，417 个用例 |
+| Tests | 50 个受版本控制文件，423 个用例 |
 
 当前主要事实：
 
@@ -165,7 +165,7 @@ Phase 3：Agent Governance Platform
 | `P1-01` | GitHub-hosted CI 可直接运行 | Phase 1 | P0 | 部分完成 | `P1-02` |
 | `P1-02` | 版本与发布元数据单一源 | Phase 1 | P0 | 完成 | 无 |
 | `P1-03` | 平台支持矩阵与 Windows 边界 | Phase 1 | P0 | 完成 | 无 |
-| `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 待开始 | `P1-02` |
+| `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 部分完成 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
 | `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 待开始 | `P1-04`、`P1-05` |
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
@@ -373,7 +373,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.6 `P1-04` Harness 配置 schema 与有效配置诊断
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：`harness.config.yaml` 成为版本化、可校验、可解释的正式合同。
 
@@ -402,6 +402,17 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - 所有消费配置的脚本共享同一配置加载和默认值逻辑；
 - `config explain` 能指出值来源：默认、框架配置、项目覆盖或环境变量；
 - 配置迁移有版本策略，不静默删除用户字段。
+
+#### 实施记录 2026-07-11
+
+- 状态：部分完成
+- Change/提交：`P1-04`（由本 change 的 Git 提交记录）
+- 已完成：正式 config schema、共享 loader、完整模板默认值、递归 unknown field/type 校验、profile/policy enum 校验、`CAIRNESS_PROFILE` 来源跟踪、`config validate|explain`、Doctor/verify 硬失败接入。
+- 验证：`rtk pytest -q tests/test_harness_config.py tests/test_doctor_command_entrypoints.py tests/test_verify_collects_issues.py tests/test_loop_command.py` → `31 passed`。
+- 全量验证：`rtk pytest -q` → `423 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → `passed`；`rtk git diff --check` → `passed`。
+- 剩余：迁移 budget、gate-stats、readset、loop CLI 与 pre-commit hook 的直接读取；把 interaction/budgets/validation 等开放 object 收紧为逐字段 schema；增加 schema version/migration policy。
+- 风险/决策：不在共享消费者清零前标记完成；默认值唯一来源继续是发布的完整 `harness.config.yaml`，不新增镜像 defaults 文件。
+- 下一步：继续 P1-04 剩余消费者与 schema 收紧。
 
 ### 8.7 `P1-05` 五语言 profile/fixture 对称验收
 

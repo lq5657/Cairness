@@ -14,6 +14,7 @@ from typing import Any
 
 from harness_runtime import load_runtime_protocol, project_path, resolve_language_profile, runtime_protocol_asset_declarations
 from harness_runtime.issues import Issue, issues_to_dicts
+from harness_runtime.config import HarnessConfigError, load_harness_config
 
 
 def read(path: Path) -> str:
@@ -76,6 +77,7 @@ def check_required_layout(project_root: Path, claude_root: Path, issues: list[Is
         (claude_root / "workflows" / "cc-workflow.yaml", "file"),
         (claude_root / "harness.config.yaml", "file"),
         (claude_root / "schemas" / "runtime-core.schema.json", "file"),
+        (claude_root / "schemas" / "harness-config.schema.json", "file"),
         (claude_root / "schemas" / "command-protocol.schema.json", "file"),
         (claude_root / "schemas" / "language-profile.schema.json", "file"),
         (claude_root / "schemas" / "technology-decision-catalog.schema.json", "file"),
@@ -352,6 +354,10 @@ def build_report() -> dict[str, Any]:
     platform_id = detect_platform(sys.platform, dict(os.environ))
     platform = platform_report(load_platform_support(claude_root), platform_id)
     check_required_layout(project_root, claude_root, issues)
+    try:
+        load_harness_config(claude_root / "harness.config.yaml")
+    except HarnessConfigError as exc:
+        issues.append(Issue("E_DOCTOR018", str(claude_root / "harness.config.yaml"), str(exc)))
     check_scripts_executable(
         claude_root,
         issues,
