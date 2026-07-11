@@ -172,7 +172,7 @@ Phase 3：Agent Governance Platform
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 待开始 | `P2-05`、`P1-04` |
-| `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 部分完成 | Phase 1 |
+| `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 待开始 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 待开始 | `P2-05`、`P2-06` |
@@ -591,7 +591,7 @@ cc-cairn onboard
 
 ### 9.4 `P2-02` 场景化产品 profile
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：把内部技术 profile 转换为用户可理解的采用场景。
 
@@ -924,6 +924,22 @@ cc-doctor-check --root <project>
 - 剩余：需复核 shell `cc-self-eval`、共享 enums 默认资产根和仅接受任意文件的 delta 工具是否属于 P2-05；完成清零审计前保持部分完成。
 - 风险/决策：旧 `--project-root` 保留为最小目录/嵌入 fixture 兼容接口，仅规范化路径；新 `--root` 才要求完整 Cairness 项目并与旧参数互斥，避免破坏已发布 writer API。
 - 下一步：完成最后 root 审计，按验收标准验证非标准安装、显式越界和默认兼容，再决定 P2-05 状态。
+
+#### 完成记录 2026-07-12（P2-05 清零审计）
+
+- 状态：完成
+- Change/提交：`P2-05`（由本收尾子任务的 Git 提交记录）
+- 已完成：所有拥有 Cairness 项目/framework/state 语义的 Python 产品入口均通过共享 `HarnessContext` 解析默认或严格显式 root；逻辑 `.claude/.cairness` 路径只在物理访问边界映射，生成合同保持逻辑路径。安装副本、源码 CLI 跨项目、CI/fixture、项目子目录、symlink 和非标准 framework 目录均有回归证据；缺失/非目录严格 root 统一返回 `E_CONTEXT001/2`，distinct-semantics 兼容参数保持原合同。
+- 最终验证：
+  - `rtk pytest -q` → `530 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`，所有 Harness 子检查通过
+  - `rtk pytest -q tests/test_harness_context.py` → `passed`，覆盖 discovery、显式 root、非标准 framework 和所有已迁移入口
+  - `rtk pytest -q tests/test_loop_gate_script.py tests/test_enums_single_source.py tests/test_enums_schema_template.py tests/test_delta_check.py` → `passed`
+  - `rtk cairn-core/scripts/cc-readset --check`、`rtk cairn-core/scripts/cc-workflow-gen --check`、`rtk cairn-core/scripts/cc-eval --root .`、`rtk git diff --check` → `passed`
+- 清零审计排除：`cc-delta-check` 只比较两个显式 report 文件，不拥有项目 root；`harness_runtime.enums` 默认从模块自身所在物理 framework 加载并支持显式 framework root，不做项目发现；Bash `cc-self-eval` 是宿主 hook runner，从自身物理安装位置定位项目并提供 `CAIRNESS_PROJECT_ROOT` 明确覆盖。这三者保持独立路径合同，不应依赖 Python Context。
+- 兼容决策：`cc-role-check --project-root`、`cc-event-write --project-root`、`cc-state-transition --project-root` 和 `cc-deps orphans --root` 具有最小 fixture、嵌入写入或 Git 工作树扫描语义，均保留；对应严格完整项目入口分别由统一 `--root` 或全局 `--project-root` 表达。
+- 剩余：无。后续脚本模块化归 `P2-06`，Adapter capability contract 归 `P2-09`，不再扩张 P2-05。
+- 后续依赖：`P2-04`、`P2-06`、`P2-08`、`P2-09` 可基于稳定的 Context 边界推进。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
