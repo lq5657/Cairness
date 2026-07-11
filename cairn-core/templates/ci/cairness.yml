@@ -16,9 +16,9 @@ name: cairness
 #     consistency, knowledge index, upgrade boundary, adoption readiness).
 #     cc-readset/cc-eval are NOT run separately: they validate framework assets
 #     that ship already-in-sync, so they are redundant in a target project.
-#   * cc-verify --project-only  — real language-profile checks on project code
-#     (go test / pytest / lint …); missing toolchains cause sub-checks to skip,
-#     not fail.
+#   * cc-verify --project-only  — real language-profile checks on project code.
+#     A missing required toolchain blocks the check; an explicitly optional
+#     capability may be skipped.
 
 on:
   push:

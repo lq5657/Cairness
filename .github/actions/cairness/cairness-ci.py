@@ -81,7 +81,8 @@ def failure_detail(stdout: str, stderr: str, exit_code: int) -> str:
         return (stderr or stdout).strip() or f"cc-verify exited {exit_code}"
     lines: list[str] = []
     for result in report.get("results", []):
-        if result.get("status") != "failed":
+        status = result.get("status")
+        if status not in {"failed", "blocked"}:
             continue
         issues = result.get("issues") if isinstance(result.get("issues"), list) else []
         if issues:
@@ -90,7 +91,10 @@ def failure_detail(stdout: str, stderr: str, exit_code: int) -> str:
                 for issue in issues[:10]
             )
         else:
-            lines.append(f"{result.get('name', 'cc-verify')}: exit {result.get('exit_code', exit_code)}")
+            if status == "blocked":
+                lines.append(f"{result.get('name', 'cc-verify')}: blocked: {result.get('stderr', 'required verification cannot run')}")
+            else:
+                lines.append(f"{result.get('name', 'cc-verify')}: exit {result.get('exit_code', exit_code)}")
     return "\n".join(lines) or f"cc-verify exited {exit_code}"
 
 

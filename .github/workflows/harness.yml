@@ -24,6 +24,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Verify Harness
         run: .claude/scripts/cc-verify --harness-only --verbose
       - name: Validate Evals
@@ -36,3 +39,8 @@ jobs:
         run: .claude/scripts/cc-verify --fixture .claude/fixtures/cpp-library --verbose
       - name: Verify Java Fixture
         run: .claude/scripts/cc-verify --fixture .claude/fixtures/java-tooling-service --verbose
+      - name: Install TypeScript Fixture Dependencies
+        run: npm install --no-package-lock
+        working-directory: cairn-core/fixtures/typescript-react-spa
+      - name: Verify TypeScript Fixture
+        run: .claude/scripts/cc-verify --fixture .claude/fixtures/typescript-react-spa --verbose

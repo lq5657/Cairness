@@ -338,6 +338,12 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
             "fix_hint": "Confirm the skip is intentional and that the selected language profile declares the expected verification command.",
             "doc_ref": ".claude/harness.config.yaml",
         }
+    if status == "blocked":
+        return {
+            "cause": "A required verification tool is unavailable, so the configured check cannot run.",
+            "fix_hint": "Install the required toolchain or explicitly disable the capability only when the verification is intentionally optional.",
+            "doc_ref": ".claude/runtime/languages/",
+        }
     return {
         "cause": "Verification step failed.",
         "fix_hint": "Inspect stdout, stderr, and fingerprints for the failing command.",
@@ -734,6 +740,23 @@ def skipped_step(name: str, kind: str, reason: str) -> dict[str, object]:
     }
 
 
+def blocked_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, object]:
+    return {
+        "name": name,
+        "kind": kind,
+        "command": [],
+        "cwd": str(cwd),
+        "status": "blocked",
+        "exit_code": 127,
+        "duration_ms": 0,
+        "stdout": "",
+        "stderr": reason,
+        "fingerprints": [reason],
+        "warnings": [],
+        "diagnosis": diagnosis_for(name, "blocked", reason),
+    }
+
+
 def failed_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, object]:
     return {
         "name": name,
@@ -937,11 +960,16 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
                     continue
                 name = capability_display_name(command, capability)
                 if shutil.which(command[0]) is None:
-                    results.append(skipped_step(name, capability_kind(profile, capability), f"{command[0]} not found"))
+                    missing_tool = f"{command[0]} not found"
+                    if entry.get("optional") is True:
+                        results.append(skipped_step(name, capability_kind(profile, capability), missing_tool))
+                    else:
+                        results.append(blocked_step(name, capability_kind(profile, capability), missing_tool, target_project_root))
                     continue
                 results.append(run_step(name, capability_kind(profile, capability), command, target_project_root))
 
     failed = [result for result in results if result["status"] == "failed"]
+    blocked = [result for result in results if result["status"] == "blocked"]
     report = {
         "schema_version": 1,
         "tool": "cc-verify",
@@ -955,7 +983,7 @@ def build_report(args: argparse.Namespace) -> dict[str, object]:
         "language_profile": resolution.profile_name,
         "language_profile_source": resolution.source,
         "changed_files": [str(path) for path in changed_paths],
-        "status": "failed" if failed else "passed",
+        "status": "failed" if failed else "blocked" if blocked else "passed",
         "results": results,
     }
     return report
@@ -967,7 +995,7 @@ def print_text(report: dict[str, object], verbose: bool) -> None:
         status = str(result["status"]).upper()
         command = command_text(result["command"]) if result["command"] else str(result["stderr"])
         print(f"{status:7} {result['name']}: {command}")
-        if verbose or result["status"] == "failed":
+        if verbose or result["status"] in {"failed", "blocked"}:
             stdout = str(result["stdout"]).strip()
             stderr = str(result["stderr"]).strip()
             if stdout:
@@ -1017,7 +1045,7 @@ def main(argv: list[str]) -> int:
         print_text(report, args.verbose)
         if args.output:
             print(f"report: {args.output}")
-    return 1 if report["status"] == "failed" else 0
+    return 1 if report["status"] in {"failed", "blocked"} else 0
 
 
 if __name__ == "__main__":

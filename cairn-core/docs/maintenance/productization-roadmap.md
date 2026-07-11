@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`433 passed`
+- 测试：`440 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 51 个受版本控制文件，433 个用例 |
+| Tests | 52 个受版本控制文件，440 个用例 |
 
 当前主要事实：
 
@@ -112,7 +112,7 @@ cairn-core/scripts/cc-behavior-check
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
 5. `harness.config.yaml` 已拥有完整 schema、effective config 与来源诊断；完整安装中的配置消费者通过共享 loader 读取，项目覆盖位于 `.cairness/harness.config.yaml`。
-6. C++ language profile 的 detection、fixture 和 verification 存在已记录的不一致。
+6. Go、Python、Java、TypeScript、C++ 均由参数化 fixture parity test 覆盖 detection 与必需验证；必需工具链缺失为 `blocked`，可选能力缺失为 `skipped`。
 7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 已成为大型聚合脚本。
 8. Migrated command 使用 runtime-first，但部分维护规则、角色和 eval 说明仍引用 legacy 文档。
 9. 状态仍主要存放在 Markdown 文档和表格中，机器检查依赖 frontmatter、正则和表格解析。
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -312,7 +312,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 #### 实施记录 2026-07-11
 
-- 状态：完成
+- 状态：部分完成
 - Change/提交：`P1-02`（由本 change 的 Git 提交记录）
 - 已完成：
   - 新增共享 `harness_runtime.versioning`，由安装器、`cc-cairn version` 和 `cc-upgrade-check` 共同使用。
@@ -373,7 +373,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.6 `P1-04` Harness 配置 schema 与有效配置诊断
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：`harness.config.yaml` 成为版本化、可校验、可解释的正式合同。
 
@@ -453,7 +453,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 **已有能力**：Go、Python、Java、TypeScript、C++ 均有 language profile、technology catalog 和 fixture。
 
-**剩余问题**：至少 C++ 的 module detection、Makefile fixture 和 verification 命令不一致；其他语言缺少统一成熟度证明。
+**已解决的问题**：C++ 的 `Makefile` detection、fixture 与 verification 命令已对齐；五种语言由统一的参数化 parity 测试提供成熟度证明。
 
 **成熟度等级**：
 
@@ -476,6 +476,27 @@ declared
 - 缺少工具链时明确区分 skipped、blocked 和 failed；
 - 五语言有参数化 parity 测试；
 - Phase 1 正式支持的平台上至少运行 fixture smoke matrix。
+
+#### 实施记录 2026-07-11
+
+- 状态：部分完成
+- Change/提交：`P1-05`（由本 change 的 Git 提交记录）
+- 已完成：新增覆盖 Go、Python、Java、TypeScript、C++ 的参数化 fixture parity 测试；C++ 的 `Makefile` detection 与 `make test`/`make build` verification 已闭环。`cc-verify` 现在将缺少必需工具链报告为 `blocked`（退出非零），仅将 profile 显式可选能力的缺失报告为 `skipped`。GitHub Action annotation 保留 `blocked` 的具体原因；Ubuntu/macOS Harness workflow 加入 Node 22、TypeScript 依赖安装和 TypeScript fixture smoke。
+- 验证：
+  - `rtk pytest -q tests/test_language_profile_parity.py` → `6 passed`（包含必需 C++ toolchain 缺失时的 `blocked` 回归）
+  - `rtk pytest -q tests/test_cairness_action.py tests/test_language_profile_parity.py` → `16 passed`
+  - `rtk cairn-core/scripts/cc-verify --project-only --fixture cairn-core/fixtures/go-http-user-service --json` → `passed`
+  - `rtk cairn-core/scripts/cc-verify --project-only --fixture cairn-core/fixtures/python-cli-package --json` → `passed`
+  - `rtk cairn-core/scripts/cc-verify --project-only --fixture cairn-core/fixtures/java-tooling-service --json` → `passed`
+  - `rtk cairn-core/scripts/cc-verify --project-only --fixture cairn-core/fixtures/typescript-react-spa --json` → `passed`
+  - `rtk cairn-core/scripts/cc-verify --project-only --fixture cairn-core/fixtures/cpp-library --json` → `passed`
+  - `rtk pytest -q` → `440 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`
+  - `rtk cairn-core/scripts/cc-readset --check` → `ok`
+  - `rtk cairn-core/scripts/cc-eval cairn-core/evals` → `ok`
+- 剩余：在 GitHub-hosted Ubuntu/macOS matrix 上观察并记录五种 fixture smoke 的 run URL；本地不将未观察到的远端 run URL 作为证据。
+- 风险/决策：没有把工具链缺失伪装成成功或静默跳过；项目若明确关闭 capability，仍不执行该 capability。
+- 下一步：先补 GitHub-hosted fixture matrix 证据，再推进 `P1-06` 的正式 `cc-cairn doctor` 产品入口。
 
 ### 8.8 `P1-06` `cc-cairn doctor` 产品入口
 
@@ -1139,7 +1160,7 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：`P1-05 五语言 profile/fixture 对称验收`。`P1-01` 的本地实现已交付，待 release 发布后补真实 GitHub-hosted fixture 证据。
+当前推荐下一项：补 `P1-05` 的 GitHub-hosted fixture matrix 证据，然后推进 `P1-06 cc-cairn doctor 产品入口`。`P1-01` 的本地实现已交付，待 release 发布后补真实 GitHub-hosted fixture 证据。
 
 开始前应先：
 

@@ -162,6 +162,20 @@ def test_failure_detail_extracts_stable_issue_annotation():
     assert module["failure_detail"](report, "", 1) == "E_LINT001 README.md: missing"
 
 
+def test_failure_detail_reports_blocked_verification_step():
+    module = __import__("runpy").run_path(str(RUNNER))
+    report = json.dumps({
+        "results": [{
+            "name": "make test",
+            "status": "blocked",
+            "exit_code": 127,
+            "stderr": "make not found",
+        }]
+    })
+
+    assert module["failure_detail"](report, "", 1) == "make test: blocked: make not found"
+
+
 def test_action_and_template_require_explicit_immutable_inputs():
     action = (REPO / ".github" / "actions" / "cairness" / "action.yml").read_text(encoding="utf-8")
     template = (REPO / "cairn-core" / "templates" / "ci" / "cairness.yml").read_text(encoding="utf-8")
