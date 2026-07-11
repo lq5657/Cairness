@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`482 passed`
+- 测试：`488 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，482 个用例 |
+| Tests | 54 个受版本控制文件，488 个用例 |
 
 当前主要事实：
 
@@ -770,6 +770,19 @@ cc-doctor-check --root <project>
 - 剩余：Behavior 在非标准 framework 下回放完整内置矩阵仍依赖 role/deps/spec-scope/sync 等下游脚本完成 Context 迁移；P2-05 保持部分完成。
 - 风险/决策：不通过临时创建 `.claude` symlink 伪造兼容；入口只映射独立逻辑路径 token，不改写任意 shell 字符串。
 - 下一步：迁移 Behavior 下游的 `cc-role-check`、`cc-deps`、`cc-spec-scope-check` 与 `cc-sync-check`，再恢复非标准 framework 全矩阵验收。
+
+#### 实施记录 2026-07-11（Change 校验入口迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-spec-scope-check` 与 `cc-sync-check` 支持共享 Context、`--root`、跨项目源码 CLI、非标准 framework 和缺失 root 硬失败；默认检查目录由 `context.state_root/changes` 提供，JSON 增加统一 `project_root`，显式 paths 语义保持兼容。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k change_validation_cli` → `6 passed`
+  - `rtk pytest -q tests/test_spec_scope_check.py tests/test_issue_reporting_contract.py tests/test_change_docs_parsing.py tests/test_behavior_cases.py` → `48 passed`
+  - 最终全量 pytest、Harness/scope/sync/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：Behavior 下游仍剩 `cc-role-check`、`cc-deps` 等 Git-aware 脚本；P2-05 保持部分完成。
+- 风险/决策：显式 path 参数不强制重解释到项目根，避免破坏现有调用者；只有默认路径由 Context 提供。
+- 下一步：迁移 `cc-role-check` 与 `cc-deps`，统一 Git 工作树和 framework/state root 的边界。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
