@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`503 passed`
+- 测试：`509 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，503 个用例 |
+| Tests | 54 个受版本控制文件，509 个用例 |
 
 当前主要事实：
 
@@ -833,6 +833,19 @@ cc-doctor-check --root <project>
 - 剩余：budget/knowledge/index/wave/lint 等入口仍需迁移或确认其参数边界；P2-05 保持部分完成。
 - 风险/决策：`cc-gate-stats.load_config(root)` 作为既有可测试 API 保留，产品入口直接消费 `context.config`，避免在自定义 framework 下重新硬编码 `.claude`。
 - 下一步：迁移 budget/knowledge/index 等确定性检查入口，继续收敛 Harness 子检查 root。
+
+#### 实施记录 2026-07-12（预算与知识检查根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-budget-check` 与 `cc-knowledge-check` 通过 `HarnessContext` 统一有效 budget 配置和项目 state，新增 `--root`、缺失根的 `E_CONTEXT001`、源码 CLI 跨项目与非标准物理 framework 支持；默认 JSON 增加 `project_root`，已有筛选输出形状保持兼容。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'readonly_check_'` → `6 passed`
+  - `rtk pytest -q tests/test_harness_config_consumers.py tests/test_require_yaml.py tests/test_behavior_cases.py` → `12 passed`
+  - 最终全量 pytest、Harness/budget/knowledge/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：index/wave/lint/subagent-evidence 等入口仍需迁移或确认其显式路径参数边界；P2-05 保持部分完成。
+- 风险/决策：保留 `load_harness_config(root)` 和领域纯函数作为既有测试/嵌入 API；产品入口直接消费 `context.config`，避免在自定义 framework 下重新拼接 `.claude`。
+- 下一步：单独迁移具有生成写边界的 `cc-wave-plan`，保留既有 `project_root()` monkeypatch seam。
 
 ### 9.8 `P2-06` 核心脚本模块化
 

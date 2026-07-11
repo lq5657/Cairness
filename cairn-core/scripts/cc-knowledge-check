@@ -21,6 +21,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.context import HarnessContextError, load_harness_context
+
 
 PATH_PATTERNS = [
     # Backtick-wrapped paths: `src/handler/user.go`, `.cairness/context/dev-map.md`
@@ -35,7 +37,9 @@ PATH_PATTERNS = [
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def extract_paths(content: str) -> list[str]:
@@ -113,9 +117,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Knowledge freshness checker")
     parser.add_argument("--json", action="store_true", help="JSON 格式输出")
     parser.add_argument("--stale-only", action="store_true", help="仅输出过期条目")
+    parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现")
     args = parser.parse_args()
 
-    root = project_root()
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        sys.exit(2)
+    root = context.project_root
     result = check_knowledge_freshness(root)
 
     if args.json:
@@ -124,7 +137,7 @@ def main() -> None:
             print(json.dumps({"stale_entries": stale_entries, "stale_count": result["stale_count"]},
                              indent=2, ensure_ascii=False))
         else:
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            print(json.dumps({"project_root": str(root), **result}, indent=2, ensure_ascii=False))
         return
 
     if args.stale_only:

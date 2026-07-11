@@ -19,11 +19,14 @@ from collections import defaultdict
 from pathlib import Path
 
 from harness_runtime.config import load_harness_config as load_config_contract
+from harness_runtime.context import HarnessContextError, load_harness_context
 from typing import Any
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+    return load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+    ).project_root
 
 
 def load_harness_config(project_root: Path) -> dict[str, Any]:
@@ -139,10 +142,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Token and duration budget checker")
     parser.add_argument("--all", action="store_true", help="Check all events (default: recent only)")
     parser.add_argument("--json", action="store_true", help="JSON output")
+    parser.add_argument("--root", help="Explicit Cairness project root; defaults to discovery")
     args = parser.parse_args()
 
-    root = project_root()
-    config = load_harness_config(root)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        sys.exit(2)
+    root = context.project_root
+    config = context.config.values
     events = discover_events(root)
 
     # Default: only check last 20 events for relevance
@@ -152,7 +164,7 @@ def main() -> None:
     result = check_budgets(events, config)
 
     if args.json:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(json.dumps({"project_root": str(root), **result}, indent=2, ensure_ascii=False))
         return
 
     if result["status"] == "no_budgets_configured":

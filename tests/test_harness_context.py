@@ -540,6 +540,81 @@ def test_stats_rejects_missing_root(script: str, tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def write_budget_event(project_root: Path) -> None:
+    change = project_root / ".cairness" / "changes" / "budget-context"
+    change.mkdir(parents=True, exist_ok=True)
+    event = {
+        "command": "cc-apply",
+        "change_id": "budget-context",
+        "event_id": "budget-context-event",
+        "token_count": 300000,
+        "duration_ms": 1,
+    }
+    (change / "events.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+
+
+def write_knowledge_entry(project_root: Path, name: str) -> None:
+    knowledge = project_root / ".cairness" / "knowledge"
+    knowledge.mkdir(parents=True, exist_ok=True)
+    (knowledge / f"{name}.md").write_text(f"# {name}\n", encoding="utf-8")
+
+
+def run_readonly_check(script: Path, cwd: Path, *root_args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *root_args, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize("script", ["cc-budget-check", "cc-knowledge-check"])
+def test_readonly_check_uses_context_from_nonstandard_framework(script: str, tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    write_budget_event(project)
+    write_knowledge_entry(project, "nonstandard-context")
+
+    completed = run_readonly_check(framework / "scripts" / script, project)
+
+    assert completed.returncode == 0, completed.stderr
+    expected = "budget-context-event" if script == "cc-budget-check" else "nonstandard-context.md"
+    assert expected in completed.stdout
+
+
+@pytest.mark.parametrize("script", ["cc-budget-check", "cc-knowledge-check"])
+def test_readonly_check_root_targets_another_project(script: str, harness_project: Path):
+    write_budget_event(harness_project)
+    write_knowledge_entry(harness_project, "explicit-context")
+
+    completed = run_readonly_check(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+    expected = "budget-context-event" if script == "cc-budget-check" else "explicit-context.md"
+    assert expected in completed.stdout
+
+
+@pytest.mark.parametrize("script", ["cc-budget-check", "cc-knowledge-check"])
+def test_readonly_check_rejects_missing_root(script: str, tmp_path: Path):
+    completed = run_readonly_check(
+        REPO_ROOT / "cairn-core" / "scripts" / script,
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context
