@@ -11,6 +11,7 @@ from pathlib import Path
 
 from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, build_report
 
 from change_docs import (
@@ -290,8 +291,10 @@ def read(path: Path) -> str:
 
 
 def project_path(root: Path, declared: str) -> Path | None:
-    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        return root.parent / declared
+    if declared.startswith(".claude/"):
+        return root / declared.removeprefix(".claude/")
+    if declared.startswith(".cairness/"):
+        return root.parent / ".cairness" / declared.removeprefix(".cairness/")
     return None
 
 
@@ -551,12 +554,15 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             errors.append(f"{core_path}: runtime_commands missing {command}")
 
     project_root = root.parent
-    core, protocol, _ = load_runtime_protocol(project_root)
-    required_paths = [project_root / declared for declared in runtime_protocol_asset_declarations(core)]
+    core, protocol, _ = load_runtime_protocol(project_root, root)
+    required_paths = [project_path(root, declared) for declared in runtime_protocol_asset_declarations(core)]
     required_paths.append(root / "schemas" / "command-protocol.schema.json")
-    required_paths.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
+    required_paths.extend(
+        project_path(root, declared)
+        for declared in protocol_language_assets(project_root, protocol, framework_root=root)
+    )
     for required_path in required_paths:
-        if not required_path.exists():
+        if required_path is None or not required_path.exists():
             errors.append(f"{required_path}: missing agent command protocol asset")
     for command in sorted(REQUIRED_RUNTIME_COMMANDS):
         path = runtime_dir / f"{command}.yaml"
@@ -719,7 +725,7 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
 
 def lint_governance_assets(root: Path, errors: list[str]) -> None:
     project_root = root.parent
-    _, protocol, _ = load_runtime_protocol(project_root)
+    _, protocol, _ = load_runtime_protocol(project_root, root)
     required = [
         root / "templates" / "context" / "project-summary.md",
         root / "templates" / "context" / "project-context.md",
@@ -739,9 +745,12 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         root / "skills" / "cc-harness" / "SKILL.md",
         root / "evals" / "rubrics" / "default.yaml",
     ]
-    required.extend(project_root / declared for declared in protocol_language_assets(project_root, protocol))
+    required.extend(
+        project_path(root, declared)
+        for declared in protocol_language_assets(project_root, protocol, framework_root=root)
+    )
     for path in required:
-        if not path.exists():
+        if path is None or not path.exists():
             errors.append(f"{path}: missing governance asset")
 
 
@@ -762,17 +771,18 @@ def lint_harness_config(root: Path, errors: list[str]) -> None:
             errors.append(f"{script_path}: validation script is not executable")
 
 
-def lint_docs_layout(project_root: Path, errors: list[str]) -> None:
+def lint_docs_layout(project_root: Path, errors: list[str], framework_root: Path | None = None) -> None:
+    framework_root = framework_root or project_root / ".claude"
     required = [
         project_root / "README.md",
-        project_root / ".claude" / "docs" / "examples",
-        project_root / ".claude" / "docs" / "adoption",
-        project_root / ".claude" / "docs" / "maintenance",
-        project_root / ".claude" / "docs" / "adoption" / "pilot-checklist.md",
-        project_root / ".claude" / "docs" / "adoption" / "integration-preflight-checklist.md",
-        project_root / ".claude" / "docs" / "maintenance" / "runtime-model.md",
-        project_root / ".claude" / "docs" / "maintenance" / "subagent-model.md",
-        project_root / ".claude" / "docs" / "maintenance" / "rule-skill-anatomy.md",
+        framework_root / "docs" / "examples",
+        framework_root / "docs" / "adoption",
+        framework_root / "docs" / "maintenance",
+        framework_root / "docs" / "adoption" / "pilot-checklist.md",
+        framework_root / "docs" / "adoption" / "integration-preflight-checklist.md",
+        framework_root / "docs" / "maintenance" / "runtime-model.md",
+        framework_root / "docs" / "maintenance" / "subagent-model.md",
+        framework_root / "docs" / "maintenance" / "rule-skill-anatomy.md",
     ]
     for path in required:
         if not path.exists():
@@ -823,10 +833,23 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Lint cc_spec Harness assets and change documents.")
     parser.add_argument("paths", nargs="*", help="Roots to lint (default: cwd).")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
     args = parser.parse_args(argv)
 
-    root = Path.cwd()
-    inputs = [Path(arg) for arg in args.paths] if args.paths else default_inputs(root)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            validate_config=False,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    inputs = (
+        [Path(arg) for arg in args.paths]
+        if args.paths
+        else [context.framework_root, context.state_root / "changes"]
+    )
     errors: list[str] = []
 
     for item in inputs:
@@ -843,7 +866,7 @@ def main(argv: list[str]) -> int:
             lint_topic_rule_shape(item, errors)
             lint_governance_assets(item, errors)
             lint_harness_config(item, errors)
-            lint_docs_layout(item.parent, errors)
+            lint_docs_layout(item.parent, errors, item)
 
     for change_dir in discover_change_dirs(inputs):
         mapping_ids = lint_spec(change_dir, errors)
@@ -855,7 +878,10 @@ def main(argv: list[str]) -> int:
     report = build_report(
         "cc-lint",
         issues,
-        extra={"checked_roots": [str(path) for path in inputs]},
+        extra={
+            "project_root": str(context.project_root),
+            "checked_roots": [str(path) for path in inputs],
+        },
     )
     if args.json:
         import json

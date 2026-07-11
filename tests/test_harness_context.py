@@ -899,6 +899,58 @@ def test_topic_trigger_rejects_missing_root(tmp_path: Path):
     assert "E_CONTEXT001" in completed.stderr
 
 
+def run_lint(script: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *args, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_lint_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+    (project / ".cairness" / "changes").mkdir(parents=True, exist_ok=True)
+
+    completed = run_lint(framework / "scripts" / "cc-lint", project)
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(project.resolve())
+    assert str(framework.resolve()) in report["checked_roots"]
+
+
+def test_lint_root_targets_another_project(harness_project: Path):
+    prepare_initialized_project(harness_project)
+
+    completed = run_lint(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-lint",
+        REPO_ROOT,
+        "--root",
+        str(harness_project),
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["project_root"] == str(harness_project.resolve())
+    assert str((harness_project / ".claude").resolve()) in report["checked_roots"]
+
+
+def test_lint_rejects_missing_root(tmp_path: Path):
+    completed = run_lint(
+        REPO_ROOT / "cairn-core" / "scripts" / "cc-lint",
+        REPO_ROOT,
+        "--root",
+        str(tmp_path / "missing"),
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`521 passed`
+- 测试：`524 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，521 个用例 |
+| Tests | 54 个受版本控制文件，524 个用例 |
 
 当前主要事实：
 
@@ -898,6 +898,19 @@ cc-doctor-check --root <project>
 - 剩余：`cc-lint` 等少数入口仍需迁移或确认其任意路径参数边界；P2-05 保持部分完成。
 - 风险/决策：移除模块级 `PROJECT_ROOT/DETECTION_CONFIG`，I/O helper 通过尾部可选 root 参数显式传递 Context，同时保留原有无参数/双参数直接调用兼容；逻辑检测结果不写入物理安装路径。
 - 下一步：单独迁移 `cc-lint` 默认 Context，同时保留显式 lint targets 为任意文件/目录路径。
+
+#### 实施记录 2026-07-12（Lint 根与物理资产映射迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-lint` 新增 `--root`、缺失根的 `E_CONTEXT001`、源码 CLI 跨项目与非标准物理 framework 支持；无显式 paths 时检查 `context.framework_root` 与 `context.state_root/changes`，runtime protocol、language assets、topic rules、模板和 docs 的逻辑 `.claude/...` 路径映射到实际 framework。JSON 增加 `project_root`。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k 'lint_'` → `3 passed`
+  - `rtk pytest -q tests/test_issue_reporting_contract.py tests/test_change_docs_parsing.py tests/test_harness_config_consumers.py tests/test_behavior_cases.py` → `passed`
+  - 最终全量 pytest、Harness/lint/behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：需重新搜索全部脚本的独立 root 推导，确认 event/state 写入口和纯任意路径工具是否属于 Context 范围；在清零审计前 P2-05 保持部分完成。
+- 风险/决策：显式位置 paths 仍是任意 lint 文件/目录，不重解释为项目 root；Context loader 使用 `validate_config=False`，让无效配置继续由 lint 产出 `E_LINT001`，避免被入口抢先转换成 `E_CONTEXT001`。
+- 下一步：全仓复审 `Path.cwd()`、`__file__` 向上推导和 `.claude/.cairness` 拼接，形成 P2-05 剩余清单并迁移最后入口。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
