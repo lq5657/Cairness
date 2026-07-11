@@ -24,12 +24,14 @@ fi
 
 # ── Read orphan_policy from harness config ──────────────────────────────
 orphan_policy="warn"
-config=".claude/harness.config.yaml"
-if [ -f "$config" ]; then
-    policy=$(grep -E '^[[:space:]]*orphan_policy:' "$config" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"\{0,1\}\([^"#]*\)"\{0,1\}.*/\1/' | tr -d '[:space:]')
-    if [ -n "$policy" ]; then
-        orphan_policy="$policy"
-    fi
+if [ -f .claude/cc-cairn.py ] && [ -f .claude/harness.config.yaml ]; then
+    config_result=$(python3 .claude/cc-cairn.py config explain git.orphan_policy --json 2>/dev/null) || {
+        echo "Cairness: invalid harness.config.yaml; commit blocked." >&2
+        exit 1
+    }
+    orphan_policy=$(echo "$config_result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')
+elif [ -f .claude/harness.config.yaml ]; then
+    orphan_policy=$(grep -E '^[[:space:]]*orphan_policy:' .claude/harness.config.yaml | head -1 | sed 's/.*:[[:space:]]*//')
 fi
 
 # ── Minimal: skip entirely ──────────────────────────────────────────────

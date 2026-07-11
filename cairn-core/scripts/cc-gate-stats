@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml
+from harness_runtime.config import load_harness_config
 
 from change_docs import parse_findings
 
@@ -74,13 +75,7 @@ def project_root() -> Path:
 
 def load_config(root: Path) -> dict[str, Any]:
     config_path = root / ".claude" / "harness.config.yaml"
-    if not config_path.exists():
-        return {}
-    yaml = require_yaml()
-    try:
-        return yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    except Exception:
-        return {}
+    return load_harness_config(config_path).values
 
 
 def get_gate_config(config: dict[str, Any]) -> dict[str, Any]:

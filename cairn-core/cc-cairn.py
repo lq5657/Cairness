@@ -1367,16 +1367,10 @@ LOOP_PROFILE = "loop"
 
 def _read_current_profile(harness_cfg: Path) -> str:
     """Return the active profile value from harness.config.yaml, or 'unknown'."""
-    if not harness_cfg.is_file():
+    try:
+        return str(load_harness_config(harness_cfg).values["profile"])
+    except (HarnessConfigError, KeyError):
         return "unknown"
-    for line in harness_cfg.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        # Skip comment lines
-        if stripped.startswith("#"):
-            continue
-        if stripped.startswith("profile:"):
-            return stripped[len("profile:"):].strip()
-    return "unknown"
 
 
 def _set_profile(harness_cfg: Path, new_profile: str) -> None:

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`423 passed`
+- 测试：`426 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 50 个受版本控制文件，423 个用例 |
+| Tests | 51 个受版本控制文件，426 个用例 |
 
 当前主要事实：
 
@@ -413,6 +413,21 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 - 剩余：迁移 budget、gate-stats、readset、loop CLI 与 pre-commit hook 的直接读取；把 interaction/budgets/validation 等开放 object 收紧为逐字段 schema；增加 schema version/migration policy。
 - 风险/决策：不在共享消费者清零前标记完成；默认值唯一来源继续是发布的完整 `harness.config.yaml`，不新增镜像 defaults 文件。
 - 下一步：继续 P1-04 剩余消费者与 schema 收紧。
+
+#### 实施记录 2026-07-11（消费者迁移）
+
+- 状态：部分完成
+- Change/提交：`P1-04`（由本 change 的 Git 提交记录）
+- 已完成：budget、gate-stats、readset profile 与 loop CLI 已使用共享 loader；完整安装的 pre-commit hook 通过 `config explain` 获取 effective `git.orphan_policy`，轻量旧安装保持 warn-safe 兼容。
+- 验证：
+  - `rtk pytest -q tests/test_harness_config.py tests/test_harness_config_consumers.py tests/test_loop_command.py tests/test_pre_commit_hook.py tests/test_readset_derivation.py` → `35 passed`
+  - `rtk pytest -q` → `426 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`
+  - `rtk cairn-core/scripts/cc-readset --check` → `ok`
+  - `rtk git diff --check` → `passed`
+- 剩余：将 schema 中 interaction、budgets、gate_effectiveness、dependencies、validation 的开放 object 展开为逐字段合同；加入 schema version 与兼容迁移策略；提供项目覆盖层来源。
+- 风险/决策：不再有完整安装中的静默 YAML fallback；旧的极简 hook 安装在未携带 CLI/config 时保留 warn 兼容，不宣称其具备完整配置诊断。
+- 下一步：继续 P1-04 schema 收紧与项目覆盖层。
 
 ### 8.7 `P1-05` 五语言 profile/fixture 对称验收
 

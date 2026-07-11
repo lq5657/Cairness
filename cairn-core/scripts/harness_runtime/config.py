@@ -121,6 +121,8 @@ def load_harness_config(
         raise HarnessConfigError(f"{path}: missing harness config")
     framework_root = path.parent
     schema_path = schema_path or framework_root / "schemas" / "harness-config.schema.json"
+    if not schema_path.is_file():
+        schema_path = Path(__file__).resolve().parents[2] / "schemas" / "harness-config.schema.json"
     defaults_path = defaults_path or schema_path.parent.parent / "harness.config.yaml"
     if not schema_path.is_file() or not defaults_path.is_file():
         raise HarnessConfigError("harness config schema/defaults are missing")

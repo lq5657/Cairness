@@ -293,8 +293,15 @@ def resolve_active_profile_path(
 ) -> str:
     """Resolve the active profile file path from harness.config.yaml."""
     path = project_root / HARNESS_CONFIG_PATH
-    loaded = load_yaml(path, issues)
-    harness_config = loaded if isinstance(loaded, dict) else {}
+    from harness_runtime.config import HarnessConfigError, load_harness_config
+    try:
+        harness_config = load_harness_config(path).values
+    except HarnessConfigError as exc:
+        load_yaml(path, issues)
+        if hasattr(issues, "append"):
+            from harness_runtime.issues import Issue
+            issues.append(Issue("E_CONFIG001", str(path), str(exc)))
+        harness_config = {}
     profile_name = harness_config.get("profile")
     if not isinstance(profile_name, str) or not profile_name:
         c = _core_or_empty(core)
