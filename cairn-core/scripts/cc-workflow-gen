@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.enums import enum_list, load_enums
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
 WORKFLOW_PATH = ".claude/workflows/cc-workflow.yaml"
 CORE_PATH = ".claude/runtime/core.yaml"
@@ -55,11 +56,11 @@ def _load_yaml(path: Path) -> Any:
         return None
 
 
-def _project_path(project_root: Path, declared: Any) -> Path | None:
+def _project_path(project_root: Path, declared: Any, context: HarnessContext | None = None) -> Path | None:
     if not isinstance(declared, str):
         return None
     if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        return project_root / declared
+        return context.resolve_path(declared) if context is not None else project_root / declared
     return None
 
 
@@ -72,13 +73,13 @@ def _derive_inputs(manifest_inputs: Any) -> list[str]:
     return [*required, *optional]
 
 
-def _derive_subagents(project_root: Path, manifest: dict[str, Any]) -> list[str]:
+def _derive_subagents(project_root: Path, manifest: dict[str, Any], context: HarnessContext | None = None) -> list[str]:
     sa = manifest.get("subagents")
     if not isinstance(sa, dict) or sa.get("enabled") is not True:
         return []
     contract = sa.get("contract")
     if isinstance(contract, str):
-        cpath = _project_path(project_root, contract)
+        cpath = _project_path(project_root, contract, context)
         if cpath is not None and cpath.exists():
             cdata = _load_yaml(cpath)
             if isinstance(cdata, dict):
@@ -117,9 +118,10 @@ def _field_line(key: str, value: Any, *, quoted: bool = False) -> str:
     return f"    {key}: {rendered}\n"
 
 
-def derive_workflow(project_root: Path) -> str:
+def derive_workflow(project_root: Path, context: HarnessContext | None = None) -> str:
     """Generate the full workflow.yaml text from manifests."""
-    core = _load_yaml(project_root / CORE_PATH)
+    core_path = context.resolve_path(CORE_PATH) if context is not None else project_root / CORE_PATH
+    core = _load_yaml(core_path)
     if not isinstance(core, dict):
         return ""
     runtime_commands = core.get("runtime_commands")
@@ -159,14 +161,14 @@ def derive_workflow(project_root: Path) -> str:
         elif command == "cc-explain-system":
             out.append("  # cross-cutting / documentation tool\n")
         declared = runtime_commands.get(command)
-        mpath = _project_path(project_root, declared)
+        mpath = _project_path(project_root, declared, context)
         if mpath is None or not mpath.exists():
             continue
         manifest = _load_yaml(mpath)
         if not isinstance(manifest, dict):
             continue
         state = manifest.get("state") if isinstance(manifest.get("state"), dict) else {}
-        subagents = _derive_subagents(project_root, manifest)
+        subagents = _derive_subagents(project_root, manifest, context)
 
         out.append(f"  {command}:\n")
         out.append(_field_line("category", manifest.get("category", "")))
@@ -194,26 +196,27 @@ def derive_workflow(project_root: Path) -> str:
     return text.rstrip("\n") + "\n"
 
 
-def check(project_root: Path) -> dict[str, Any]:
-    generated = derive_workflow(project_root)
-    wf_path = project_root / WORKFLOW_PATH
+def check(project_root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
+    generated = derive_workflow(project_root, context)
+    wf_path = context.resolve_path(WORKFLOW_PATH) if context is not None else project_root / WORKFLOW_PATH
     committed = wf_path.read_text(encoding="utf-8") if wf_path.exists() else ""
     stale = generated != committed
     return {
         "tool": "cc-workflow-gen",
         "mode": "check",
         "status": "failed" if stale else "passed",
+        "project_root": str(project_root.resolve()),
         "workflow": WORKFLOW_PATH,
         "issues": ["committed workflow.yaml is stale; run cc-workflow-gen --write"] if stale else [],
     }
 
 
-def write(project_root: Path) -> dict[str, Any]:
-    generated = derive_workflow(project_root)
-    wf_path = project_root / WORKFLOW_PATH
+def write(project_root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
+    generated = derive_workflow(project_root, context)
+    wf_path = context.resolve_path(WORKFLOW_PATH) if context is not None else project_root / WORKFLOW_PATH
     wf_path.parent.mkdir(parents=True, exist_ok=True)
     wf_path.write_text(generated, encoding="utf-8")
-    return {"tool": "cc-workflow-gen", "mode": "write", "status": "passed", "workflow": WORKFLOW_PATH}
+    return {"tool": "cc-workflow-gen", "mode": "write", "status": "passed", "project_root": str(project_root.resolve()), "workflow": WORKFLOW_PATH}
 
 
 def main(argv: list[str]) -> int:
@@ -221,10 +224,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--write", action="store_true", help="Write generated workflow.yaml to disk.")
     parser.add_argument("--check", action="store_true", help="Check committed workflow.yaml is current.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
     args = parser.parse_args(argv)
 
-    project_root = Path(__file__).resolve().parent.parent.parent
-    report = write(project_root) if args.write else check(project_root)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    report = write(context.project_root, context) if args.write else check(context.project_root, context)
     if args.json:
         import json
         print(json.dumps(report, ensure_ascii=False, indent=2))

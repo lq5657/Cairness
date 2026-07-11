@@ -113,6 +113,64 @@ def test_schema_check_runs_when_framework_directory_is_not_named_claude(tmp_path
     assert all(str(framework) in path for path in report["checked_runtime"])
 
 
+@pytest.mark.parametrize("script", ["cc-readset", "cc-workflow-gen"])
+def test_generator_cli_runs_when_framework_directory_is_not_named_claude(tmp_path: Path, script: str):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+
+    completed = subprocess.run(
+        [sys.executable, str(framework / "scripts" / script), "--check", "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["status"] == "passed"
+    assert report["project_root"] == str(project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-readset", "cc-workflow-gen"])
+def test_generator_cli_explicit_root_targets_another_project(harness_project: Path, script: str):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            "--root",
+            str(harness_project),
+            "--check",
+            "--json",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    assert json.loads(completed.stdout)["project_root"] == str(harness_project.resolve())
+
+
+@pytest.mark.parametrize("script", ["cc-readset", "cc-workflow-gen"])
+def test_generator_cli_rejects_missing_explicit_root(script: str, tmp_path: Path):
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "cairn-core" / "scripts" / script),
+            "--root",
+            str(tmp_path / "missing"),
+            "--check",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "E_CONTEXT001" in completed.stderr
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

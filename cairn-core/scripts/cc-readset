@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.issues import Issue, build_report
+from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 from harness_runtime.readsets import (
     CORE_PATH,
     GENERATOR_PATH,
@@ -51,7 +52,11 @@ def dump_yaml(value: Any) -> str:
     return yaml.safe_dump(value, allow_unicode=True, sort_keys=False)
 
 
-def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str]]:
+def derive_readsets(
+    project_root: Path,
+    issues: list[Issue],
+    context: HarnessContext | None = None,
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str]]:
     """Derive all readsets, with cc-readset-specific error reporting.
 
     Thin wrapper over harness_runtime.readsets.derive_readsets that loads core
@@ -59,7 +64,7 @@ def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, 
     E_READSET004/005/006 for core/unresolvable-path/invalid-manifest failures —
     diagnostics the shared module deliberately leaves to callers.
     """
-    core_path = project_root / CORE_PATH
+    core_path = context.resolve_path(CORE_PATH) if context is not None else project_root / CORE_PATH
     core = load_yaml(core_path, issues)
     if not isinstance(core, dict):
         issues.append(Issue("E_READSET004", str(core_path), "runtime core must be a mapping"))
@@ -76,7 +81,7 @@ def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, 
         manifest_path = runtime_commands.get(command)
         if not isinstance(manifest_path, str):
             continue
-        resolved = project_path(project_root, manifest_path)
+        resolved = context.resolve_path(manifest_path) if context is not None else project_path(project_root, manifest_path)
         if resolved is None:
             issues.append(Issue("E_READSET005", str(core_path), f"unsupported runtime command path for {command}: {manifest_path}"))
             continue
@@ -84,13 +89,19 @@ def derive_readsets(project_root: Path, issues: list[Issue]) -> tuple[dict[str, 
         if manifest is not None and not isinstance(manifest, dict):
             issues.append(Issue("E_READSET006", str(resolved), "runtime command manifest must be a mapping"))
 
-    index, readsets, config = _derive_readsets_shared(project_root, core, issues, load_yaml)
+    index, readsets, config = _derive_readsets_shared(
+        project_root,
+        core,
+        issues,
+        load_yaml,
+        framework_root=context.framework_root if context is not None else None,
+    )
     return index, readsets, config
 
 
-def generated_files(project_root: Path) -> tuple[dict[str, str], list[Issue]]:
+def generated_files(project_root: Path, context: HarnessContext | None = None) -> tuple[dict[str, str], list[Issue]]:
     issues: list[Issue] = []
-    index, readsets, config = derive_readsets(project_root, issues)
+    index, readsets, config = derive_readsets(project_root, issues, context)
     files: dict[str, str] = {}
     if index:
         files[config["index"]] = dump_yaml(index)
@@ -99,11 +110,11 @@ def generated_files(project_root: Path) -> tuple[dict[str, str], list[Issue]]:
     return files, issues
 
 
-def check(project_root: Path) -> dict[str, Any]:
-    files, issues = generated_files(project_root)
+def check(project_root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
+    files, issues = generated_files(project_root, context)
     expected_paths = set(files)
     for declared, expected in sorted(files.items()):
-        path = project_root / declared
+        path = context.resolve_path(declared) if context is not None else project_root / declared
         if not path.exists():
             issues.append(Issue("E_READSET007", str(path), "missing generated readset file; run cc-readset --write"))
             continue
@@ -111,31 +122,33 @@ def check(project_root: Path) -> dict[str, Any]:
         if actual != expected:
             issues.append(Issue("E_READSET008", str(path), "committed readset file is stale; run cc-readset --write"))
 
-    core = load_yaml(project_root / CORE_PATH, issues)
+    core_path = context.resolve_path(CORE_PATH) if context is not None else project_root / CORE_PATH
+    core = load_yaml(core_path, issues)
     if isinstance(core, dict):
         config = runtime_readset_config(core)
-        readset_dir = project_path(project_root, config["dir"])
+        readset_dir = context.resolve_path(config["dir"]) if context is not None else project_path(project_root, config["dir"])
         if readset_dir is not None and readset_dir.exists():
             for path in sorted(readset_dir.glob("*.yaml")):
-                declared = path.relative_to(project_root).as_posix()
+                declared = f"{config['dir'].rstrip('/')}/{path.name}"
                 if declared not in expected_paths:
                     issues.append(Issue("E_READSET009", str(path), "extra generated readset file"))
 
     return build_report(
         "cc-readset",
         issues,
-        extra={"mode": "check", "readsets": sorted(files)},
+        extra={"mode": "check", "project_root": str(project_root.resolve()), "readsets": sorted(files)},
     )
 
 
-def write_generated(project_root: Path) -> dict[str, Any]:
-    files, issues = generated_files(project_root)
+def write_generated(project_root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
+    files, issues = generated_files(project_root, context)
     for declared, text in sorted(files.items()):
-        write(project_root / declared, text)
+        path = context.resolve_path(declared) if context is not None else project_root / declared
+        write(path, text)
     return build_report(
         "cc-readset",
         issues,
-        extra={"mode": "write", "readsets": sorted(files)},
+        extra={"mode": "write", "project_root": str(project_root.resolve()), "readsets": sorted(files)},
     )
 
 
@@ -144,11 +157,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--write", action="store_true", help="Write generated readset files to disk.")
     parser.add_argument("--check", action="store_true", help="Check generated readset files are current.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
     args = parser.parse_args(argv)
 
-    claude_root = Path(__file__).resolve().parent.parent
-    project_root = claude_root.parent
-    report = write_generated(project_root) if args.write else check(project_root)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+    report = write_generated(context.project_root, context) if args.write else check(context.project_root, context)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report["status"] == "passed":

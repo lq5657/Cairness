@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`463 passed`
+- 测试：`470 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，463 个用例 |
+| Tests | 54 个受版本控制文件，470 个用例 |
 
 当前主要事实：
 
@@ -729,6 +729,20 @@ cc-doctor-check --root <project>
 - 剩余：standalone `cc-readset`、`cc-workflow-gen`、`cc-eval`、`cc-upgrade-check` 等核心入口仍需直接消费 Context；P2-05 保持部分完成。
 - 风险/决策：物理路径只用于文件访问；runtime/readset 产物继续保存逻辑 `.claude/...` 声明，避免破坏升级与生成视图兼容性。
 - 下一步：迁移 `cc-readset` 与 `cc-workflow-gen`，统一生成类入口的 root 合同。
+
+#### 实施记录 2026-07-11（生成器入口迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-readset` 与 `cc-workflow-gen` 直接消费 `HarnessContext`，支持显式 `--root`、不存在 root 的 `E_CONTEXT001`、源码 CLI 跨项目目标和非标准物理 framework。生成器的读取、比较与写入使用物理 root，产物中的 source/generator/workflow/readset 声明继续保持逻辑 `.claude/...` 路径。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py -k generator_cli` → `4 passed`
+  - `rtk pytest -q tests/test_readset_derivation.py tests/test_workflow_gen.py tests/test_workflow_inputs_parity.py` → `19 passed`
+  - `rtk pytest -q tests/test_harness_context.py tests/test_readset_derivation.py tests/test_workflow_gen.py tests/test_workflow_inputs_parity.py` → `passed`
+  - 最终全量 pytest、Harness/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：`cc-eval`、`cc-upgrade-check` 及其他核心入口仍需迁移；P2-05 保持部分完成。
+- 风险/决策：生成结果的逻辑路径是稳定公开合同，不能因安装目录变化而写入机器相关绝对路径。
+- 下一步：迁移 `cc-eval` 与 `cc-upgrade-check` 的 root 解析，覆盖 CI ephemeral 与升级边界。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
