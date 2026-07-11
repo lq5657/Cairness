@@ -175,9 +175,15 @@ def protocol_language_profiles(project_root: Path, protocol: dict[str, Any], fra
     return loaded_profiles
 
 
-def protocol_language_assets(project_root: Path, protocol: dict[str, Any], *, include_catalog: bool = True) -> list[str]:
+def protocol_language_assets(
+    project_root: Path,
+    protocol: dict[str, Any],
+    *,
+    include_catalog: bool = True,
+    framework_root: Path | None = None,
+) -> list[str]:
     assets: list[str] = []
-    for profile in protocol_language_profiles(project_root, protocol):
+    for profile in protocol_language_profiles(project_root, protocol, framework_root):
         assets.append(profile.declared_path)
         if include_catalog and profile.catalog_declared:
             assets.append(profile.catalog_declared)
@@ -190,9 +196,9 @@ def protocol_language_assets(project_root: Path, protocol: dict[str, Any], *, in
     return ordered
 
 
-def protocol_language_catalogs(project_root: Path, protocol: dict[str, Any]) -> list[str]:
+def protocol_language_catalogs(project_root: Path, protocol: dict[str, Any], framework_root: Path | None = None) -> list[str]:
     catalogs: list[str] = []
-    for profile in protocol_language_profiles(project_root, protocol):
+    for profile in protocol_language_profiles(project_root, protocol, framework_root):
         if profile.catalog_declared:
             catalogs.append(profile.catalog_declared)
     seen: set[str] = set()

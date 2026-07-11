@@ -3,6 +3,7 @@
 ## 1.1.0 - 2026-07-07
 
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
+- Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added the product-facing `cc-cairn doctor` entrypoint with version/config/adapter/CI/language/generated-view/project-state summaries, actionable structured issues, and dry-run-first rollback-safe repairs.
 - Completed the Harness configuration contract: schema version 1 now defines every shipped field and validates nested boundaries, project overrides live at `.cairness/harness.config.yaml`, and `cc-cairn config migrate` explicitly adds a missing version field only on `--apply`. All complete-install configuration consumers now resolve the same effective configuration and source trace.
 - Added the first formal Harness configuration contract: `schemas/harness-config.schema.json`, shared `harness_runtime.config` loading with recursive unknown-field/type checks, centralized defaults from the shipped `harness.config.yaml`, explicit `CAIRNESS_PROFILE` source tracking, and `cc-cairn config validate|explain`. Doctor and `cc-verify` now hard-fail invalid effective configuration instead of silently falling back.

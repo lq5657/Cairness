@@ -93,6 +93,26 @@ def test_verify_runs_fixture_when_framework_directory_is_not_named_claude(tmp_pa
     assert report["status"] == "passed"
 
 
+def test_schema_check_runs_when_framework_directory_is_not_named_claude(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    prepare_initialized_project(project)
+    (project / ".cairness" / "changes").mkdir(parents=True, exist_ok=True)
+
+    completed = subprocess.run(
+        [sys.executable, str(framework / "scripts" / "cc-schema-check"), "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["status"] == "passed"
+    assert all(str(framework) in path for path in report["checked_runtime"])
+
+
 @pytest.mark.parametrize("root", ["missing", "root-file"])
 def test_context_rejects_invalid_explicit_root(tmp_path: Path, root: str):
     from harness_runtime.context import HarnessContextError, load_harness_context

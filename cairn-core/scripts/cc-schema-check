@@ -9,6 +9,7 @@ without breaking existing changes.
 from __future__ import annotations
 
 import argparse
+from contextvars import ContextVar
 import json
 import re
 import sys
@@ -46,6 +47,14 @@ from change_docs import (
     task_sections,
     validation_rows,
 )
+
+
+_ACTIVE_CONTEXT: ContextVar[HarnessContext | None] = ContextVar("schema_check_context", default=None)
+
+
+def active_project_root(claude_root: Path) -> Path:
+    context = _ACTIVE_CONTEXT.get()
+    return context.project_root if context is not None else claude_root.parent
 
 
 
@@ -599,6 +608,9 @@ def project_path(project_root: Path, declared: Any) -> Path | None:
     if "<" in declared or "*" in declared:
         return None
     if declared.startswith(".claude/") or declared.startswith(".cairness/"):
+        context = _ACTIVE_CONTEXT.get()
+        if context is not None:
+            return context.resolve_path(declared)
         return project_root / declared
     return None
 
@@ -639,7 +651,7 @@ def ordered_unique(values: list[str]) -> list[str]:
 
 
 def load_registered_roles(project_root: Path, issues: list[Issue]) -> set[str]:
-    path = project_root / ROLE_CONTRACTS_PATH
+    path = project_path(project_root, ROLE_CONTRACTS_PATH) or project_root / ROLE_CONTRACTS_PATH
     if not path.exists():
         add(issues, "E_SCHEMA153", path, "missing role contracts for subagent role validation")
         return set()
@@ -677,7 +689,14 @@ def load_runtime_protocol(project_root: Path, core: dict[str, Any] | None, issue
     the historical name because validate_agent_command_protocol calls it
     directly. The derivation chain itself now lives in the shared module.
     """
-    return load_protocol_assets(project_root, core, issues, load_yaml_file)
+    context = _ACTIVE_CONTEXT.get()
+    return load_protocol_assets(
+        project_root,
+        core,
+        issues,
+        load_yaml_file,
+        framework_root=context.framework_root if context is not None else None,
+    )
 
 
 def derive_readsets(project_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
@@ -687,14 +706,21 @@ def derive_readsets(project_root: Path, core: dict[str, Any] | None, issues: lis
     shared module also returns a readset_config used by cc-readset for file
     paths, which we discard here.
     """
-    index, readsets, _config = _derive_readsets_shared(project_root, core, issues, load_yaml_file)
+    context = _ACTIVE_CONTEXT.get()
+    index, readsets, _config = _derive_readsets_shared(
+        project_root,
+        core,
+        issues,
+        load_yaml_file,
+        framework_root=context.framework_root if context is not None else None,
+    )
     return index, readsets
 
 
 def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict):
         return []
-    project_root = claude_root.parent
+    project_root = active_project_root(claude_root)
     config = runtime_readset_config(core)
     schema_path = project_path(project_root, config["schema"])
     index_path = project_path(project_root, config["index"])
@@ -728,7 +754,7 @@ def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, is
     expected_paths = {config["index"], *expected_index.get("commands", {}).values()}
     if readset_dir is not None and readset_dir.exists():
         for path in sorted(readset_dir.glob("*.yaml")):
-            declared = path.relative_to(project_root).as_posix()
+            declared = f"{config['dir'].rstrip('/')}/{path.name}"
             if declared not in expected_paths:
                 add(issues, "E_SCHEMA152", path, "extra runtime readset file")
     return checked
@@ -806,7 +832,7 @@ def validate_language_profile_and_technology_catalog(
 
 
 def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
-    project_root = claude_root.parent
+    project_root = active_project_root(claude_root)
     config = runtime_protocol_config(core)
     protocol_path = project_path(project_root, config["protocol"])
     schema_path = project_path(project_root, config["schema"])
@@ -925,7 +951,7 @@ def validate_agent_command_protocol(claude_root: Path, core: dict[str, Any] | No
 def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
     if not isinstance(core, dict) or not isinstance(core.get("topic_rules"), dict):
         return []
-    project_root = claude_root.parent
+    project_root = active_project_root(claude_root)
     schema_path = claude_root / "schemas" / TOPIC_RULE_SCHEMA
     schema = load_json_file(schema_path, issues)
     checked = [str(schema_path)]
@@ -980,7 +1006,7 @@ def validate_topic_rules(claude_root: Path, core: dict[str, Any] | None, issues:
 
 
 def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, Any] | None:
-    project_root = claude_root.parent
+    project_root = active_project_root(claude_root)
     core_path = claude_root / "runtime" / "core.yaml"
     schema_path = claude_root / "schemas" / RUNTIME_CORE_SCHEMA
     core = load_yaml_file(core_path, issues)
@@ -1425,7 +1451,7 @@ def validate_inputs_registered(command: str, manifest: dict[str, Any], manifest_
 
 
 def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:
-    project_root = claude_root.parent
+    project_root = active_project_root(claude_root)
     schema_path = claude_root / "schemas" / RUNTIME_COMMAND_SCHEMA
     schema = load_json_file(schema_path, issues)
     subagent_schema_path = claude_root / "schemas" / RUNTIME_SUBAGENT_CONTRACT_SCHEMA
@@ -1730,13 +1756,17 @@ def default_input(context: HarnessContext | None = None) -> Path:
 def build_report(inputs: list[Path], context: HarnessContext | None = None) -> dict[str, Any]:
     issues: list[Issue] = []
     claude_root = context.framework_root if context is not None else Path(__file__).resolve().parent.parent
-    checked_runtime, checked_topic_rules = validate_runtime_manifests(claude_root, issues)
-    change_dirs = discover_change_dirs(inputs)
-    for change_dir in change_dirs:
-        mapping_ids = validate_spec(change_dir / "spec.md", issues)
-        validate_tasks(change_dir / "tasks.md", mapping_ids, issues)
-        validate_review(change_dir / "review.md", issues)
-        validate_test_spec(change_dir / "test-spec.md", issues)
+    token = _ACTIVE_CONTEXT.set(context)
+    try:
+        checked_runtime, checked_topic_rules = validate_runtime_manifests(claude_root, issues)
+        change_dirs = discover_change_dirs(inputs)
+        for change_dir in change_dirs:
+            mapping_ids = validate_spec(change_dir / "spec.md", issues)
+            validate_tasks(change_dir / "tasks.md", mapping_ids, issues)
+            validate_review(change_dir / "review.md", issues)
+            validate_test_spec(change_dir / "test-spec.md", issues)
+    finally:
+        _ACTIVE_CONTEXT.reset(token)
     return {
         "tool": "cc-schema-check",
         "status": "failed" if issues else "passed",

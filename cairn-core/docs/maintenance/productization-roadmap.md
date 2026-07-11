@@ -718,6 +718,18 @@ cc-doctor-check --root <project>
 - 风险/决策：不通过目录名猜测物理 framework；显式 root 从目标项目加载 `.claude`，脚本自运行使用物理 framework hint。
 - 下一步：继续迁移 `cc-schema-check` 的内部声明路径解析，再逐批迁移 readset/workflow/eval/upgrade 等核心消费者。
 
+#### 实施记录 2026-07-11（Schema 与 readset 派生迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-schema-check` 内部声明路径、runtime core、protocol、command、topic rule 和 readset 校验均从激活的 `HarnessContext` 获取 project/framework root；共享 readset derivation 支持可选物理 framework root，同时保持生成合同中的逻辑 `.claude/...` 路径不变。修复 symlink framework 被误判为项目根，以及非标准 framework 下协议、role contract、config、readset 被错误解析的问题。
+- 验证：
+  - `rtk pytest -q tests/test_harness_context.py::test_schema_check_runs_when_framework_directory_is_not_named_claude tests/test_schema_validator.py tests/test_profile_schema.py tests/test_command_protocol_contract.py tests/test_readset_derivation.py` → `30 passed`
+  - 最终全量 pytest、Harness/schema/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：standalone `cc-readset`、`cc-workflow-gen`、`cc-eval`、`cc-upgrade-check` 等核心入口仍需直接消费 Context；P2-05 保持部分完成。
+- 风险/决策：物理路径只用于文件访问；runtime/readset 产物继续保存逻辑 `.claude/...` 声明，避免破坏升级与生成视图兼容性。
+- 下一步：迁移 `cc-readset` 与 `cc-workflow-gen`，统一生成类入口的 root 合同。
+
 ### 9.8 `P2-06` 核心脚本模块化
 
 **状态**：待开始

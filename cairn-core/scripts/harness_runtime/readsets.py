@@ -43,10 +43,12 @@ def _core_or_empty(core: Any) -> dict[str, Any]:
     return core if isinstance(core, dict) else {}
 
 
-def project_path(project_root: Path, declared: Any) -> Path | None:
+def project_path(project_root: Path, declared: Any, framework_root: Path | None = None) -> Path | None:
     if not isinstance(declared, str):
         return None
-    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
+    if declared.startswith(".claude/"):
+        return (framework_root or project_root / ".claude") / declared.removeprefix(".claude/")
+    if declared.startswith(".cairness/"):
         return project_root / declared
     return None
 
@@ -97,6 +99,8 @@ def load_protocol_assets(
     core: dict[str, Any] | None,
     issues: list,
     load_yaml: YamlLoader,
+    *,
+    framework_root: Path | None = None,
 ) -> dict[str, Any]:
     """Merge protocol.yaml + technology-decisions + language-profile into one dict.
 
@@ -104,14 +108,14 @@ def load_protocol_assets(
     shared body of cc-readset.load_runtime_protocol / cc-schema-check.load_runtime_protocol.
     """
     config = runtime_protocol_config(core)
-    protocol_path = project_path(project_root, config["protocol"])
+    protocol_path = project_path(project_root, config["protocol"], framework_root)
     loaded = load_yaml(protocol_path, issues) if protocol_path is not None else None
     protocol = loaded if isinstance(loaded, dict) else {}
     for key in ("technology_decisions", "language_profile"):
         declared = config.get(key, "")
         if not declared or declared == config["protocol"]:
             continue
-        asset_path = project_path(project_root, declared)
+        asset_path = project_path(project_root, declared, framework_root)
         asset = load_yaml(asset_path, issues) if asset_path is not None else None
         if isinstance(asset, dict):
             protocol.update(asset)
@@ -145,11 +149,11 @@ def protocol_asset_read(config: dict[str, str], key: str) -> list[str]:
     return [declared] if declared else []
 
 
-def language_profile_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
+def language_profile_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any], framework_root: Path | None = None) -> list[str]:
     config = runtime_protocol_config(core)
     return ordered_unique([
         *protocol_asset_read(config, "language_profile"),
-        *protocol_language_assets(project_root, protocol, include_catalog=False),
+        *protocol_language_assets(project_root, protocol, include_catalog=False, framework_root=framework_root),
     ])
 
 
@@ -158,11 +162,11 @@ def technology_decision_reads(core: dict[str, Any] | None) -> list[str]:
     return protocol_asset_read(config, "technology_decisions")
 
 
-def technology_catalog_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any]) -> list[str]:
+def technology_catalog_reads(project_root: Path, core: dict[str, Any] | None, protocol: dict[str, Any], framework_root: Path | None = None) -> list[str]:
     return ordered_unique([
         *technology_decision_reads(core),
-        *language_profile_reads(project_root, core, protocol),
-        *protocol_language_assets(project_root, protocol, include_catalog=True),
+        *language_profile_reads(project_root, core, protocol, framework_root),
+        *protocol_language_assets(project_root, protocol, include_catalog=True, framework_root=framework_root),
     ])
 
 
@@ -178,16 +182,17 @@ def runtime_protocol_reads(
     manifest: dict[str, Any],
     issues: list,
     load_yaml: YamlLoader,
+    framework_root: Path | None = None,
 ) -> list[str]:
     config = runtime_protocol_config(core)
     reads = [config["protocol"]]
-    protocol = load_protocol_assets(project_root, core, issues, load_yaml)
+    protocol = load_protocol_assets(project_root, core, issues, load_yaml, framework_root=framework_root)
     if language_profile_mode(manifest) == "always":
-        reads.extend(language_profile_reads(project_root, core, protocol))
+        reads.extend(language_profile_reads(project_root, core, protocol, framework_root))
     if technology_decisions_mode(manifest) == "always":
         reads.extend(technology_decision_reads(core))
     if include_technology_catalog(manifest):
-        reads.extend(technology_catalog_reads(project_root, core, protocol))
+        reads.extend(technology_catalog_reads(project_root, core, protocol, framework_root))
     return ordered_unique(reads)
 
 
@@ -197,17 +202,18 @@ def on_demand_runtime_protocol_reads(
     manifest: dict[str, Any],
     issues: list,
     load_yaml: YamlLoader,
+    framework_root: Path | None = None,
 ) -> dict[str, list[str]]:
-    protocol = load_protocol_assets(project_root, core, issues, load_yaml)
+    protocol = load_protocol_assets(project_root, core, issues, load_yaml, framework_root=framework_root)
     reads: dict[str, list[str]] = {}
     if language_profile_mode(manifest) == "on_demand":
-        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol)
+        reads["when_language_profile_resolution_is_required"] = language_profile_reads(project_root, core, protocol, framework_root)
     if technology_decisions_mode(manifest) == "on_demand":
         reads["when_technology_decision_is_required"] = technology_decision_reads(core)
     if technology_catalog_mode(manifest) == "on_demand":
         reads["when_technology_decision_is_required"] = ordered_unique([
             *reads.get("when_technology_decision_is_required", []),
-            *technology_catalog_reads(project_root, core, protocol),
+            *technology_catalog_reads(project_root, core, protocol, framework_root),
         ])
     return reads
 
@@ -228,6 +234,7 @@ def derive_command_readset(
     core: dict[str, Any] | None,
     issues: list,
     load_yaml: YamlLoader,
+    framework_root: Path | None = None,
 ) -> dict[str, Any]:
     topic_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
     always_topic_rules = string_list(topic_rules.get("always"))
@@ -239,7 +246,7 @@ def derive_command_readset(
         if condition == "always":
             continue
         conditional_reads[condition] = ordered_unique(string_list(rules))
-    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues, load_yaml).items():
+    for condition, reads in on_demand_runtime_protocol_reads(project_root, core, manifest, issues, load_yaml, framework_root).items():
         conditional_reads[condition] = ordered_unique([
             *conditional_reads.get(condition, []),
             *reads,
@@ -255,9 +262,9 @@ def derive_command_readset(
             *([subagent_policy] if subagent_policy else []),
             *([subagent_contract] if subagent_contract else []),
         ])
-    protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues, load_yaml)
+    protocol_reads = runtime_protocol_reads(project_root, core, manifest, issues, load_yaml, framework_root)
     result_profile_reads = result_contract_profile_reads(manifest)
-    active_profile_path = resolve_active_profile_path(project_root, core, issues, load_yaml)
+    active_profile_path = resolve_active_profile_path(project_root, core, issues, load_yaml, framework_root)
     always_reads = [
         CORE_PATH,
         *protocol_reads,
@@ -290,9 +297,12 @@ def resolve_active_profile_path(
     core: dict[str, Any] | None,
     issues: list,
     load_yaml: YamlLoader,
+    framework_root: Path | None = None,
 ) -> str:
     """Resolve the active profile file path from harness.config.yaml."""
-    path = project_root / HARNESS_CONFIG_PATH
+    path = project_path(project_root, HARNESS_CONFIG_PATH, framework_root)
+    if path is None:
+        return ".claude/runtime/profiles/standard.yaml"
     from harness_runtime.config import HarnessConfigError, load_harness_config
     try:
         harness_config = load_harness_config(path).values
@@ -318,6 +328,8 @@ def derive_readsets(
     core: dict[str, Any] | None,
     issues: list,
     load_yaml: YamlLoader,
+    *,
+    framework_root: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str]]:
     """Derive all command readsets from a pre-loaded core.
 
@@ -336,13 +348,13 @@ def derive_readsets(
         manifest_path = runtime_commands.get(command)
         if not isinstance(manifest_path, str):
             continue
-        resolved = project_path(project_root, manifest_path)
+        resolved = project_path(project_root, manifest_path, framework_root)
         if resolved is None:
             continue
         manifest = load_yaml(resolved, issues)
         if not isinstance(manifest, dict):
             continue
-        readsets[command] = derive_command_readset(project_root, command, manifest_path, manifest, core, issues, load_yaml)
+        readsets[command] = derive_command_readset(project_root, command, manifest_path, manifest, core, issues, load_yaml, framework_root)
         commands_index[command] = f"{config['dir']}/{command}.yaml"
     index = {
         "version": 1,
