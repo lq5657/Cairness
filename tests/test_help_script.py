@@ -10,6 +10,7 @@ command cheat-sheet. These tests guard two things:
 2. Output actually contains every command's summary + signature (manifest SSOT).
 """
 import json
+import shutil
 import subprocess
 import sys
 from importlib.machinery import SourceFileLoader
@@ -93,3 +94,52 @@ def test_json_output_is_valid_and_complete():
     for cmd in _workflow_order():
         assert cmd in commands, f"{cmd} missing from --json output"
         assert commands[cmd]["summary"], f"{cmd} has empty summary in --json"
+
+
+def _set_apply_summary(framework: Path, summary: str) -> None:
+    manifest = framework / "runtime" / "commands" / "cc-apply.yaml"
+    data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+    data["summary_zh"] = summary
+    manifest.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def _run_help(script: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(script), *args, "--json"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_help_uses_context_from_nonstandard_framework(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / "runtime-assets"
+    shutil.copytree(REPO / "cairn-core", framework)
+    (project / ".cairness").mkdir()
+    _set_apply_summary(framework, "非标准 framework 摘要")
+
+    result = _run_help(framework / "scripts" / "cc-help", project)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["commands"]["cc-apply"]["summary"] == "非标准 framework 摘要"
+
+
+def test_help_root_targets_another_project(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / ".claude"
+    shutil.copytree(REPO / "cairn-core", framework)
+    (project / ".cairness").mkdir()
+    _set_apply_summary(framework, "显式项目摘要")
+
+    result = _run_help(SCRIPTS / "cc-help", REPO, "--root", str(project))
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["commands"]["cc-apply"]["summary"] == "显式项目摘要"
+
+
+def test_help_rejects_missing_root(tmp_path: Path):
+    result = _run_help(SCRIPTS / "cc-help", REPO, "--root", str(tmp_path / "missing"))
+
+    assert result.returncode == 2
+    assert "E_CONTEXT001" in result.stderr

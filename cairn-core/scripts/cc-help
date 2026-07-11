@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from harness_runtime.context import HarnessContextError, load_harness_context
 
 # 场景分组:按 core.yaml:workflow_order 的注释分组。
 # 与 cc-workflow-gen 的 section banner 同源;新命令加入 core.yaml 时须同步此处,
@@ -38,8 +38,12 @@ def load_yaml(path: Path) -> Any:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def core_path() -> Path:
-    return PROJECT_ROOT / ".claude" / "runtime" / "core.yaml"
+def default_framework_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def core_path(framework_root: Path | None = None) -> Path:
+    return (framework_root or default_framework_root()) / "runtime" / "core.yaml"
 
 
 def build_signature(command: str, manifest: dict[str, Any]) -> str:
@@ -52,13 +56,14 @@ def build_signature(command: str, manifest: dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-def build_catalog() -> dict[str, dict[str, Any]]:
+def build_catalog(framework_root: Path | None = None) -> dict[str, dict[str, Any]]:
     """枚举 core.yaml:runtime_commands,逐个读 manifest summary/inputs。"""
-    core = load_yaml(core_path())
+    framework_root = framework_root or default_framework_root()
+    core = load_yaml(core_path(framework_root))
     runtime_commands = core["runtime_commands"]
     catalog: dict[str, dict[str, Any]] = {}
     for command, rel in runtime_commands.items():
-        manifest = load_yaml(PROJECT_ROOT / rel)
+        manifest = load_yaml(framework_root / rel.removeprefix(".claude/"))
         inputs = manifest.get("inputs", {}) or {}
         catalog[command] = {
             "summary": manifest.get("summary_zh") or manifest.get("summary", ""),
@@ -105,11 +110,27 @@ def main(argv: list[str] | None = None) -> int:
         description="列出所有 cc-* 命令及功能用法(命令速查)。"
     )
     parser.add_argument("--json", action="store_true", help="JSON 格式输出。")
+    parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现。")
     args = parser.parse_args(argv)
 
-    catalog = build_catalog()
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else default_framework_root(),
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        return 2
+
+    catalog = build_catalog(context.framework_root)
     if args.json:
-        print(json.dumps({"commands": catalog}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"project_root": str(context.project_root), "commands": catalog},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     else:
         print(render_markdown(catalog), end="")
     return 0

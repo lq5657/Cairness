@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`494 passed`
+- 测试：`497 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，494 个用例 |
+| Tests | 54 个受版本控制文件，497 个用例 |
 
 当前主要事实：
 
@@ -808,6 +808,18 @@ cc-doctor-check --root <project>
 - 剩余：help/stats/gate-stats/lint/wave 等入口仍需审计并迁移独立 root 推导；P2-05 保持部分完成。
 - 风险/决策：全局 Context root 与 `orphans` Git 扫描 root 是两个不同边界，不复用同名参数，避免破坏已有自动化和任意 Git fixture 扫描能力。
 - 下一步：搜索剩余 `__file__`/cwd 根推导，选择一个读边界清晰的脚本组继续迁移。
+
+#### 实施记录 2026-07-11（命令速查根迁移）
+
+- 状态：部分完成
+- Change/提交：`P2-05`（由本子任务的 Git 提交记录）
+- 已完成：`cc-help` 的 runtime core 与 command manifest 读取通过 `HarnessContext.framework_root`，新增 `--root`、缺失根的 `E_CONTEXT001`，并支持源码 CLI 跨项目和非标准物理 framework；JSON 在保留 `commands` 的同时增加统一 `project_root`。
+- 验证：
+  - `rtk pytest -q tests/test_help_script.py` → `8 passed`
+  - 最终全量 pytest、Harness/help/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：stats/gate-stats/budget/knowledge/index/wave/lint 等入口仍需迁移或确认其参数边界；P2-05 保持部分完成。
+- 风险/决策：manifest 继续声明逻辑 `.claude/...` 路径，速查脚本仅在读取时映射到物理 framework，避免把安装目录写回公开合同。
+- 下一步：迁移统计类只读入口，统一 change state 与 framework config 的项目定位。
 
 ### 9.8 `P2-06` 核心脚本模块化
 
