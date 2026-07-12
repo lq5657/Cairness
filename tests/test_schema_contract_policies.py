@@ -23,6 +23,7 @@ def test_contract_policy_package_matches_schema_check_exports():
         "is_final_artifact_write",
         "expected_subagent_parallel_policy",
         "result_sources",
+        "merge_result_contract",
     ):
         assert getattr(schema_check, name) is getattr(policies, name)
 
@@ -68,3 +69,82 @@ def test_result_sources_filters_malformed_sections_and_non_strings():
         {"evidence": {"sources": ["auto_validation", 1, "written_artifacts"]}},
         "evidence",
     ) == {"auto_validation", "written_artifacts"}
+
+
+def test_result_contract_merge_applies_inline_overrides_and_nested_sections():
+    policies = importlib.import_module("harness_runtime.schema_contract_policies")
+    profile = {
+        "required_fields": ["status", "summary"],
+        "writes": "profile_writes",
+        "evidence": {"required": True, "sources": ["auto_validation"]},
+        "risks": {"required": True, "sources": ["stop_conditions"]},
+    }
+    declared = {
+        "profile": ".claude/runtime/result-contracts/base.yaml",
+        "writes": "manifest_writes",
+        "evidence": {"sources": ["written_artifacts"]},
+        "risks": {"format": "structured"},
+    }
+
+    assert policies.merge_result_contract(profile, declared) == {
+        "required_fields": ["status", "summary"],
+        "writes": "manifest_writes",
+        "evidence": {"required": True, "sources": ["written_artifacts"]},
+        "risks": {
+            "required": True,
+            "sources": ["stop_conditions"],
+            "format": "structured",
+        },
+    }
+
+
+def test_result_contract_merge_excludes_profile_reference_without_profile_data():
+    policies = importlib.import_module("harness_runtime.schema_contract_policies")
+
+    assert policies.merge_result_contract(
+        None,
+        {
+            "profile": ".claude/runtime/result-contracts/missing.yaml",
+            "status_values": ["passed", "blocked"],
+            "evidence": "invalid-but-preserved",
+        },
+    ) == {
+        "status_values": ["passed", "blocked"],
+        "evidence": "invalid-but-preserved",
+    }
+
+
+def test_effective_result_contract_loads_profile_then_uses_merge_policy(tmp_path):
+    schema_check = _load_schema_check()
+    profile_path = tmp_path / ".claude" / "runtime" / "result-contracts" / "base.yaml"
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text(
+        "writes: profile_writes\n"
+        "evidence:\n"
+        "  required: true\n"
+        "  sources: [auto_validation]\n",
+        encoding="utf-8",
+    )
+    checked: list[str] = []
+    issues = []
+
+    effective = schema_check.effective_result_contract(
+        tmp_path,
+        {
+            "result_contract": {
+                "profile": ".claude/runtime/result-contracts/base.yaml",
+                "writes": "manifest_writes",
+                "evidence": {"sources": ["written_artifacts"]},
+            }
+        },
+        tmp_path / "manifest.yaml",
+        checked,
+        issues,
+    )
+
+    assert effective == {
+        "writes": "manifest_writes",
+        "evidence": {"required": True, "sources": ["written_artifacts"]},
+    }
+    assert checked == [str(profile_path)]
+    assert issues == []

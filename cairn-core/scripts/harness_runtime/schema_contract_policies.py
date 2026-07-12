@@ -45,3 +45,24 @@ def result_sources(result_contract: dict[str, Any], section: str) -> set[str]:
     if not isinstance(value, dict) or not isinstance(value.get("sources"), list):
         return set()
     return {item for item in value["sources"] if isinstance(item, str)}
+
+
+def merge_result_contract(
+    profile: dict[str, Any] | None,
+    declared: dict[str, Any],
+) -> dict[str, Any]:
+    effective = dict(profile) if isinstance(profile, dict) else {}
+    for key, value in declared.items():
+        if key == "profile":
+            continue
+        if (
+            key in {"evidence", "risks"}
+            and isinstance(value, dict)
+            and isinstance(effective.get(key), dict)
+        ):
+            merged = dict(effective[key])
+            merged.update(value)
+            effective[key] = merged
+        else:
+            effective[key] = value
+    return effective

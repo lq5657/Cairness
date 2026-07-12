@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`591 passed`
+- 测试：`594 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 67 个受版本控制文件，591 个用例 |
+| Tests | 67 个受版本控制文件，594 个用例 |
 
 当前主要事实：
 
@@ -1178,6 +1178,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：subagent/result/interaction contract 的 profile 文件加载、Issue 构造和 validator 编排仍在 CLI；runtime command references 与 runtime manifests orchestration 也尚未拆分。P2-06 保持部分完成。
 - 风险/决策：本批只迁移无 IO 且不产生 Issue 的策略函数，不抽象 `add(issues, code, ...)` 回调，也不改变 final-artifact 路径规范化、parallel policy 值或 result source set 语义。
 - 下一步：在明确 loader/Issue 注入边界后提取 effective result contract merge，或选择 runtime command reference 中一组纯引用决策继续迁移。
+
+#### 实施记录 2026-07-12（Schema result contract merge policy）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 result contract profile defaults 与 manifest inline declaration 的有效合同合并移入 `schema_contract_policies.merge_result_contract`。`effective_result_contract` 继续负责 profile path 解析、checked 记录、YAML 加载和 Issue 收集，加载后委托纯合并 API。
+- 验证：新增 API/CLI 导出测试先因函数不存在观察 RED，再转为 GREEN；覆盖 profile 顶层默认、inline 顶层覆盖、`evidence`/`risks` 一层合并、profile 引用字段剔除、无 profile 数据降级，以及真实临时 `.claude` profile IO adapter。
+- 剩余：result contract 字段/Issue 校验、subagent effective contract 与 interaction contract validator 仍在 CLI；runtime command reference 和 manifest orchestration 尚未拆分。P2-06 保持部分完成。
+- 风险/决策：严格保留原一层合并合同，仅 `evidence`/`risks` 在双方均为 mapping 时合并；不改为递归 merge，不让 profile loader 进入纯 policy 模块，损坏/缺失 profile 继续由既有 document loader 报告并用 inline declaration 继续校验。
+- 下一步：提取 effective subagent contract 中 inline/contract 合并策略，或选择 runtime command reference 的纯路径集合决策。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

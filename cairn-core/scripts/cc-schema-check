@@ -42,6 +42,7 @@ from harness_runtime.schema_contract_policies import (
     FINAL_ARTIFACT_WRITE_PREFIXES,
     expected_subagent_parallel_policy,
     is_final_artifact_write,
+    merge_result_contract,
     result_sources,
 )
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
@@ -923,26 +924,17 @@ def effective_result_contract(
     if not isinstance(result_contract, dict):
         return None
 
-    effective: dict[str, Any] = {}
+    profile: dict[str, Any] | None = None
     profile_declared = result_contract.get("profile")
     if isinstance(profile_declared, str):
         profile_path = project_path(project_root, profile_declared)
         if profile_path is not None:
             checked.append(str(profile_path))
-            profile = load_yaml_file(profile_path, issues)
-            if isinstance(profile, dict):
-                effective.update(profile)
+            loaded_profile = load_yaml_file(profile_path, issues)
+            if isinstance(loaded_profile, dict):
+                profile = loaded_profile
 
-    for key, value in result_contract.items():
-        if key == "profile":
-            continue
-        if key in {"evidence", "risks"} and isinstance(value, dict) and isinstance(effective.get(key), dict):
-            merged = dict(effective[key])
-            merged.update(value)
-            effective[key] = merged
-        else:
-            effective[key] = value
-    return effective
+    return merge_result_contract(profile, result_contract)
 
 
 def validate_result_contract(
