@@ -1325,7 +1325,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 状态：部分完成
 - Change/提交：本子任务的 Git 提交记录
 - 已完成：新增 `runtime/roles.yaml` 与 `schemas/runtime-roles.schema.json`，migrated command 的 schema/subagent role 校验改读 canonical runtime role registry；legacy role-contract 仅对 custom/non-migrated command 作为显式 fallback。migrated command manifests/readsets 与 eval case 改读 `.claude/runtime/roles.yaml`。新增只读 `cc-legacy-audit` 与 `harness_runtime.legacy_audit`，以及 `harness_runtime.runtime_fallback_audit`，分别输出 legacy 活跃引用和 command/checkpoint fallback 分类。
-- 验证：`rtk pytest -q` → `686 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → 仅发现 `README.md:213` 的历史说明；fallback 审计 → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
+- 验证：`rtk pytest -q` → `689 passed`（role registry、fallback audit、legacy audit 和 diagnostics 回归均包含）；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → 仅剩 `legacy_fallback` 配置、custom-command 兼容代码和 schema fallback 入口；fallback 审计 → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
 - 剩余：`runtime/core.yaml` 的 `legacy_fallback.commands_dir/checkpoints_dir` 仍需为 custom/non-migrated command 保留；`cc-preflight` 的 `validates: checkpoints` 是兼容安装资产校验，尚未证明可删除；README 历史说明保留在历史文档边界。
 - 风险/决策：不把“所有内置命令已迁移”误判为“legacy 可删除”；fallback 只有在 custom command 替代合同明确后才能清零。Legacy audit 对历史文档仍报告引用并返回失败，确保后续审计不会静默漏项。
 - 下一步：补齐 eval/doctor/lint 的 legacy 引用审计证据，评估 preflight checkpoint 校验的 profile 边界，再决定是否移动/删除 legacy 目录。

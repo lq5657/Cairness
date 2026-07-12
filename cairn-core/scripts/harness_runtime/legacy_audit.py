@@ -7,9 +7,16 @@ from pathlib import Path
 
 LEGACY_COMMANDS = ("/propose", "/apply", "/review", "/test", "/fix", "/archive")
 LEGACY_COMMAND_RE = re.compile(
-    rf"(?<![A-Za-z0-9_.-])(?:{'|'.join(re.escape(command) for command in LEGACY_COMMANDS)})\b"
+    rf"(?<![A-Za-z0-9_.-])(?:{'|'.join(re.escape(command) for command in LEGACY_COMMANDS)})(?![A-Za-z0-9_./-])"
 )
 SCAN_DIRS = ("runtime", "scripts", "evals", "workflows")
+AUDIT_IMPLEMENTATION_NAMES = {
+    "cc-legacy-audit",
+    "legacy_audit.py",
+    "runtime_fallback_audit.py",
+    "runtime_manifest_lint.py",
+    "schema_role_registry.py",
+}
 
 
 def classify_legacy_reference(path: str, line: str) -> str | None:
@@ -19,7 +26,7 @@ def classify_legacy_reference(path: str, line: str) -> str | None:
         "role-contracts.md",
         ".claude/commands/",
         ".claude/docs/maintenance/legacy",
-        "checkpoint",
+        "/checkpoints/",
     )
     if not LEGACY_COMMAND_RE.search(line) and not any(token in lowered for token in tokens):
         return None
@@ -35,12 +42,17 @@ def classify_legacy_reference(path: str, line: str) -> str | None:
 def _iter_files(root: Path, report_path: Path | None) -> list[Path]:
     files: list[Path] = []
     candidates = [root / "README.md", root / "README"]
-    candidates.extend(root / directory for directory in SCAN_DIRS)
+    asset_root = root
+    if not any((root / directory).exists() for directory in SCAN_DIRS):
+        nested_core = root / "cairn-core"
+        if any((nested_core / directory).exists() for directory in SCAN_DIRS):
+            asset_root = nested_core
+    candidates.extend(asset_root / directory for directory in SCAN_DIRS)
     report_resolved = report_path.resolve() if report_path else None
     for candidate in candidates:
         paths = [candidate] if candidate.is_file() else sorted(candidate.rglob("*")) if candidate.is_dir() else []
         for path in paths:
-            if not path.is_file() or "__pycache__" in path.parts:
+            if not path.is_file() or "__pycache__" in path.parts or path.name in AUDIT_IMPLEMENTATION_NAMES:
                 continue
             if report_resolved and path.resolve() == report_resolved:
                 continue

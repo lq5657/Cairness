@@ -17,6 +17,9 @@ def test_classify_legacy_reference_distinguishes_active_fallback_and_history():
     assert legacy_audit.classify_legacy_reference("README.md", "Use /propose only for historical compatibility") == "historical_docs_ref"
     assert legacy_audit.classify_legacy_reference(".claude/workflows/cc-workflow.yaml", "command: /propose") == "migrated_command_active_ref"
     assert legacy_audit.classify_legacy_reference("README.md", "spec/review and cairn-core/fixtures") is None
+    assert legacy_audit.classify_legacy_reference(
+        "runtime/commands/cc-test.yaml", "- .cairness/changes/<change-id>/test-spec.md"
+    ) is None
 
 
 def test_scan_excludes_report_and_pycache_and_sorts_references(tmp_path):
@@ -47,3 +50,37 @@ def test_cli_json_and_text_are_stable(tmp_path):
     text_proc = subprocess.run([sys.executable, str(SCRIPT), "--root", str(tmp_path)], capture_output=True, text=True)
     assert text_proc.returncode == 1
     assert text_proc.stdout.startswith("historical_docs_ref README.md:1: ")
+
+
+def test_scan_discovers_cairn_core_assets_from_repository_root(tmp_path):
+    core = tmp_path / "cairn-core" / "scripts"
+    core.mkdir(parents=True)
+    (core / "cc-schema-check").write_text(
+        'ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"\n',
+        encoding="utf-8",
+    )
+
+    report = legacy_audit.scan_legacy_references(tmp_path)
+
+    assert [item["path"] for item in report["references"]] == [
+        "cairn-core/scripts/cc-schema-check"
+    ]
+
+
+def test_scan_excludes_audit_implementation_files(tmp_path):
+    scripts = tmp_path / "cairn-core" / "scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "cc-legacy-audit").write_text(
+        '"""Audit active references to legacy Harness paths."""\n',
+        encoding="utf-8",
+    )
+    (scripts / "real-consumer.py").write_text(
+        'ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"\n',
+        encoding="utf-8",
+    )
+
+    report = legacy_audit.scan_legacy_references(tmp_path)
+
+    assert [item["path"] for item in report["references"]] == [
+        "cairn-core/scripts/real-consumer.py"
+    ]

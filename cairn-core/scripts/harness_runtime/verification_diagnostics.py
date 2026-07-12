@@ -64,7 +64,7 @@ def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
         return {
             "cause": "Command write scope or role contract validation failed.",
             "fix_hint": "Align the command writes with workflow/runtime contracts and registered roles.",
-            "doc_ref": ".claude/docs/maintenance/legacy/rules/role-contracts.md",
+            "doc_ref": ".claude/runtime/roles.yaml",
         }
     if name == "cc-deps-orphans":
         return {

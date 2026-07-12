@@ -43,6 +43,12 @@ def test_project_check_diagnosis_uses_stderr_context():
     assert "could not be resolved" in unresolved["cause"]
 
 
+def test_role_check_diagnosis_points_to_runtime_role_registry():
+    diagnostics = importlib.import_module("harness_runtime.verification_diagnostics")
+
+    assert diagnostics.diagnosis_for("cc-role-check", "failed", "")["doc_ref"] == ".claude/runtime/roles.yaml"
+
+
 def test_generic_status_and_failure_diagnoses_remain_stable():
     diagnostics = importlib.import_module("harness_runtime.verification_diagnostics")
 
