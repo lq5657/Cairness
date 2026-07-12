@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`556 passed`
+- 测试：`561 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 59 个受版本控制文件，556 个用例 |
+| Tests | 60 个受版本控制文件，561 个用例 |
 
 当前主要事实：
 
@@ -1098,6 +1098,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：diagnosis catalog、subprocess step 执行、mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
 - 风险/决策：不改变 fingerprint/warning 排序和截断语义；损坏或非 canonical 子检查 JSON 继续降级为空 Issue 列表，由退出码和 fingerprint 承担诊断。
 - 下一步：提取 `cc-verify` 的 diagnosis catalog 或纯 step result constructors，保持 subprocess 边界不动。
+
+#### 实施记录 2026-07-12（Verification diagnostics 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 `cc-verify` 的 actionable diagnosis catalog 移入 `harness_runtime.verification_diagnostics`。CLI 直接导入并重导出 `diagnosis_for`，subprocess result、synthetic step 和文本报告继续消费相同 `{cause, fix_hint, doc_ref}` 合同。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；覆盖 passed 空诊断、named check 优先级、stderr-sensitive project checks、generic skipped/blocked 和 failed fallback；既有 result/Issue 聚合集成测试保持通过。
+- 剩余：subprocess step 执行、synthetic step constructors、mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
+- 风险/决策：保持原 if-chain 顺序，不将同名 check 的 skipped 状态错误降级为 generic skip；诊断文本和 doc_ref 不做产品文案改写。
+- 下一步：提取纯 synthetic step constructors，或建立 verification service 对 subprocess runner 的可注入边界。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
