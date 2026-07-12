@@ -175,7 +175,7 @@ Phase 3：Agent Governance Platform
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 完成 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
-| `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 部分完成 | `P2-05`、`P2-06` |
+| `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 待开始 | `P2-05` |
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 待开始 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 待开始 | `P3-01` |
@@ -559,7 +559,7 @@ cc-cairn doctor --fix
 
 ### 9.3 `P2-01` Onboarding wizard
 
-**状态**：部分完成
+**状态**：待开始
 
 **目标**：提供一个从环境检测到首条可执行命令的引导入口。
 
@@ -616,7 +616,7 @@ cc-cairn onboard
 
 ### 9.5 `P2-03` 高层意图路由与命令渐进披露
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：新用户不必先记住 14 个命令，框架根据项目状态和用户意图推荐合法下一步。
 
@@ -1308,7 +1308,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 
 ### 9.10 `P2-08` Legacy 活跃依赖清零
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：legacy 文档只作为历史参考，不再承担角色、命令、状态或 eval 的活跃真相源职责。
 
@@ -1325,10 +1325,20 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 状态：部分完成
 - Change/提交：本子任务的 Git 提交记录
 - 已完成：新增 `runtime/roles.yaml` 与 `schemas/runtime-roles.schema.json`，migrated command 的 schema/subagent role 校验改读 canonical runtime role registry；legacy role-contract 仅对 custom/non-migrated command 作为显式 fallback。migrated command manifests/readsets 与 eval case 改读 `.claude/runtime/roles.yaml`。新增只读 `cc-legacy-audit` 与 `harness_runtime.legacy_audit`，以及 `harness_runtime.runtime_fallback_audit`，分别输出 legacy 活跃引用和 command/checkpoint fallback 分类。
-- 验证：`rtk pytest -q` → `689 passed`（role registry、fallback audit、legacy audit 和 diagnostics 回归均包含）；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → 仅剩 `legacy_fallback` 配置、custom-command 兼容代码和 schema fallback 入口；fallback 审计 → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
+- 验证：`rtk pytest -q` → `690 passed`（role registry、fallback audit、legacy audit 和 diagnostics 回归均包含）；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → `status: passed`，仅报告 `legacy_fallback` 配置、custom-command 兼容代码和历史引用；fallback 审计 → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
 - 剩余：`runtime/core.yaml` 的 `legacy_fallback.commands_dir/checkpoints_dir` 仍需为 custom/non-migrated command 保留；`cc-preflight` 的 `validates: checkpoints` 是兼容安装资产校验，尚未证明可删除；README 历史说明保留在历史文档边界。
-- 风险/决策：不把“所有内置命令已迁移”误判为“legacy 可删除”；fallback 只有在 custom command 替代合同明确后才能清零。Legacy audit 对历史文档仍报告引用并返回失败，确保后续审计不会静默漏项。
+- 风险/决策：不把“所有内置命令已迁移”误判为“legacy 可删除”；fallback 只有在 custom command 替代合同明确后才能清零。Legacy audit 继续报告 fallback/history 引用，但只对 migrated active ref 返回失败，确保兼容边界可见且不会误阻断 runtime。
 - 下一步：补齐 eval/doctor/lint 的 legacy 引用审计证据，评估 preflight checkpoint 校验的 profile 边界，再决定是否移动/删除 legacy 目录。
+
+#### 完成记录 2026-07-12（P2-08 活跃依赖清零审计）
+
+- 状态：完成
+- Change/提交：`023c537`、`adc7136` 及本收尾提交
+- 已完成：migrated commands、schema、lint、doctor、eval 和 verification diagnostics 不再依赖 legacy role/command/checkpoint 文档；runtime roles 是角色真相源。`cc-legacy-audit` 从仓库根或 framework 根均可发现资产，报告 fallback/history 引用但只对 migrated active ref 失败。custom/non-migrated command 的 legacy role/command/checkpoint fallback 保留为显式兼容边界。
+- 验证：`rtk cairn-core/scripts/cc-legacy-audit --json` → `passed` 且无 `migrated_command_active_ref`；`rtk pytest -q` → `690 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 与 `rtk git diff --check` → `passed`。
+- 剩余：无。legacy 目录作为历史参考和 custom-command fallback 资产保留，不进入 migrated command 默认 readset；未来删除 fallback 属于独立兼容性变更。
+- 风险/决策：`cc-preflight validates: checkpoints` 只验证兼容安装资产，不代表 runtime command 读取；0 个 migrated checkpoint read 已由独立审计证明。Fallback/history 引用必须继续可见，但不应阻断 migrated runtime。
+- 下一步：P2-09 Adapter capability contract。
 
 **验收标准**：
 

@@ -42,14 +42,24 @@ def test_scan_excludes_report_and_pycache_and_sorts_references(tmp_path):
 def test_cli_json_and_text_are_stable(tmp_path):
     (tmp_path / "README.md").write_text("Use /propose only for historical compatibility\n", encoding="utf-8")
     proc = subprocess.run([sys.executable, str(SCRIPT), "--root", str(tmp_path), "--json"], capture_output=True, text=True)
-    assert proc.returncode == 1
+    assert proc.returncode == 0
     payload = json.loads(proc.stdout)
-    assert payload["status"] == "failed"
+    assert payload["status"] == "passed"
     assert payload["references"][0]["category"] == "historical_docs_ref"
 
     text_proc = subprocess.run([sys.executable, str(SCRIPT), "--root", str(tmp_path)], capture_output=True, text=True)
-    assert text_proc.returncode == 1
+    assert text_proc.returncode == 0
     assert text_proc.stdout.startswith("historical_docs_ref README.md:1: ")
+
+
+def test_active_migrated_reference_still_fails_audit(tmp_path):
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "command.yaml").write_text("command: /propose\n", encoding="utf-8")
+
+    report = legacy_audit.scan_legacy_references(tmp_path)
+
+    assert report["status"] == "failed"
 
 
 def test_scan_discovers_cairn_core_assets_from_repository_root(tmp_path):

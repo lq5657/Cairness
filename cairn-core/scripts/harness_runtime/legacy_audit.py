@@ -77,4 +77,11 @@ def scan_legacy_references(root: Path, *, report_path: Path | None = None) -> di
                 {"category": category, "kind": "legacy_reference", "path": relative, "line": line_number, "text": line.strip()}
             )
     references.sort(key=lambda item: (str(item["path"]), int(item["line"]), str(item["category"])))
-    return {"status": "failed" if references else "passed", "root": str(root), "references": references}
+    has_active_reference = any(
+        item["category"] == "migrated_command_active_ref" for item in references
+    )
+    return {
+        "status": "failed" if has_active_reference else "passed",
+        "root": str(root),
+        "references": references,
+    }
