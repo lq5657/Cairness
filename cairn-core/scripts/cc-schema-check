@@ -64,6 +64,7 @@ from harness_runtime.schema_result_contract_issues import (
 from harness_runtime.schema_interaction_contract_issues import interaction_contract_issues
 from harness_runtime.schema_subagent_contract_issues import subagent_runtime_contract_issues
 from harness_runtime.schema_input_contract_issues import input_contract_issues
+from harness_runtime.schema_technology_catalog_issues import technology_catalog_shape_issues
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -249,32 +250,7 @@ def validate_runtime_readsets(claude_root: Path, core: dict[str, Any] | None, is
 
 
 def validate_technology_catalog_shape(catalog: dict[str, Any], catalog_path: Path, issues: list[Issue]) -> None:
-    policy = catalog.get("decision_policy") if isinstance(catalog.get("decision_policy"), dict) else {}
-    confirmation_levels = set(string_list(policy.get("confirmation_required_levels")))
-    seen_groups: set[str] = set()
-    for group in catalog.get("decision_groups", []) if isinstance(catalog.get("decision_groups"), list) else []:
-        if not isinstance(group, dict):
-            continue
-        group_id = group.get("id")
-        if isinstance(group_id, str):
-            if group_id in seen_groups:
-                add(issues, "E_SCHEMA175", catalog_path, f"duplicate technology decision group {group_id}")
-            seen_groups.add(group_id)
-        options = group.get("options") if isinstance(group.get("options"), list) else []
-        option_ids: set[str] = set()
-        for option in options:
-            if not isinstance(option, dict) or not isinstance(option.get("id"), str):
-                continue
-            option_id = option["id"]
-            if option_id in option_ids:
-                add(issues, "E_SCHEMA180", catalog_path, f"decision group {group_id} has duplicate option {option_id}")
-            option_ids.add(option_id)
-        default = group.get("default_recommendation")
-        if isinstance(default, str) and default not in option_ids:
-            add(issues, "E_SCHEMA176", catalog_path, f"decision group {group_id} default_recommendation {default} is not an option")
-        level = group.get("level")
-        if isinstance(level, str) and level in confirmation_levels and group.get("requires_user_confirmation") is not True:
-            add(issues, "E_SCHEMA177", catalog_path, f"decision group {group_id} level {level} must require user confirmation")
+    issues.extend(technology_catalog_shape_issues(catalog, catalog_path))
 
 
 def validate_language_profile_and_technology_catalog(

@@ -1259,6 +1259,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：不让 package 模块访问 protocol cache、filesystem executable 或 subprocess；全部 capability disabled 时继续返回空项目结果集，input contract 继续由 CLI 的 protocol 校验顺序保证 cache 可用。
 - 下一步：复审三个 CLI 与 `change_docs.py` 的剩余函数，选择最后一批明确领域完成模块化，随后按验收标准决定 P2-06 是否可标记完成。
 
+#### 实施记录 2026-07-12（Topic rule lint、Technology catalog Issues 与 Change findings）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：`harness_runtime.runtime_topic_rule_lint` 接管 YAML/Markdown topic-rule shape 决策；`harness_runtime.schema_technology_catalog_issues` 接管 technology catalog 的 `E_SCHEMA175/176/177/180` Issue 决策；`harness_runtime.change_findings` 接管 `FindingDetail`、fenced block、location 和 finding detail parser，`change_docs.py` 保持历史重导出兼容。CLI 继续负责文件/JSON/YAML IO、路径解析、跨文档编排、Issue/result 渲染和退出码。
+- 验证：本批聚焦回归 `20 passed`；`rtk pytest -q` → `675 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 全部通过；`rtk git diff --check` → `passed`。
+- 剩余：P2-06 优先对象的领域纯逻辑已基本迁出；剩余 CLI 主要是文件加载、Context/路径映射、跨文档编排、subprocess 和渲染边界。仍需做一次模块/API 清单审计，确认没有遗漏的高价值纯域后再决定是否标记完成。
+- 风险/决策：change findings 仅迁移解析逻辑，保持字段、顺序、默认值和 malformed 输入容错；technology catalog 模块不复制 schema engine 或 language matching；topic-rule 模块不读取文件或处理 YAML 异常。
+- 下一步：完成 P2-06 package/API 清单审计；若无遗漏，转入依赖已满足的 P2-08 Legacy 活跃依赖清零或 P2-09 Adapter capability contract，并保留 P2-06 的完整验证证据。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始
