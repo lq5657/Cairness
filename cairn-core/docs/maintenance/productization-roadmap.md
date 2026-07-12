@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`587 passed`
+- 测试：`591 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 66 个受版本控制文件，587 个用例 |
+| Tests | 67 个受版本控制文件，591 个用例 |
 
 当前主要事实：
 
@@ -1168,6 +1168,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：mode selection、capability scheduling、result aggregation 与 report rendering 仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
 - 风险/决策：保留 review coverage 中 `out_of_scope_flagged` 缺 `spec_review_flag` 只产生 warning 而不失败的历史语义；不合并 `cc-spec-scope-check` 的更严格 Issue 合同，不修改 Existing Code 的 fallback 匹配规则或 risk threshold 决策。
 - 下一步：提取 `build_report` 中不涉及 CLI 渲染的 result aggregation/mode selection 边界，或转向 `cc-schema-check` 的 runtime reference validation service。
+
+#### 实施记录 2026-07-12（Schema runtime contract policies 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 final artifact write 名称/前缀判定、subagent scoped writer 对 parallel policy 的选择，以及 result contract evidence/risks source 集合提取移入 `harness_runtime.schema_contract_policies`。`cc-schema-check` 直接导入并重导出原函数和 final-artifact 常量。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；覆盖显式名称、change/audit/context 前缀、非 Cairness/近似路径排除、malformed agent、scoped writer、malformed result section 和非字符串 source 过滤；metadata/document/schema/subagent/manifest/protocol 聚焦回归保持通过。
+- 剩余：subagent/result/interaction contract 的 profile 文件加载、Issue 构造和 validator 编排仍在 CLI；runtime command references 与 runtime manifests orchestration 也尚未拆分。P2-06 保持部分完成。
+- 风险/决策：本批只迁移无 IO 且不产生 Issue 的策略函数，不抽象 `add(issues, code, ...)` 回调，也不改变 final-artifact 路径规范化、parallel policy 值或 result source set 语义。
+- 下一步：在明确 loader/Issue 注入边界后提取 effective result contract merge，或选择 runtime command reference 中一组纯引用决策继续迁移。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

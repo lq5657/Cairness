@@ -37,6 +37,13 @@ from harness_runtime.schema_metadata import (
     set_path_roots,
     string_list,
 )
+from harness_runtime.schema_contract_policies import (
+    FINAL_ARTIFACT_WRITE_NAMES,
+    FINAL_ARTIFACT_WRITE_PREFIXES,
+    expected_subagent_parallel_policy,
+    is_final_artifact_write,
+    result_sources,
+)
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -256,15 +263,6 @@ ANTI_RATIONALIZATION_COMMANDS = {
 }
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
-FINAL_ARTIFACT_WRITE_PREFIXES = (
-    ".cairness/changes/",
-    ".cairness/audits/",
-    ".cairness/context/",
-)
-FINAL_ARTIFACT_WRITE_NAMES = {
-    ".cairness/changes/task-board.md",
-    ".cairness/context/dev-map.md",
-}
 TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
     "cc-propose": {
         "when_writing_change_artifacts": [
@@ -371,18 +369,6 @@ def load_registered_roles(project_root: Path, issues: list[Issue]) -> set[str]:
     if not roles:
         add(issues, "E_SCHEMA153", path, "role contracts must register at least one role")
     return roles
-
-
-def is_final_artifact_write(value: str) -> bool:
-    normalized = normalize_declared_path(value)
-    if normalized in {normalize_declared_path(item) for item in FINAL_ARTIFACT_WRITE_NAMES}:
-        return True
-    return normalized.startswith(tuple(normalize_declared_path(item) for item in FINAL_ARTIFACT_WRITE_PREFIXES))
-
-
-def expected_subagent_parallel_policy(agents: list[Any]) -> str:
-    has_scoped_writer = any(isinstance(agent, dict) and agent.get("mode") == "scoped_write" for agent in agents)
-    return "disjoint_writes_only" if has_scoped_writer else "read_only_parallel_only"
 
 
 HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
@@ -924,13 +910,6 @@ def validate_subagent_runtime_contract(
             path,
             f"{command} subagents.merge_requirements must declare disjoint parallel write handling",
         )
-
-
-def result_sources(result_contract: dict[str, Any], section: str) -> set[str]:
-    value = result_contract.get(section)
-    if not isinstance(value, dict) or not isinstance(value.get("sources"), list):
-        return set()
-    return {item for item in value["sources"] if isinstance(item, str)}
 
 
 def effective_result_contract(
