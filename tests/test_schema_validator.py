@@ -3,6 +3,7 @@
 These guard the combinator keywords (oneOf/anyOf/allOf/not) and $ref/$defs
 resolution, which were previously silently skipped — see E_SCHEMA191..194.
 """
+import importlib
 from pathlib import Path
 
 
@@ -11,6 +12,22 @@ def _validate(mod, schema, value, root_schema=None):
     root = root_schema if root_schema is not None else schema
     mod.validate_against_schema(value, schema, root, [], Path("subj"), issues)
     return [i.code for i in issues]
+
+
+def test_schema_validator_package_matches_cli_exports(cc_schema_check):
+    validator = importlib.import_module("harness_runtime.schema_validation")
+
+    for name in (
+        "schema_location",
+        "type_matches",
+        "json_type_name",
+        "resolve_schema_ref",
+        "validate_against_schema",
+    ):
+        assert getattr(cc_schema_check, name) is getattr(validator, name)
+
+    schema = {"type": "object", "required": ["name"]}
+    assert _validate(validator, schema, {}) == _validate(cc_schema_check, schema, {})
 
 
 # --- oneOf -----------------------------------------------------------------

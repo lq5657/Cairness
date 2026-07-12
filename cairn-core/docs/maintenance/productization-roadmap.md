@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`545 passed`
+- 测试：`546 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，545 个用例 |
+| Tests | 56 个受版本控制文件，546 个用例 |
 
 当前主要事实：
 
@@ -1058,6 +1058,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：`cc-deps` 领域拆分已完成；schema/verify/lint 等大型聚合脚本尚未拆分，因此 P2-06 总项保持部分完成。
 - 风险/决策：保留 Git 命令超时/失败返回空集合的既有兼容语义；显式 `--root` 的 fail-fast 仍由 CLI 在调用领域服务前执行，不改变 `E_DEPS001` 边界。
 - 下一步：选择 `cc-schema-check` 中一个稳定、可独立验证的域做下一次小批迁移，避免一次性拆分大型聚合脚本。
+
+#### 实施记录 2026-07-12（JSON Schema validator 领域模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 schema location、JSON 类型判定、local `$ref` 解析、`allOf`/`anyOf`/`oneOf`/`not` 组合器和递归 object/array/string/integer 验证移入 `harness_runtime.schema_validation`。`cc-schema-check` 直接导入并重导出原公共函数，保持 SourceFileLoader 与既有测试调用兼容。
+- 验证：package/CLI 等价测试先因模块不存在观察 RED，再转为 GREEN；hand-written validator、真实 runtime manifests、topic rules、profiles、subagent contract、enums 与 command protocol 聚焦回归通过，完整验证见本子任务完成验证。
+- 剩余：`cc-schema-check` 的文件加载、runtime/change/topic-rule 编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
+- 风险/决策：不引入第三方 JSON Schema 引擎，不扩张当前 draft-07 子集，也不修改 `E_SCHEMA107..118`、`E_SCHEMA191..193` 的触发和消息合同。
+- 下一步：提取 schema 文档加载与结构验证 service，或转向 `cc-verify` 中不依赖 subprocess 的纯结果聚合域。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
