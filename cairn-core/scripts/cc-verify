@@ -17,6 +17,11 @@ from pathlib import Path
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
+from harness_runtime.verification_results import (
+    collect_issues_from_json as _collect_issues_from_json,
+    fingerprints,
+    warnings,
+)
 
 from change_docs import named_table_rows, parse_findings
 
@@ -191,23 +196,6 @@ def capability_display_name(command: list[str], capability: str) -> str:
 
 def capability_kind(profile: LanguageProfile, capability: str) -> str:
     return f"project:{profile.name}:{capability}"
-
-
-def fingerprints(stdout: str, stderr: str) -> list[str]:
-    lines: list[str] = []
-    for line in (stdout + "\n" + stderr).splitlines():
-        value = re.sub(r"\s+", " ", line.strip())
-        if value:
-            lines.append(value[:300])
-    return sorted(set(lines))
-
-
-def warnings(stdout: str, stderr: str) -> list[str]:
-    warning_lines = []
-    for line in (stdout + "\n" + stderr).splitlines():
-        if re.search(r"\bwarn(ing)?\b", line, re.I):
-            warning_lines.append(re.sub(r"\s+", " ", line.strip())[:300])
-    return sorted(set(warning_lines))
 
 
 def diagnosis_for(name: str, status: str, stderr: str) -> dict[str, str]:
@@ -617,42 +605,6 @@ def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
         "fingerprints": [],
         "warnings": [],
     }
-
-
-def _collect_issues_from_json(stdout: str) -> list[dict[str, str]]:
-    """Parse a sub-check's --json stdout into a list of issue dicts.
-
-    Accepts two canonical shapes:
-    - Object report: ``{tool, status, issues: [...]}`` where each issue is
-      ``{code, path, message}`` (used by cc-lint, cc-readset, ...).
-    - Bare array: ``[{code, path, message}, ...]`` (used by cc-wave-plan --check,
-      which emits issues directly without an envelope object).
-
-    Returns [] for unparseable/non-canonical output (caller keeps relying on
-    fingerprints/exit code for those). Never raises — a parse failure just
-    means no structured issues are collected.
-    """
-    try:
-        report = json.loads(stdout)
-    except (json.JSONDecodeError, TypeError):
-        return []
-    if isinstance(report, list):
-        raw_issues = report
-    elif isinstance(report, dict):
-        raw_issues = report.get("issues")
-    else:
-        return []
-    if not isinstance(raw_issues, list):
-        return []
-    collected: list[dict[str, str]] = []
-    for item in raw_issues:
-        if isinstance(item, dict) and {"code", "path", "message"} <= item.keys():
-            collected.append({
-                "code": str(item["code"]),
-                "path": str(item["path"]),
-                "message": str(item["message"]),
-            })
-    return collected
 
 
 def run_step(

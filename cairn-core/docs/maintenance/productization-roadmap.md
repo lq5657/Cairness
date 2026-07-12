@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`552 passed`
+- 测试：`556 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 58 个受版本控制文件，552 个用例 |
+| Tests | 59 个受版本控制文件，556 个用例 |
 
 当前主要事实：
 
@@ -1088,6 +1088,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：runtime/change/topic-rule 的结构编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
 - 风险/决策：不统一 `cc-lint` 的 string-only `parse_meta`，保留已记录的有意类型差异；不扩张 placeholder/glob declared path 的可解析范围。
 - 下一步：转向 `cc-verify` 的纯结果聚合域，或继续提取 `cc-schema-check` 的 runtime command/reference 验证 service。
+
+#### 实施记录 2026-07-12（Verification result normalization 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 stdout/stderr fingerprint 规范化、warning 提取和 canonical child Issue JSON 收集移入 `harness_runtime.verification_results`。`cc-verify` 直接导入 `fingerprints`/`warnings`，并将公开 package API 兼容别名为原 `_collect_issues_from_json`。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；覆盖空白压缩、300 字符边界沿用、去重排序、object envelope、bare array 和非 canonical/损坏 JSON；既有 `cc-verify` Issue 聚合集成测试保持通过。
+- 剩余：diagnosis catalog、subprocess step 执行、mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
+- 风险/决策：不改变 fingerprint/warning 排序和截断语义；损坏或非 canonical 子检查 JSON 继续降级为空 Issue 列表，由退出码和 fingerprint 承担诊断。
+- 下一步：提取 `cc-verify` 的 diagnosis catalog 或纯 step result constructors，保持 subprocess 边界不动。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
