@@ -251,3 +251,4 @@
 ## 0.1.0 - 2026-04-12
 
 - Initial cc_spec Harness assets: commands, checkpoints, rules, schemas, scripts, examples, audits, and context templates.
+- Added the `cc-cairn onboard` entrypoint with deterministic project inspection, safe preview/confirmation, idempotent initialization, runtime profile selection, install metadata, and post-install Doctor verification.

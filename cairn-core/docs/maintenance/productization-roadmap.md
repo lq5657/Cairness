@@ -168,7 +168,7 @@ Phase 3：Agent Governance Platform
 | `P1-04` | Harness 配置 schema 与有效配置诊断 | Phase 1 | P0 | 完成 | `P1-02` |
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
 | `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 完成 | `P1-04`、`P1-05` |
-| `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
+| `P2-01` | Onboarding wizard | Phase 2 | P1 | 完成 | Phase 1 |
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 完成 | `P2-05`、`P1-04` |
@@ -559,7 +559,7 @@ cc-cairn doctor --fix
 
 ### 9.3 `P2-01` Onboarding wizard
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：提供一个从环境检测到首条可执行命令的引导入口。
 
@@ -589,9 +589,25 @@ cc-cairn onboard
 - 用户可预览和取消；
 - 安装结果可由 doctor 验证。
 
+#### 实施记录 2026-07-12
+
+- 状态：完成
+- Change/提交：工作区当前 change（待提交）
+- 已完成：新增 `cc-cairn onboard`；支持 greenfield/brownfield 检测、确定性语言选择、Claude Code adapter、`minimal/standard/strict/loop` profile、预览/取消、`--yes` 自动化、幂等重复运行、外来 `.claude/` 确认保护，以及 `.cairness/install.yaml` 原子持久化。
+- 验证：
+  - `rtk pytest -q tests/test_onboard_cli_contract.py tests/test_doctor_onboarding_metadata.py tests/test_cli_doctor.py` → `14 passed`
+  - `rtk pytest -q` → `706 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → `passed`
+  - `rtk cairn-core/scripts/cc-readset --check` → `ok`
+  - `rtk cairn-core/scripts/cc-workflow-gen --check` → `ok`
+  - `rtk git diff --check` → `passed`
+- 剩余：无
+- 风险/决策：Codex/Cursor adapter 尚未在 P3-03/P3-04 交付，因此 onboarding 不再暴露会写入 `.claude/` 的虚假 adapter 选项；未解析语言必须通过 `--language` 明确选择。
+- 下一步：`P2-07` 只读 Dashboard/TUI 或按依赖推进 P2-02 场景 alias。
+
 ### 9.4 `P2-02` 场景化产品 profile
 
-**状态**：完成
+**状态**：待开始
 
 **目标**：把内部技术 profile 转换为用户可理解的采用场景。
 

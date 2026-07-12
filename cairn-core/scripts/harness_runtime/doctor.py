@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import resolve_language_profile
+from harness_runtime import require_yaml, resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.versioning import VersionMetadataError, read_version
 from harness_runtime.adapter_capabilities import (
@@ -135,6 +135,40 @@ def _capability_summary(framework_root: Path) -> dict[str, Any]:
     }
 
 
+def read_install_metadata(path: Path) -> dict[str, Any]:
+    """Read optional onboarding metadata at *path*.
+
+    The result is deliberately a small, stable envelope so callers can
+    distinguish a project that has not been onboarded from one whose metadata
+    was damaged.  Missing and invalid metadata are both non-fatal to Doctor.
+    """
+    base = {"path": str(path), "metadata": {}}
+    if not path.is_file():
+        return {**base, "status": "not_installed"}
+    try:
+        loaded = require_yaml().safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {**base, "status": "invalid", "error": str(exc)}
+    if not isinstance(loaded, dict):
+        return {
+            **base,
+            "status": "invalid",
+            "error": "install metadata must be a mapping",
+        }
+    return {"status": "installed", "path": str(path), "metadata": loaded}
+
+
+def _onboarding_summary(project_root: Path) -> dict[str, Any]:
+    """Summarize optional install metadata without making it a readiness gate.
+
+    Install metadata is written by the onboarding flow and is useful context
+    for Doctor consumers, but older projects (and projects initialized by
+    hand) do not have it.  In particular, malformed metadata is reported in
+    the summary only; it must not change Doctor's existing issue/exit policy.
+    """
+    return read_install_metadata(project_root / ".cairness" / "install.yaml")
+
+
 def _summary(project_root: Path, framework_root: Path, system_root: Path, internal: dict[str, Any]) -> dict[str, Any]:
     resolution = resolve_language_profile(project_root)
     workflow = framework_root / "workflows" / "cc-workflow.yaml"
@@ -177,6 +211,7 @@ def _summary(project_root: Path, framework_root: Path, system_root: Path, intern
             "status": "ready" if len(state_existing) == len(required_state) else "incomplete",
             "directories": state_existing,
         },
+        "onboarding": _onboarding_summary(project_root),
     }
 
 

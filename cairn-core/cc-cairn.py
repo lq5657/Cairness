@@ -3,6 +3,7 @@
 
 Usage:
     cc-cairn init                                Initialize Cairness in the current project
+    cc-cairn onboard [--dry-run] [--yes]         Inspect and initialize a project safely
     cc-cairn update                              Pull latest release and update framework
     cc-cairn version                             Show installed and project versions
     cc-cairn doctor [--json] [--fix] [--apply]   Diagnose and safely repair readiness
@@ -17,8 +18,8 @@ Usage:
 
 import argparse
 import json
-import os
 import re
+import os
 import sys
 import shutil
 import subprocess
@@ -34,6 +35,12 @@ from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.doctor import apply_fix_plan, build_doctor_report, fix_plan
 from harness_runtime.explain import build_effective_contract
 from harness_runtime.versioning import VersionMetadataError, read_version
+from harness_runtime.onboarding import (
+    build_plan,
+    inspect_project,
+    read_install_metadata,
+    write_install_metadata,
+)
 
 MIN_PYTHON = (3, 9)
 REMOTE_URL = "https://github.com/lq5657/Cairness.git"
@@ -313,7 +320,7 @@ def write_commit_hash(directory, commit):
     (directory / "COMMIT").write_text(commit + "\n")
 
 
-def cmd_init():
+def cmd_init(*, assume_yes=False, force_foreign=False):
     data_dir = get_data_dir()
     if not data_dir.exists():
         sys.exit(f"Framework not installed. Run 'cairn_install' from the Cairness repo first.")
@@ -324,14 +331,14 @@ def cmd_init():
     if claude_dir.exists():
         if not (claude_dir / "VERSION").is_file():
             print(f".claude/ already exists in {project_root} but is not a Cairness install.")
-            resp = input("Overwrite this foreign directory anyway? [y/N] ").strip().lower()
+            resp = "y" if (assume_yes or force_foreign) else input("Overwrite this foreign directory anyway? [y/N] ").strip().lower()
             if resp != "y":
                 print("Aborted.")
                 return
             force = True
         else:
             print(f".claude/ already exists in {project_root}")
-            resp = input("Overwrite? This will replace framework files (local additions are preserved). [y/N] ").strip().lower()
+            resp = "y" if assume_yes else input("Overwrite? This will replace framework files (local additions are preserved). [y/N] ").strip().lower()
             if resp != "y":
                 print("Aborted.")
                 return
@@ -380,6 +387,123 @@ def cmd_init():
 
     version = (data_dir / "VERSION").read_text().strip()
     print(f"\nCairness v{version} initialized. Start Claude Code to begin.")
+
+
+def cmd_onboard(argv):
+    """Inspect a project, show a deterministic plan, and optionally apply it."""
+    parser = argparse.ArgumentParser(prog="cc-cairn onboard")
+    parser.add_argument("--adapter", default="claude-code", choices=("claude-code",))
+    parser.add_argument(
+        "--profile",
+        default="standard",
+        choices=("minimal", "standard", "strict", "loop"),
+        help="runtime governance profile (default: standard)",
+    )
+    parser.add_argument("--language", dest="language", choices=("golang", "python", "java", "cpp", "typescript"), help="override language detection")
+    parser.add_argument("--dry-run", action="store_true", help="inspect and print the plan without changing files")
+    parser.add_argument("--yes", action="store_true", help="apply without confirmation prompts")
+    parser.add_argument("--json", action="store_true", help="emit the plan as JSON")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd().resolve()
+    selected_profile = args.profile
+    inspection = inspect_project(root)
+    if args.language:
+        inspection["language"] = {
+            "status": "resolved",
+            "language": args.language,
+            "profile": args.language,
+            "source": "cli",
+            "matches": [args.language],
+            "reasons": ["explicit --language selection"],
+        }
+        inspection["language_profile"] = args.language
+    plan = build_plan(
+        inspection,
+        adapter=args.adapter,
+        profile=selected_profile,
+        language_profile=args.language,
+    )
+    if args.json or args.dry_run:
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+    else:
+        print("Cairness onboarding")
+        print(f"  Project: {inspection['project_type']} ({root})")
+        print(f"  Framework: {inspection['framework_status']}")
+        language = inspection.get("language", {})
+        print(f"  Language: {language.get('language') or language.get('status', 'unknown')}")
+        print(f"  Adapter: {args.adapter}  Profile: {selected_profile}")
+        print("  Planned actions:")
+        for action in plan["actions"]:
+            target = action.get("path") or action.get("profile") or action.get("adapter") or "project"
+            print(f"    - {action['action']}: {target}")
+
+    if args.dry_run or args.json:
+        return
+    if inspection["language"].get("status") != "resolved":
+        raise SystemExit(
+            "Onboarding cannot select a language profile deterministically; "
+            "rerun with --language <golang|python|java|cpp|typescript>."
+        )
+    if plan["status"] == "requires_confirmation" and not args.yes:
+        print("Onboarding needs confirmation because existing project state may be affected.")
+        if input("Apply this plan? [y/N] ").strip().lower() != "y":
+            print("Aborted. No files were changed.")
+            return
+
+    force_foreign = inspection["framework_status"] in {"foreign", "partial"}
+    try:
+        if inspection["framework_status"] == "installed":
+            for relative in ("context", "changes", "audits", "knowledge", "discussions"):
+                (root / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
+            print("Onboarding verified existing Cairness installation.")
+        else:
+            cmd_init(assume_yes=True, force_foreign=force_foreign)
+        _apply_runtime_profile(root / ".claude", selected_profile)
+        metadata = dict(plan["metadata"])
+        path = write_install_metadata(root, metadata)
+    except (OSError, ValueError) as exc:
+        print(f"Onboarding failed: {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    report = _run_onboarding_doctor(root)
+    print(f"  Wrote {path.relative_to(root)}")
+    print(f"  Doctor: {report['status']}")
+    if report["status"] != "passed":
+        raise SystemExit(f"Onboarding failed: Doctor reported {report['status']}")
+    print(f"Next command: {plan['next_command']}")
+
+
+def _apply_runtime_profile(framework_root, profile):
+    """Atomically update the schema-backed runtime profile."""
+    config = Path(framework_root) / "harness.config.yaml"
+    if not config.is_file():
+        raise ValueError(f"missing harness config: {config}")
+    text = config.read_text(encoding="utf-8")
+    replacement = f"profile: {profile}"
+    updated, count = re.subn(r"(?m)^profile:\s*[^\n]*$", replacement, text, count=1)
+    if count == 0:
+        raise ValueError(f"missing profile field: {config}")
+    if updated != text:
+        fd, temporary = tempfile.mkstemp(prefix=".harness-config.", suffix=".tmp", dir=config.parent)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                stream.write(updated)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, config)
+        except Exception:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
+            raise
+
+
+def _run_onboarding_doctor(project_root):
+    """Run the product Doctor against the newly onboarded project."""
+    root = Path(project_root).resolve()
+    framework_root = root / ".claude"
+    return build_doctor_report(root, framework_root, get_data_dir())
 
 
 def find_repo():
@@ -731,6 +855,9 @@ def cmd_doctor(argv):
         print(f"  CI: {summary['ci']['status']}")
         language = summary["language_profile"]
         print(f"  Language: {language['name'] or language['status']} ({language['source']})")
+        onboarding = summary.get("onboarding", {})
+        if onboarding:
+            print(f"  Onboarding: {onboarding.get('status', 'unknown')}")
         if report["fix"]["mode"] == "dry-run":
             print("Safe repair plan (dry-run):")
             for action in report["fix"]["actions"]:
@@ -1624,12 +1751,14 @@ def main():
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
     if cmd == "init":
         cmd_init()
+    elif cmd == "onboard":
+        cmd_onboard(sys.argv[2:])
     elif cmd == "update":
         cmd_update()
     elif cmd == "version":
@@ -1646,7 +1775,7 @@ def main():
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
 

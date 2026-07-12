@@ -34,6 +34,7 @@ def test_doctor_json_summarizes_product_readiness():
         "language_profile",
         "generated_views",
         "project_state",
+        "onboarding",
     }
     assert report["summary"]["versions"]["project"] == "1.1.0"
     assert report["summary"]["config"]["status"] == "valid"
