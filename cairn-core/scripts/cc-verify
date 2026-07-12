@@ -52,6 +52,7 @@ from harness_runtime.verification_review import (
     find_section_marker as _find_section_marker,
 )
 from harness_runtime.verification_report import build_verification_report
+from harness_runtime.verification_project_plan import project_step_plan
 from harness_runtime.verification_runner import run_step
 from harness_runtime.verification_scheduling import (
     aggregate_status,
@@ -181,47 +182,36 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         has_profile_change=profile_changed,
     )
     if run_project_checks:
-        if args.fixture and not target_project_root.exists():
-            results.append(
-                failed_step(
-                    "project checks",
-                    "project",
-                    f"explicit fixture {args.fixture} is invalid: {target_project_root} not found",
-                    target_project_root,
-                )
-            )
-        elif resolution.status != "resolved" or resolution.profile is None:
-            reason = resolution_error_message(resolution.status, resolution.errors)
-            if args.fixture:
-                results.append(
-                    failed_step(
-                        "project checks",
-                        "project",
-                        f"explicit fixture {args.fixture} is invalid: {reason}",
-                        target_project_root,
-                    )
-                )
-            else:
-                results.append(skipped_step("project checks", "project", f"language profile unresolved: {reason}"))
-        else:
+        target_project_exists = target_project_root.exists()
+        project_capabilities = []
+        if (
+            target_project_exists
+            and resolution.status == "resolved"
+            and resolution.profile is not None
+        ):
             profile = resolution.profile
             executables = capability_executables(profile)
-            plans = capability_plan(
+            project_capabilities = capability_plan(
                 profile,
                 config,
                 {executable: shutil.which(executable) is not None for executable in executables},
             )
-            if not plans:
-                results.append(skipped_step("project checks", capability_kind(profile, "none"), f"{profile.name} profile declares no verification capabilities"))
-            for plan in plans:
-                if plan.status == "disabled":
-                    continue
-                if plan.status == "skipped":
-                    results.append(skipped_step(plan.name, plan.kind, plan.reason))
-                    continue
-                if plan.status == "blocked":
-                    results.append(blocked_step(plan.name, plan.kind, plan.reason, target_project_root))
-                    continue
+        for plan in project_step_plan(
+            fixture=args.fixture,
+            target_root=target_project_root,
+            target_root_exists=target_project_exists,
+            resolution_status=resolution.status,
+            resolution_errors=resolution.errors,
+            profile=resolution.profile,
+            capability_plans=project_capabilities,
+        ):
+            if plan.action == "fail":
+                results.append(failed_step(plan.name, plan.kind, plan.reason, target_project_root))
+            elif plan.action == "skip":
+                results.append(skipped_step(plan.name, plan.kind, plan.reason))
+            elif plan.action == "block":
+                results.append(blocked_step(plan.name, plan.kind, plan.reason, target_project_root))
+            else:
                 results.append(run_step(plan.name, plan.kind, plan.command, target_project_root))
 
     report = build_verification_report(

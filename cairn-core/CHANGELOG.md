@@ -37,6 +37,9 @@
 - Moved effective subagent-contract `E_SCHEMA122` through `E_SCHEMA185` decisions into `harness_runtime.schema_subagent_contract_issues`, retaining contract loading and role registration in `cc-schema-check`.
 - Moved interactive command-contract `E_SCHEMA164` through `E_SCHEMA169` decisions into `harness_runtime.schema_interaction_contract_issues`, preserving historical per-field diagnostic multiplicity and ordering.
 - Moved optional role, review, finding, risk, and wave step planning into `harness_runtime.verification_auxiliary_plan`, preserving `cc-verify` execution order and change-directory gates.
+- Moved generated runtime-readset field and index-entry checks into `harness_runtime.runtime_readset_lint`, preserving `cc-lint` error text and deterministic ordering.
+- Moved runtime command input-contract `E_SCHEMA133`, `E_SCHEMA134`, and `E_SCHEMA199` decisions into `harness_runtime.schema_input_contract_issues`, while retaining protocol loading and cache sequencing in `cc-schema-check`.
+- Moved project fixture/profile/capability action planning into `harness_runtime.verification_project_plan`, preserving `cc-verify` skip/block/fail/run behavior and result ordering.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

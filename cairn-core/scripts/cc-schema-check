@@ -63,6 +63,7 @@ from harness_runtime.schema_result_contract_issues import (
 )
 from harness_runtime.schema_interaction_contract_issues import interaction_contract_issues
 from harness_runtime.schema_subagent_contract_issues import subagent_runtime_contract_issues
+from harness_runtime.schema_input_contract_issues import input_contract_issues
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -678,30 +679,9 @@ def validate_inputs_registered(command: str, manifest: dict[str, Any], manifest_
     E_SCHEMA199: an enum input contract is missing its values array.
     Relies on _PROTOCOL_CACHE populated by validate_agent_command_protocol.
     """
-    protocol = _PROTOCOL_CACHE
-    if not isinstance(protocol, dict):
-        return
-    input_contracts = protocol.get("input_contracts") if isinstance(protocol.get("input_contracts"), dict) else {}
-    inputs = manifest.get("inputs") if isinstance(manifest.get("inputs"), dict) else {}
-    for slot in ("required", "optional"):
-        names = inputs.get(slot)
-        if not isinstance(names, list):
-            continue
-        for name in names:
-            if not isinstance(name, str):
-                continue
-            contract = input_contracts.get(name)
-            if contract is None:
-                add(issues, "E_SCHEMA133", manifest_path, f"{command}.inputs.{slot}: '{name}' is not declared in protocol.yaml input_contracts")
-                continue
-            if not isinstance(contract, dict):
-                continue
-            if contract.get("type") == "enum":
-                values = contract.get("values")
-                if not isinstance(values, list) or not values:
-                    add(issues, "E_SCHEMA199", manifest_path, f"input_contracts.{name}: enum contract missing values array")
-            if slot == "required" and contract.get("missing_error") == "none":
-                add(issues, "E_SCHEMA134", manifest_path, f"{command}.inputs.required: '{name}' contract uses missing_error: none (required input cannot use the 'no error' sentinel)")
+    issues.extend(
+        input_contract_issues(command, manifest, manifest_path, _PROTOCOL_CACHE)
+    )
 
 
 def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, issues: list[Issue]) -> list[str]:

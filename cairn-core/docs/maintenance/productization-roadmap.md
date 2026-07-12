@@ -1249,6 +1249,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：纯模块不读取文件、不解析 Context、不执行 subprocess；保留 interaction clarification 的逐字段 `E_SCHEMA168` 重复诊断、subagent write overlap 顺序和 role check 在 change 目录缺失时仍执行的既有语义。
 - 下一步：并行选择三个不共享入口的稳定域继续小批提取，完成后重新评估 CLI 剩余职责与 P2-06 退出条件。
 
+#### 实施记录 2026-07-12（Runtime readset lint、Input contract Issues 与 Project step plan）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：`harness_runtime.runtime_readset_lint` 接管 generated readset 字段与 index entry 文本检查；`harness_runtime.schema_input_contract_issues` 接管 runtime command input contract 的 `E_SCHEMA133/134/199`；`harness_runtime.verification_project_plan` 接管 fixture/profile/capability 到 fail/skip/block/run 的项目步骤计划。三个 CLI 保留 Context、文件/protocol/profile 加载、executable 探测、subprocess、Issue/result 渲染和退出码。
+- 验证：三个模块均先观察新 package API 缺失的 RED，再完成 GREEN；`rtk pytest -q <本批 7 个聚焦测试文件>` → `27 passed`；`rtk pytest -q` → `663 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 与 `rtk git diff --check` → `passed`。
+- 剩余：`cc-lint` 仍有 topic/governance/runtime command 文本与路径编排，`cc-schema-check` 仍有 runtime reference/manifest validator 编排，`cc-verify` 已主要收敛为 report service adapter；`change_docs.py` 的独立数据模型与解析器仍待评估。P2-06 保持部分完成。
+- 风险/决策：不让 package 模块访问 protocol cache、filesystem executable 或 subprocess；全部 capability disabled 时继续返回空项目结果集，input contract 继续由 CLI 的 protocol 校验顺序保证 cache 可用。
+- 下一步：复审三个 CLI 与 `change_docs.py` 的剩余函数，选择最后一批明确领域完成模块化，随后按验收标准决定 P2-06 是否可标记完成。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始

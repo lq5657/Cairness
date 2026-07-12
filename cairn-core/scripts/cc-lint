@@ -20,6 +20,10 @@ from harness_runtime.change_lint import (
     validate_validation_mapping,
 )
 from harness_runtime.runtime_manifest_lint import validate_runtime_core_text
+from harness_runtime.runtime_readset_lint import (
+    validate_runtime_readset_index_text,
+    validate_runtime_readset_text,
+)
 
 from change_docs import (
     CHANGE_ID_RE,
@@ -628,25 +632,20 @@ def lint_runtime(root: Path, errors: list[str]) -> None:
             errors.append(f"{readset_path}: missing generated runtime readset")
         else:
             readset_text = read(readset_path)
-            for key in (
-                f"command: {command}",
-                f"source_manifest: .claude/runtime/commands/{command}.yaml",
-                "generated_from:",
-                "always_reads:",
-                "optional_reads:",
-                "conditional_reads:",
-            ):
-                if key not in readset_text:
-                    errors.append(f"{readset_path}: missing readset field {key.rstrip(':')}")
+            errors.extend(
+                f"{readset_path}: {message}"
+                for message in validate_runtime_readset_text(command, readset_text)
+            )
 
     readset_index = root / "runtime" / "readsets" / "index.yaml"
     if not readset_index.exists():
         errors.append(f"{readset_index}: missing generated runtime readset index")
     else:
         index_text = read(readset_index)
-        for command in sorted(REQUIRED_RUNTIME_COMMANDS):
-            if f"{command}: .claude/runtime/readsets/{command}.yaml" not in index_text:
-                errors.append(f"{readset_index}: missing readset index entry {command}")
+        errors.extend(
+            f"{readset_index}: {message}"
+            for message in validate_runtime_readset_index_text(index_text, REQUIRED_RUNTIME_COMMANDS)
+        )
 
 
 def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
