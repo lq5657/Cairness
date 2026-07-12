@@ -129,7 +129,7 @@ def file_matches_import_regex(filepath: str, pattern: str, project_root: Path | 
             rf'^\s*import\s+.*{pattern}',         # Go/Python single import
             rf'^\s*"{pattern}',                    # Go import line
             rf'^import\s+.*{pattern}',             # Java import
-            rf'^from\s+.*import',                  # Python from import
+            rf'^from\s+.*{pattern}.*\s+import',   # Python from import
         ]
         for ip in import_patterns:
             if re.search(ip, content, re.MULTILINE):
