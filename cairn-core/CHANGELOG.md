@@ -19,6 +19,7 @@
 - Moved relative-path checks, Go change detection, language-profile repository markers/globs, and profile changed-surface decisions into `harness_runtime.verification_changes`, leaving Git discovery and filesystem orchestration in `cc-verify`.
 - Moved Git repository-root discovery, tracked/untracked changed-path collection, change-directory projection, and Harness-surface detection into `harness_runtime.verification_git`, preserving `cc-verify --changed-only` behavior.
 - Moved verification subprocess execution and canonical step-result construction into `harness_runtime.verification_runner`, with an injectable runner for isolated execution-contract tests.
+- Moved review coverage, finding-location, and risk-triage verification into `harness_runtime.verification_review`, preserving the CLI exports and existing warning/failure result contracts.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

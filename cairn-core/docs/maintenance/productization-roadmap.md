@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`582 passed`
+- 测试：`587 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 65 个受版本控制文件，582 个用例 |
+| Tests | 66 个受版本控制文件，587 个用例 |
 
 当前主要事实：
 
@@ -1158,6 +1158,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：mode/report 编排仍在 CLI；review coverage/finding/risk checks 仍手工构造 result；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
 - 风险/决策：默认继续调用 `subprocess.run`，现有调用方无需传入 runner；不注入时钟、不改变 duration 精度、命令缺失返回 shape、diagnosis catalog 或 Go cache 路径。任意 check name 仍按既有诊断优先级处理。
 - 下一步：统一 review-specific result construction，或提取 `build_report` 中稳定的 mode selection/result aggregation 边界。
+
+#### 实施记录 2026-07-12（Verification review checks 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 review section marker 定位、file review coverage、Finding Location/Existing Code 匹配和 risk triage table 校验移入 `harness_runtime.verification_review`。`cc-verify` 直接导入并重导出三个 check，并以兼容别名保留 `_find_section_marker`。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；临时 change fixture 覆盖 review 缺失、not_reviewed 无说明、out_of_scope warning-only、Existing Code 匹配、Important 缺代码 warning、目标文件缺失、risk marker 缺失/空表/已填充；既有 Finding parser、spec scope 和 diagnosis 回归保持通过。
+- 剩余：mode selection、capability scheduling、result aggregation 与 report rendering 仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
+- 风险/决策：保留 review coverage 中 `out_of_scope_flagged` 缺 `spec_review_flag` 只产生 warning 而不失败的历史语义；不合并 `cc-spec-scope-check` 的更严格 Issue 合同，不修改 Existing Code 的 fallback 匹配规则或 risk threshold 决策。
+- 下一步：提取 `build_report` 中不涉及 CLI 渲染的 result aggregation/mode selection 边界，或转向 `cc-schema-check` 的 runtime reference validation service。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
