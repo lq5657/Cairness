@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`537 passed`
+- 测试：`540 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，537 个用例 |
+| Tests | 56 个受版本控制文件，540 个用例 |
 
 当前主要事实：
 
@@ -171,7 +171,7 @@ Phase 3：Agent Governance Platform
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
-| `P2-04` | Effective contract explain | Phase 2 | P1 | 部分完成 | `P2-05`、`P1-04` |
+| `P2-04` | Effective contract explain | Phase 2 | P1 | 完成 | `P2-05`、`P1-04` |
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 待开始 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -693,6 +693,21 @@ cc-cairn explain cc-apply --change <change-id> --json
 - 剩余：补充 workspace profile（若项目存在）、对 manifest preconditions 的更多确定性状态检查，以及人类可读输出回归；完成后评估 P2-04 状态。
 - 风险/决策：Explain 调用已有 Topic 和 language API，不复制 detection patterns 或 profile resolution；预算字段明确区分 configured limit/threshold 与基于 readset 数量的规模估计，不伪造 token 消耗预测。
 - 下一步：补齐 workspace/adapter 可见性和可确定验证的 change lifecycle/dependency 前置条件，并完善文本输出。
+
+#### 完成记录 2026-07-12（P2-04 Effective contract explain）
+
+- 状态：完成
+- Change/提交：`P2-04`（由本收尾子任务的 Git 提交记录）
+- 已完成：Explain 输出 `HarnessContext.adapter` 的宿主、物理 root、settings/entrypoint 状态；当前没有 workspace profile schema/解析器时明确输出 `workspace_profile.status=not_configured`，不通过目录猜测。Change readiness 复用 `cc-deps.discover_changes/check_dependencies` 输出依赖状态，并依据 manifest `state.change_from` 检查当前 lifecycle；文本视图覆盖 profile、language、workspace、adapter、readiness、reads/writes、gates、实际 Topic Rules 和 context budget。
+- 最终验证：
+  - `rtk pytest -q tests/test_cli_explain.py` → `9 passed`
+  - `rtk pytest -q tests/test_topic_trigger.py` → `1 passed`
+  - `rtk pytest -q` → `540 passed`
+  - `rtk cairn-core/scripts/cc-verify --harness-only`、readset/workflow check、eval 与 `rtk git diff --check` → `passed`
+- 验收结论：active profile/source、resolved manifest、always/conditional reads、实际 Topic Rules、language/workspace、writes、gates/stop conditions、subagent、auto-validation、context budget 和 unmet preconditions 均来自现有 Context/manifest/readset/config/Topic/language/deps 解析器；JSON 可直接作为 P2-07 Dashboard 数据源。
+- 边界：Hard Gate revision、branch policy、baseline freshness 等需要对应验证器运行证据，Explain 只展示其 manifest 声明，不凭静态文件伪判；workspace 在 P3-06 建立正式模型前保持显式 `not_configured`。
+- 剩余：无。后续将 extensionless Topic/deps API 正式拆入 package 属于 P2-06；adapter capability 细节属于 P2-09。
+- 后续依赖：P2-07 可消费 Explain JSON；P2-06 可把当前通过真实 CLI API 复用的 Topic/deps 领域逻辑迁入稳定 package。
 
 ### 9.7 `P2-05` 统一 `HarnessContext` 与 root 解析
 

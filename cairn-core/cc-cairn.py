@@ -811,10 +811,19 @@ def cmd_explain(argv):
     else:
         print(f"Effective contract: {report['command']}")
         print(f"  Profile: {report['profile']['id']} ({report['profile']['source']})")
+        language = report["language_profile"]
+        print(f"  Language: {language['id'] or language['status']} ({language['source']})")
+        workspace = report["workspace_profile"]
+        print(f"  Workspace: {workspace['id'] or workspace['status']}")
+        print(f"  Adapter: {report['adapter']['name']} ({report['adapter']['root']})")
         print(f"  Readiness: {report['readiness']['status']}")
         print(f"  Reads: {len(report['reads']['always'])} always, {len(report['reads']['conditional'])} conditional groups")
         print(f"  Writes: {len(report['writes'])}")
         print(f"  Gates: {', '.join(report['gates']) or 'none'}")
+        topics = report["topic_rules"]
+        print(f"  Topic Rules: {len(topics['always'])} always, {len(topics['triggered'])} triggered")
+        budget = report["context_budget"]
+        print(f"  Context budget: {budget['token_limit'] or 'unconfigured'} tokens")
         for item in report["readiness"]["unmet"]:
             print(f"  {item['code']}: {item['message']}")
     raise SystemExit(1 if report["status"] == "failed" else 0)

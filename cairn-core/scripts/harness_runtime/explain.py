@@ -119,6 +119,46 @@ def _context_budget(config_values: dict[str, Any], command: str, reads: dict[str
     }
 
 
+def _change_readiness(
+    context: HarnessContext,
+    manifest: dict[str, Any],
+    change_id: str | None,
+    unmet: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not change_id:
+        return None
+    script = context.framework_root / "scripts" / "cc-deps"
+    deps = SourceFileLoader("_cairness_effective_deps", str(script)).load_module()
+    changes = deps.discover_changes(context.project_root)
+    result = deps.check_dependencies(change_id, changes)
+    change = changes.get(change_id)
+    if change is None:
+        return result
+
+    state = manifest.get("state") if isinstance(manifest.get("state"), dict) else {}
+    allowed_raw = state.get("change_from", [])
+    allowed = [allowed_raw] if isinstance(allowed_raw, str) else list(allowed_raw or [])
+    if allowed and change.status not in allowed:
+        unmet.append(
+            {
+                "code": "E_EXPLAIN005",
+                "precondition": "change_state_allowed",
+                "message": f"change status {change.status!r} is not allowed for this command",
+                "actual": change.status,
+                "allowed": allowed,
+            }
+        )
+    if result.get("ready") is False:
+        unmet.append(
+            {
+                "code": "E_EXPLAIN006",
+                "precondition": "dependencies_satisfied",
+                "message": result.get("recommendation", "change dependencies are not satisfied"),
+            }
+        )
+    return result
+
+
 def build_effective_contract(
     context: HarnessContext,
     command: str,
@@ -195,6 +235,7 @@ def build_effective_contract(
     config_values = config.values if config is not None else {}
     language_contract = _language_contract(context)
     topic_contract = _topic_contract(context, core, manifest, profile, change_id)
+    dependency_readiness = _change_readiness(context, manifest, change_id, unmet)
 
     return build_report(
         "cc-cairn explain",
@@ -202,6 +243,15 @@ def build_effective_contract(
         extra={
             "project_root": str(context.project_root),
             "command": command,
+            "adapter": {
+                "name": context.adapter.name,
+                "root": str(context.adapter.root),
+                "settings_path": str(context.adapter.settings_path),
+                "entrypoint_path": str(context.adapter.entrypoint_path),
+                "settings_present": context.adapter.settings_path.is_file(),
+                "entrypoint_present": context.adapter.entrypoint_path.is_file(),
+            },
+            "workspace_profile": {"status": "not_configured", "source": None, "id": None},
             "profile": {
                 "id": profile_id,
                 "source": config.source("profile") if config is not None else "default",
@@ -235,6 +285,7 @@ def build_effective_contract(
             },
             "auto_validation": manifest.get("auto_validation", []),
             "context_budget": _context_budget(config_values, command, reads),
+            "dependency_readiness": dependency_readiness,
             "readiness": {
                 "status": "blocked" if unmet else "ready",
                 "unmet": unmet,
