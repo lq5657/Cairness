@@ -46,6 +46,15 @@ from harness_runtime.schema_contract_policies import (
     merge_subagent_contract,
     result_sources,
 )
+from harness_runtime.schema_command_references import (
+    TEMPLATE_READ_REQUIREMENTS,
+    contract_path_references,
+    missing_template_reads,
+    read_path_references,
+    registered_topic_paths,
+    topic_rule_references,
+)
+from harness_runtime.schema_manifest import runtime_command_declarations
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -265,87 +274,6 @@ ANTI_RATIONALIZATION_COMMANDS = {
 }
 READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
-TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
-    "cc-propose": {
-        "when_writing_change_artifacts": [
-            ".claude/templates/changes/spec.md",
-            ".claude/templates/changes/tasks.md",
-            ".claude/templates/changes/log.md",
-        ],
-    },
-    "cc-review": {
-        "when_writing_review_artifact": [
-            ".claude/templates/changes/review.md",
-        ],
-    },
-    "cc-test": {
-        "when_writing_test_spec_artifact": [
-            ".claude/templates/changes/test-spec.md",
-        ],
-    },
-    "cc-apply": {
-        "when_creating_test_spec_artifact": [
-            ".claude/templates/changes/test-spec.md",
-        ],
-    },
-    "cc-fix": {
-        "when_creating_test_spec_artifact": [
-            ".claude/templates/changes/test-spec.md",
-        ],
-    },
-    "cc-inspect-codebase": {
-        "when_writing_audit_report": [
-            ".claude/templates/audits/report.md",
-        ],
-    },
-    "cc-promote-audit": {
-        "when_writing_audit_bridge": [
-            ".claude/templates/audits/to-change.md",
-        ],
-    },
-    "cc-archive": {
-        "when_writing_knowledge_entry": [
-            ".claude/templates/knowledge/entry.md",
-        ],
-    },
-    "cc-new-project": {
-        "when_project_artifacts_are_written": [
-            ".claude/templates/context/project-definition.md",
-            ".claude/templates/context/project-summary.md",
-            ".claude/templates/context/domain-language.md",
-            ".claude/templates/context/mvp-roadmap.md",
-            ".claude/templates/context/architecture-outline.md",
-            ".claude/templates/context/dev-map.md",
-            ".claude/templates/changes/task-board.md",
-        ],
-    },
-    "cc-explain-system": {
-        "when_writing_system_overview": [
-            ".claude/templates/context/system-overview.md",
-        ],
-    },
-    "cc-init": {
-        "when_writing_context_artifacts": [
-            ".claude/templates/context/project-summary.md",
-            ".claude/templates/context/project-context.md",
-            ".claude/templates/context/domain-language.md",
-            ".claude/templates/context/dev-map.md",
-        ],
-    },
-    "cc-enrich-context": {
-        "when_writing_context_artifacts": [
-            ".claude/templates/context/project-context.md",
-            ".claude/templates/context/domain-language.md",
-            ".claude/templates/context/dev-map.md",
-        ],
-    },
-    "cc-discuss": {
-        "when_writing_discussion_artifacts": [
-            ".claude/templates/discussions/brief.md",
-            ".claude/templates/discussions/log.md",
-        ],
-    },
-}
 
 
 def require_declared_path(project_root: Path, subject_path: Path, declared: Any, field: str, issues: list[Issue]) -> None:
@@ -728,9 +656,11 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
                 issues,
                 "E_SCHEMA120",
                 core_path,
-                f"migrated_commands and runtime_commands differ: missing={sorted(migrated_set - mapped_set)}, extra={sorted(mapped_set - migrated_set)}",
+                "migrated_commands and runtime_commands differ: "
+                f"missing={sorted(migrated_set - mapped_set, key=str)}, "
+                f"extra={sorted(mapped_set - migrated_set, key=str)}",
             )
-        for command in sorted(mapped_set):
+        for command in sorted(mapped_set, key=str):
             expected = f".claude/runtime/commands/{command}.yaml"
             actual = runtime_commands.get(command)
             if actual != expected:
@@ -1028,9 +958,7 @@ def validate_runtime_command_references(
     path: Path,
     issues: list[Issue],
 ) -> None:
-    registered_topics: set[str] = set()
-    if isinstance(core, dict) and isinstance(core.get("topic_rules"), dict):
-        registered_topics = {value for value in core["topic_rules"].values() if isinstance(value, str)}
+    registered_topics = registered_topic_paths(core)
 
     if manifest.get("command") != command:
         add(issues, "E_SCHEMA126", path, f"command field must match runtime core key {command}")
@@ -1046,44 +974,22 @@ def validate_runtime_command_references(
             if not isinstance(manifest.get(key), list) or not manifest.get(key):
                 add(issues, "E_SCHEMA129", path, f"{command} must declare non-empty {key}")
 
-    for idx, declared in enumerate(manifest.get("required_reads", []) if isinstance(manifest.get("required_reads"), list) else []):
-        require_declared_path(project_root, path, declared, f"required_reads[{idx}]", issues)
-    conditional_reads = manifest.get("conditional_reads")
-    if isinstance(conditional_reads, dict):
-        for condition, reads in conditional_reads.items():
-            if not isinstance(reads, list):
-                continue
-            for idx, declared in enumerate(reads):
-                require_declared_path(project_root, path, declared, f"conditional_reads.{condition}[{idx}]", issues)
-    template_requirements = TEMPLATE_READ_REQUIREMENTS.get(command, {})
-    conditional_read_map = conditional_reads if isinstance(conditional_reads, dict) else {}
-    for condition, templates in sorted(template_requirements.items()):
-        actual_reads = conditional_read_map.get(condition)
-        if not isinstance(actual_reads, list):
-            add(issues, "E_SCHEMA189", path, f"{command} missing conditional_reads.{condition} for template artifacts")
-            continue
-        for template in templates:
-            if template not in actual_reads:
-                add(issues, "E_SCHEMA190", path, f"{command} must conditionally read template {template} under {condition}")
+    for field, declared in read_path_references(manifest):
+        require_declared_path(project_root, path, declared, field, issues)
 
-    topic_rules = manifest.get("topic_rules")
-    if isinstance(topic_rules, dict):
-        for condition, rules in topic_rules.items():
-            if not isinstance(rules, list):
-                continue
-            for idx, rule_path in enumerate(rules):
-                if registered_topics and rule_path not in registered_topics:
-                    add(issues, "E_SCHEMA130", path, f"topic_rules.{condition}[{idx}] is not registered in runtime/core.yaml: {rule_path}")
-                require_declared_path(project_root, path, rule_path, f"topic_rules.{condition}[{idx}]", issues)
+    missing_conditions, missing_templates = missing_template_reads(command, manifest)
+    for condition in missing_conditions:
+        add(issues, "E_SCHEMA189", path, f"{command} missing conditional_reads.{condition} for template artifacts")
+    for condition, template in missing_templates:
+        add(issues, "E_SCHEMA190", path, f"{command} must conditionally read template {template} under {condition}")
 
-    subagents = manifest.get("subagents")
-    if isinstance(subagents, dict):
-        require_declared_path(project_root, path, subagents.get("policy"), "subagents.policy", issues)
-        if isinstance(subagents.get("contract"), str):
-            require_declared_path(project_root, path, subagents.get("contract"), "subagents.contract", issues)
-    result_contract = manifest.get("result_contract")
-    if isinstance(result_contract, dict):
-        require_declared_path(project_root, path, result_contract.get("profile"), "result_contract.profile", issues)
+    for field, rule_path in topic_rule_references(manifest):
+        if registered_topics and rule_path not in registered_topics:
+            add(issues, "E_SCHEMA130", path, f"{field} is not registered in runtime/core.yaml: {rule_path}")
+        require_declared_path(project_root, path, rule_path, field, issues)
+
+    for field, declared in contract_path_references(manifest):
+        require_declared_path(project_root, path, declared, field, issues)
 
 
 def validate_inputs_registered(command: str, manifest: dict[str, Any], manifest_path: Path, issues: list[Issue]) -> None:
@@ -1128,11 +1034,16 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     subagent_schema_path = claude_root / "schemas" / RUNTIME_SUBAGENT_CONTRACT_SCHEMA
     subagent_schema = load_json_file(subagent_schema_path, issues)
     registered_roles = load_registered_roles(project_root, issues)
-    runtime_commands = core.get("runtime_commands") if isinstance(core, dict) else None
-    if isinstance(runtime_commands, dict):
-        command_paths = [(command, project_path(project_root, path)) for command, path in sorted(runtime_commands.items())]
-    else:
-        command_paths = [(path.stem, path) for path in sorted((claude_root / "runtime" / "commands").glob("cc-*.yaml"))]
+    fallback_paths = list((claude_root / "runtime" / "commands").glob("cc-*.yaml"))
+    command_paths = [
+        (
+            command,
+            project_path(project_root, declared)
+            if isinstance(declared, str)
+            else declared,
+        )
+        for command, declared in runtime_command_declarations(core, fallback_paths)
+    ]
 
     checked: list[str] = [str(subagent_schema_path)]
     for command, resolved_path in command_paths:

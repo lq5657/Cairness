@@ -23,6 +23,10 @@
 - Moved final-artifact write classification, subagent parallel-policy selection, and result-source extraction into the pure `harness_runtime.schema_contract_policies` API while preserving `cc-schema-check` exports.
 - Added pure result-contract profile merging to `harness_runtime.schema_contract_policies`; `cc-schema-check` now retains only profile path loading before delegating inline override semantics.
 - Added pure subagent-contract merging to `harness_runtime.schema_contract_policies`, retaining inline enablement controls while accepting only the established external-contract field whitelist.
+- Moved `cc-schema-check` runtime command reference collection and template-read requirement decisions into the pure `harness_runtime.schema_command_references` API, preserving the CLI's Issue diagnostics and helper exports.
+- Moved runtime command declaration ordering/fallback decisions into `harness_runtime.schema_manifest`, including stable handling for malformed mixed-type command keys instead of crashing schema validation.
+- Moved verification mode selection, changed-only project gating, capability scheduling, and aggregate status precedence into `harness_runtime.verification_scheduling` while preserving `cc-verify` report behavior.
+- Began modularizing `cc-lint` change-document validation by moving the pure `spec.md` metadata contract into `harness_runtime.change_lint`, preserving existing messages and Issue rendering.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

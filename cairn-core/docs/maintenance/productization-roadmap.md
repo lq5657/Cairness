@@ -1199,6 +1199,26 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：保留仅接受 `merge_owner/final_writes_by/write_scope_policy/parallel_policy/agents/merge_requirements` 的历史白名单；外部 contract 的 `enabled/policy/command` 不覆盖 inline controls，也不把 schema/Issue callback 注入纯 policy 模块。
 - 下一步：选择 runtime command reference 中不产生 Issue 的集合/路径决策继续拆分，或转向 `cc-lint` 的 change document lint 领域。
 
+#### 实施记录 2026-07-12（Schema runtime command references 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 runtime core topic registration、required/conditional read 路径、template-read requirements、topic-rule 路径以及 subagent/result contract 路径的纯集合决策移入 `harness_runtime.schema_command_references`。`cc-schema-check` 保留项目路径解析、Issue 构造和验证编排，并直接导入/重导出原有 helper 与 `TEMPLATE_READ_REQUIREMENTS`。
+- 验证：新增 package/CLI API 等价测试，覆盖 malformed core/manifest 输入、条件与模板缺失区分、索引化诊断字段和 contract path presence 语义；schema metadata/document/schema/subagent/manifest/protocol 聚焦回归保持通过。
+- 剩余：runtime manifest orchestration、Issue 校验以及 `cc-verify`/`cc-lint` 的大型领域仍在 CLI；P2-06 保持部分完成。
+- 风险/决策：只提取不产生 Issue 且不执行 IO 的路径/集合决策；保持 conditional/template/topic-rule 诊断顺序、字段命名和 malformed 输入的历史忽略规则，不将 `require_declared_path` 或 `add` 回调注入 package。
+- 下一步：继续提取 runtime manifest orchestration 的纯边界，或转向 `cc-lint` 的 change document lint 领域。
+
+#### 实施记录 2026-07-12（Manifest 编排、Verification 调度与 Change lint 元数据）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 runtime command declaration 的 core/fallback 选择和稳定排序移入 `harness_runtime.schema_manifest`；将 verification mode、changed-only project gate、capability plan 与 aggregate status 移入 `harness_runtime.verification_scheduling`；将 `spec.md` 元数据合同移入 `harness_runtime.change_lint`。三个 CLI 保留 Context、IO、Issue/result 构造和渲染边界。
+- 验证：各模块均先新增失败测试再实现；覆盖 malformed manifest 混合 key、mode/status 优先级、required/optional/disabled capability、changed-only gate，以及 spec metadata 完整/缺失/非法合同；最终全量与 Harness 验证见本子任务完成验证。
+- 剩余：`cc-schema-check` 的 Issue validator 编排、`cc-verify` 的完整 report orchestration，以及 `cc-lint` 的 validation/task/test-spec 领域校验仍在 CLI；P2-06 保持部分完成。
+- 风险/决策：malformed mixed-type command key 现在按字符串表示稳定排序以进入既有诊断而非抛 `TypeError`；capability planner 通过调用方注入 executable availability，不在纯模块访问系统环境；lint 模块不统一已有的 typed/string metadata 差异。
+- 下一步：继续提取 `cc-lint` validation mapping/task contract，或建立 `cc-schema-check` Issue validator service 边界。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始

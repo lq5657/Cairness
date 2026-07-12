@@ -50,6 +50,13 @@ from harness_runtime.verification_review import (
     find_section_marker as _find_section_marker,
 )
 from harness_runtime.verification_runner import run_step
+from harness_runtime.verification_scheduling import (
+    aggregate_status,
+    capability_executables,
+    capability_plan,
+    project_checks_enabled,
+    verification_mode,
+)
 from harness_runtime.verification_steps import blocked_step, failed_step, skipped_step
 
 
@@ -184,9 +191,18 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         if args.check_wave_plan and args.change and change_dir and change_dir.exists():
             results.append(run_step("cc-wave-plan-check", "project", [str(cc_wave_plan), "--check", "--change", args.change], project_root, collect_issues=True))
 
-    run_project_checks = not args.harness_only
-    if args.changed_only and not args.fixture and not args.project_only:
-        run_project_checks = resolution.status == "resolved" and resolution.profile is not None and has_profile_changes(changed_paths, project_root, resolution.profile)
+    profile_changed = (
+        resolution.profile is not None
+        and has_profile_changes(changed_paths, project_root, resolution.profile)
+    )
+    run_project_checks = project_checks_enabled(
+        harness_only=args.harness_only,
+        project_only=args.project_only,
+        changed_only=args.changed_only,
+        fixture_selected=bool(args.fixture),
+        profile_status=resolution.status,
+        has_profile_change=profile_changed,
+    )
     if run_project_checks:
         if args.fixture and not target_project_root.exists():
             results.append(
@@ -212,30 +228,25 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                 results.append(skipped_step("project checks", "project", f"language profile unresolved: {reason}"))
         else:
             profile = resolution.profile
-            entries = verification_entries(profile)
-            if not entries:
+            executables = capability_executables(profile)
+            plans = capability_plan(
+                profile,
+                config,
+                {executable: shutil.which(executable) is not None for executable in executables},
+            )
+            if not plans:
                 results.append(skipped_step("project checks", capability_kind(profile, "none"), f"{profile.name} profile declares no verification capabilities"))
-            for capability, entry in entries:
-                enabled = capability_enabled(config, profile, capability, default=entry.get("optional") is not True)
-                if not enabled:
+            for plan in plans:
+                if plan.status == "disabled":
                     continue
-                fallback = default_verification_command(profile, capability)
-                command = profile_command(profile.data, capability, fallback)
-                if not command:
-                    results.append(skipped_step(capability, capability_kind(profile, capability), f"{profile.name} profile has no command for {capability}"))
+                if plan.status == "skipped":
+                    results.append(skipped_step(plan.name, plan.kind, plan.reason))
                     continue
-                name = capability_display_name(command, capability)
-                if shutil.which(command[0]) is None:
-                    missing_tool = f"{command[0]} not found"
-                    if entry.get("optional") is True:
-                        results.append(skipped_step(name, capability_kind(profile, capability), missing_tool))
-                    else:
-                        results.append(blocked_step(name, capability_kind(profile, capability), missing_tool, target_project_root))
+                if plan.status == "blocked":
+                    results.append(blocked_step(plan.name, plan.kind, plan.reason, target_project_root))
                     continue
-                results.append(run_step(name, capability_kind(profile, capability), command, target_project_root))
+                results.append(run_step(plan.name, plan.kind, plan.command, target_project_root))
 
-    failed = [result for result in results if result["status"] == "failed"]
-    blocked = [result for result in results if result["status"] == "blocked"]
     report = {
         "schema_version": 1,
         "tool": "cc-verify",
@@ -245,11 +256,15 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         "change_id": args.change or "",
         "fixture": args.fixture or "",
         "command": args.command or "",
-        "mode": "changed-only" if args.changed_only else "harness-only" if args.harness_only else "project-only" if args.project_only else "full",
+        "mode": verification_mode(
+            harness_only=args.harness_only,
+            project_only=args.project_only,
+            changed_only=args.changed_only,
+        ),
         "language_profile": resolution.profile_name,
         "language_profile_source": resolution.source,
         "changed_files": [str(path) for path in changed_paths],
-        "status": "failed" if failed else "blocked" if blocked else "passed",
+        "status": aggregate_status(results),
         "results": results,
     }
     return report
