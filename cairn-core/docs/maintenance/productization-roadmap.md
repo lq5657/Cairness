@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`540 passed`
+- 测试：`541 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，540 个用例 |
+| Tests | 56 个受版本控制文件，541 个用例 |
 
 当前主要事实：
 
@@ -173,7 +173,7 @@ Phase 3：Agent Governance Platform
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 完成 | `P2-05`、`P1-04` |
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
-| `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 待开始 | `P2-05` |
+| `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 部分完成 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 待开始 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 待开始 | `P2-05` |
@@ -983,7 +983,7 @@ cc-doctor-check --root <project>
 
 ### 9.8 `P2-06` 核心脚本模块化
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：将领域逻辑从 extensionless CLI 脚本移入可测试 package。
 
@@ -1016,6 +1016,18 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - subprocess 编排能替换为直接 Python API 的地方应逐步替换；
 - package 模块可在临时 HarnessContext 下独立测试；
 - 不做一次性大爆炸重写，每次只迁移一个明确域。
+
+#### 实施记录 2026-07-12（Topic trigger 领域模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 patterns 加载、Git/diff/change 文件发现、glob/content/import 匹配和 trigger 汇总从 extensionless `cc-topic-trigger` 移入 `harness_runtime.topic_trigger`。CLI 缩减为 Context、参数、输入选择与 JSON 渲染，并重导出原函数名保持嵌入调用兼容；`harness_runtime.explain` 改为普通 package import，不再动态加载 Topic CLI。
+- 验证：
+  - `rtk pytest -q tests/test_topic_trigger.py tests/test_cli_explain.py tests/test_harness_context.py -k 'topic_trigger or explain_'` → `14 passed`
+  - `rtk pytest -q`、Harness、behavior/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：`cc-deps` 仍被 Explain 通过 `SourceFileLoader` 调用；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
+- 风险/决策：领域模块不解析 CLI、不打印、不退出；extensionless CLI 保持可执行位和原 JSON shape。规则数据仍来自 `detection-patterns.yaml`，没有复制或改写检测合同。
+- 下一步：提取 `cc-deps` 的 change discovery/dependency readiness API，消除 Explain 的最后一个动态 CLI loader。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

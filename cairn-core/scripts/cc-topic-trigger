@@ -1,217 +1,25 @@
 #!/usr/bin/env python3
-"""cc-topic-trigger — 确定性 topic rule 触发器。
-
-基于 detection-patterns.yaml 中的文件路径和代码内容模式，
-对变更文件做匹配，输出应该触发的 topic rule 列表。
-
-用法:
-  cc-topic-trigger --change-id <id>     从 change 的 tasks.md 推断变更文件
-  cc-topic-trigger --files f1 f2 ...     对指定文件做检测
-  cc-topic-trigger --diff               从 stdin 读取 diff，推断变更文件
-  cc-topic-trigger --changed            从 git diff HEAD~1 获取变更文件
-
-输出 (JSON):
-  {
-    "triggered_rules": [
-      {"rule_id": "database_changes", "confidence": "high",
-       "evidence": ["file matches glob: migrations/001_up.sql",
-                     "content matches: CREATE TABLE"]}
-    ],
-    "detected_but_not_triggered": ["security"],
-    "_meta": {"changed_files": 5, "scanned_files": 3, "total_rules": 8}
-  }
-"""
+"""Deterministic topic-rule trigger detection CLI."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import fnmatch
-import re
 import sys
 from pathlib import Path
-from typing import Any
-
-import yaml
 
 from harness_runtime.context import HarnessContextError, load_harness_context
-
-
-def default_project_root() -> Path:
-    return load_harness_context(
-        framework_hint=Path(__file__).resolve().parent.parent,
-    ).project_root
-
-
-def load_patterns(framework_root: Path | None = None) -> dict[str, Any]:
-    root = framework_root or Path(__file__).resolve().parent.parent
-    with open(root / "runtime" / "topic-rules" / "detection-patterns.yaml") as f:
-        return yaml.safe_load(f)
-
-
-def changed_files_from_git(project_root: Path | None = None) -> list[str]:
-    """从 git diff HEAD~1 获取变更文件列表。"""
-    import subprocess
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD~1"],
-            capture_output=True, text=True, cwd=project_root or default_project_root()
-        )
-        return [l for l in result.stdout.strip().split("\n") if l]
-    except Exception:
-        return []
-
-
-def changed_files_from_diff(diff_text: str) -> list[str]:
-    """从 diff 文本中提取变更文件路径。"""
-    files = set()
-    for line in diff_text.split("\n"):
-        m = re.match(r'^\+\+\+\s+b/(.+)$', line)
-        if m:
-            files.add(m.group(1))
-        m = re.match(r'^---\s+a/(.+)$', line)
-        if m:
-            files.add(m.group(1))
-    return sorted(files)
-
-
-def changed_files_from_tasks(change_id: str, project_root: Path | None = None) -> list[str]:
-    """从 change 的 tasks.md 和 spec.md 中推断相关文件。"""
-    change_dir = (project_root or default_project_root()) / ".cairness" / "changes" / change_id
-    files = set()
-
-    for doc in ["tasks.md", "spec.md"]:
-        doc_path = change_dir / doc
-        if not doc_path.exists():
-            continue
-        content = doc_path.read_text()
-        # 匹配 files: 声明块中的文件路径
-        for m in re.finditer(r'files?:\s*\[([^\]]+)\]', content):
-            for f in re.findall(r'[\w./-]+', m.group(1)):
-                f = f.strip().strip('"').strip("'")
-                if f and not f.startswith('-') and '.' in f:
-                    files.add(f)
-        # 匹配 Markdown 代码块中的文件路径引用
-        for m in re.finditer(r'`([\w./-]+\.[\w]+)`', content):
-            f = m.group(1)
-            if '/' in f or f.endswith(('.go', '.py', '.java', '.cpp', '.sql', '.yaml', '.proto')):
-                files.add(f)
-
-    return sorted(files)
-
-
-def file_matches_glob(filepath: str, glob: str) -> bool:
-    """检查文件路径是否匹配 glob 模式。"""
-    return fnmatch.fnmatch(filepath, glob)
-
-
-def file_matches_content_regex(filepath: str, pattern: str, project_root: Path | None = None) -> bool:
-    """检查文件内容是否匹配正则。"""
-    full_path = (project_root or default_project_root()) / filepath
-    if not full_path.exists():
-        return False
-    try:
-        content = full_path.read_text()
-        return bool(re.search(pattern, content, re.MULTILINE))
-    except (OSError, UnicodeDecodeError):
-        return False
-
-
-def file_matches_import_regex(filepath: str, pattern: str, project_root: Path | None = None) -> bool:
-    """检查文件中的 import 语句是否匹配正则。"""
-    full_path = (project_root or default_project_root()) / filepath
-    if not full_path.exists():
-        return False
-    try:
-        content = full_path.read_text()
-        # 匹配 import 区域: Go import 块, Python import, Java import 等
-        import_patterns = [
-            rf'^\s*import\s+.*{pattern}',         # Go/Python single import
-            rf'^\s*"{pattern}',                    # Go import line
-            rf'^import\s+.*{pattern}',             # Java import
-            rf'^from\s+.*{pattern}.*\s+import',   # Python from import
-        ]
-        for ip in import_patterns:
-            if re.search(ip, content, re.MULTILINE):
-                return True
-        # 普通内容匹配作为 fallback
-        return bool(re.search(pattern, content, re.MULTILINE))
-    except (OSError, UnicodeDecodeError):
-        return False
-
-
-def detect_triggers(
-    changed_files: list[str],
-    patterns: dict[str, Any],
-    project_root: Path | None = None,
-) -> dict[str, Any]:
-    """对变更文件列表执行检测，返回触发的 rule 列表。"""
-
-    rule_patterns = patterns.get("patterns", {})
-    triggered: list[dict[str, Any]] = []
-    scanned_count = 0
-
-    for rule_id, pat in rule_patterns.items():
-        evidence: list[str] = []
-        file_globs = pat.get("file_globs", [])
-        content_regexes = pat.get("content_regex", [])
-        import_regexes = pat.get("import_regex", [])
-
-        matched_files = []
-
-        for fpath in changed_files:
-            # 文件级别 glob 匹配
-            for g in file_globs:
-                if file_matches_glob(fpath, g):
-                    evidence.append(f"file matches glob: {g} (→ {fpath})")
-                    if fpath not in matched_files:
-                        matched_files.append(fpath)
-                    break
-
-            # 内容级别正则匹配
-            for cr in content_regexes:
-                if file_matches_content_regex(fpath, cr, project_root):
-                    evidence.append(f"content matches: {cr} (→ {fpath})")
-                    if fpath not in matched_files:
-                        matched_files.append(fpath)
-
-            # import 匹配
-            for ir in import_regexes:
-                if file_matches_import_regex(fpath, ir, project_root):
-                    evidence.append(f"import matches: {ir} (→ {fpath})")
-                    if fpath not in matched_files:
-                        matched_files.append(fpath)
-
-        if evidence:
-            # 置信度: high = 文件路径直接命中，medium = 内容匹配，low = 仅 import
-            has_file_match = any("file matches glob" in e for e in evidence)
-            has_content_match = any("content matches" in e for e in evidence)
-            confidence = "high" if has_file_match else ("medium" if has_content_match else "low")
-
-            triggered.append({
-                "rule_id": rule_id,
-                "confidence": confidence,
-                "evidence": evidence[:5],  # 最多保留 5 条证据
-            })
-            scanned_count += len(matched_files)
-
-    # 排除 always-loaded 的 rule（verification, change-sizing, coding-style）
-    always_loaded = {"verification", "change_sizing", "coding_style"}
-    triggered_rules = [t for t in triggered if t["rule_id"] not in always_loaded]
-
-    all_rule_ids = set(rule_patterns.keys()) - always_loaded
-    detected_ids = {t["rule_id"] for t in triggered_rules}
-    not_triggered = sorted(all_rule_ids - detected_ids)
-
-    return {
-        "triggered_rules": triggered_rules,
-        "detected_but_not_triggered": not_triggered,
-        "_meta": {
-            "changed_files": len(changed_files),
-            "scanned_files": scanned_count,
-            "total_rules": len(rule_patterns),
-        },
-    }
+from harness_runtime.topic_trigger import (
+    changed_files_from_diff,
+    changed_files_from_git,
+    changed_files_from_tasks,
+    default_project_root,
+    detect_triggers,
+    file_matches_content_regex,
+    file_matches_glob,
+    file_matches_import_regex,
+    load_patterns,
+)
 
 
 def main() -> None:
@@ -234,18 +42,14 @@ def main() -> None:
         raise SystemExit(2)
 
     patterns = load_patterns(context.framework_root)
-
     if args.change_id:
         changed_files = changed_files_from_tasks(args.change_id, context.project_root)
     elif args.files:
         changed_files = args.files
     elif args.diff:
-        diff_text = sys.stdin.read()
-        changed_files = changed_files_from_diff(diff_text)
-    elif args.changed:
-        changed_files = changed_files_from_git(context.project_root)
+        changed_files = changed_files_from_diff(sys.stdin.read())
     else:
-        changed_files = []
+        changed_files = changed_files_from_git(context.project_root)
 
     result = {
         "project_root": str(context.project_root),

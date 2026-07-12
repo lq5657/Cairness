@@ -7,6 +7,7 @@ from typing import Any
 from harness_runtime import require_yaml, resolve_language_profile
 from harness_runtime.context import HarnessContext
 from harness_runtime.issues import Issue, build_report
+from harness_runtime.topic_trigger import changed_files_from_tasks, detect_triggers, load_patterns
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -52,16 +53,14 @@ def _topic_contract(
     profile: dict[str, Any],
     change_id: str | None,
 ) -> dict[str, Any]:
-    script = context.framework_root / "scripts" / "cc-topic-trigger"
-    topic_trigger = SourceFileLoader("_cairness_effective_topic_trigger", str(script)).load_module()
     changed_files = (
-        topic_trigger.changed_files_from_tasks(change_id, context.project_root)
+        changed_files_from_tasks(change_id, context.project_root)
         if change_id
         else []
     )
-    detected = topic_trigger.detect_triggers(
+    detected = detect_triggers(
         changed_files,
-        topic_trigger.load_patterns(context.framework_root),
+        load_patterns(context.framework_root),
         context.project_root,
     )
     declarations = core.get("topic_rules") if isinstance(core.get("topic_rules"), dict) else {}
