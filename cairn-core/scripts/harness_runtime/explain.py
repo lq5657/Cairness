@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import require_yaml
+from harness_runtime import require_yaml, resolve_language_profile
 from harness_runtime.context import HarnessContext
 from harness_runtime.issues import Issue, build_report
 
@@ -24,6 +25,98 @@ def _failed(context: HarnessContext, command: str, code: str, message: str) -> d
         [Issue(code, command, message)],
         extra={"project_root": str(context.project_root), "command": command},
     )
+
+
+def _language_contract(context: HarnessContext) -> dict[str, Any]:
+    resolution = resolve_language_profile(
+        context.project_root,
+        framework_root=context.framework_root,
+    )
+    return {
+        "status": resolution.status,
+        "source": resolution.source,
+        "id": resolution.profile_name or None,
+        "reasons": list(resolution.reasons),
+        "matched_profiles": list(resolution.matched_profiles),
+        "errors": list(resolution.errors),
+        "declared": resolution.profile.declared_path if resolution.profile is not None else None,
+        "path": str(resolution.profile.path) if resolution.profile is not None else None,
+        "resolved": resolution.profile.data if resolution.profile is not None else None,
+    }
+
+
+def _topic_contract(
+    context: HarnessContext,
+    core: dict[str, Any],
+    manifest: dict[str, Any],
+    profile: dict[str, Any],
+    change_id: str | None,
+) -> dict[str, Any]:
+    script = context.framework_root / "scripts" / "cc-topic-trigger"
+    topic_trigger = SourceFileLoader("_cairness_effective_topic_trigger", str(script)).load_module()
+    changed_files = (
+        topic_trigger.changed_files_from_tasks(change_id, context.project_root)
+        if change_id
+        else []
+    )
+    detected = topic_trigger.detect_triggers(
+        changed_files,
+        topic_trigger.load_patterns(context.framework_root),
+        context.project_root,
+    )
+    declarations = core.get("topic_rules") if isinstance(core.get("topic_rules"), dict) else {}
+
+    manifest_rules = manifest.get("topic_rules") if isinstance(manifest.get("topic_rules"), dict) else {}
+    always_declared = manifest_rules.get("always") if isinstance(manifest_rules.get("always"), list) else []
+    profile_rules = profile.get("topic_rules") if isinstance(profile.get("topic_rules"), dict) else {}
+    profile_always = profile_rules.get("always") if isinstance(profile_rules.get("always"), list) else []
+    always: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for declared in always_declared:
+        rule_id = Path(str(declared)).stem.replace("-", "_")
+        if rule_id not in seen:
+            always.append({"id": rule_id, "declared": declared})
+            seen.add(rule_id)
+    for rule_id in profile_always:
+        rule_id = str(rule_id)
+        if rule_id not in seen:
+            always.append({"id": rule_id, "declared": declarations.get(rule_id)})
+            seen.add(rule_id)
+
+    triggered = [
+        {
+            "id": item["rule_id"],
+            "declared": declarations.get(item["rule_id"]),
+            "confidence": item["confidence"],
+            "evidence": item["evidence"],
+        }
+        for item in detected["triggered_rules"]
+    ]
+    return {
+        "changed_files": changed_files,
+        "always": always,
+        "triggered": triggered,
+        "detected_but_not_triggered": detected["detected_but_not_triggered"],
+        "meta": detected["_meta"],
+    }
+
+
+def _context_budget(config_values: dict[str, Any], command: str, reads: dict[str, Any]) -> dict[str, Any]:
+    budgets = config_values.get("budgets") if isinstance(config_values.get("budgets"), dict) else {}
+    token = budgets.get("token") if isinstance(budgets.get("token"), dict) else {}
+    limits = token.get("limits") if isinstance(token.get("limits"), dict) else {}
+    limit = limits.get(command.removeprefix("cc-"))
+    warn_ratio = token.get("warn_ratio", 0.7)
+    block_ratio = token.get("block_ratio", 0.95)
+    return {
+        "token_limit": limit,
+        "warn_at": int(limit * warn_ratio) if isinstance(limit, (int, float)) else None,
+        "block_at": int(limit * block_ratio) if isinstance(limit, (int, float)) else None,
+        "configured_warn_ratio": warn_ratio,
+        "configured_block_ratio": block_ratio,
+        "estimated_read_items": len(reads.get("always", [])),
+        "conditional_read_groups": len(reads.get("conditional", {})),
+    }
 
 
 def build_effective_contract(
@@ -83,6 +176,25 @@ def build_effective_contract(
                     "message": f"change directory does not exist: {change_dir}",
                 }
             )
+        else:
+            for name in ("spec.md", "tasks.md"):
+                if not (change_dir / name).is_file():
+                    unmet.append(
+                        {
+                            "code": "E_EXPLAIN004",
+                            "precondition": f"{name.removesuffix('.md')}_exists",
+                            "message": f"required change document does not exist: {change_dir / name}",
+                        }
+                    )
+
+    reads = {
+        "always": readset.get("always_reads", []),
+        "optional": readset.get("optional_reads", []),
+        "conditional": readset.get("conditional_reads", {}),
+    }
+    config_values = config.values if config is not None else {}
+    language_contract = _language_contract(context)
+    topic_contract = _topic_contract(context, core, manifest, profile, change_id)
 
     return build_report(
         "cc-cairn explain",
@@ -104,11 +216,9 @@ def build_effective_contract(
                 "declared": declared_readset,
                 "path": str(readset_path),
             },
-            "reads": {
-                "always": readset.get("always_reads", []),
-                "optional": readset.get("optional_reads", []),
-                "conditional": readset.get("conditional_reads", {}),
-            },
+            "reads": reads,
+            "topic_rules": topic_contract,
+            "language_profile": language_contract,
             "writes": manifest.get("writes", []),
             "gates": manifest.get("validates", []),
             "preconditions": manifest.get("preconditions", []),
@@ -124,6 +234,7 @@ def build_effective_contract(
                 "contract": subagent_contract,
             },
             "auto_validation": manifest.get("auto_validation", []),
+            "context_budget": _context_budget(config_values, command, reads),
             "readiness": {
                 "status": "blocked" if unmet else "ready",
                 "unmet": unmet,

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`534 passed`
+- 测试：`537 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 55 个受版本控制文件，534 个用例 |
+| Tests | 56 个受版本控制文件，537 个用例 |
 
 当前主要事实：
 
@@ -680,6 +680,19 @@ cc-cairn explain cc-apply --change <change-id> --json
 - 剩余：接入实际 Topic trigger 结果、language/workspace profile、预计上下文预算和更深入的项目状态 precondition；补齐人类可读输出回归后再评估 P2-04 完成。
 - 风险/决策：Explain 成功与命令 readiness 分离，允许在 blocked 状态查看合同；所有合同字段来自现有结构化资产，不复制 manifest/readset 推导规则。
 - 下一步：复用 topic-trigger 和 language profile 解析器补齐项目相关的动态有效合同。
+
+#### 实施记录 2026-07-12（动态 Topic、语言与预算合同）
+
+- 状态：部分完成
+- Change/提交：`P2-04`（由本子任务的 Git 提交记录）
+- 已完成：Explain 通过安装内 `cc-topic-trigger` 的同一函数 API 从 change spec/tasks 推导文件并扫描目标项目内容，输出 always/实际 triggered/detected-but-not-triggered Topic Rules 及证据；通过共享 `resolve_language_profile` 输出语言 profile、来源、检测理由和物理资产；从 effective config 输出命令 token limit、warn/block 阈值和 readset 规模估计；readiness 进一步检查 spec.md/tasks.md 存在性。
+- 验证：
+  - `rtk pytest -q tests/test_cli_explain.py` → `6 passed`
+  - `rtk pytest -q tests/test_topic_trigger.py` → `1 passed`（守护 Python `from` import 不误触发无关规则）
+  - 最终全量 pytest、Harness/topic-trigger/language parity/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：补充 workspace profile（若项目存在）、对 manifest preconditions 的更多确定性状态检查，以及人类可读输出回归；完成后评估 P2-04 状态。
+- 风险/决策：Explain 调用已有 Topic 和 language API，不复制 detection patterns 或 profile resolution；预算字段明确区分 configured limit/threshold 与基于 readset 数量的规模估计，不伪造 token 消耗预测。
+- 下一步：补齐 workspace/adapter 可见性和可确定验证的 change lifecycle/dependency 前置条件，并完善文本输出。
 
 ### 9.7 `P2-05` 统一 `HarnessContext` 与 root 解析
 

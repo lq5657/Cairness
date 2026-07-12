@@ -3,6 +3,7 @@
 ## 1.1.0 - 2026-07-07
 
 - Added the first `cc-cairn explain` effective-contract view, resolving the active profile and source, runtime manifest, generated readset, reads, writes, gates, stop conditions, subagent contract, auto-validation, and input/change readiness from the installed project assets.
+- Extended `cc-cairn explain` with project-dynamic topic-rule detection, shared language-profile resolution, configured command context-budget thresholds, and concrete spec/tasks readiness diagnostics.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

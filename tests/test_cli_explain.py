@@ -86,3 +86,60 @@ def test_explain_rejects_unknown_command():
     report = json.loads(completed.stdout)
     assert report["status"] == "failed"
     assert report["issues"][0]["code"] == "E_EXPLAIN001"
+
+
+def test_explain_resolves_dynamic_topic_language_and_budget(harness_project: Path):
+    (harness_project / "go.mod").write_text("module example.com/explain\n", encoding="utf-8")
+    source = harness_project / "internal" / "auth" / "service.go"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "package auth\n\nfunc hash() { bcrypt.GenerateFromPassword(nil, 10) }\n",
+        encoding="utf-8",
+    )
+    change = harness_project / ".cairness" / "changes" / "explain-dynamic"
+    change.mkdir(parents=True)
+    (change / "spec.md").write_text("# Spec\n", encoding="utf-8")
+    (change / "tasks.md").write_text(
+        "files: [internal/auth/service.go]\n",
+        encoding="utf-8",
+    )
+
+    completed = run_explain(
+        REPO_ROOT,
+        "cc-apply",
+        "--root",
+        str(harness_project),
+        "--change",
+        "explain-dynamic",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["readiness"]["status"] == "ready"
+    assert report["language_profile"]["status"] == "resolved"
+    assert report["language_profile"]["id"] == "golang"
+    assert "security" in {item["id"] for item in report["topic_rules"]["triggered"]}
+    assert "internal/auth/service.go" in report["topic_rules"]["changed_files"]
+    assert report["context_budget"]["token_limit"] == 400000
+    assert report["context_budget"]["warn_at"] == 280000
+    assert report["context_budget"]["block_at"] == 380000
+
+
+def test_explain_reports_missing_change_documents(harness_project: Path):
+    change = harness_project / ".cairness" / "changes" / "incomplete-change"
+    change.mkdir(parents=True)
+
+    completed = run_explain(
+        REPO_ROOT,
+        "cc-apply",
+        "--root",
+        str(harness_project),
+        "--change",
+        "incomplete-change",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["readiness"]["status"] == "blocked"
+    unmet = {item["precondition"] for item in report["readiness"]["unmet"]}
+    assert {"spec_exists", "tasks_exists"} <= unmet
