@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`594 passed`
+- 测试：`597 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 67 个受版本控制文件，594 个用例 |
+| Tests | 67 个受版本控制文件，597 个用例 |
 
 当前主要事实：
 
@@ -1188,6 +1188,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：result contract 字段/Issue 校验、subagent effective contract 与 interaction contract validator 仍在 CLI；runtime command reference 和 manifest orchestration 尚未拆分。P2-06 保持部分完成。
 - 风险/决策：严格保留原一层合并合同，仅 `evidence`/`risks` 在双方均为 mapping 时合并；不改为递归 merge，不让 profile loader 进入纯 policy 模块，损坏/缺失 profile 继续由既有 document loader 报告并用 inline declaration 继续校验。
 - 下一步：提取 effective subagent contract 中 inline/contract 合并策略，或选择 runtime command reference 的纯路径集合决策。
+
+#### 实施记录 2026-07-12（Schema subagent contract merge policy）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 inline subagent controls 与外部 subagent contract 的有效合同合并移入 `schema_contract_policies.merge_subagent_contract`。`effective_subagent_contract` 保留 project path 解析、checked 记录、YAML/schema 校验和 command mismatch Issue，校验后委托纯合并 API。
+- 验证：新增 API/CLI 导出测试先因函数不存在观察 RED，再转为 GREEN；覆盖 inline `enabled/policy` 优先级、外部 contract 字段白名单、inline agents 被 contract agents 替换、未知字段排除、缺失 inline control 的显式 `None` shape，以及真实临时 `.claude` subagent contract IO adapter。
+- 剩余：subagent 字段/角色/write scope/merge requirement Issue 校验、result/interaction validator、runtime command references 与 manifest orchestration 仍在 CLI。P2-06 保持部分完成。
+- 风险/决策：保留仅接受 `merge_owner/final_writes_by/write_scope_policy/parallel_policy/agents/merge_requirements` 的历史白名单；外部 contract 的 `enabled/policy/command` 不覆盖 inline controls，也不把 schema/Issue callback 注入纯 policy 模块。
+- 下一步：选择 runtime command reference 中不产生 Issue 的集合/路径决策继续拆分，或转向 `cc-lint` 的 change document lint 领域。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

@@ -24,6 +24,7 @@ def test_contract_policy_package_matches_schema_check_exports():
         "expected_subagent_parallel_policy",
         "result_sources",
         "merge_result_contract",
+        "merge_subagent_contract",
     ):
         assert getattr(schema_check, name) is getattr(policies, name)
 
@@ -147,4 +148,85 @@ def test_effective_result_contract_loads_profile_then_uses_merge_policy(tmp_path
         "evidence": {"required": True, "sources": ["written_artifacts"]},
     }
     assert checked == [str(profile_path)]
+    assert issues == []
+
+
+def test_subagent_contract_merge_keeps_inline_controls_and_whitelisted_fields():
+    policies = importlib.import_module("harness_runtime.schema_contract_policies")
+    inline = {
+        "enabled": True,
+        "policy": "required",
+        "contract": ".claude/runtime/subagents/cc-test.yaml",
+        "agents": [{"name": "inline-agent"}],
+    }
+    contract = {
+        "command": "cc-test",
+        "enabled": False,
+        "policy": "ignored-contract-policy",
+        "merge_owner": "parent",
+        "parallel_policy": "read_only_parallel_only",
+        "agents": [{"name": "contract-agent"}],
+        "unexpected": "ignored",
+    }
+
+    assert policies.merge_subagent_contract(inline, contract) == {
+        "enabled": True,
+        "policy": "required",
+        "merge_owner": "parent",
+        "parallel_policy": "read_only_parallel_only",
+        "agents": [{"name": "contract-agent"}],
+    }
+
+
+def test_subagent_contract_merge_preserves_missing_inline_control_shape():
+    policies = importlib.import_module("harness_runtime.schema_contract_policies")
+
+    assert policies.merge_subagent_contract(
+        {"contract": ".claude/runtime/subagents/cc-test.yaml"},
+        {"write_scope_policy": "parent_writes_subset"},
+    ) == {
+        "enabled": None,
+        "policy": None,
+        "write_scope_policy": "parent_writes_subset",
+    }
+
+
+def test_effective_subagent_contract_loads_then_uses_merge_policy(tmp_path):
+    schema_check = _load_schema_check()
+    contract_path = tmp_path / ".claude" / "runtime" / "subagents" / "cc-test.yaml"
+    contract_path.parent.mkdir(parents=True)
+    contract_path.write_text(
+        "command: cc-test\n"
+        "merge_owner: parent\n"
+        "parallel_policy: read_only_parallel_only\n"
+        "agents: []\n",
+        encoding="utf-8",
+    )
+    checked: list[str] = []
+    issues = []
+
+    effective = schema_check.effective_subagent_contract(
+        tmp_path,
+        "cc-test",
+        {
+            "subagents": {
+                "enabled": True,
+                "policy": "required",
+                "contract": ".claude/runtime/subagents/cc-test.yaml",
+            }
+        },
+        tmp_path / "manifest.yaml",
+        None,
+        checked,
+        issues,
+    )
+
+    assert effective == {
+        "enabled": True,
+        "policy": "required",
+        "merge_owner": "parent",
+        "parallel_policy": "read_only_parallel_only",
+        "agents": [],
+    }
+    assert checked == [str(contract_path)]
     assert issues == []

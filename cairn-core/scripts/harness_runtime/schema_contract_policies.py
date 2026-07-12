@@ -16,6 +16,14 @@ FINAL_ARTIFACT_WRITE_NAMES = {
     ".cairness/changes/task-board.md",
     ".cairness/context/dev-map.md",
 }
+SUBAGENT_CONTRACT_FIELDS = (
+    "merge_owner",
+    "final_writes_by",
+    "write_scope_policy",
+    "parallel_policy",
+    "agents",
+    "merge_requirements",
+)
 
 
 def is_final_artifact_write(value: str) -> bool:
@@ -66,3 +74,17 @@ def merge_result_contract(
         else:
             effective[key] = value
     return effective
+
+
+def merge_subagent_contract(
+    inline: dict[str, Any],
+    contract: dict[str, Any],
+) -> dict[str, Any]:
+    merged = {
+        "enabled": inline.get("enabled"),
+        "policy": inline.get("policy"),
+    }
+    for key in SUBAGENT_CONTRACT_FIELDS:
+        if key in contract:
+            merged[key] = contract[key]
+    return merged

@@ -22,6 +22,7 @@
 - Moved review coverage, finding-location, and risk-triage verification into `harness_runtime.verification_review`, preserving the CLI exports and existing warning/failure result contracts.
 - Moved final-artifact write classification, subagent parallel-policy selection, and result-source extraction into the pure `harness_runtime.schema_contract_policies` API while preserving `cc-schema-check` exports.
 - Added pure result-contract profile merging to `harness_runtime.schema_contract_policies`; `cc-schema-check` now retains only profile path loading before delegating inline override semantics.
+- Added pure subagent-contract merging to `harness_runtime.schema_contract_policies`, retaining inline enablement controls while accepting only the established external-contract field whitelist.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

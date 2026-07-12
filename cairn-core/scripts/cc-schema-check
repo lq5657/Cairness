@@ -43,6 +43,7 @@ from harness_runtime.schema_contract_policies import (
     expected_subagent_parallel_policy,
     is_final_artifact_write,
     merge_result_contract,
+    merge_subagent_contract,
     result_sources,
 )
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
@@ -791,14 +792,7 @@ def effective_subagent_contract(
     if contract.get("command") != command:
         add(issues, "E_SCHEMA184", contract_path, f"subagent contract command must be {command}")
 
-    merged = {
-        "enabled": subagents.get("enabled"),
-        "policy": subagents.get("policy"),
-    }
-    for key in ("merge_owner", "final_writes_by", "write_scope_policy", "parallel_policy", "agents", "merge_requirements"):
-        if key in contract:
-            merged[key] = contract[key]
-    return merged
+    return merge_subagent_contract(subagents, contract)
 
 
 def validate_subagent_runtime_contract(
