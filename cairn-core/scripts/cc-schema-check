@@ -56,6 +56,11 @@ from harness_runtime.schema_command_references import (
 )
 from harness_runtime.schema_manifest import runtime_command_declarations
 from harness_runtime.schema_runtime_core_validation import validate_runtime_command_registration
+from harness_runtime.schema_result_contract_issues import (
+    RESULT_REQUIRED_FIELDS,
+    RESULT_STATUS_VALUES,
+    result_contract_issues,
+)
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -122,8 +127,6 @@ TOPIC_RULE_REQUIRED_SECTIONS = [
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 TOPIC_RULE_YAML_REQUIRED_KEYS = ["id", "description", "trigger", "skip", "process", "anti_rationalization", "red_flags", "checks"]
-RESULT_REQUIRED_FIELDS = {"status", "summary", "writes", "evidence", "risks", "next_action"}
-RESULT_STATUS_VALUES = {"passed", "blocked", "partial"}
 SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
 SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
 SUBAGENT_QUALITY_REQUIRED = {
@@ -854,49 +857,7 @@ def validate_result_contract(
     result_contract = effective_result_contract(project_root, manifest, path, checked, issues)
     if not isinstance(result_contract, dict):
         return
-
-    required_fields = set(result_contract.get("required_fields", []) if isinstance(result_contract.get("required_fields"), list) else [])
-    if required_fields != RESULT_REQUIRED_FIELDS:
-        add(
-            issues,
-            "E_SCHEMA140",
-            path,
-            f"{command} result_contract.required_fields must be {sorted(RESULT_REQUIRED_FIELDS)}",
-        )
-
-    status_values = set(result_contract.get("status_values", []) if isinstance(result_contract.get("status_values"), list) else [])
-    if status_values != RESULT_STATUS_VALUES:
-        add(
-            issues,
-            "E_SCHEMA141",
-            path,
-            f"{command} result_contract.status_values must be {sorted(RESULT_STATUS_VALUES)}",
-        )
-
-    if result_contract.get("writes") != "manifest_writes":
-        add(issues, "E_SCHEMA142", path, f"{command} result_contract.writes must be manifest_writes")
-
-    evidence = result_contract.get("evidence")
-    if isinstance(evidence, dict) and evidence.get("required") is not True:
-        add(issues, "E_SCHEMA143", path, f"{command} result_contract.evidence.required must be true")
-    evidence_sources = result_sources(result_contract, "evidence")
-    if isinstance(manifest.get("auto_validation"), list) and manifest.get("auto_validation") and "auto_validation" not in evidence_sources:
-        add(issues, "E_SCHEMA144", path, f"{command} result_contract.evidence.sources must include auto_validation")
-    if isinstance(manifest.get("writes"), list) and manifest.get("writes") and "written_artifacts" not in evidence_sources:
-        add(issues, "E_SCHEMA145", path, f"{command} result_contract.evidence.sources must include written_artifacts")
-
-    risks = result_contract.get("risks")
-    if isinstance(risks, dict) and risks.get("required") is not True:
-        add(issues, "E_SCHEMA146", path, f"{command} result_contract.risks.required must be true")
-    risk_sources = result_sources(result_contract, "risks")
-    for source in ("stop_conditions", "forbids"):
-        if source not in risk_sources:
-            add(issues, "E_SCHEMA147", path, f"{command} result_contract.risks.sources must include {source}")
-    if isinstance(manifest.get("red_flags"), list) and manifest.get("red_flags") and "red_flags" not in risk_sources:
-        add(issues, "E_SCHEMA148", path, f"{command} result_contract.risks.sources must include red_flags")
-
-    if not isinstance(result_contract.get("next_actions"), list) or not result_contract.get("next_actions"):
-        add(issues, "E_SCHEMA149", path, f"{command} result_contract.next_actions must not be empty")
+    issues.extend(result_contract_issues(command, manifest, result_contract, path))
 
 
 def validate_interaction_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:

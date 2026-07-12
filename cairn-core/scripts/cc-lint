@@ -16,6 +16,7 @@ from harness_runtime.issues import Issue, build_report
 from harness_runtime.change_lint import (
     validate_spec_metadata,
     validate_task_contract,
+    validate_test_spec,
     validate_validation_mapping,
 )
 
@@ -437,16 +438,14 @@ def lint_test_spec(change_dir: Path, errors: list[str]) -> None:
         return
     text = read(path)
     meta = parse_meta(text)
-    if meta and meta.get("status") not in VALID_CHANGE_STATUS:
-        errors.append(f"{path}: invalid status")
-    if "`cc-test` 模式" not in text and "cc-test` 模式" not in text:
-        errors.append(f"{path}: missing cc-test mode row")
-    for row in table_rows(text):
-        if len(row) >= 2 and row[0].replace("`", "") == "cc-test 模式":
-            mode = row[1].strip("` ")
-            if mode not in VALID_TEST_MODE:
-                errors.append(f"{path}: invalid cc-test mode {mode}")
-            break
+    for message in validate_test_spec(
+        meta,
+        text,
+        table_rows(text),
+        valid_statuses=VALID_CHANGE_STATUS,
+        valid_modes=VALID_TEST_MODE,
+    ):
+        errors.append(f"{path}: {message}")
 
 
 def lint_workflow_definition(root: Path, errors: list[str]) -> None:

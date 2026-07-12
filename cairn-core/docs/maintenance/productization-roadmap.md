@@ -1229,6 +1229,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：纯模块不读取文件、不调用 subprocess、不渲染路径前缀；保留历史错误文本和 Issue/result 顺序；`cc-verify` helper 重导出兼容面不变。
 - 下一步：优先提取 `cc-schema-check` subagent/result contract Issue validator，或继续拆分 `cc-lint` test-spec/runtime manifest lint。
 
+#### 实施记录 2026-07-12（Test-spec、Result contract Issues 与 Harness step plan）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：`harness_runtime.change_lint` 接管 `test-spec.md` status/mode 决策，完成首批 change-document contract 下沉；`harness_runtime.schema_result_contract_issues` 接管 effective result contract 的 `E_SCHEMA140` 至 `E_SCHEMA149`；`harness_runtime.verification_harness_plan` 接管 full/changed-only Harness step 顺序、命令、skip、behavior replay 和可选 knowledge index 计划。CLI 保留 parsing/IO/profile merge、环境与文件状态读取、subprocess 执行和报告渲染。
+- 验证：三个边界均先观察模块/API 缺失的 RED，再完成 GREEN；精确覆盖 test-spec 历史 substring/首行语义、result Issue code/message/order/malformed sections，以及 full/changed-only/empty-surface step plan。最终全量与 Harness 验证见本子任务完成验证。
+- 剩余：`cc-lint` runtime/governance lint、`cc-schema-check` subagent/interaction Issue validator，以及 `cc-verify` role/review/wave/project capability orchestration 仍在 CLI；P2-06 保持部分完成。
+- 风险/决策：Harness plan 只接收调用方解析后的环境/文件状态，不自行执行 IO；result contract profile 加载/merge 仍留 adapter；test-spec 保留 intentional string metadata 与文本匹配兼容。
+- 下一步：提取 subagent/interaction contract Issue 决策和 `cc-lint` runtime manifest lint，再评估 `cc-verify` 剩余 orchestration 是否值得继续拆分。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始

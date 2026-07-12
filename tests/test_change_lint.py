@@ -109,3 +109,32 @@ def test_cc_lint_reexports_change_lint_contract_validators():
 
     assert cli.validate_validation_mapping is change_lint.validate_validation_mapping
     assert cli.validate_task_contract is change_lint.validate_task_contract
+    assert cli.validate_test_spec is change_lint.validate_test_spec
+
+
+def test_validate_test_spec_reports_status_mode_and_missing_row_in_order():
+    change_lint = import_module("harness_runtime.change_lint")
+
+    errors = change_lint.validate_test_spec(
+        {"status": "unknown"},
+        "# Test spec\n| Field | Value |\n|---|---|\n",
+        [["Field", "Value"]],
+        valid_statuses={"propose", "apply"},
+        valid_modes={"full", "supplement"},
+    )
+
+    assert errors == ["invalid status", "missing cc-test mode row"]
+
+
+def test_validate_test_spec_preserves_mode_row_validation_and_empty_metadata():
+    change_lint = import_module("harness_runtime.change_lint")
+
+    errors = change_lint.validate_test_spec(
+        {},
+        "| `cc-test` 模式 | weird |\n",
+        [["`cc-test` 模式", "weird"]],
+        valid_statuses={"propose", "apply"},
+        valid_modes={"full", "supplement"},
+    )
+
+    assert errors == ["invalid cc-test mode weird"]

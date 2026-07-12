@@ -38,6 +38,7 @@ from harness_runtime.verification_git import (
     git_repo_root,
     has_harness_changes,
 )
+from harness_runtime.verification_harness_plan import harness_step_plan
 from harness_runtime.verification_results import (
     collect_issues_from_json as _collect_issues_from_json,
     fingerprints,
@@ -113,67 +114,33 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             }
         )
     if not args.project_only:
-        cc_lint = claude_root / "scripts" / "cc-lint"
-        cc_sync_check = claude_root / "scripts" / "cc-sync-check"
-        cc_readset = claude_root / "scripts" / "cc-readset"
-        cc_workflow_gen = claude_root / "scripts" / "cc-workflow-gen"
-        cc_doctor_check = claude_root / "scripts" / "cc-doctor-check"
-        cc_event_check = claude_root / "scripts" / "cc-event-check"
-        cc_behavior_check = claude_root / "scripts" / "cc-behavior-check"
-        cc_upgrade_check = claude_root / "scripts" / "cc-upgrade-check"
-        cc_schema_check = claude_root / "scripts" / "cc-schema-check"
         cc_role_check = claude_root / "scripts" / "cc-role-check"
-        cc_index_check = claude_root / "scripts" / "cc-index-check"
-        cc_deps = claude_root / "scripts" / "cc-deps"
-        cc_spec_scope_check = claude_root / "scripts" / "cc-spec-scope-check"
-        cc_subagent_evidence_check = claude_root / "scripts" / "cc-subagent-evidence-check"
         cc_wave_plan = claude_root / "scripts" / "cc-wave-plan"
         knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
-        if args.changed_only:
-            if not harness_changed and not changed_dirs:
-                results.append(skipped_step("changed-only", "harness", "no changed Harness or change files detected"))
-            lint_targets = [str(claude_root)] if harness_changed else []
-            lint_targets.extend(str(path) for path in changed_dirs)
-            if lint_targets:
-                results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
-            if changed_dirs:
-                changed_dir_args = [str(path) for path in changed_dirs]
-                results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), *changed_dir_args], project_root, collect_issues=True))
-                results.append(run_step("cc-event-check", "harness", [str(cc_event_check), *changed_dir_args], project_root, collect_issues=True))
-                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), *changed_dir_args], project_root, collect_issues=True))
-                results.append(run_step("cc-spec-scope-check", "harness", [str(cc_spec_scope_check), *changed_dir_args], project_root, collect_issues=True))
-                results.append(run_step("cc-subagent-evidence-check", "harness", [str(cc_subagent_evidence_check), *changed_dir_args], project_root, collect_issues=True))
-            if harness_changed:
-                results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
-                results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
-                results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))
-                if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
-                    results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root, collect_issues=True))
-                results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
-                results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
-                if knowledge_index_path.is_file():
-                    results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
-            results.append(run_step("cc-deps-orphans", "harness", [str(cc_deps), "orphans"], project_root, collect_issues=True))
-        else:
-            lint_targets = [str(claude_root)]
-            if sync_target.exists():
-                lint_targets.append(str(sync_target))
-            results.append(run_step("cc-lint", "harness", [str(cc_lint), *lint_targets], project_root, collect_issues=True))
-            results.append(run_step("cc-sync-check", "harness", [str(cc_sync_check), str(sync_target)], project_root, collect_issues=True))
-            results.append(run_step("cc-spec-scope-check", "harness", [str(cc_spec_scope_check), str(sync_target)], project_root, collect_issues=True))
-            results.append(run_step("cc-subagent-evidence-check", "harness", [str(cc_subagent_evidence_check), str(sync_target)], project_root, collect_issues=True))
-            results.append(run_step("cc-readset", "harness", [str(cc_readset), "--check"], project_root, collect_issues=True))
-            results.append(run_step("cc-workflow-gen", "harness", [str(cc_workflow_gen), "--check"], project_root, collect_issues=True))
-            results.append(run_step("cc-doctor-check", "harness", [str(cc_doctor_check)], project_root, collect_issues=True))
-            results.append(run_step("cc-event-check", "harness", [str(cc_event_check), str(sync_target)], project_root, collect_issues=True))
-            if os.environ.get("CC_BEHAVIOR_REPLAY") != "1":
-                results.append(run_step("cc-behavior-check", "harness", [str(cc_behavior_check)], project_root, collect_issues=True))
-            results.append(run_step("cc-upgrade-check", "harness", [str(cc_upgrade_check)], project_root, collect_issues=True))
-            results.append(run_step("cc-schema-check", "harness", [str(cc_schema_check), str(sync_target)], project_root, collect_issues=True))
-            if knowledge_index_path.is_file():
-                results.append(run_step("cc-index-check", "harness", [str(cc_index_check)], project_root, collect_issues=True))
-            results.append(run_step("cc-deps-orphans", "harness", [str(cc_deps), "orphans"], project_root, collect_issues=True))
+        plans = harness_step_plan(
+            framework_root=claude_root,
+            sync_target=sync_target,
+            sync_target_exists=sync_target.exists(),
+            changed_only=args.changed_only,
+            harness_changed=harness_changed,
+            changed_dirs=changed_dirs,
+            behavior_replay=os.environ.get("CC_BEHAVIOR_REPLAY") == "1",
+            knowledge_index_exists=knowledge_index_path.is_file(),
+        )
+        for plan in plans:
+            if plan.action == "skip":
+                results.append(skipped_step(plan.name, "harness", plan.reason))
+                continue
+            results.append(
+                run_step(
+                    plan.name,
+                    "harness",
+                    plan.command,
+                    project_root,
+                    collect_issues=plan.collect_issues,
+                )
+            )
         if args.command:
             command = [str(cc_role_check), "--command", args.command]
             if args.change:

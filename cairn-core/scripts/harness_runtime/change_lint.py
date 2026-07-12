@@ -90,3 +90,32 @@ def validate_task_contract(
         if validation_id not in document_text:
             errors.append(f"mapping {validation_id} from spec.md is not referenced")
     return errors
+
+
+def validate_test_spec(
+    metadata: Mapping[str, Any],
+    document_text: str,
+    rows: Iterable[Sequence[str]],
+    *,
+    valid_statuses: Iterable[str],
+    valid_modes: Iterable[str],
+) -> list[str]:
+    """Return stable lint messages for the ``test-spec.md`` contract.
+
+    The mode-row presence check intentionally follows ``cc-lint``'s historic
+    text matching, while table row validation remains limited to the first
+    matching ``cc-test 模式`` row.
+    """
+
+    errors: list[str] = []
+    if metadata and metadata.get("status") not in set(valid_statuses):
+        errors.append("invalid status")
+    if "`cc-test` 模式" not in document_text and "cc-test` 模式" not in document_text:
+        errors.append("missing cc-test mode row")
+    for row in rows:
+        if len(row) >= 2 and row[0].replace("`", "") == "cc-test 模式":
+            mode = row[1].strip("` ")
+            if mode not in set(valid_modes):
+                errors.append(f"invalid cc-test mode {mode}")
+            break
+    return errors
