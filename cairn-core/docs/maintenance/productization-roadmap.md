@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`541 passed`
+- 测试：`543 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，541 个用例 |
+| Tests | 56 个受版本控制文件，543 个用例 |
 
 当前主要事实：
 
@@ -1028,6 +1028,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：`cc-deps` 仍被 Explain 通过 `SourceFileLoader` 调用；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
 - 风险/决策：领域模块不解析 CLI、不打印、不退出；extensionless CLI 保持可执行位和原 JSON shape。规则数据仍来自 `detection-patterns.yaml`，没有复制或改写检测合同。
 - 下一步：提取 `cc-deps` 的 change discovery/dependency readiness API，消除 Explain 的最后一个动态 CLI loader。
+
+#### 实施记录 2026-07-12（Change dependency 领域模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 `ChangeInfo`、spec/tasks 解析、change discovery 与 dependency readiness 从 extensionless `cc-deps` 移入 `harness_runtime.deps`。CLI 重导出原符号以兼容 `SourceFileLoader` 和既有嵌入调用；`harness_runtime.explain` 改为普通 package import，移除最后一个动态 CLI loader。
+- 验证：package/CLI 等价性与 Explain 静态边界先观察 RED，再转为 GREEN；`cc-deps` orphans、wave parser、Explain、Context 聚焦回归及完整验证见本子任务完成验证。
+- 剩余：dependency graph、cycle/order、file conflicts 与 orphans 领域逻辑仍位于 CLI；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
+- 风险/决策：本批不改 JSON、文本或退出码合同，不扩大到 Git diff/orphan 语义；领域模块只接收显式 project root，CLI 继续拥有 Context、参数、渲染和退出控制。
+- 下一步：继续迁移 `cc-deps` 的纯图/冲突逻辑，或按优先级拆分 `cc-schema-check` 的独立验证域。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

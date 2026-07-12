@@ -12,6 +12,7 @@ git repo. cc-verify aggregation convergence is covered by
 test_verify_collects_issues.test_all_harness_subchecks_are_canonical.
 """
 import io
+import importlib
 import json
 import subprocess
 import sys
@@ -60,6 +61,24 @@ def _run_main(mod, argv, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         mod.main()
     return exc.value.code, out.getvalue(), err.getvalue()
+
+
+def test_dependency_domain_package_matches_cli_exports():
+    """Dependency discovery/readiness is importable without loading the CLI."""
+    deps = importlib.import_module("harness_runtime.deps")
+    cli = _load_cc_deps()
+
+    assert cli.ChangeInfo is deps.ChangeInfo
+    assert cli.discover_changes is deps.discover_changes
+    assert cli.check_dependencies is deps.check_dependencies
+
+    changes = {
+        "base": deps.ChangeInfo("base", status="done"),
+        "feature": deps.ChangeInfo("feature", status="apply", depends_on=["base"]),
+    }
+    assert cli.check_dependencies("feature", changes) == deps.check_dependencies(
+        "feature", changes
+    )
 
 
 def test_detect_orphans_finds_undeclared_file(tmp_path):
@@ -174,4 +193,3 @@ def test_cc_deps_orphans_root_accepts_valid_git_repo(tmp_path, monkeypatch):
     assert code == 0
     report = json.loads(out)
     assert not any(i["code"] == "E_DEPS001" for i in report["issues"])
-

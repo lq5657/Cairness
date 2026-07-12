@@ -17,18 +17,21 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
-import re
 import subprocess
 import sys
 from collections import defaultdict, deque
-from dataclasses import dataclass, field
 from pathlib import Path
 
-from change_docs import parse_file_table, parse_involved_files
 from typing import Any
 
-from harness_runtime import require_yaml
 from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.deps import (
+    ChangeInfo,
+    check_dependencies,
+    discover_changes,
+    parse_spec,
+    parse_task_files,
+)
 from harness_runtime.issues import Issue, build_report
 
 
@@ -41,77 +44,6 @@ def project_root() -> Path:
         framework_hint=Path(__file__).resolve().parent.parent,
     )
     return context.project_root
-
-
-@dataclass
-class ChangeInfo:
-    change_id: str
-    status: str = "propose"
-    depends_on: list[str] = field(default_factory=list)
-    parallel_safe: bool = True
-    branch: str = ""
-    files: set[str] = field(default_factory=set)
-    dir_path: Path | None = None
-
-    def __hash__(self) -> int:
-        return hash(self.change_id)
-
-
-def parse_spec(spec_path: Path) -> dict[str, Any] | None:
-    """解析 spec.md 的 YAML frontmatter。"""
-    content = spec_path.read_text(encoding="utf-8")
-    m = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
-    if not m:
-        return None
-    yaml = require_yaml()
-    try:
-        return yaml.safe_load(m.group(1)) or {}
-    except Exception:
-        return None
-
-
-def parse_task_files(tasks_path: Path) -> set[str]:
-    """从 tasks.md 中提取涉及文件路径。Delegates to change_docs shared parsers."""
-    content = tasks_path.read_text(encoding="utf-8")
-    return parse_involved_files(content) | parse_file_table(content)
-
-
-def discover_changes(root: Path) -> dict[str, ChangeInfo]:
-    """扫描 .cairness/changes/ 下所有 change。"""
-    changes: dict[str, ChangeInfo] = {}
-    changes_dir = root / ".cairness" / "changes"
-    if not changes_dir.exists():
-        return changes
-
-    for spec_file in sorted(changes_dir.rglob("spec.md")):
-        if ".claude" in spec_file.parts:
-            continue
-
-        spec = parse_spec(spec_file)
-        if not spec:
-            continue
-
-        change_id = spec.get("change_id", spec_file.parent.name)
-        if not change_id:
-            continue
-
-        ci = ChangeInfo(
-            change_id=change_id,
-            status=spec.get("status", "propose"),
-            depends_on=spec.get("depends_on", []) or [],
-            parallel_safe=spec.get("parallel_safe", True),
-            branch=spec.get("branch", ""),
-            dir_path=spec_file.parent,
-        )
-
-        # Parse task files
-        tasks_path = spec_file.parent / "tasks.md"
-        if tasks_path.exists():
-            ci.files = parse_task_files(tasks_path)
-
-        changes[change_id] = ci
-
-    return changes
 
 
 def build_dependency_graph(
@@ -232,54 +164,6 @@ def detect_file_conflicts(
                 )
 
     return conflicts
-
-
-def check_dependencies(
-    change_id: str,
-    changes: dict[str, ChangeInfo],
-) -> dict[str, Any]:
-    """检查目标 change 的依赖是否满足执行条件。"""
-    ci = changes.get(change_id)
-    if not ci:
-        return {
-            "change_id": change_id,
-            "status": "unknown",
-            "error": f"change '{change_id}' not found",
-        }
-
-    unsatisfied: list[str] = []
-    blocked: list[str] = []
-    not_done: list[str] = []
-
-    for dep in ci.depends_on:
-        dep_ci = changes.get(dep)
-        if not dep_ci:
-            unsatisfied.append(dep)
-            continue
-        if dep_ci.status in ("review", "done"):
-            continue
-        if dep_ci.status == "apply":
-            blocked.append(dep)
-        else:
-            not_done.append(dep)
-
-    all_blocking = unsatisfied + blocked + not_done
-    ready = len(all_blocking) == 0
-
-    return {
-        "change_id": change_id,
-        "status": ci.status,
-        "depends_on": ci.depends_on,
-        "ready": ready,
-        "unsatisfied": unsatisfied,
-        "blocked": blocked,
-        "not_done": not_done,
-        "recommendation": (
-            "all dependencies satisfied — safe to proceed"
-            if ready
-            else f"{len(all_blocking)} dependency(s) not satisfied"
-        ),
-    }
 
 
 def format_graph_ascii(

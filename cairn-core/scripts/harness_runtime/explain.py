@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml, resolve_language_profile
 from harness_runtime.context import HarnessContext
+from harness_runtime.deps import check_dependencies, discover_changes
 from harness_runtime.issues import Issue, build_report
 from harness_runtime.topic_trigger import changed_files_from_tasks, detect_triggers, load_patterns
 
@@ -126,10 +126,8 @@ def _change_readiness(
 ) -> dict[str, Any] | None:
     if not change_id:
         return None
-    script = context.framework_root / "scripts" / "cc-deps"
-    deps = SourceFileLoader("_cairness_effective_deps", str(script)).load_module()
-    changes = deps.discover_changes(context.project_root)
-    result = deps.check_dependencies(change_id, changes)
+    changes = discover_changes(context.project_root)
+    result = check_dependencies(change_id, changes)
     change = changes.get(change_id)
     if change is None:
         return result

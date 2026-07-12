@@ -1,9 +1,12 @@
 import json
+import inspect
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
+
+from harness_runtime import explain
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -206,6 +209,13 @@ def test_explain_reuses_dependency_readiness(harness_project: Path):
     assert report["dependency_readiness"]["ready"] is False
     assert report["dependency_readiness"]["unsatisfied"] == ["missing-base"]
     assert any(item["code"] == "E_EXPLAIN006" for item in report["readiness"]["unmet"])
+
+
+def test_explain_imports_dependency_domain_without_loading_cli():
+    source = inspect.getsource(explain)
+
+    assert "SourceFileLoader" not in source
+    assert "from harness_runtime.deps import" in source
 
 
 def test_explain_text_surfaces_dynamic_contract():
