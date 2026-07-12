@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`546 passed`
+- 测试：`548 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，546 个用例 |
+| Tests | 57 个受版本控制文件，548 个用例 |
 
 当前主要事实：
 
@@ -1068,6 +1068,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：`cc-schema-check` 的文件加载、runtime/change/topic-rule 编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
 - 风险/决策：不引入第三方 JSON Schema 引擎，不扩张当前 draft-07 子集，也不修改 `E_SCHEMA107..118`、`E_SCHEMA191..193` 的触发和消息合同。
 - 下一步：提取 schema 文档加载与结构验证 service，或转向 `cc-verify` 中不依赖 subprocess 的纯结果聚合域。
+
+#### 实施记录 2026-07-12（Schema document IO 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 UTF-8 文档读取、JSON schema 加载和 YAML manifest 加载移入 `harness_runtime.schema_documents`。缺失文件、解析失败和非 object/mapping root 继续生成原 `E_SCHEMA100..106` Issue；`cc-schema-check` 重导出加载函数保持嵌入调用兼容。
+- 验证：package/CLI 等价与真实临时 JSON/YAML 测试先因模块不存在观察 RED，再转为 GREEN；覆盖成功加载以及 `E_SCHEMA100/102/106`，完整验证见本子任务完成验证。
+- 剩余：runtime/change/topic-rule 的结构编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
+- 风险/决策：document IO 与递归 validator 分模块，避免给纯验证器引入文件系统职责；PyYAML 缺失和解析异常仍以 Issue 返回，不改 fail-fast 层级。
+- 下一步：转向 `cc-verify` 的纯结果聚合域，或继续提取 `cc-schema-check` 的 metadata parsing 边界。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
