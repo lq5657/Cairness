@@ -6,6 +6,7 @@ Usage:
     cc-cairn update                              Pull latest release and update framework
     cc-cairn version                             Show installed and project versions
     cc-cairn doctor [--json] [--fix] [--apply]   Diagnose and safely repair readiness
+    cc-cairn explain COMMAND [--change ID]         Show the effective runtime contract
     cc-cairn loop enable                         Enable Loop Engineering (autonomous) mode
     cc-cairn loop disable                        Disable Loop Engineering, revert to standard
     cc-cairn loop status                         Show current loop mode status
@@ -29,7 +30,9 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from harness_runtime.config import HarnessConfigError, load_harness_config
+from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.doctor import apply_fix_plan, build_doctor_report, fix_plan
+from harness_runtime.explain import build_effective_contract
 from harness_runtime.versioning import VersionMetadataError, read_version
 
 MIN_PYTHON = (3, 9)
@@ -781,6 +784,40 @@ def cmd_config(argv):
     else:
         payload = {"values": config.values, "sources": config.sources}
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def cmd_explain(argv):
+    parser = argparse.ArgumentParser(prog="cc-cairn explain")
+    parser.add_argument("command", help="registered runtime command, for example cc-apply")
+    parser.add_argument("--change", help="change ID used to resolve change-scoped readiness")
+    parser.add_argument("--root", help="explicit Cairness project root")
+    parser.add_argument("--json", action="store_true", help="emit the structured effective contract")
+    args = parser.parse_args(argv)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            start=None if args.root else Path.cwd(),
+        )
+    except HarnessContextError as exc:
+        print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+        raise SystemExit(2)
+
+    report = build_effective_contract(context, args.command, change_id=args.change)
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "failed":
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    else:
+        print(f"Effective contract: {report['command']}")
+        print(f"  Profile: {report['profile']['id']} ({report['profile']['source']})")
+        print(f"  Readiness: {report['readiness']['status']}")
+        print(f"  Reads: {len(report['reads']['always'])} always, {len(report['reads']['conditional'])} conditional groups")
+        print(f"  Writes: {len(report['writes'])}")
+        print(f"  Gates: {', '.join(report['gates']) or 'none'}")
+        for item in report["readiness"]["unmet"]:
+            print(f"  {item['code']}: {item['message']}")
+    raise SystemExit(1 if report["status"] == "failed" else 0)
 
 
 KNOWLEDGE_INDEX_CATEGORIES_FALLBACK = [
@@ -1578,7 +1615,7 @@ def main():
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|update|version|doctor|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -1590,6 +1627,8 @@ def main():
         cmd_version()
     elif cmd == "doctor":
         cmd_doctor(sys.argv[2:])
+    elif cmd == "explain":
+        cmd_explain(sys.argv[2:])
     elif cmd == "config":
         cmd_config(sys.argv[2:])
     elif cmd == "loop":
@@ -1598,7 +1637,7 @@ def main():
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|update|version|doctor|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
 

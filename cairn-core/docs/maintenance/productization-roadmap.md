@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`530 passed`
+- 测试：`534 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 54 个受版本控制文件，530 个用例 |
+| Tests | 55 个受版本控制文件，534 个用例 |
 
 当前主要事实：
 
@@ -171,7 +171,7 @@ Phase 3：Agent Governance Platform
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 待开始 | Phase 1 |
 | `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
-| `P2-04` | Effective contract explain | Phase 2 | P1 | 待开始 | `P2-05`、`P1-04` |
+| `P2-04` | Effective contract explain | Phase 2 | P1 | 部分完成 | `P2-05`、`P1-04` |
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 待开始 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
@@ -642,7 +642,7 @@ cc-archive
 
 ### 9.6 `P2-04` Effective contract explain
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：让用户和维护者看到命令在当前项目中的最终有效合同。
 
@@ -669,9 +669,21 @@ cc-cairn explain cc-apply --change <change-id> --json
 
 **验收标准**：输出完全来自真实解析器，不复制一套独立推导逻辑；JSON 可用于 Dashboard 和测试。
 
+#### 实施记录 2026-07-12（Effective contract 基础视图）
+
+- 状态：部分完成
+- Change/提交：`P2-04`（由本子任务的 Git 提交记录）
+- 已完成：新增 `cc-cairn explain <command> [--change <id>] [--root <project>] [--json]`。服务层通过 `HarnessContext`、runtime core、command manifest、generated readset、active profile 和 subagent contract 真实资产解析有效合同；JSON 输出 profile/source、完整 manifest、always/optional/conditional reads、writes、gates、preconditions、stop conditions、subagent policy/contract、auto-validation 与 readiness。缺少必填 change 不阻断解释，而以 `readiness.status=blocked` 和 `E_EXPLAIN002/003` 显示；未知命令返回 `E_EXPLAIN001`。
+- 验证：
+  - `rtk pytest -q tests/test_cli_explain.py` → `4 passed`
+  - 最终全量 pytest、Harness/readset/workflow/eval 与 diff 检查见本子任务完成验证。
+- 剩余：接入实际 Topic trigger 结果、language/workspace profile、预计上下文预算和更深入的项目状态 precondition；补齐人类可读输出回归后再评估 P2-04 完成。
+- 风险/决策：Explain 成功与命令 readiness 分离，允许在 blocked 状态查看合同；所有合同字段来自现有结构化资产，不复制 manifest/readset 推导规则。
+- 下一步：复用 topic-trigger 和 language profile 解析器补齐项目相关的动态有效合同。
+
 ### 9.7 `P2-05` 统一 `HarnessContext` 与 root 解析
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：移除脚本各自通过 `__file__`、cwd 和硬编码路径推导项目的模式。
 
