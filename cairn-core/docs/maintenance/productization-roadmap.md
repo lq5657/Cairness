@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`564 passed`
+- 测试：`569 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 61 个受版本控制文件，564 个用例 |
+| Tests | 62 个受版本控制文件，569 个用例 |
 
 当前主要事实：
 
@@ -1118,6 +1118,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：真实 subprocess step 执行和 mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
 - 风险/决策：synthetic skipped 继续使用空 cwd 和 exit 0，blocked 继续使用 exit 127，failed 继续使用 exit 1；不统一 review-specific 手工 result dict，以免扩大本批边界。
 - 下一步：为 `run_step` 建立可注入 subprocess runner，或提取语言 capability/profile 的纯决策域。
+
+#### 实施记录 2026-07-12（Verification capabilities 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 profile command 解析、verification entry 过滤、generic/Go legacy capability 启停、display name、result kind、Go 默认命令和 resolution error 文本移入 `harness_runtime.verification_capabilities`。CLI 直接导入并重导出原函数。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；覆盖 malformed entry/command、generic override 优先级、Go legacy fallback、非 Go default、labels/kinds/default commands 和 resolution status；五种语言 fixture 端到端验证保持通过。
+- 剩余：Git changed-surface 判定、真实 subprocess step 执行和 mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
+- 风险/决策：generic `validation.verification.capabilities` 继续优先于 Go 兼容配置；不在本批删除 Go fallback，也不改变 optional capability 的默认启停解释。
+- 下一步：提取 profile change detection 的纯路径域，或为 `run_step` 建立可注入 subprocess runner。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
