@@ -34,6 +34,12 @@ from harness_runtime.verification_changes import (
     profile_detection_patterns,
 )
 from harness_runtime.verification_diagnostics import diagnosis_for
+from harness_runtime.verification_git import (
+    changed_change_dirs,
+    git_changed_paths,
+    git_repo_root,
+    has_harness_changes,
+)
 from harness_runtime.verification_results import (
     collect_issues_from_json as _collect_issues_from_json,
     fingerprints,
@@ -46,61 +52,6 @@ from change_docs import named_table_rows, parse_findings
 
 def command_text(command: list[str]) -> str:
     return " ".join(command)
-
-
-def git_repo_root(project_root: Path) -> Path:
-    completed = subprocess.run(
-        ["git", "-C", str(project_root), "rev-parse", "--show-toplevel"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if completed.returncode == 0 and completed.stdout.strip():
-        return Path(completed.stdout.strip()).resolve()
-    return project_root.resolve()
-
-
-def git_changed_paths(project_root: Path) -> list[Path]:
-    repo_root = git_repo_root(project_root)
-    commands = [
-        ["git", "diff", "--name-only", "HEAD"],
-        ["git", "ls-files", "--others", "--exclude-standard"],
-    ]
-    paths: set[Path] = set()
-    for command in commands:
-        completed = subprocess.run(command, cwd=str(repo_root), text=True, capture_output=True, check=False)
-        if completed.returncode != 0:
-            continue
-        for line in completed.stdout.splitlines():
-            if not line.strip():
-                continue
-            paths.add((repo_root / line.strip()).resolve())
-    return sorted(paths)
-
-
-def changed_change_dirs(paths: list[Path], project_root: Path) -> list[Path]:
-    changes_root = project_root / ".cairness" / "changes"
-    dirs: set[Path] = set()
-    for path in paths:
-        if not is_relative_to(path, changes_root):
-            continue
-        relative = path.resolve().relative_to(changes_root.resolve())
-        if relative.parts and relative.parts[0] != "task-board.md":
-            candidate = changes_root / relative.parts[0]
-            if candidate.exists():
-                dirs.add(candidate)
-    return sorted(dirs)
-
-
-def has_harness_changes(paths: list[Path], project_root: Path) -> bool:
-    repo_root = git_repo_root(project_root)
-    watched_roots = [
-        project_root / ".claude",
-        project_root / ".cairness",
-        project_root / "README.md",
-        repo_root / ".github",
-    ]
-    return any(any(is_relative_to(path, root) if root.is_dir() else path.resolve() == root.resolve() for root in watched_roots) for path in paths)
 
 
 def _find_section_marker(lines: list[str], marker: str) -> int:

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`573 passed`
+- 测试：`577 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 63 个受版本控制文件，573 个用例 |
+| Tests | 64 个受版本控制文件，577 个用例 |
 
 当前主要事实：
 
@@ -1138,6 +1138,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：Git 仓库/changed path 发现、change-dir/harness surface 判定、真实 subprocess step 执行和 mode/report 编排仍在 CLI。P2-06 保持部分完成。
 - 风险/决策：只迁移无 Git 命令和无 existence gate 的路径决策；`.claude`/`.cairness` 仍不触发业务 profile verification，根级文件继续兼容 `**/pattern`。
 - 下一步：提取 Git changed-surface service，或为 `run_step` 建立可注入 subprocess runner。
+
+#### 实施记录 2026-07-12（Verification Git surface 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 Git repo root 发现、tracked/staged/unstaged 与 untracked changed path 合并、changed path 到已存在 change 目录投影、task-board 排除及 Harness surface 判断移入 `harness_runtime.verification_git`。`cc-verify --changed-only` 继续通过原函数名消费该 service。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；真实临时 Git repo 覆盖 nested root、tracked/untracked 合并和排序；路径 fixture 覆盖 existing/missing change、task-board、`.claude`、`.cairness`、README、repo `.github` 与业务源码排除。
+- 剩余：真实 verification subprocess step 执行和 mode/report 编排仍在 CLI；review coverage/finding/risk checks 也仍是脚本内手工 result。P2-06 保持部分完成。
+- 风险/决策：保留 Git 命令失败时逐命令跳过和 repo root 失败时回退 project root 的兼容语义；不在本批引入 GitPython 或改变 dirty/untracked 集合定义。
+- 下一步：为 `run_step` 建立可注入 subprocess runner，或先统一 review-specific synthetic result construction。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
