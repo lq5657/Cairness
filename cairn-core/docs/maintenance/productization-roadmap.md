@@ -81,14 +81,14 @@ cairn-core/scripts/cc-behavior-check
 
 ## 4. 当前基线快照
 
-基线日期：`2026-07-11`
+基线日期：`2026-07-12`
 
 基线版本与提交：
 
 - `cairn-core/VERSION`：`1.1.0`
-- 基线提交：`9eba1ff test: isolate destructive harness fixtures`
+- 基线提交：`1525daa feat: add safe onboarding workflow`
 - 分支：`main`
-- 测试：`597 passed`
+- 测试：`706 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -99,22 +99,22 @@ cairn-core/scripts/cc-behavior-check
 | Generated readsets | 15（含 index） |
 | Topic rules | 35 |
 | Subagent contracts | 6 |
-| Schemas | 12 |
-| Scripts | 34 个受版本控制文件，约 11645 行 |
+| Schemas | 15 |
+| Scripts | 77 个受版本控制文件 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 67 个受版本控制文件，597 个用例 |
+| Tests | 91 个受版本控制文件，706 个用例 |
 
 当前主要事实：
 
 1. 核心运行时仍以 Claude Code 为唯一正式宿主：`.claude/`、`CLAUDE.md`、Skill、`settings.json` 和 `PreToolUse` hook 都带有宿主语义。
-2. 目标项目 CI 模板要求 `.claude/scripts/cc-verify` 已存在；由于 `.claude/` 默认被忽略，标准 GitHub-hosted runner 上当前按设计会失败。
+2. 目标项目 CI 已支持固定版本和 checksum 的 ephemeral runner，不依赖预装 `.claude/`；仍缺一次正式发布后的 GitHub-hosted fixture run URL 作为远端完成证据。
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
 5. `harness.config.yaml` 已拥有完整 schema、effective config 与来源诊断；完整安装中的配置消费者通过共享 loader 读取，项目覆盖位于 `.cairness/harness.config.yaml`。
 6. Go、Python、Java、TypeScript、C++ 均由参数化 fixture parity test 覆盖 detection 与必需验证；必需工具链缺失为 `blocked`，可选能力缺失为 `skipped`。
-7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 已成为大型聚合脚本。
-8. Migrated command 使用 runtime-first，但部分维护规则、角色和 eval 说明仍引用 legacy 文档。
+7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 的领域决策已迁入 `harness_runtime` package API；extensionless CLI 保留 Context、I/O、编排、渲染与兼容重导出。
+8. Migrated command、doctor、schema、lint 和 eval 已清零 legacy 活跃依赖；legacy 只作为历史资料和 custom/non-migrated command 的显式兼容 fallback。
 9. 状态仍主要存放在 Markdown 文档和表格中，机器检查依赖 frontmatter、正则和表格解析。
 10. 已有 `cc-stats` 和 `cc-gate-stats`，但缺少自动采集完整性、统一 Dashboard 和跨运行时指标闭环。
 
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -267,7 +267,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 #### 实施记录 2026-07-11
 
-- 状态：完成
+- 状态：部分完成
 - Change/提交：`P1-01`（由本 change 的 Git 提交记录）
 - 已完成：checksum 固定的 ephemeral runner、composite Action、archive cache、annotation/Job Summary、full/harness-only/project-only 模式、release archive/SHA256SUMS workflow，以及无需预装 `.claude/` 的目标项目模板。
 - 验证：
@@ -632,7 +632,7 @@ cc-cairn onboard
 
 ### 9.5 `P2-03` 高层意图路由与命令渐进披露
 
-**状态**：完成
+**状态**：待开始
 
 **目标**：新用户不必先记住 14 个命令，框架根据项目状态和用户意图推荐合法下一步。
 
@@ -658,7 +658,7 @@ cc-archive
 
 ### 9.6 `P2-04` Effective contract explain
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：让用户和维护者看到命令在当前项目中的最终有效合同。
 
@@ -999,7 +999,7 @@ cc-doctor-check --root <project>
 
 ### 9.8 `P2-06` 核心脚本模块化
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：将领域逻辑从 extensionless CLI 脚本移入可测试 package。
 
@@ -1759,11 +1759,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前推荐下一项：补 `P1-05` 与 `P1-01` 的真实 GitHub-hosted 证据，并逐条复核 Phase 1 完成定义；本地下一项优先考虑 P0 的 `P2-05 统一 HarnessContext 与 root 解析`。
+当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；本地优先完成 Phase 2 剩余产品层工作，再进入 runtime-neutral core。
 
-开始前应先：
+本地下一组工作：
 
-1. 选择可固定版本且带 checksum 的 ephemeral runner 分发方式；
-2. 让目标项目 CI 模板在干净 checkout 中无需 `.claude/` 预装即可运行；
-3. 用 fixture 覆盖 harness-only、project-only、失败 annotation 与网络/checksum 硬失败；
-4. 完成真实 GitHub Actions 验证后再更新状态。
+1. `P2-02`：建立 `starter/team/regulated/autonomous` 到 runtime profile 的单一映射、说明和 diff 预览。
+2. `P2-03`：复用场景映射与项目状态实现确定性意图路由和渐进帮助，不新增生命周期。
+3. `P2-07`：复用 Explain 与现有结构化报告交付 localhost-only 的只读 Dashboard/TUI。
+4. 三项通过专项与全量验证后逐项更新完成记录；随后进入 `P3-01 Runtime-neutral core`。
