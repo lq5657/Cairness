@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Explain the deterministic next command for a high-level user intent."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.intent_router import INTENTS, route_intent
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="cc-start")
+    parser.add_argument("--intent", choices=INTENTS, required=True)
+    parser.add_argument("--root", default=".")
+    parser.add_argument("--cancel", action="store_true", help="cancel the route without executing it")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        report = route_intent(Path(args.root), args.intent)
+    except ValueError as exc:
+        print(f"E_START001 {exc}", file=sys.stderr)
+        return 2
+    if args.cancel:
+        report["status"] = "cancelled"
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(f"Intent: {report['intent']}")
+        print(f"Route: {report['command']}")
+        print(f"Reason: {report['reason']}")
+        print("Cancelled." if args.cancel else "No command executed; review the route and invoke it explicitly.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

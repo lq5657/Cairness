@@ -105,11 +105,34 @@ def render_markdown(catalog: dict[str, dict[str, Any]]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_progressive(catalog: dict[str, dict[str, Any]], *, advanced: bool = False) -> str:
+    """Render high-frequency entrypoints by default, with an advanced view."""
+    if advanced:
+        return render_markdown(catalog)
+    lines = [
+        "# Cairness 高频入口",
+        "",
+        "先选择意图，再查看确定性路由；不会自动执行目标命令。",
+        "",
+        "- `cc-start --intent new-project` — 新项目定义",
+        "- `cc-start --intent change` — 进入 change 提案",
+        "- `cc-start --intent review` — 检查现有 change",
+        "- `cc-start --intent fix` — 处理验证或 review 问题",
+        "- `cc-start --intent archive` — 归档已完成 change",
+        "- `cc-cairn onboard` — 初始化或检查项目接入",
+        "",
+        "使用 `cc-help --advanced` 查看全部底层命令。",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="列出所有 cc-* 命令及功能用法(命令速查)。"
     )
     parser.add_argument("--json", action="store_true", help="JSON 格式输出。")
+    parser.add_argument("--advanced", action="store_true", help="显示全部底层命令。")
     parser.add_argument("--root", help="显式 Cairness 项目根目录；默认自动发现。")
     args = parser.parse_args(argv)
 
@@ -132,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
     else:
-        print(render_markdown(catalog), end="")
+        print(render_progressive(catalog, advanced=args.advanced), end="")
     return 0
 
 

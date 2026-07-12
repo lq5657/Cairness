@@ -100,10 +100,10 @@ cairn-core/scripts/cc-behavior-check
 | Topic rules | 35 |
 | Subagent contracts | 6 |
 | Schemas | 15 |
-| Scripts | 77 个受版本控制文件 |
+| Scripts | 82 个受版本控制文件 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 91 个受版本控制文件，706 个用例 |
+| Tests | 94 个受版本控制文件，725 个用例 |
 
 当前主要事实：
 
@@ -169,12 +169,12 @@ Phase 3：Agent Governance Platform
 | `P1-05` | 五语言 profile/fixture 对称验收 | Phase 1 | P0 | 部分完成 | `P1-04` |
 | `P1-06` | `cc-cairn doctor` 产品入口 | Phase 1 | P1 | 完成 | `P1-04`、`P1-05` |
 | `P2-01` | Onboarding wizard | Phase 2 | P1 | 完成 | Phase 1 |
-| `P2-02` | 场景化产品 profile | Phase 2 | P1 | 待开始 | `P1-04` |
-| `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
+| `P2-02` | 场景化产品 profile | Phase 2 | P1 | 完成 | `P1-04` |
+| `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 完成 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 完成 | `P2-05`、`P1-04` |
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 完成 | `P2-05` |
-| `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
+| `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 完成 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 待开始 | Phase 2 |
@@ -603,11 +603,11 @@ cc-cairn onboard
   - `rtk git diff --check` → `passed`
 - 剩余：无
 - 风险/决策：Codex/Cursor adapter 尚未在 P3-03/P3-04 交付，因此 onboarding 不再暴露会写入 `.claude/` 的虚假 adapter 选项；未解析语言必须通过 `--language` 明确选择。
-- 下一步：`P2-07` 只读 Dashboard/TUI 或按依赖推进 P2-02 场景 alias。
+- 下一步：进入 `P3-01 Runtime-neutral core`；`P1-01/P1-05` 远端证据按当前决策保持现状。
 
 ### 9.4 `P2-02` 场景化产品 profile
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：把内部技术 profile 转换为用户可理解的采用场景。
 
@@ -630,9 +630,19 @@ cc-cairn onboard
 - 现有 `minimal/standard/strict/loop` 兼容策略明确；
 - 不允许场景 alias 与运行时 profile 漂移。
 
+#### 完成记录 2026-07-12
+
+- 状态：完成
+- Change/提交：本次 P2 产品化 change
+- 已完成：新增 `harness_runtime.product_profiles` 单一映射，提供 `starter/team/regulated/autonomous` 四个用户场景，分别落到 `minimal/standard/strict/loop`；新增 `cc-cairn profile show`、`profile set`，支持 JSON、确定性 diff、无变更识别、`--apply` 原子写入；未显式 `--apply` 时不会修改配置。
+- 验证：`rtk pytest -q tests/test_product_profiles.py` → `7 passed`；全量验证见本轮收尾记录。
+- 剩余：无
+- 风险/决策：不新增平行配置字段，场景 alias 始终由共享 resolver 映射到 schema 已允许的 runtime profile。
+- 下一步：`P2-03` 高层意图路由。
+
 ### 9.5 `P2-03` 高层意图路由与命令渐进披露
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：新用户不必先记住 14 个命令，框架根据项目状态和用户意图推荐合法下一步。
 
@@ -655,6 +665,16 @@ cc-archive
 - 高级命令仍可直接使用；
 - `cc-help` 默认展示高频入口，并提供 advanced 视图；
 - 不增加与现有命令语义重复的新生命周期。
+
+#### 完成记录 2026-07-12
+
+- 状态：完成
+- Change/提交：本次 P2 产品化 change
+- 已完成：新增 `harness_runtime.intent_router` 和可执行 `cc-start`；支持 new-project/change/review/fix/archive 五种显式意图，输出目标命令、项目状态、前置条件、路由原因、可取消和 `executed=false`，不会自动执行命令；`cc-help` 默认显示高频入口，`--advanced` 显示完整底层命令。
+- 验证：`rtk pytest -q tests/test_intent_router.py tests/test_help_script.py` → `12 passed`；全量验证见本轮收尾记录。
+- 剩余：无
+- 风险/决策：未初始化项目保留用户选择的目标意图，同时返回 `E_START101` onboarding 前置条件，不静默改道到其他生命周期。
+- 下一步：`P2-07` 只读 Dashboard/TUI。
 
 ### 9.6 `P2-04` Effective contract explain
 
@@ -1297,7 +1317,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：以可视方式呈现 change、wave、验证、finding、事件、知识和 gate effectiveness。
 
@@ -1321,6 +1341,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 状态缺失或损坏时展示诊断，不静默隐藏；
 - 默认只绑定 localhost；
 - 不读取业务敏感内容到外部服务。
+
+#### 完成记录 2026-07-12
+
+- 状态：完成
+- Change/提交：本次 P2 产品化 change
+- 已完成：新增标准库 localhost-only `cc-dashboard` HTTP 入口和 `--json` 数据模型；复用 `discover_changes()`、`parse_findings()` 与现有事件 JSONL，展示 active changes、findings、verification/events、gates；缺失/损坏状态输出结构化诊断；HTML 转义且无 POST/fetch/写入入口。
+- 验证：`rtk pytest -q tests/test_dashboard.py` → `8 passed`；真实 Playwright 桌面端和 390×844 移动端 snapshot/screenshot 通过，修复 favicon 后控制台无错误；全量验证见本轮收尾记录。
+- 剩余：无
+- 风险/决策：第一版不接入 `cc-cairn.py` 聚合 CLI，独立入口避免扩大主脚本；默认端口 `8765`，只允许 loopback。
+- 下一步：`P3-01 Runtime-neutral core`。
 
 ### 9.10 `P2-08` Legacy 活跃依赖清零
 

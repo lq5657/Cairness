@@ -252,3 +252,4 @@
 
 - Initial cc_spec Harness assets: commands, checkpoints, rules, schemas, scripts, examples, audits, and context templates.
 - Added the `cc-cairn onboard` entrypoint with deterministic project inspection, safe preview/confirmation, idempotent initialization, runtime profile selection, install metadata, and post-install Doctor verification.
+- Added product profiles (`starter`, `team`, `regulated`, `autonomous`), deterministic `cc-start` intent routing, progressive `cc-help`, and a localhost-only read-only Dashboard with JSON output.

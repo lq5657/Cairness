@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Serve or print the read-only Cairness Dashboard."""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from harness_runtime.dashboard import build_dashboard, serve_dashboard
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Read-only Cairness Dashboard")
+    parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8765)
+    args = parser.parse_args()
+    if args.as_json:
+        print(json.dumps(build_dashboard(args.root), ensure_ascii=False, indent=2))
+        return 0
+    try:
+        serve_dashboard(args.root, args.host, args.port)
+    except ValueError as exc:
+        parser.error(str(exc))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

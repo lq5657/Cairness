@@ -41,6 +41,11 @@ from harness_runtime.onboarding import (
     read_install_metadata,
     write_install_metadata,
 )
+from harness_runtime.product_profiles import (
+    apply_product_profile,
+    build_profile_plan,
+    list_product_profiles,
+)
 
 MIN_PYTHON = (3, 9)
 REMOTE_URL = "https://github.com/lq5657/Cairness.git"
@@ -913,6 +918,62 @@ def cmd_config(argv):
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
+def cmd_profile(argv):
+    """Inspect or apply a user-facing product profile."""
+    parser = argparse.ArgumentParser(prog="cc-cairn profile")
+    parser.add_argument("action", choices=("show", "set"))
+    parser.add_argument("profile", nargs="?", choices=("starter", "team", "regulated", "autonomous"))
+    parser.add_argument("--apply", action="store_true", help="apply a set operation after showing its diff")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    if args.action == "show":
+        if args.profile:
+            parser.error("show does not accept a profile argument")
+        payload = {"profiles": list_product_profiles()}
+        print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json else "\n".join(
+            f"{item['id']}: {item['description']} ({item['runtime_profile']})"
+            for item in payload["profiles"]
+        ))
+        return
+    if not args.profile:
+        parser.error("set requires a profile")
+    config = Path.cwd() / ".claude" / "harness.config.yaml"
+    try:
+        plan = build_profile_plan(config, args.profile)
+    except ValueError as exc:
+        print(f"E_PROFILE001 {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    if args.json and args.apply and plan["status"] == "changed":
+        try:
+            applied = apply_product_profile(config, args.profile)
+        except ValueError as exc:
+            print(f"E_PROFILE001 {exc}", file=sys.stderr)
+            raise SystemExit(1)
+        print(json.dumps({"status": "applied", "profile": applied}, ensure_ascii=False, indent=2))
+        return
+    if args.json:
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+    else:
+        print(f"Product profile: {args.profile} -> {plan['target']['runtime_profile']}")
+        print(f"Config: {plan['config']}")
+        print(plan["diff"] or "No changes required.")
+    if plan["status"] == "unchanged":
+        return
+    if not args.apply and args.json:
+        return
+    if not args.apply:
+        raise SystemExit("Profile change is a preview. Re-run with --apply to write it.")
+    try:
+        applied = apply_product_profile(config, args.profile)
+    except ValueError as exc:
+        print(f"E_PROFILE001 {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    if args.json:
+        print(json.dumps({"status": "applied", "profile": applied}, ensure_ascii=False, indent=2))
+    else:
+        print(f"Applied product profile: {args.profile}")
+
+
 def cmd_explain(argv):
     parser = argparse.ArgumentParser(prog="cc-cairn explain")
     parser.add_argument("command", help="registered runtime command, for example cc-apply")
@@ -1751,7 +1812,7 @@ def main():
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|onboard|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|profile|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -1759,6 +1820,8 @@ def main():
         cmd_init()
     elif cmd == "onboard":
         cmd_onboard(sys.argv[2:])
+    elif cmd == "profile":
+        cmd_profile(sys.argv[2:])
     elif cmd == "update":
         cmd_update()
     elif cmd == "version":
@@ -1775,7 +1838,7 @@ def main():
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|onboard|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|profile|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
 

@@ -46,6 +46,36 @@ cc-cairn init
 
 在当前项目下生成 `.claude/`（框架运行时）、`.cairness/`（项目状态目录）和 `.github/workflows/`（CI 模板）。初始化后启动 Claude Code，框架自动生效。
 
+新项目或已有项目也可以使用 onboarding 入口预览并确认接入计划：
+
+```bash
+cc-cairn onboard --dry-run --json
+cc-cairn onboard --language python --yes
+```
+
+场景化治理 profile 会映射到现有 runtime profile；变更默认只预览，显式 `--apply` 才写入：
+
+```bash
+cc-cairn profile show --json
+cc-cairn profile set regulated --json
+cc-cairn profile set regulated --apply
+```
+
+高频意图入口只负责解释下一步，不会自动执行命令：
+
+```bash
+cc-start --intent change --json
+cc-help                 # 高频入口
+cc-help --advanced      # 全部底层命令
+```
+
+只读 Dashboard 默认绑定 localhost，数据来自现有 change、review 和事件报告：
+
+```bash
+cc-dashboard --root .
+cc-dashboard --root . --json
+```
+
 ## 环境诊断
 
 使用正式 Doctor 入口检查安装版本、项目版本、有效配置、Claude Code adapter、CI、语言 profile、生成视图和项目状态：
