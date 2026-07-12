@@ -13,6 +13,7 @@ always_reads:
 - .claude/runtime/commands/cc-inspect-codebase.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/context/project-summary.md
+- .claude/runtime/roles.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cairness/context/project-context.md

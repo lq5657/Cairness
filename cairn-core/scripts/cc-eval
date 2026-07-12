@@ -22,7 +22,6 @@ PATH_RE = re.compile(r"(?:(?:\.claude|\.cc)/[A-Za-z0-9_./<>*-]+|README\.md)")
 SCRIPT_COMMAND_RE = re.compile(r"^(\.claude/scripts/[A-Za-z0-9_-]+)\b")
 GOVERNANCE_RULE_READS = {
     ".claude/rules/memory-policy.md",
-    ".claude/docs/maintenance/legacy/rules/role-contracts.md",
 }
 GENERIC_TOKENS = {
     "a",

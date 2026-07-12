@@ -15,6 +15,7 @@ always_reads:
 - .cairness/context/project-summary.md
 - .cairness/context/dev-map.md
 - .cairness/knowledge/index.md
+- .claude/runtime/roles.yaml
 - .claude/runtime/profiles/standard.yaml
 optional_reads:
 - .cairness/context/project-context.md

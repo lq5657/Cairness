@@ -10,6 +10,7 @@
     "workflow_definition",
     "migrated_commands",
     "runtime_commands",
+    "runtime_roles",
     "runtime_readsets",
     "runtime_protocol",
     "legacy_fallback",
@@ -54,6 +55,21 @@
       "additionalProperties": {
         "type": "string",
         "pattern": "^\\.claude/runtime/commands/cc-[a-z0-9-]+\\.yaml$"
+      }
+    },
+    "runtime_roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "schema"],
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "pattern": "^\\.claude/runtime/roles\\.yaml$"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^\\.claude/schemas/runtime-roles\\.schema\\.json$"
+        }
       }
     },
     "runtime_readsets": {

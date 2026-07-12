@@ -1,0 +1,41 @@
+version: 1
+roles:
+  - id: command-runner
+    responsibility: Execute the main command within its declared contract.
+    writes: [command_contract_scope]
+  - id: context-curator
+    responsibility: Maintain project context facts.
+    writes: [project_context, dev_map]
+  - id: backlog-curator
+    responsibility: Maintain the project task board.
+    writes: [task_board]
+  - id: spec-reviewer
+    responsibility: Perform read-only structured specification review.
+    writes: []
+  - id: code-quality-reviewer
+    responsibility: Perform read-only code quality review.
+    writes: []
+  - id: harness-maintainer
+    responsibility: Maintain framework assets within the active change scope.
+    writes: [declared_harness_change_scope]
+  - id: pm-orchestrator
+    responsibility: Orchestrate the command workflow.
+    writes: [task_board, command_process_records]
+  - id: requirement-analyst
+    responsibility: Analyze requirements.
+    writes: [spec, task_board]
+  - id: solution-designer
+    responsibility: Design the solution.
+    writes: [spec, tasks]
+  - id: gatekeeper
+    responsibility: Evaluate stage gates without writing artifacts.
+    writes: []
+  - id: developer
+    responsibility: Implement code within declared task scope.
+    writes: [task_declared_code, command_allowed_docs]
+  - id: test-verifier
+    responsibility: Strengthen and execute verification.
+    writes: [tests, test_spec, log]
+  - id: reviewer
+    responsibility: Provide read-only review evidence for main-flow synthesis.
+    writes: []

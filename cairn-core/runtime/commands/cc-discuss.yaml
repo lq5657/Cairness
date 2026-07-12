@@ -50,6 +50,7 @@ required_reads:
   - .cairness/context/project-summary.md
   - .cairness/context/dev-map.md
   - .cairness/knowledge/index.md
+  - .claude/runtime/roles.yaml
 
 optional_reads:
   - .cairness/context/project-context.md
@@ -153,7 +154,6 @@ topic_rules:
     - .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
   when_knowledge_keyword_matched:
     - .claude/runtime/topic-rules/knowledge-loading.yaml
-
 subagents:
   enabled: true
   policy: .claude/docs/maintenance/subagent-model.md

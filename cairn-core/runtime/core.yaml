@@ -66,6 +66,10 @@ runtime_commands:
   cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
   cc-discuss: .claude/runtime/commands/cc-discuss.yaml
 
+runtime_roles:
+  manifest: .claude/runtime/roles.yaml
+  schema: .claude/schemas/runtime-roles.schema.json
+
 runtime_readsets:
   dir: .claude/runtime/readsets
   index: .claude/runtime/readsets/index.yaml

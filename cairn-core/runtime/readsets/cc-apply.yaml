@@ -18,6 +18,7 @@ always_reads:
 - .cairness/changes/task-board.md
 - .claude/harness.config.yaml
 - .cairness/knowledge/index.md
+- .claude/runtime/roles.yaml
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/coding-style.yaml
 - .claude/runtime/profiles/standard.yaml

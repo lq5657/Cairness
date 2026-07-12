@@ -65,6 +65,10 @@ from harness_runtime.schema_interaction_contract_issues import interaction_contr
 from harness_runtime.schema_subagent_contract_issues import subagent_runtime_contract_issues
 from harness_runtime.schema_input_contract_issues import input_contract_issues
 from harness_runtime.schema_technology_catalog_issues import technology_catalog_shape_issues
+from harness_runtime.schema_role_registry import (
+    resolve_registered_roles,
+    runtime_role_ids,
+)
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -141,6 +145,8 @@ ANTI_RATIONALIZATION_COMMANDS = {
     "cc-discuss",
 }
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
+RUNTIME_ROLES_PATH = ".claude/runtime/roles.yaml"
+RUNTIME_ROLES_SCHEMA_PATH = ".claude/schemas/runtime-roles.schema.json"
 
 
 def require_declared_path(project_root: Path, subject_path: Path, declared: Any, field: str, issues: list[Issue]) -> None:
@@ -151,21 +157,47 @@ def require_declared_path(project_root: Path, subject_path: Path, declared: Any,
         add(issues, "E_SCHEMA119", subject_path, f"{field} references missing path {declared}")
 
 
-def load_registered_roles(project_root: Path, issues: list[Issue]) -> set[str]:
-    path = project_path(project_root, ROLE_CONTRACTS_PATH) or project_root / ROLE_CONTRACTS_PATH
-    if not path.exists():
-        add(issues, "E_SCHEMA153", path, "missing role contracts for subagent role validation")
-        return set()
-    roles: set[str] = set()
-    for row in table_rows(read(path)):
-        if not row:
-            continue
-        role = row[0].strip().strip("`")
-        if role and role not in {"角色", "role"}:
-            roles.add(role)
+def load_runtime_role_registry(
+    project_root: Path,
+    issues: list[Issue],
+    core: dict[str, Any] | None = None,
+    checked: list[str] | None = None,
+) -> set[str]:
+    config = core.get("runtime_roles") if isinstance(core, dict) else None
+    manifest_declared = (
+        config.get("manifest") if isinstance(config, dict) else RUNTIME_ROLES_PATH
+    )
+    schema_declared = (
+        config.get("schema") if isinstance(config, dict) else RUNTIME_ROLES_SCHEMA_PATH
+    )
+    manifest_path = project_path(project_root, manifest_declared)
+    schema_path = project_path(project_root, schema_declared)
+    if manifest_path is None:
+        manifest_path = project_root / RUNTIME_ROLES_PATH
+    if schema_path is None:
+        schema_path = project_root / RUNTIME_ROLES_SCHEMA_PATH
+    if checked is not None:
+        checked.extend([str(manifest_path), str(schema_path)])
+    manifest = load_yaml_file(manifest_path, issues)
+    schema = load_json_file(schema_path, issues)
+    if isinstance(manifest, dict) and isinstance(schema, dict):
+        validate_against_schema(
+            manifest, schema, schema, [], manifest_path, issues
+        )
+    roles = runtime_role_ids(manifest)
     if not roles:
-        add(issues, "E_SCHEMA153", path, "role contracts must register at least one role")
+        add(
+            issues,
+            "E_SCHEMA153",
+            manifest_path,
+            "runtime role registry must register at least one role",
+        )
     return roles
+
+
+def load_registered_roles(project_root: Path, issues: list[Issue]) -> set[str]:
+    """Compatibility API returning canonical runtime role identifiers."""
+    return load_runtime_role_registry(project_root, issues)
 
 
 HARNESS_CONFIG_PATH = ".claude/harness.config.yaml"
@@ -482,7 +514,7 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
 
     for field in ("workflow_definition",):
         require_declared_path(project_root, core_path, core.get(field), field, issues)
-    for section in ("runtime_readsets", "runtime_protocol", "legacy_fallback", "governance", "scripts", "topic_rules"):
+    for section in ("runtime_roles", "runtime_readsets", "runtime_protocol", "legacy_fallback", "governance", "scripts", "topic_rules"):
         values = core.get(section)
         if isinstance(values, dict):
             for key, declared in values.items():
@@ -666,7 +698,14 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
     schema = load_json_file(schema_path, issues)
     subagent_schema_path = claude_root / "schemas" / RUNTIME_SUBAGENT_CONTRACT_SCHEMA
     subagent_schema = load_json_file(subagent_schema_path, issues)
-    registered_roles = load_registered_roles(project_root, issues)
+    checked: list[str] = [str(subagent_schema_path)]
+    registered_roles = load_runtime_role_registry(
+        project_root, issues, core, checked
+    )
+    legacy_roles_path = (
+        project_path(project_root, ROLE_CONTRACTS_PATH)
+        or project_root / ROLE_CONTRACTS_PATH
+    )
     fallback_paths = list((claude_root / "runtime" / "commands").glob("cc-*.yaml"))
     command_paths = [
         (
@@ -678,7 +717,6 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         for command, declared in runtime_command_declarations(core, fallback_paths)
     ]
 
-    checked: list[str] = [str(subagent_schema_path)]
     for command, resolved_path in command_paths:
         if resolved_path is None:
             continue
@@ -701,7 +739,16 @@ def validate_runtime_commands(claude_root: Path, core: dict[str, Any] | None, is
         )
         if effective_subagents is not None:
             effective_manifest["subagents"] = effective_subagents
-        validate_subagent_runtime_contract(command, effective_manifest, resolved_path, issues, registered_roles)
+        role_resolution = resolve_registered_roles(
+            str(command), core, registered_roles, legacy_roles_path
+        )
+        validate_subagent_runtime_contract(
+            command,
+            effective_manifest,
+            resolved_path,
+            issues,
+            role_resolution.roles,
+        )
         validate_result_contract(project_root, command, manifest, resolved_path, checked, issues)
         validate_interaction_contract(command, manifest, resolved_path, issues)
         validate_inputs_registered(command, manifest, resolved_path, issues)

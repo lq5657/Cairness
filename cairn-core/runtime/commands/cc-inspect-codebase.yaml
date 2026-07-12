@@ -35,6 +35,7 @@ forbids:
 
 required_reads:
   - .cairness/context/project-summary.md
+  - .claude/runtime/roles.yaml
 
 optional_reads:
   - .cairness/context/project-context.md
@@ -75,7 +76,6 @@ topic_rules:
     - .claude/runtime/topic-rules/typescript-coding-style.yaml
   when_cpp_coding_style_pattern_is_detected:
     - .claude/runtime/topic-rules/cpp-coding-style.yaml
-
 subagents:
   enabled: true
   policy: .claude/docs/maintenance/subagent-model.md

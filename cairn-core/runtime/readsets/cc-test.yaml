@@ -15,6 +15,7 @@ always_reads:
 - .cairness/changes/<change-id>/spec.md
 - .cairness/changes/<change-id>/tasks.md
 - .cairness/changes/task-board.md
+- .claude/runtime/roles.yaml
 - .claude/runtime/topic-rules/testing-strategy.yaml
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/profiles/standard.yaml

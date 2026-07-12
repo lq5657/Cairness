@@ -47,6 +47,7 @@ required_reads:
   - .cairness/changes/<change-id>/spec.md
   - .cairness/changes/<change-id>/tasks.md
   - .cairness/changes/task-board.md
+  - .claude/runtime/roles.yaml
 
 optional_reads:
   - .cairness/changes/<change-id>/test-spec.md
@@ -87,7 +88,6 @@ topic_rules:
     - .claude/runtime/topic-rules/debugging-workflow.yaml
   when_test_depends_on_external_tooling_or_version_sensitive_behavior:
     - .claude/runtime/topic-rules/source-driven-development.yaml
-
 subagents:
   enabled: true
   policy: .claude/docs/maintenance/subagent-model.md
