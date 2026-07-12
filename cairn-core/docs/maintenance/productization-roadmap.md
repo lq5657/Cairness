@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`548 passed`
+- 测试：`552 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 57 个受版本控制文件，548 个用例 |
+| Tests | 58 个受版本控制文件，552 个用例 |
 
 当前主要事实：
 
@@ -1078,6 +1078,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：runtime/change/topic-rule 的结构编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
 - 风险/决策：document IO 与递归 validator 分模块，避免给纯验证器引入文件系统职责；PyYAML 缺失和解析异常仍以 Issue 返回，不改 fail-fast 层级。
 - 下一步：转向 `cc-verify` 的纯结果聚合域，或继续提取 `cc-schema-check` 的 metadata parsing 边界。
+
+#### 实施记录 2026-07-12（Schema metadata 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 typed YAML frontmatter、legacy fenced/前 25 行 metadata 解析、declared path 解析与规范化、字符串列表过滤和有序去重移入 `harness_runtime.schema_metadata`。`cc-schema-check` 直接导入并重导出原公共函数；批量路径解析通过 context-local framework/state roots 保持非 `.claude` 安装兼容。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；补充 legacy fallback 回归，证明其继续复用 `change_docs.parse_key_values` 的 bool/list/string 与行内注释语义；完整验证见本子任务完成验证。
+- 剩余：runtime/change/topic-rule 的结构编排和报告仍在 CLI；`cc-verify`、`cc-lint` 也尚未拆分。P2-06 保持部分完成。
+- 风险/决策：不统一 `cc-lint` 的 string-only `parse_meta`，保留已记录的有意类型差异；不扩张 placeholder/glob declared path 的可解析范围。
+- 下一步：转向 `cc-verify` 的纯结果聚合域，或继续提取 `cc-schema-check` 的 runtime command/reference 验证 service。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
