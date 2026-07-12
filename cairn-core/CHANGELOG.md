@@ -27,6 +27,9 @@
 - Moved runtime command declaration ordering/fallback decisions into `harness_runtime.schema_manifest`, including stable handling for malformed mixed-type command keys instead of crashing schema validation.
 - Moved verification mode selection, changed-only project gating, capability scheduling, and aggregate status precedence into `harness_runtime.verification_scheduling` while preserving `cc-verify` report behavior.
 - Began modularizing `cc-lint` change-document validation by moving the pure `spec.md` metadata contract into `harness_runtime.change_lint`, preserving existing messages and Issue rendering.
+- Extended `harness_runtime.change_lint` with validation-mapping and task-contract decisions while keeping Markdown parsing, path rendering, and Issue aggregation in `cc-lint`.
+- Moved runtime-core command registration parity, canonical path, and missing-path Issue decisions into `harness_runtime.schema_runtime_core_validation`, preserving `E_SCHEMA120/121/119` ordering and malformed-key handling.
+- Moved the stable `cc-verify` public report payload construction into `harness_runtime.verification_report`, preserving field order, optional metadata normalization, path serialization, and aggregate status precedence.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

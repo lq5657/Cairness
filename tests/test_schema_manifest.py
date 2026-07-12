@@ -83,9 +83,11 @@ def test_validate_runtime_core_reports_mixed_command_keys_without_crashing(monke
     }
     monkeypatch.setattr(schema_check, "load_yaml_file", lambda _path, _issues: core)
     monkeypatch.setattr(schema_check, "load_json_file", lambda _path, _issues: None)
-    monkeypatch.setattr(schema_check, "require_declared_path", lambda *_args: None)
 
     issues = []
     assert schema_check.validate_runtime_core(tmp_path, issues) is core
-    assert any(issue.code == "E_SCHEMA120" for issue in issues)
-    assert any(issue.code == "E_SCHEMA121" and "runtime_commands.7" in issue.message for issue in issues)
+    assert [issue.code for issue in issues] == [
+        "E_SCHEMA120",
+        "E_SCHEMA121",
+        "E_SCHEMA119",
+    ]

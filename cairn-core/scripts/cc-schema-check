@@ -55,6 +55,7 @@ from harness_runtime.schema_command_references import (
     topic_rule_references,
 )
 from harness_runtime.schema_manifest import runtime_command_declarations
+from harness_runtime.schema_runtime_core_validation import validate_runtime_command_registration
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -646,26 +647,7 @@ def validate_runtime_core(claude_root: Path, issues: list[Issue]) -> dict[str, A
             for key, declared in values.items():
                 require_declared_path(project_root, core_path, declared, f"{section}.{key}", issues)
 
-    migrated = core.get("migrated_commands")
-    runtime_commands = core.get("runtime_commands")
-    if isinstance(migrated, list) and isinstance(runtime_commands, dict):
-        migrated_set = set(migrated)
-        mapped_set = set(runtime_commands.keys())
-        if migrated_set != mapped_set:
-            add(
-                issues,
-                "E_SCHEMA120",
-                core_path,
-                "migrated_commands and runtime_commands differ: "
-                f"missing={sorted(migrated_set - mapped_set, key=str)}, "
-                f"extra={sorted(mapped_set - migrated_set, key=str)}",
-            )
-        for command in sorted(mapped_set, key=str):
-            expected = f".claude/runtime/commands/{command}.yaml"
-            actual = runtime_commands.get(command)
-            if actual != expected:
-                add(issues, "E_SCHEMA121", core_path, f"runtime_commands.{command} must be {expected}")
-            require_declared_path(project_root, core_path, actual, f"runtime_commands.{command}", issues)
+    validate_runtime_command_registration(project_root, core_path, core, issues)
 
     # Project profiles (minimal/standard/strict) — validate structure against
     # profile.schema, symmetric to language-profile validation. A4 closes the

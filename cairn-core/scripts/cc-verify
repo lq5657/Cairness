@@ -49,6 +49,7 @@ from harness_runtime.verification_review import (
     check_risk_triage,
     find_section_marker as _find_section_marker,
 )
+from harness_runtime.verification_report import build_verification_report
 from harness_runtime.verification_runner import run_step
 from harness_runtime.verification_scheduling import (
     aggregate_status,
@@ -247,26 +248,23 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                     continue
                 results.append(run_step(plan.name, plan.kind, plan.command, target_project_root))
 
-    report = {
-        "schema_version": 1,
-        "tool": "cc-verify",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "project_root": str(project_root),
-        "claude_root": str(claude_root),
-        "change_id": args.change or "",
-        "fixture": args.fixture or "",
-        "command": args.command or "",
-        "mode": verification_mode(
+    report = build_verification_report(
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        project_root=project_root,
+        claude_root=claude_root,
+        change_id=args.change,
+        fixture=args.fixture,
+        command=args.command,
+        mode=verification_mode(
             harness_only=args.harness_only,
             project_only=args.project_only,
             changed_only=args.changed_only,
         ),
-        "language_profile": resolution.profile_name,
-        "language_profile_source": resolution.source,
-        "changed_files": [str(path) for path in changed_paths],
-        "status": aggregate_status(results),
-        "results": results,
-    }
+        language_profile=resolution.profile_name,
+        language_profile_source=resolution.source,
+        changed_paths=changed_paths,
+        results=results,
+    )
     return report
 
 

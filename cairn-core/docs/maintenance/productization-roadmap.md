@@ -1219,6 +1219,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：malformed mixed-type command key 现在按字符串表示稳定排序以进入既有诊断而非抛 `TypeError`；capability planner 通过调用方注入 executable availability，不在纯模块访问系统环境；lint 模块不统一已有的 typed/string metadata 差异。
 - 下一步：继续提取 `cc-lint` validation mapping/task contract，或建立 `cc-schema-check` Issue validator service 边界。
 
+#### 实施记录 2026-07-12（Change contracts、Runtime-core Issues 与 Verification report）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：`harness_runtime.change_lint` 新增 validation mapping 和 task contract 纯校验；`harness_runtime.schema_runtime_core_validation` 接管 runtime command registration 的 `E_SCHEMA120/121/119` 决策；`harness_runtime.verification_report` 接管 `cc-verify` 稳定 public payload、路径序列化、空值归一化和 aggregate status。CLI 继续负责 Context、IO、Markdown/YAML 解析、subprocess、Issue/result 渲染与退出码。
+- 验证：三个边界均先观察模块/API 缺失的 RED，再完成 GREEN；覆盖 mapping ID/level/evidence/status、task 必填字段/状态/引用顺序、runtime command parity/canonical/missing path 与 mixed key，以及 verification report 字段顺序/空值/状态优先级。最终全量与 Harness 验证见本子任务完成验证。
+- 剩余：`cc-lint` 的 test-spec/runtime/governance lint、`cc-schema-check` 的 subagent/result/interaction Issue validator，以及 `cc-verify` 的 mode-specific step orchestration 仍在 CLI；P2-06 保持部分完成。
+- 风险/决策：纯模块不读取文件、不调用 subprocess、不渲染路径前缀；保留历史错误文本和 Issue/result 顺序；`cc-verify` helper 重导出兼容面不变。
+- 下一步：优先提取 `cc-schema-check` subagent/result contract Issue validator，或继续拆分 `cc-lint` test-spec/runtime manifest lint。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始
