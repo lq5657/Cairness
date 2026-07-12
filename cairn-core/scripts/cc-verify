@@ -23,6 +23,7 @@ from harness_runtime.verification_results import (
     fingerprints,
     warnings,
 )
+from harness_runtime.verification_steps import blocked_step, failed_step, skipped_step
 
 from change_docs import named_table_rows, parse_findings
 
@@ -533,57 +534,6 @@ def run_step(
             "warnings": [],
             "diagnosis": diagnosis_for(name, "failed", message),
         }
-
-
-def skipped_step(name: str, kind: str, reason: str) -> dict[str, object]:
-    return {
-        "name": name,
-        "kind": kind,
-        "command": [],
-        "cwd": "",
-        "status": "skipped",
-        "exit_code": 0,
-        "duration_ms": 0,
-        "stdout": "",
-        "stderr": reason,
-        "fingerprints": [],
-        "warnings": [],
-        "diagnosis": diagnosis_for(name, "skipped", reason),
-    }
-
-
-def blocked_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, object]:
-    return {
-        "name": name,
-        "kind": kind,
-        "command": [],
-        "cwd": str(cwd),
-        "status": "blocked",
-        "exit_code": 127,
-        "duration_ms": 0,
-        "stdout": "",
-        "stderr": reason,
-        "fingerprints": [reason],
-        "warnings": [],
-        "diagnosis": diagnosis_for(name, "blocked", reason),
-    }
-
-
-def failed_step(name: str, kind: str, reason: str, cwd: Path) -> dict[str, object]:
-    return {
-        "name": name,
-        "kind": kind,
-        "command": [],
-        "cwd": str(cwd),
-        "status": "failed",
-        "exit_code": 1,
-        "duration_ms": 0,
-        "stdout": "",
-        "stderr": reason,
-        "fingerprints": [reason],
-        "warnings": [],
-        "diagnosis": diagnosis_for(name, "failed", reason),
-    }
 
 
 def default_verification_command(profile: LanguageProfile, capability: str) -> list[str]:
