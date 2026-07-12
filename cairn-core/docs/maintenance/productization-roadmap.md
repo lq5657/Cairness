@@ -176,7 +176,7 @@ Phase 3：Agent Governance Platform
 | `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 完成 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
-| `P2-09` | Adapter capability contract | Phase 2 | P0 | 待开始 | `P2-05` |
+| `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 待开始 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 待开始 | `P3-01` |
 | `P3-03` | Codex adapter | Phase 3 | P0 | 待开始 | `P3-01`、`P3-02` |
@@ -1349,7 +1349,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 
 ### 9.11 `P2-09` Adapter capability contract
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：在实现第二个 Agent adapter 前，定义宿主必须或可选提供的能力。
 
@@ -1382,6 +1382,16 @@ unsupported
 - 缺少 hook/subagent 的宿主有明确降级，不虚假宣称同等治理；
 - adapter 不得修改 runtime core 语义；
 - doctor/explain 能显示 adapter capability。
+
+#### 完成记录 2026-07-12（Claude Code Adapter capability contract）
+
+- 状态：完成
+- Change/提交：本子任务的 Git 提交记录
+- 已完成：新增 `runtime/adapters/claude-code-capabilities.yaml` 与 `schemas/adapter-capabilities.schema.json`，覆盖 bootstrap/instruction injection、skill/command discovery、pre-write hook、subagent dispatch、fresh context、task list、user confirmation、structured result、compaction/session resume 和 file write interception。每项使用 `required/optional/emulated/unsupported` 等级并声明证据；Claude Code 明确将 structured result 标为 `emulated`、session resume 标为 `optional`。共享 `HarnessContext.AdapterContext` 负责加载合同，doctor/explain 输出同一 capability 映射，缺失/非法合同产生 `HarnessContextError` 或 `E_DOCTOR103`。
+- 验证：adapter/context/doctor/explain 聚焦回归 → `103 passed`；`rtk pytest -q` 串行执行 → `696 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk git diff --check` → `passed`。
+- 剩余：无。第二个 adapter 与跨 adapter 回归属于 P3-01/P3-02/P3-03，不在本项实现。
+- 风险/决策：capability contract 只描述宿主能力和降级等级，不修改 runtime command 语义；不使用布尔“支持/不支持”掩盖 emulated/optional 差异。当前 loader 对缺失或 schema 漂移硬失败，避免虚假完整支持。
+- 下一步：P3-01 Runtime-neutral core；如优先降低采用成本，可先推进 P2-01/P2-02/P2-03。
 
 ## 10. Phase 3 — Agent Governance Platform
 

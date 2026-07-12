@@ -1,0 +1,33 @@
+version: 1
+adapter: claude-code
+capabilities:
+  bootstrap_instruction_injection:
+    level: required
+    evidence: [CLAUDE.md]
+  skill_command_discovery:
+    level: required
+    evidence: [skills, runtime/commands]
+  pre_write_hook:
+    level: required
+    evidence: [settings.json]
+  subagent_dispatch:
+    level: required
+    evidence: [runtime-subagent-contract]
+  fresh_context:
+    level: required
+    evidence: [subagent-dispatch]
+  task_list:
+    level: required
+    evidence: [task-tool]
+  user_confirmation_gate:
+    level: required
+    evidence: [interaction-contract]
+  structured_result:
+    level: emulated
+    evidence: [result-contract]
+  compaction_session_resume:
+    level: optional
+    evidence: [host-session]
+  file_write_interception:
+    level: required
+    evidence: [PreToolUse]

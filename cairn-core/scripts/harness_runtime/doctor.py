@@ -9,6 +9,10 @@ from typing import Any
 from harness_runtime import resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.versioning import VersionMetadataError, read_version
+from harness_runtime.adapter_capabilities import (
+    AdapterCapabilitiesError,
+    load_adapter_capabilities,
+)
 
 
 STATE_DIRECTORIES = (
@@ -30,6 +34,11 @@ ISSUE_GUIDANCE = {
         "The internal Doctor check could not be executed or decoded.",
         "Restore the installed .claude/scripts/cc-doctor-check entrypoint, then rerun Doctor.",
         ".claude/scripts/cc-doctor-check",
+    ),
+    "E_DOCTOR103": (
+        "The active adapter capability contract is missing or invalid.",
+        "Restore runtime/adapters/claude-code-capabilities.yaml and its schema, then rerun Doctor.",
+        ".claude/runtime/adapters/claude-code-capabilities.yaml",
     ),
 }
 
@@ -109,6 +118,23 @@ def _required_state_directories(config: dict[str, Any]) -> tuple[str, ...]:
     return STATE_DIRECTORIES
 
 
+def _capability_summary(framework_root: Path) -> dict[str, Any]:
+    try:
+        path, capabilities = load_adapter_capabilities(framework_root)
+    except AdapterCapabilitiesError as exc:
+        return {
+            "status": "invalid",
+            "path": str(framework_root / "runtime/adapters/claude-code-capabilities.yaml"),
+            "capabilities": {},
+            "error": str(exc),
+        }
+    return {
+        "status": "valid",
+        "path": str(path),
+        "capabilities": capabilities,
+    }
+
+
 def _summary(project_root: Path, framework_root: Path, system_root: Path, internal: dict[str, Any]) -> dict[str, Any]:
     resolution = resolve_language_profile(project_root)
     workflow = framework_root / "workflows" / "cc-workflow.yaml"
@@ -130,6 +156,7 @@ def _summary(project_root: Path, framework_root: Path, system_root: Path, intern
             "name": "claude-code",
             "status": "configured" if (framework_root / "settings.json").is_file() else "missing",
             "entrypoint": str(framework_root / "CLAUDE.md"),
+            "capability_contract": _capability_summary(framework_root),
         },
         "ci": {
             "status": "configured" if any(path.is_file() for path in ci_candidates) else "missing",
@@ -160,6 +187,15 @@ def build_doctor_report(project_root: Path, framework_root: Path, system_root: P
         path = project_root / relative
         if not path.is_dir():
             issues.append(_issue("E_DOCTOR101", path, "missing project-state directory"))
+    capability_contract = _capability_summary(framework_root)
+    if capability_contract["status"] != "valid":
+        issues.append(
+            _issue(
+                "E_DOCTOR103",
+                capability_contract["path"],
+                capability_contract.get("error", "invalid adapter capability contract"),
+            )
+        )
     return {
         "tool": "cc-cairn doctor",
         "status": "failed" if issues else "passed",

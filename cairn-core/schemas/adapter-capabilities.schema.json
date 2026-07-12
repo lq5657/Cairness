@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cc-spec.local/schemas/adapter-capabilities.schema.json",
+  "title": "Cairness Adapter Capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "adapter", "capabilities"],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "adapter": {"type": "string", "const": "claude-code"},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bootstrap_instruction_injection",
+        "skill_command_discovery",
+        "pre_write_hook",
+        "subagent_dispatch",
+        "fresh_context",
+        "task_list",
+        "user_confirmation_gate",
+        "structured_result",
+        "compaction_session_resume",
+        "file_write_interception"
+      ],
+      "properties": {
+        "bootstrap_instruction_injection": {"$ref": "#/$defs/capability"},
+        "skill_command_discovery": {"$ref": "#/$defs/capability"},
+        "pre_write_hook": {"$ref": "#/$defs/capability"},
+        "subagent_dispatch": {"$ref": "#/$defs/capability"},
+        "fresh_context": {"$ref": "#/$defs/capability"},
+        "task_list": {"$ref": "#/$defs/capability"},
+        "user_confirmation_gate": {"$ref": "#/$defs/capability"},
+        "structured_result": {"$ref": "#/$defs/capability"},
+        "compaction_session_resume": {"$ref": "#/$defs/capability"},
+        "file_write_interception": {"$ref": "#/$defs/capability"}
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "evidence"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["required", "optional", "emulated", "unsupported"]
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

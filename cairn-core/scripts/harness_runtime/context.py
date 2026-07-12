@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from harness_runtime.config import HarnessConfig, HarnessConfigError, load_harness_config
+from harness_runtime.adapter_capabilities import (
+    AdapterCapabilitiesError,
+    load_adapter_capabilities,
+)
 
 
 class HarnessContextError(ValueError):
@@ -16,6 +20,8 @@ class AdapterContext:
     root: Path
     settings_path: Path
     entrypoint_path: Path
+    capabilities_path: Path
+    capabilities: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -88,6 +94,10 @@ def load_harness_context(
             config = load_harness_config(framework_root / "harness.config.yaml")
         except HarnessConfigError as exc:
             raise HarnessContextError(str(exc)) from exc
+    try:
+        capabilities_path, capabilities = load_adapter_capabilities(framework_root)
+    except AdapterCapabilitiesError as exc:
+        raise HarnessContextError(str(exc)) from exc
     return HarnessContext(
         project_root=project_root,
         framework_root=framework_root,
@@ -98,5 +108,7 @@ def load_harness_context(
             root=framework_root,
             settings_path=framework_root / "settings.json",
             entrypoint_path=framework_root / "CLAUDE.md",
+            capabilities_path=capabilities_path,
+            capabilities=capabilities,
         ),
     )

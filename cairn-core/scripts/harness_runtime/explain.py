@@ -245,6 +245,8 @@ def build_effective_contract(
                 "root": str(context.adapter.root),
                 "settings_path": str(context.adapter.settings_path),
                 "entrypoint_path": str(context.adapter.entrypoint_path),
+                "capabilities_path": str(context.adapter.capabilities_path),
+                "capabilities": context.adapter.capabilities,
                 "settings_present": context.adapter.settings_path.is_file(),
                 "entrypoint_present": context.adapter.entrypoint_path.is_file(),
             },
