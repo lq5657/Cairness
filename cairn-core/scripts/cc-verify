@@ -8,9 +8,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,6 +43,7 @@ from harness_runtime.verification_results import (
     fingerprints,
     warnings,
 )
+from harness_runtime.verification_runner import run_step
 from harness_runtime.verification_steps import blocked_step, failed_step, skipped_step
 
 from change_docs import named_table_rows, parse_findings
@@ -319,75 +318,6 @@ def check_risk_triage(project_root: Path, change_id: str) -> dict[str, object]:
         "fingerprints": [],
         "warnings": [],
     }
-
-
-def run_step(
-    name: str,
-    kind: str,
-    command: list[str],
-    cwd: Path,
-    *,
-    collect_issues: bool = False,
-) -> dict[str, object]:
-    """Run a sub-check subprocess and record its result.
-
-    When ``collect_issues`` is True, ``--json`` is appended to the command and
-    the child's structured ``issues`` are parsed into the result. This lets
-    cc-verify aggregate sub-check findings by code/path/message instead of only
-    by truncated stderr text (fingerprints). Scripts that do not emit the
-    canonical Issue JSON (cc-sync-check free-text, cc-index-check's level/
-    summary schema) keep relying on exit code + fingerprints.
-    """
-    started = time.time()
-    try:
-        env = os.environ.copy()
-        if kind.startswith("project:golang") and "GOCACHE" not in env:
-            env["GOCACHE"] = "/tmp/cc-go-build"
-        run_command = [*command, "--json"] if collect_issues else command
-        completed = subprocess.run(
-            run_command,
-            cwd=str(cwd),
-            text=True,
-            capture_output=True,
-            check=False,
-            env=env,
-        )
-        duration_ms = int((time.time() - started) * 1000)
-        status = "passed" if completed.returncode == 0 else "failed"
-        result = {
-            "name": name,
-            "kind": kind,
-            "command": run_command,
-            "cwd": str(cwd),
-            "status": status,
-            "exit_code": completed.returncode,
-            "duration_ms": duration_ms,
-            "stdout": completed.stdout,
-            "stderr": completed.stderr,
-            "fingerprints": fingerprints(completed.stdout, completed.stderr) if completed.returncode else [],
-            "warnings": warnings(completed.stdout, completed.stderr),
-        }
-        if collect_issues:
-            result["issues"] = _collect_issues_from_json(completed.stdout)
-        result["diagnosis"] = diagnosis_for(name, status, completed.stderr)
-        return result
-    except FileNotFoundError as exc:
-        duration_ms = int((time.time() - started) * 1000)
-        message = str(exc)
-        return {
-            "name": name,
-            "kind": kind,
-            "command": command,
-            "cwd": str(cwd),
-            "status": "failed",
-            "exit_code": 127,
-            "duration_ms": duration_ms,
-            "stdout": "",
-            "stderr": message,
-            "fingerprints": [message],
-            "warnings": [],
-            "diagnosis": diagnosis_for(name, "failed", message),
-        }
 
 
 def build_report(args: argparse.Namespace, context: HarnessContext | None = None) -> dict[str, object]:

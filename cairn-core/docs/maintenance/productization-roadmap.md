@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`577 passed`
+- 测试：`582 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 64 个受版本控制文件，577 个用例 |
+| Tests | 65 个受版本控制文件，582 个用例 |
 
 当前主要事实：
 
@@ -1148,6 +1148,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：真实 verification subprocess step 执行和 mode/report 编排仍在 CLI；review coverage/finding/risk checks 也仍是脚本内手工 result。P2-06 保持部分完成。
 - 风险/决策：保留 Git 命令失败时逐命令跳过和 repo root 失败时回退 project root 的兼容语义；不在本批引入 GitPython 或改变 dirty/untracked 集合定义。
 - 下一步：为 `run_step` 建立可注入 subprocess runner，或先统一 review-specific synthetic result construction。
+
+#### 实施记录 2026-07-12（Verification subprocess runner 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 subprocess 环境构造、执行、耗时、exit status、stdout/stderr、fingerprint/warning、canonical Issue 与 diagnosis result construction 移入 `harness_runtime.verification_runner`。`cc-verify` 直接导入并重导出 `run_step`，package API 新增可选 `runner` 注入点。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；注入 runner 覆盖 command/cwd/env/capture 参数、成功与失败结果、自动 `--json` 和 Issue 收集、warning/fingerprint、`FileNotFoundError` exit 127，以及 Go `GOCACHE` fallback/显式值保留；既有 Harness Issue 聚合集成路径保持通过。
+- 剩余：mode/report 编排仍在 CLI；review coverage/finding/risk checks 仍手工构造 result；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
+- 风险/决策：默认继续调用 `subprocess.run`，现有调用方无需传入 runner；不注入时钟、不改变 duration 精度、命令缺失返回 shape、diagnosis catalog 或 Go cache 路径。任意 check name 仍按既有诊断优先级处理。
+- 下一步：统一 review-specific result construction，或提取 `build_report` 中稳定的 mode selection/result aggregation 边界。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
