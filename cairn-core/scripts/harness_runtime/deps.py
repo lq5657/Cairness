@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -78,6 +79,119 @@ def discover_changes(root: Path) -> dict[str, ChangeInfo]:
         changes[change_id] = change
 
     return changes
+
+
+def build_dependency_graph(
+    changes: dict[str, ChangeInfo],
+) -> dict[str, set[str]]:
+    """Build an adjacency map from each dependency to its dependents."""
+    graph: dict[str, set[str]] = defaultdict(set)
+    for change_id in changes:
+        graph.setdefault(change_id, set())
+
+    for change_id, change in changes.items():
+        for dependency in change.depends_on:
+            graph.setdefault(dependency, set()).add(change_id)
+
+    return dict(graph)
+
+
+def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
+    """Return dependency cycles discovered by depth-first traversal."""
+    cycles: list[list[str]] = []
+    visited: set[str] = set()
+    recursion_stack: list[str] = []
+
+    def visit(node: str) -> None:
+        visited.add(node)
+        recursion_stack.append(node)
+        for neighbor in graph.get(node, set()):
+            if neighbor in recursion_stack:
+                index = recursion_stack.index(neighbor)
+                cycles.append(recursion_stack[index:] + [neighbor])
+            elif neighbor not in visited:
+                visit(neighbor)
+        recursion_stack.pop()
+
+    for node in graph:
+        if node not in visited:
+            visit(node)
+
+    return cycles
+
+
+def topological_sort(
+    graph: dict[str, set[str]],
+    changes: dict[str, ChangeInfo],
+) -> list[str]:
+    """Return known changes in dependency-safe order."""
+    in_degree: dict[str, int] = defaultdict(int)
+    for node in graph:
+        in_degree.setdefault(node, 0)
+    for dependents in graph.values():
+        for dependent in dependents:
+            in_degree[dependent] += 1
+
+    queue: deque[str] = deque(
+        node for node, degree in in_degree.items() if degree == 0 and node in changes
+    )
+    result: list[str] = []
+    while queue:
+        node = queue.popleft()
+        result.append(node)
+        for neighbor in graph.get(node, set()):
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0 and neighbor in changes:
+                queue.append(neighbor)
+
+    return result
+
+
+def detect_file_conflicts(
+    changes: dict[str, ChangeInfo],
+    target_change: str | None = None,
+) -> list[dict[str, Any]]:
+    """Detect overlapping file declarations between changes."""
+    conflicts: list[dict[str, Any]] = []
+    change_list = list(changes.values())
+    if target_change:
+        change_list = [
+            change for change in change_list if change.change_id == target_change
+        ]
+        if not change_list:
+            return conflicts
+
+    for index, change in enumerate(change_list):
+        for other in change_list[index + 1 :]:
+            if not change.files or not other.files:
+                continue
+            overlap = change.files & other.files
+            if not overlap:
+                continue
+            has_dependency = (
+                other.change_id in change.depends_on
+                or change.change_id in other.depends_on
+            )
+            severity = (
+                "warning"
+                if change.parallel_safe and other.parallel_safe and has_dependency
+                else "conflict"
+            )
+            conflicts.append(
+                {
+                    "change_a": change.change_id,
+                    "change_b": other.change_id,
+                    "overlapping_files": sorted(overlap),
+                    "severity": severity,
+                    "recommendation": (
+                        "merge into one change or split by sub-module"
+                        if severity == "conflict"
+                        else "dependency declared — sequential execution recommended"
+                    ),
+                }
+            )
+
+    return conflicts
 
 
 def check_dependencies(

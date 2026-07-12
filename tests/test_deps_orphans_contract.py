@@ -81,6 +81,45 @@ def test_dependency_domain_package_matches_cli_exports():
     )
 
 
+def test_dependency_graph_domain_package_matches_cli_exports():
+    deps = importlib.import_module("harness_runtime.deps")
+    cli = _load_cc_deps()
+
+    for name in (
+        "build_dependency_graph",
+        "detect_cycles",
+        "topological_sort",
+        "detect_file_conflicts",
+    ):
+        assert getattr(cli, name) is getattr(deps, name)
+
+    changes = {
+        "base": deps.ChangeInfo("base", status="done", files={"shared.py"}),
+        "feature": deps.ChangeInfo(
+            "feature",
+            status="apply",
+            depends_on=["base"],
+            parallel_safe=False,
+            files={"shared.py"},
+        ),
+    }
+    graph = deps.build_dependency_graph(changes)
+    assert graph == {"base": {"feature"}, "feature": set()}
+    assert deps.topological_sort(graph, changes) == ["base", "feature"]
+    assert deps.detect_cycles({"base": {"feature"}, "feature": {"base"}}) == [
+        ["base", "feature", "base"]
+    ]
+    assert deps.detect_file_conflicts(changes) == [
+        {
+            "change_a": "base",
+            "change_b": "feature",
+            "overlapping_files": ["shared.py"],
+            "severity": "conflict",
+            "recommendation": "merge into one change or split by sub-module",
+        }
+    ]
+
+
 def test_detect_orphans_finds_undeclared_file(tmp_path):
     """With a declared source, an unstaged-by-any-change file is an orphan."""
     mod = _load_cc_deps()

@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`543 passed`
+- 测试：`544 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，543 个用例 |
+| Tests | 56 个受版本控制文件，544 个用例 |
 
 当前主要事实：
 
@@ -1038,6 +1038,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：dependency graph、cycle/order、file conflicts 与 orphans 领域逻辑仍位于 CLI；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
 - 风险/决策：本批不改 JSON、文本或退出码合同，不扩大到 Git diff/orphan 语义；领域模块只接收显式 project root，CLI 继续拥有 Context、参数、渲染和退出控制。
 - 下一步：继续迁移 `cc-deps` 的纯图/冲突逻辑，或按优先级拆分 `cc-schema-check` 的独立验证域。
+
+#### 实施记录 2026-07-12（Dependency graph 领域模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 dependency graph 构建、DFS 环检测、拓扑排序和 change 文件冲突判断移入 `harness_runtime.deps`。`cc-deps graph|conflicts|order` 继续使用原 CLI 渲染与退出码，并重导出领域函数保持嵌入调用兼容。
+- 验证：package/CLI API 等价测试先因缺少 `build_dependency_graph` 观察 RED，再转为 GREEN；空 change 集合的 graph/conflicts/order 文本与 JSON 入口保持原合同，完整验证见本子任务完成验证。
+- 剩余：Git diff、声明匹配与 orphan detection 仍位于 CLI；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
+- 风险/决策：本批只迁移无 IO 的图计算，不顺带修改 `--change` 冲突筛选语义，也不改变图的遍历/排序稳定性合同。
+- 下一步：提取 `cc-deps` 的 Git/orphan 领域服务，使 extensionless CLI 收敛到 Context、参数、渲染和退出控制。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

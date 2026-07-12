@@ -19,7 +19,7 @@ import fnmatch
 import json
 import subprocess
 import sys
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 
 from typing import Any
@@ -27,10 +27,14 @@ from typing import Any
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.deps import (
     ChangeInfo,
+    build_dependency_graph,
     check_dependencies,
+    detect_cycles,
+    detect_file_conflicts,
     discover_changes,
     parse_spec,
     parse_task_files,
+    topological_sort,
 )
 from harness_runtime.issues import Issue, build_report
 
@@ -44,126 +48,6 @@ def project_root() -> Path:
         framework_hint=Path(__file__).resolve().parent.parent,
     )
     return context.project_root
-
-
-def build_dependency_graph(
-    changes: dict[str, ChangeInfo],
-) -> dict[str, set[str]]:
-    """构建邻接表: change_id → {下游 change_ids}。"""
-    graph: dict[str, set[str]] = defaultdict(set)
-    for cid in changes:
-        graph.setdefault(cid, set())
-
-    for cid, ci in changes.items():
-        for dep in ci.depends_on:
-            if dep in changes:
-                graph[dep].add(cid)
-            # 即使 dep 不在 changes 中也记录（可能是外部依赖或已归档）
-            graph.setdefault(dep, set()).add(cid)
-            if cid not in graph[dep]:
-                graph[dep].add(cid)
-
-    return dict(graph)
-
-
-def detect_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
-    """DFS 检测图中的所有环。"""
-    cycles: list[list[str]] = []
-    visited: set[str] = set()
-    rec_stack: list[str] = []
-
-    def dfs(node: str) -> None:
-        visited.add(node)
-        rec_stack.append(node)
-        for neighbor in graph.get(node, set()):
-            if neighbor in rec_stack:
-                idx = rec_stack.index(neighbor)
-                cycles.append(rec_stack[idx:] + [neighbor])
-            elif neighbor not in visited:
-                dfs(neighbor)
-        rec_stack.pop()
-
-    for node in graph:
-        if node not in visited:
-            dfs(node)
-
-    return cycles
-
-
-def topological_sort(
-    graph: dict[str, set[str]],
-    changes: dict[str, ChangeInfo],
-) -> list[str]:
-    """拓扑排序，返回安全执行顺序。"""
-    in_degree: dict[str, int] = defaultdict(int)
-    for node in graph:
-        in_degree.setdefault(node, 0)
-    for node, deps in graph.items():
-        for dep in deps:
-            in_degree[dep] += 1
-
-    queue: deque[str] = deque(
-        n for n, d in in_degree.items() if d == 0 and n in changes
-    )
-    result: list[str] = []
-
-    while queue:
-        node = queue.popleft()
-        result.append(node)
-        for neighbor in graph.get(node, set()):
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0 and neighbor in changes:
-                queue.append(neighbor)
-
-    return result
-
-
-def detect_file_conflicts(
-    changes: dict[str, ChangeInfo],
-    target_change: str | None = None,
-) -> list[dict[str, Any]]:
-    """检测两个 change 是否声明了重叠的文件写入。"""
-    conflicts: list[dict[str, Any]] = []
-
-    change_list = list(changes.values())
-    if target_change:
-        change_list = [
-            c for c in change_list if c.change_id == target_change
-        ]
-        if not change_list:
-            return conflicts
-
-    for i, ci in enumerate(change_list):
-        for cj in change_list[i + 1 :]:
-            if not ci.files or not cj.files:
-                continue
-            overlap = ci.files & cj.files
-            if overlap:
-                # 如果显式标记 parallel_safe 且无 depends_on 关系则降级为 warning
-                has_dep_relation = (
-                    cj.change_id in ci.depends_on
-                    or ci.change_id in cj.depends_on
-                )
-                severity = (
-                    "warning"
-                    if (ci.parallel_safe and cj.parallel_safe and has_dep_relation)
-                    else "conflict"
-                )
-                conflicts.append(
-                    {
-                        "change_a": ci.change_id,
-                        "change_b": cj.change_id,
-                        "overlapping_files": sorted(overlap),
-                        "severity": severity,
-                        "recommendation": (
-                            "merge into one change or split by sub-module"
-                            if severity == "conflict"
-                            else "dependency declared — sequential execution recommended"
-                        ),
-                    }
-                )
-
-    return conflicts
 
 
 def format_graph_ascii(
