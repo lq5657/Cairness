@@ -26,6 +26,13 @@ from harness_runtime.verification_capabilities import (
     resolution_error_message,
     verification_entries,
 )
+from harness_runtime.verification_changes import (
+    has_go_changes,
+    has_profile_changes,
+    is_relative_to,
+    path_matches_profile_glob,
+    profile_detection_patterns,
+)
 from harness_runtime.verification_diagnostics import diagnosis_for
 from harness_runtime.verification_results import (
     collect_issues_from_json as _collect_issues_from_json,
@@ -71,14 +78,6 @@ def git_changed_paths(project_root: Path) -> list[Path]:
     return sorted(paths)
 
 
-def is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.resolve().relative_to(parent.resolve())
-        return True
-    except ValueError:
-        return False
-
-
 def changed_change_dirs(paths: list[Path], project_root: Path) -> list[Path]:
     changes_root = project_root / ".cairness" / "changes"
     dirs: set[Path] = set()
@@ -102,55 +101,6 @@ def has_harness_changes(paths: list[Path], project_root: Path) -> bool:
         repo_root / ".github",
     ]
     return any(any(is_relative_to(path, root) if root.is_dir() else path.resolve() == root.resolve() for root in watched_roots) for path in paths)
-
-
-def has_go_changes(paths: list[Path], project_root: Path) -> bool:
-    for path in paths:
-        if not is_relative_to(path, project_root):
-            continue
-        if path.name == "go.mod" or path.name == "go.sum" or path.suffix == ".go":
-            return True
-    return False
-
-
-def profile_detection_patterns(profile: LanguageProfile) -> tuple[set[str], set[str], list[str]]:
-    project_detection = profile.data.get("project_detection") if isinstance(profile.data.get("project_detection"), dict) else {}
-    module_files = project_detection.get("module_files")
-    legacy_module_file = project_detection.get("module_file")
-    lockfiles = project_detection.get("lockfiles")
-    source_globs = project_detection.get("source_globs")
-
-    module_names: set[str] = set()
-    if isinstance(module_files, list):
-        module_names.update(item for item in module_files if isinstance(item, str) and item)
-    if isinstance(legacy_module_file, str) and legacy_module_file:
-        module_names.add(legacy_module_file)
-    lockfile_names = {item for item in lockfiles if isinstance(item, str) and item} if isinstance(lockfiles, list) else set()
-    glob_patterns = [item for item in source_globs if isinstance(item, str) and item] if isinstance(source_globs, list) else []
-    return module_names, lockfile_names, glob_patterns
-
-
-def has_profile_changes(paths: list[Path], project_root: Path, profile: LanguageProfile) -> bool:
-    module_names, lockfile_names, glob_patterns = profile_detection_patterns(profile)
-    for path in paths:
-        if not is_relative_to(path, project_root):
-            continue
-        relative = path.resolve().relative_to(project_root.resolve())
-        if relative.parts and relative.parts[0] in {".claude", ".cairness"}:
-            continue
-        if relative.name in module_names or relative.name in lockfile_names:
-            return True
-        if any(path_matches_profile_glob(relative, pattern) for pattern in glob_patterns):
-            return True
-    return False
-
-
-def path_matches_profile_glob(relative: Path, pattern: str) -> bool:
-    if relative.match(pattern):
-        return True
-    if pattern.startswith("**/") and relative.match(pattern[3:]):
-        return True
-    return False
 
 
 def _find_section_marker(lines: list[str], marker: str) -> int:

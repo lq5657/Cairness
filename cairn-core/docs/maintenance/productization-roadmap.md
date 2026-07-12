@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`569 passed`
+- 测试：`573 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 62 个受版本控制文件，569 个用例 |
+| Tests | 63 个受版本控制文件，573 个用例 |
 
 当前主要事实：
 
@@ -1128,6 +1128,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：Git changed-surface 判定、真实 subprocess step 执行和 mode/report 编排仍在 CLI；`cc-schema-check`、`cc-lint` 也仍有未拆分领域。P2-06 保持部分完成。
 - 风险/决策：generic `validation.verification.capabilities` 继续优先于 Go 兼容配置；不在本批删除 Go fallback，也不改变 optional capability 的默认启停解释。
 - 下一步：提取 profile change detection 的纯路径域，或为 `run_step` 建立可注入 subprocess runner。
+
+#### 实施记录 2026-07-12（Verification changed-surface 模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将相对路径判断、Go 文件变更识别、profile module/legacy module/lockfile/source glob 解析、`**/` 根文件兼容匹配和 profile changed-surface 判定移入 `harness_runtime.verification_changes`。CLI 直接导入并重导出原函数。
+- 验证：package/CLI API 等价测试先因模块不存在观察 RED，再转为 GREEN；覆盖 malformed detection entries、legacy `module_file`、marker/lockfile/glob 命中、Harness/state 路径忽略、项目外路径忽略和 Go compatibility；五种语言 fixture 保持通过。
+- 剩余：Git 仓库/changed path 发现、change-dir/harness surface 判定、真实 subprocess step 执行和 mode/report 编排仍在 CLI。P2-06 保持部分完成。
+- 风险/决策：只迁移无 Git 命令和无 existence gate 的路径决策；`.claude`/`.cairness` 仍不触发业务 profile verification，根级文件继续兼容 `**/pattern`。
+- 下一步：提取 Git changed-surface service，或为 `run_step` 建立可注入 subprocess runner。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
