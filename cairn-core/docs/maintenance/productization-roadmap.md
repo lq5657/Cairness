@@ -1789,11 +1789,12 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；本地优先完成 Phase 2 剩余产品层工作，再进入 runtime-neutral core。
+当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；Phase 2 产品层已完成，下一项进入 `P3-01 Runtime-neutral core`。
 
-本地下一组工作：
+后续依赖链：
 
-1. `P2-02`：建立 `starter/team/regulated/autonomous` 到 runtime profile 的单一映射、说明和 diff 预览。
-2. `P2-03`：复用场景映射与项目状态实现确定性意图路由和渐进帮助，不新增生命周期。
-3. `P2-07`：复用 Explain 与现有结构化报告交付 localhost-only 的只读 Dashboard/TUI。
-4. 三项通过专项与全量验证后逐项更新完成记录；随后进入 `P3-01 Runtime-neutral core`。
+1. `P3-01`：抽离 runtime-neutral core，建立稳定的 core API 和 adapter interface。
+2. `P3-02`：建立 Claude Code adapter 回归基线。
+3. `P3-03`：交付 Codex adapter，验证第二个正式宿主。
+4. `P3-04/P3-05/P3-06/P3-08`：在 adapter contract 稳定后扩展其他宿主、Policy Pack、Monorepo 和模型评测。
+5. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。
