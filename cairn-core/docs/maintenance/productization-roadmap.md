@@ -1325,7 +1325,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 状态：部分完成
 - Change/提交：本子任务的 Git 提交记录
 - 已完成：新增 `runtime/roles.yaml` 与 `schemas/runtime-roles.schema.json`，migrated command 的 schema/subagent role 校验改读 canonical runtime role registry；legacy role-contract 仅对 custom/non-migrated command 作为显式 fallback。migrated command manifests/readsets 与 eval case 改读 `.claude/runtime/roles.yaml`。新增只读 `cc-legacy-audit` 与 `harness_runtime.legacy_audit`，以及 `harness_runtime.runtime_fallback_audit`，分别输出 legacy 活跃引用和 command/checkpoint fallback 分类。
-- 验证：`rtk pytest -q` → `690 passed`（role registry、fallback audit、legacy audit 和 diagnostics 回归均包含）；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → `status: passed`，仅报告 `legacy_fallback` 配置、custom-command 兼容代码和历史引用；fallback 审计 → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
+- 验证：`rtk pytest -q` → `697 passed`（role registry、fallback audit、legacy audit 和 diagnostics 回归均包含）；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk cairn-core/scripts/cc-legacy-audit --json` → `status: passed`，仅报告 `legacy_fallback` 配置、custom-command 兼容代码和历史引用；命令内嵌 `runtime_boundaries` → 14 个 migrated command、0 个 non-migrated command、0 个 migrated checkpoint read；`rtk git diff --check` → `passed`。
 - 剩余：`runtime/core.yaml` 的 `legacy_fallback.commands_dir/checkpoints_dir` 仍需为 custom/non-migrated command 保留；`cc-preflight` 的 `validates: checkpoints` 是兼容安装资产校验，尚未证明可删除；README 历史说明保留在历史文档边界。
 - 风险/决策：不把“所有内置命令已迁移”误判为“legacy 可删除”；fallback 只有在 custom command 替代合同明确后才能清零。Legacy audit 继续报告 fallback/history 引用，但只对 migrated active ref 返回失败，确保兼容边界可见且不会误阻断 runtime。
 - 下一步：补齐 eval/doctor/lint 的 legacy 引用审计证据，评估 preflight checkpoint 校验的 profile 边界，再决定是否移动/删除 legacy 目录。
@@ -1335,7 +1335,7 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 状态：完成
 - Change/提交：`023c537`、`adc7136` 及本收尾提交
 - 已完成：migrated commands、schema、lint、doctor、eval 和 verification diagnostics 不再依赖 legacy role/command/checkpoint 文档；runtime roles 是角色真相源。`cc-legacy-audit` 从仓库根或 framework 根均可发现资产，报告 fallback/history 引用但只对 migrated active ref 失败。custom/non-migrated command 的 legacy role/command/checkpoint fallback 保留为显式兼容边界。
-- 验证：`rtk cairn-core/scripts/cc-legacy-audit --json` → `passed` 且无 `migrated_command_active_ref`；`rtk pytest -q` → `690 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 与 `rtk git diff --check` → `passed`。
+- 验证：`rtk cairn-core/scripts/cc-legacy-audit --json` → `passed`、无 `migrated_command_active_ref`，且 `runtime_boundaries.status: passed`；`rtk pytest -q` → `697 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 与 `rtk git diff --check` → `passed`。
 - 剩余：无。legacy 目录作为历史参考和 custom-command fallback 资产保留，不进入 migrated command 默认 readset；未来删除 fallback 属于独立兼容性变更。
 - 风险/决策：`cc-preflight validates: checkpoints` 只验证兼容安装资产，不代表 runtime command 读取；0 个 migrated checkpoint read 已由独立审计证明。Fallback/history 引用必须继续可见，但不应阻断 migrated runtime。
 - 下一步：P2-09 Adapter capability contract。
@@ -1388,7 +1388,7 @@ unsupported
 - 状态：完成
 - Change/提交：本子任务的 Git 提交记录
 - 已完成：新增 `runtime/adapters/claude-code-capabilities.yaml` 与 `schemas/adapter-capabilities.schema.json`，覆盖 bootstrap/instruction injection、skill/command discovery、pre-write hook、subagent dispatch、fresh context、task list、user confirmation、structured result、compaction/session resume 和 file write interception。每项使用 `required/optional/emulated/unsupported` 等级并声明证据；Claude Code 明确将 structured result 标为 `emulated`、session resume 标为 `optional`。共享 `HarnessContext.AdapterContext` 负责加载合同，doctor/explain 输出同一 capability 映射，缺失/非法合同产生 `HarnessContextError` 或 `E_DOCTOR103`。
-- 验证：adapter/context/doctor/explain 聚焦回归 → `103 passed`；`rtk pytest -q` 串行执行 → `696 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk git diff --check` → `passed`。
+- 验证：adapter/context/doctor/explain 聚焦回归 → `103 passed`；`rtk pytest -q` 串行执行 → `697 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；`rtk git diff --check` → `passed`。
 - 剩余：无。第二个 adapter 与跨 adapter 回归属于 P3-01/P3-02/P3-03，不在本项实现。
 - 风险/决策：capability contract 只描述宿主能力和降级等级，不修改 runtime command 语义；不使用布尔“支持/不支持”掩盖 emulated/optional 差异。当前 loader 对缺失或 schema 漂移硬失败，避免虚假完整支持。
 - 下一步：P3-01 Runtime-neutral core；如优先降低采用成本，可先推进 P2-01/P2-02/P2-03。

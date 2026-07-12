@@ -30,11 +30,20 @@ def classify_legacy_reference(path: str, line: str) -> str | None:
     )
     if not LEGACY_COMMAND_RE.search(line) and not any(token in lowered for token in tokens):
         return None
-    if "fallback" in lowered:
+    if (
+        "fallback" in lowered
+        or "role_contracts_path" in lowered
+        or (
+            path.lower().endswith("runtime/core.yaml")
+            and ("commands_dir:" in lowered or "checkpoints_dir:" in lowered)
+        )
+    ):
         return "fallback_ref"
-    if "historical" in lowered or ("readme" in path.lower() and "legacy" in lowered):
-        return "historical_docs_ref"
-    if "docs/maintenance/legacy" in lowered and "/" not in line.strip()[:1]:
+    if (
+        "historical" in lowered
+        or ("readme" in path.lower() and "legacy" in lowered)
+        or "docs/maintenance/legacy/" in path.lower()
+    ):
         return "historical_docs_ref"
     return "migrated_command_active_ref"
 

@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from harness_runtime.legacy_audit import scan_legacy_references
+from harness_runtime.runtime_fallback_audit import load_runtime_boundary_report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -17,6 +18,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     report_path = args.root / "cc-legacy-audit.json"
     report = scan_legacy_references(args.root, report_path=report_path)
+    try:
+        runtime_boundaries = load_runtime_boundary_report(args.root)
+    except FileNotFoundError:
+        runtime_boundaries = None
+    except (OSError, ValueError) as exc:
+        runtime_boundaries = {"status": "failed", "error": str(exc)}
+    if runtime_boundaries is not None:
+        report["runtime_boundaries"] = runtime_boundaries
+        if runtime_boundaries.get("status") == "failed":
+            report["status"] = "failed"
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:

@@ -16,6 +16,14 @@ def test_classify_legacy_reference_distinguishes_active_fallback_and_history():
     assert legacy_audit.classify_legacy_reference(".claude/runtime/commands/cc-test.yaml", "legacy_fallback: true") == "fallback_ref"
     assert legacy_audit.classify_legacy_reference("README.md", "Use /propose only for historical compatibility") == "historical_docs_ref"
     assert legacy_audit.classify_legacy_reference(".claude/workflows/cc-workflow.yaml", "command: /propose") == "migrated_command_active_ref"
+    assert legacy_audit.classify_legacy_reference(
+        "runtime/commands/cc-apply.yaml",
+        "- .claude/docs/maintenance/legacy/checkpoints/cc-apply.md",
+    ) == "migrated_command_active_ref"
+    assert legacy_audit.classify_legacy_reference(
+        "runtime/core.yaml",
+        "checkpoints_dir: .claude/docs/maintenance/legacy/checkpoints",
+    ) == "fallback_ref"
     assert legacy_audit.classify_legacy_reference("README.md", "spec/review and cairn-core/fixtures") is None
     assert legacy_audit.classify_legacy_reference(
         "runtime/commands/cc-test.yaml", "- .cairness/changes/<change-id>/test-spec.md"
