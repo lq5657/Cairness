@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import fnmatch
 import re
+import subprocess
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -237,4 +239,119 @@ def check_dependencies(
             if ready
             else f"{len(all_blocking)} dependency(s) not satisfied"
         ),
+    }
+
+
+def get_git_diff_files(root: Path, staged: bool = True) -> list[str]:
+    """Return changed Git paths in the requested index/worktree scope."""
+    args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+    if not staged:
+        args = ["diff", "--name-only", "--diff-filter=ACMR"]
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            cwd=str(root),
+            timeout=10,
+        )
+        if result.returncode != 0:
+            return []
+        return [path.strip() for path in result.stdout.splitlines() if path.strip()]
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+
+
+def is_git_repo(root: Path) -> bool:
+    """Return whether root exists inside a Git working tree."""
+    if not root.exists():
+        return False
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def file_matches_declared(git_file: str, declared_files: set[str]) -> bool:
+    """Return whether a Git path matches any declared change path."""
+    for declared in declared_files:
+        if git_file == declared:
+            return True
+        if git_file.endswith("/" + declared) or git_file.endswith(declared):
+            return True
+        if fnmatch.fnmatch(git_file, declared):
+            return True
+        if declared.endswith("/" + git_file) or declared.endswith(git_file):
+            return True
+    return False
+
+
+def detect_orphans(
+    root: Path,
+    staged: bool = True,
+    changes: dict[str, ChangeInfo] | None = None,
+) -> dict[str, Any]:
+    """Detect changed Git files absent from every change declaration."""
+    if changes is None:
+        changes = discover_changes(root)
+
+    git_files = get_git_diff_files(root, staged=staged)
+    all_declared = {
+        change_id: change.files
+        for change_id, change in changes.items()
+        if change.files
+    }
+
+    if not git_files:
+        return {
+            "staged": staged,
+            "total_git_files": 0,
+            "orphan_files": [],
+            "matched_files": [],
+            "matched_by_change": {},
+            "has_orphans": False,
+            "total_changes": len(changes),
+            "changes_with_files": len(all_declared),
+        }
+
+    if not all_declared:
+        return {
+            "staged": staged,
+            "total_git_files": len(git_files),
+            "orphan_files": [],
+            "matched_files": [],
+            "matched_by_change": {},
+            "has_orphans": False,
+            "total_changes": len(changes),
+            "changes_with_files": 0,
+            "no_declared_source": True,
+        }
+
+    orphan_files: list[str] = []
+    matched_files: list[str] = []
+    matched_by_change: dict[str, list[str]] = defaultdict(list)
+    for git_file in git_files:
+        for change_id, declared in all_declared.items():
+            if file_matches_declared(git_file, declared):
+                matched_files.append(git_file)
+                matched_by_change[change_id].append(git_file)
+                break
+        else:
+            orphan_files.append(git_file)
+
+    return {
+        "staged": staged,
+        "total_git_files": len(git_files),
+        "orphan_files": orphan_files,
+        "matched_files": matched_files,
+        "matched_by_change": dict(matched_by_change),
+        "has_orphans": bool(orphan_files),
+        "total_changes": len(changes),
+        "changes_with_files": len(all_declared),
     }

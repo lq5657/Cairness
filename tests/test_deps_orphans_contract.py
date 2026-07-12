@@ -120,6 +120,22 @@ def test_dependency_graph_domain_package_matches_cli_exports():
     ]
 
 
+def test_orphan_domain_package_matches_cli_export(tmp_path):
+    deps = importlib.import_module("harness_runtime.deps")
+    cli = _load_cc_deps()
+
+    assert cli.detect_orphans is deps.detect_orphans
+    assert callable(deps.get_git_diff_files)
+    assert callable(deps.is_git_repo)
+    assert callable(deps.file_matches_declared)
+
+    root = _make_git_repo(tmp_path)
+    changes = {"C1": deps.ChangeInfo("C1", files={"declared.go"})}
+    result = deps.detect_orphans(root, staged=True, changes=changes)
+    assert result["matched_files"] == ["declared.go"]
+    assert result["orphan_files"] == ["rogue.go"]
+
+
 def test_detect_orphans_finds_undeclared_file(tmp_path):
     """With a declared source, an unstaged-by-any-change file is an orphan."""
     mod = _load_cc_deps()

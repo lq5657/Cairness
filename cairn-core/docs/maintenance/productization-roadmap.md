@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：`9eba1ff test: isolate destructive harness fixtures`
 - 分支：`main`
-- 测试：`544 passed`
+- 测试：`545 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 34 个受版本控制文件，约 11645 行 |
 | Eval cases | 55 |
 | Behavior cases | 8 |
-| Tests | 56 个受版本控制文件，544 个用例 |
+| Tests | 56 个受版本控制文件，545 个用例 |
 
 当前主要事实：
 
@@ -1048,6 +1048,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 剩余：Git diff、声明匹配与 orphan detection 仍位于 CLI；schema/verify/lint 等大型聚合脚本尚未拆分。P2-06 保持部分完成。
 - 风险/决策：本批只迁移无 IO 的图计算，不顺带修改 `--change` 冲突筛选语义，也不改变图的遍历/排序稳定性合同。
 - 下一步：提取 `cc-deps` 的 Git/orphan 领域服务，使 extensionless CLI 收敛到 Context、参数、渲染和退出控制。
+
+#### 实施记录 2026-07-12（Dependency orphan 领域模块）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：将 Git diff 文件发现、Git 工作树校验、声明路径匹配和 orphan detection 移入 `harness_runtime.deps`。`cc-deps` 通过兼容别名保留原内部符号，继续独占 Context、参数解析、Issue/report 构造、文本/JSON 渲染和退出码。
+- 验证：package/CLI orphan API 测试先因缺少 `detect_orphans` 观察 RED，再转为 GREEN；真实临时 Git repo 覆盖 staged 文件匹配与 orphan 分类，现有 root hard-fail 和 canonical Issue 合同回归保持通过。
+- 剩余：`cc-deps` 领域拆分已完成；schema/verify/lint 等大型聚合脚本尚未拆分，因此 P2-06 总项保持部分完成。
+- 风险/决策：保留 Git 命令超时/失败返回空集合的既有兼容语义；显式 `--root` 的 fail-fast 仍由 CLI 在调用领域服务前执行，不改变 `E_DEPS001` 边界。
+- 下一步：选择 `cc-schema-check` 中一个稳定、可独立验证的域做下一次小批迁移，避免一次性拆分大型聚合脚本。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 

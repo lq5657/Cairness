@@ -15,11 +15,8 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import json
-import subprocess
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 from typing import Any
@@ -31,7 +28,11 @@ from harness_runtime.deps import (
     check_dependencies,
     detect_cycles,
     detect_file_conflicts,
+    detect_orphans,
     discover_changes,
+    file_matches_declared as _file_matches_declared,
+    get_git_diff_files as _get_git_diff_files,
+    is_git_repo as _is_git_repo,
     parse_spec,
     parse_task_files,
     topological_sort,
@@ -217,137 +218,6 @@ def print_check(result: dict[str, Any]) -> None:
             print(f"    仍在实现: {', '.join(result['blocked'])}")
         if result["not_done"]:
             print(f"    尚未完成: {', '.join(result['not_done'])}")
-
-
-def _get_git_diff_files(root: Path, staged: bool = True) -> list[str]:
-    """获取 git diff 中的变更文件列表。"""
-    args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
-    if not staged:
-        args = ["diff", "--name-only", "--diff-filter=ACMR"]
-    try:
-        result = subprocess.run(
-            ["git"] + args,
-            capture_output=True,
-            text=True,
-            cwd=str(root),
-            timeout=10,
-        )
-        if result.returncode != 0:
-            return []
-        return [f.strip() for f in result.stdout.splitlines() if f.strip()]
-    except (subprocess.TimeoutExpired, OSError):
-        return []
-
-
-def _is_git_repo(root: Path) -> bool:
-    """True iff `root` exists and is inside a git working tree.
-
-    When --root is supplied explicitly we must hard-fail on a missing or
-    non-git target rather than silently passing (an empty git diff is
-    indistinguishable from a broken path, which would mask the error).
-    """
-    if not root.exists():
-        return False
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (subprocess.TimeoutExpired, OSError):
-        return False
-    return result.returncode == 0 and result.stdout.strip() == "true"
-
-
-def _file_matches_declared(git_file: str, declared_files: set[str]) -> bool:
-    """检查 git 文件是否匹配 change 中声明的任何文件路径。"""
-    for df in declared_files:
-        # Exact match
-        if git_file == df:
-            return True
-        # Suffix match (declared as relative path, git gives full path)
-        if git_file.endswith("/" + df) or git_file.endswith(df):
-            return True
-        # Glob match
-        if fnmatch.fnmatch(git_file, df):
-            return True
-        # Git file is a suffix of declared (declared has full path)
-        if df.endswith("/" + git_file) or df.endswith(git_file):
-            return True
-    return False
-
-
-def detect_orphans(
-    root: Path,
-    staged: bool = True,
-    changes: dict[str, ChangeInfo] | None = None,
-) -> dict[str, Any]:
-    """检测未被任何 change 声明的变更文件。"""
-    if changes is None:
-        changes = discover_changes(root)
-
-    git_files = _get_git_diff_files(root, staged=staged)
-
-    # Collect all declared files across all changes
-    all_declared: dict[str, set[str]] = {}
-    for cid, ci in changes.items():
-        if ci.files:
-            all_declared[cid] = ci.files
-
-    if not git_files:
-        return {
-            "staged": staged,
-            "total_git_files": 0,
-            "orphan_files": [],
-            "matched_files": [],
-            "matched_by_change": {},
-            "has_orphans": False,
-            "total_changes": len(changes),
-            "changes_with_files": len(all_declared),
-        }
-
-    if not all_declared:
-        # No change has declared any files — there is no declaration source to
-        # judge orphans against (e.g. Harness self-maintenance, which is exempt
-        # from the cc-* change flow). Cannot detect orphans; report clean.
-        return {
-            "staged": staged,
-            "total_git_files": len(git_files),
-            "orphan_files": [],
-            "matched_files": [],
-            "matched_by_change": {},
-            "has_orphans": False,
-            "total_changes": len(changes),
-            "changes_with_files": 0,
-            "no_declared_source": True,
-        }
-
-    orphan_files: list[str] = []
-    matched_files: list[str] = []
-    matched_by_change: dict[str, list[str]] = defaultdict(list)
-
-    for gf in git_files:
-        matched = False
-        for cid, declared in all_declared.items():
-            if _file_matches_declared(gf, declared):
-                matched_files.append(gf)
-                matched_by_change[cid].append(gf)
-                matched = True
-                break
-        if not matched:
-            orphan_files.append(gf)
-
-    return {
-        "staged": staged,
-        "total_git_files": len(git_files),
-        "orphan_files": orphan_files,
-        "matched_files": matched_files,
-        "matched_by_change": dict(matched_by_change),
-        "has_orphans": len(orphan_files) > 0,
-        "total_changes": len(changes),
-        "changes_with_files": len(all_declared),
-    }
 
 
 def print_orphans(result: dict[str, Any]) -> int:
