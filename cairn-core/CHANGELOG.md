@@ -43,6 +43,7 @@
 - Moved topic-rule YAML/Markdown shape decisions into `harness_runtime.runtime_topic_rule_lint`, retaining `cc-lint` file loading, exception handling, and path rendering.
 - Moved technology-catalog shape Issue decisions into `harness_runtime.schema_technology_catalog_issues`, preserving `cc-schema-check` schema/IO and cross-document orchestration.
 - Moved review finding detail parsing and the `FindingDetail` model into `harness_runtime.change_findings`, with `change_docs.py` retaining its historical re-export surface.
+- Completed P2-06 core script modularization: `cc-schema-check`, `cc-verify`, `cc-lint`, `cc-deps`, and the selected `change_docs.py` parser domains now expose tested `harness_runtime` APIs, while CLI adapters retain Context, I/O, subprocess, rendering, exit-code, and compatibility boundaries.
 - Added the shared `HarnessContext` root/config/adapter model and `--root` support for `cc-verify`, `cc-schema-check`, and `cc-doctor-check`, including subdirectory discovery, explicit-root validation, and physical framework directories that are not named `.claude`.
 - Migrated `cc-schema-check` and shared readset derivation away from physical `.claude` assumptions: logical manifest paths now resolve through the active `HarnessContext`, including symlinked and custom-named framework roots.
 - Added `HarnessContext` and `--root` support to `cc-readset` and `cc-workflow-gen`; both generators now read and write through the physical framework root while preserving logical `.claude/...` paths in generated artifacts.

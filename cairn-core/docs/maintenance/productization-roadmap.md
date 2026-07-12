@@ -173,7 +173,7 @@ Phase 3：Agent Governance Platform
 | `P2-03` | 高层意图路由与命令渐进披露 | Phase 2 | P1 | 待开始 | `P2-02` |
 | `P2-04` | Effective contract explain | Phase 2 | P1 | 完成 | `P2-05`、`P1-04` |
 | `P2-05` | 统一 `HarnessContext` 与 root 解析 | Phase 2 | P0 | 完成 | Phase 1 |
-| `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 部分完成 | `P2-05` |
+| `P2-06` | 核心脚本模块化 | Phase 2 | P1 | 完成 | `P2-05` |
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 待开始 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 待开始 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 待开始 | `P2-05` |
@@ -267,7 +267,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 #### 实施记录 2026-07-11
 
-- 状态：部分完成
+- 状态：完成
 - Change/提交：`P1-01`（由本 change 的 Git 提交记录）
 - 已完成：checksum 固定的 ephemeral runner、composite Action、archive cache、annotation/Job Summary、full/harness-only/project-only 模式、release archive/SHA256SUMS workflow，以及无需预装 `.claude/` 的目标项目模板。
 - 验证：
@@ -1265,9 +1265,19 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - Change/提交：`P2-06`（由本子任务的 Git 提交记录）
 - 已完成：`harness_runtime.runtime_topic_rule_lint` 接管 YAML/Markdown topic-rule shape 决策；`harness_runtime.schema_technology_catalog_issues` 接管 technology catalog 的 `E_SCHEMA175/176/177/180` Issue 决策；`harness_runtime.change_findings` 接管 `FindingDetail`、fenced block、location 和 finding detail parser，`change_docs.py` 保持历史重导出兼容。CLI 继续负责文件/JSON/YAML IO、路径解析、跨文档编排、Issue/result 渲染和退出码。
 - 验证：本批聚焦回归 `20 passed`；`rtk pytest -q` → `675 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` 全部通过；`rtk git diff --check` → `passed`。
-- 剩余：P2-06 优先对象的领域纯逻辑已基本迁出；剩余 CLI 主要是文件加载、Context/路径映射、跨文档编排、subprocess 和渲染边界。仍需做一次模块/API 清单审计，确认没有遗漏的高价值纯域后再决定是否标记完成。
+- 剩余：无。优先对象的领域纯逻辑已迁入可测试 package；剩余 CLI 主要是文件加载、Context/路径映射、跨文档编排、subprocess 和渲染边界，明确保留在入口适配层。
 - 风险/决策：change findings 仅迁移解析逻辑，保持字段、顺序、默认值和 malformed 输入容错；technology catalog 模块不复制 schema engine 或 language matching；topic-rule 模块不读取文件或处理 YAML 异常。
-- 下一步：完成 P2-06 package/API 清单审计；若无遗漏，转入依赖已满足的 P2-08 Legacy 活跃依赖清零或 P2-09 Adapter capability contract，并保留 P2-06 的完整验证证据。
+- 下一步：转入依赖已满足的 P2-08 Legacy 活跃依赖清零或 P2-09 Adapter capability contract，并保留本项完整验证证据。
+
+#### 完成记录 2026-07-12（P2-06 package/API 清单审计）
+
+- 状态：完成
+- Change/提交：`0699bfa` 及前置 P2-06 子提交
+- 已完成：`cc-schema-check`、`cc-verify`、`cc-lint`、`cc-deps` 的稳定领域决策和 `change_docs.py` Finding 数据模型/解析器均有 `harness_runtime` package API；CLI 保留 Context、文件/资产加载、跨文档编排、subprocess、渲染和退出码。兼容重导出、JSON/text/Issue 顺序、临时 Context 和 extensionless loader 调用面均保留。
+- 验证：`rtk pytest -q` → `675 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 全部 Harness 子检查通过；新增领域聚焦回归 → `20 passed`；`rtk git diff --check` → `passed`。
+- 剩余：无（后续对 CLI 适配层的重构不再归入 P2-06）。
+- 风险/决策：不把 I/O、Context、subprocess 或渲染硬塞进 package；保留 extensionless CLI 的公开/嵌入 helper 重导出以避免兼容回归。
+- 下一步：P2-08 Legacy 活跃依赖清零。
 
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
