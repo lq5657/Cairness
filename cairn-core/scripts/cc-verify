@@ -39,6 +39,7 @@ from harness_runtime.verification_git import (
     has_harness_changes,
 )
 from harness_runtime.verification_harness_plan import harness_step_plan
+from harness_runtime.verification_auxiliary_plan import auxiliary_step_plan
 from harness_runtime.verification_results import (
     collect_issues_from_json as _collect_issues_from_json,
     fingerprints,
@@ -114,8 +115,6 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             }
         )
     if not args.project_only:
-        cc_role_check = claude_root / "scripts" / "cc-role-check"
-        cc_wave_plan = claude_root / "scripts" / "cc-wave-plan"
         knowledge_index_path = project_root / ".cairness" / "knowledge" / "index.md"
         sync_target = change_dir if change_dir and change_dir.exists() else changes_root
         plans = harness_step_plan(
@@ -141,23 +140,33 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                     collect_issues=plan.collect_issues,
                 )
             )
-        if args.command:
-            command = [str(cc_role_check), "--command", args.command]
-            if args.change:
-                command.extend(["--change", args.change])
-            results.append(run_step("cc-role-check", "harness", command, project_root))
-
-        if args.check_review_coverage and args.change and change_dir and change_dir.exists():
-            results.append(check_review_coverage(project_root, args.change))
-
-        if args.check_finding_locations and args.change and change_dir and change_dir.exists():
-            results.append(check_finding_locations(project_root, args.change))
-
-        if args.check_risk_triage and args.change and change_dir and change_dir.exists():
-            results.append(check_risk_triage(project_root, args.change))
-
-        if args.check_wave_plan and args.change and change_dir and change_dir.exists():
-            results.append(run_step("cc-wave-plan-check", "project", [str(cc_wave_plan), "--check", "--change", args.change], project_root, collect_issues=True))
+        for plan in auxiliary_step_plan(
+            framework_root=claude_root,
+            project_root=project_root,
+            command=args.command,
+            change_id=args.change,
+            change_dir_exists=bool(change_dir and change_dir.exists()),
+            check_review_coverage=args.check_review_coverage,
+            check_finding_locations=args.check_finding_locations,
+            check_risk_triage=args.check_risk_triage,
+            check_wave_plan=args.check_wave_plan,
+        ):
+            if plan.result_constructor == "run_step":
+                results.append(
+                    run_step(
+                        plan.name,
+                        plan.kind,
+                        plan.command,
+                        plan.cwd,
+                        collect_issues=plan.collect_issues,
+                    )
+                )
+            elif plan.result_constructor == "check_review_coverage":
+                results.append(check_review_coverage(project_root, args.change))
+            elif plan.result_constructor == "check_finding_locations":
+                results.append(check_finding_locations(project_root, args.change))
+            elif plan.result_constructor == "check_risk_triage":
+                results.append(check_risk_triage(project_root, args.change))
 
     profile_changed = (
         resolution.profile is not None

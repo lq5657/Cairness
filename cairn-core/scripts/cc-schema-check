@@ -61,6 +61,8 @@ from harness_runtime.schema_result_contract_issues import (
     RESULT_STATUS_VALUES,
     result_contract_issues,
 )
+from harness_runtime.schema_interaction_contract_issues import interaction_contract_issues
+from harness_runtime.schema_subagent_contract_issues import subagent_runtime_contract_issues
 from harness_runtime.schema_documents import load_json_file, load_yaml_file, read
 from harness_runtime.schema_validation import (
     json_type_name,
@@ -127,147 +129,7 @@ TOPIC_RULE_REQUIRED_SECTIONS = [
 ]
 TOPIC_RULE_RATIONALIZATION_HEADER = "| Rationalization | Why It Is Invalid | Required Response |"
 TOPIC_RULE_YAML_REQUIRED_KEYS = ["id", "description", "trigger", "skip", "process", "anti_rationalization", "red_flags", "checks"]
-SUBAGENT_OUTPUT_FORMAT = "structured_subagent_result"
-SUBAGENT_OUTPUT_REQUIRED_FIELDS = {"summary", "scope", "writes", "evidence", "risks", "merge_notes"}
-SUBAGENT_QUALITY_REQUIRED = {
-    "min_evidence_items": 1,
-    "min_risk_items": 1,
-    "require_concrete_references": True,
-    "allow_freeform": False,
-}
-INTERACTION_CONTRACT_COMMANDS = {
-    "cc-propose",
-    "cc-archive",
-    "cc-promote-audit",
-    "cc-apply",
-    "cc-fix",
-    "cc-review",
-    "cc-discuss",
-}
-INTERACTION_REQUIREMENTS = {
-    "cc-propose": {
-        ("clarification", "presentation"): {
-            "ask_numbered_questions_with_expected_answer_shape",
-            "present_decision_options_with_recommendation_and_tradeoffs",
-            "wait_for_user_answer_before_freezing_scope",
-        },
-        ("clarification", "blocking_behavior"): {
-            "do_not_freeze_scope_or_present_hard_gate_until_blockers_resolved",
-        },
-        ("hard_gate", "presentation"): {
-            "show_confirmable_items_scope_acceptance_confirmed_risk_decisions_residual_risks_validation_mapping",
-            "ask_user_to_choose_confirm_revise_or_block",
-        },
-        ("hard_gate", "confirmation_options"): {
-            "confirm_scope_and_apply_next",
-            "request_revision",
-            "block_until_clarified",
-        },
-        ("hard_gate", "blocking_behavior"): {
-            "do_not_enter_apply_without_explicit_user_confirmation",
-        },
-    },
-    "cc-archive": {
-        ("selection", "presentation"): {
-            "ask_user_to_choose_knowledge_decision",
-        },
-        ("selection", "confirmation_options"): {
-            "no_knowledge_compounding",
-            "create_new_knowledge",
-            "update_existing_knowledge",
-        },
-        ("selection", "blocking_behavior"): {
-            "do_not_mark_done_until_knowledge_decision_explicit",
-        },
-    },
-    "cc-promote-audit": {
-        ("selection", "presentation"): {
-            "ask_user_to_choose_findings_or_split_scope_when_ambiguous",
-        },
-        ("selection", "confirmation_options"): {
-            "promote_selected_findings",
-            "split_into_multiple_changes",
-            "block_until_scope_clarified",
-        },
-        ("selection", "blocking_behavior"): {
-            "do_not_write_bridge_note_for_ambiguous_selection",
-        },
-    },
-    "cc-apply": {
-        ("hard_gate", "presentation"): {
-            "show_missing_or_stale_hard_gate_fields",
-            "ask_user_to_return_to_confirm_revise_or_block_apply",
-        },
-        ("hard_gate", "confirmation_options"): {
-            "return_to_cc_propose_confirm_scope",
-            "revise_spec_or_tasks",
-            "block_apply",
-        },
-        ("hard_gate", "blocking_behavior"): {
-            "do_not_start_apply_until_hard_gate_current",
-        },
-    },
-    "cc-fix": {
-        ("clarification", "presentation"): {
-            "ask_numbered_questions_for_unclear_finding",
-            "wait_for_user_answer_before_fixing",
-        },
-        ("clarification", "blocking_behavior"): {
-            "do_not_implement_unclear_finding",
-        },
-        ("confirmation", "presentation"): {
-            "ask_user_only_when_accept_reframe_or_scope_expansion_needed",
-        },
-        ("confirmation", "confirmation_options"): {
-            "continue_with_minimal_fix_after_scope_confirmation",
-            "mark_finding_accepted",
-            "request_review_update",
-        },
-        ("confirmation", "blocking_behavior"): {
-            "do_not_mark_fixed_or_accepted_without_explicit_basis",
-        },
-    },
-    "cc-review": {
-        ("confirmation", "presentation"): {
-            "show_acceptance_candidate_reason_impact_and_fix_alternative",
-            "ask_user_to_choose_fix_accept_or_revise_review",
-        },
-        ("confirmation", "confirmation_options"): {
-            "keep_finding_open_and_run_cc_fix",
-            "mark_finding_accepted",
-            "request_review_revision",
-        },
-        ("confirmation", "blocking_behavior"): {
-            "do_not_mark_finding_accepted_or_recommend_archive_without_explicit_user_choice",
-        },
-    },
-    "cc-discuss": {
-        ("clarification", "presentation"): {
-            "present_research_findings_before_asking_questions",
-            "challenge_user_assumptions_with_evidence_and_alternatives",
-            "offer_better_suggestions_when_user_path_has_known_pitfalls",
-        },
-        ("selection", "presentation"): {
-            "show_routing_options_with_context",
-        },
-        ("selection", "confirmation_options"): {
-            "create_new_project_via_cc_new_project",
-            "create_change_proposal_via_cc_propose",
-        },
-        ("selection", "blocking_behavior"): {
-            "do_not_exit_without_routing_decision",
-        },
-    },
-}
 READSET_GENERATOR = ".claude/scripts/cc-readset"
-SUBAGENT_REQUIRED_COMMANDS = {
-    "cc-apply",
-    "cc-review",
-    "cc-fix",
-    "cc-test",
-    "cc-inspect-codebase",
-    "cc-discuss",
-}
 ANTI_RATIONALIZATION_COMMANDS = {
     "cc-propose",
     "cc-apply",
@@ -276,7 +138,6 @@ ANTI_RATIONALIZATION_COMMANDS = {
     "cc-test",
     "cc-discuss",
 }
-READ_ONLY_SUBAGENT_MODES = {"read_only", "proposal_only"}
 ROLE_CONTRACTS_PATH = ".claude/docs/maintenance/legacy/rules/role-contracts.md"
 
 
@@ -717,109 +578,11 @@ def validate_subagent_runtime_contract(
     issues: list[Issue],
     registered_roles: set[str],
 ) -> None:
-    subagents = manifest.get("subagents")
-    if command in SUBAGENT_REQUIRED_COMMANDS:
-        if not isinstance(subagents, dict) or subagents.get("enabled") is not True:
-            add(issues, "E_SCHEMA122", path, f"{command} must declare enabled subagents")
-            return
-    if not isinstance(subagents, dict):
-        return
-
-    agents = subagents.get("agents")
-    if not isinstance(agents, list):
-        add(issues, "E_SCHEMA185", path, f"{command} subagents must declare agents inline or through subagents.contract")
-        return
-    parent_writes = {normalize_declared_path(item) for item in string_list(manifest.get("writes"))}
-    merge_requirements = string_list(subagents.get("merge_requirements"))
-    if subagents.get("write_scope_policy") != "parent_writes_subset":
-        add(issues, "E_SCHEMA155", path, f"{command} subagents.write_scope_policy must be parent_writes_subset")
-    expected_parallel_policy = expected_subagent_parallel_policy(agents)
-    if subagents.get("parallel_policy") != expected_parallel_policy:
-        add(
-            issues,
-            "E_SCHEMA156",
-            path,
-            f"{command} subagents.parallel_policy must be {expected_parallel_policy}",
+    issues.extend(
+        subagent_runtime_contract_issues(
+            command, manifest, path, registered_roles
         )
-    if not any("main_flow" in requirement for requirement in merge_requirements):
-        add(issues, "E_SCHEMA160", path, f"{command} subagents.merge_requirements must include main_flow ownership")
-
-    names: set[str] = set()
-    scoped_write_owners: dict[str, str] = {}
-    for idx, agent in enumerate(agents):
-        if not isinstance(agent, dict):
-            continue
-        name = agent.get("name")
-        if isinstance(name, str):
-            if name in names:
-                add(issues, "E_SCHEMA123", path, f"subagents.agents[{idx}] duplicate name {name}")
-            names.add(name)
-        mode = agent.get("mode")
-        role = agent.get("role")
-        if isinstance(role, str) and registered_roles and role not in registered_roles:
-            add(issues, "E_SCHEMA154", path, f"subagent {name} role {role} is not registered in role-contracts")
-        output_contract = agent.get("output_contract")
-        if not isinstance(output_contract, dict):
-            add(issues, "E_SCHEMA162", path, f"subagent {name} must declare output_contract")
-        else:
-            if output_contract.get("format") != SUBAGENT_OUTPUT_FORMAT:
-                add(issues, "E_SCHEMA162", path, f"subagent {name} output_contract.format must be {SUBAGENT_OUTPUT_FORMAT}")
-            output_fields = set(string_list(output_contract.get("required_fields")))
-            if output_fields != SUBAGENT_OUTPUT_REQUIRED_FIELDS:
-                add(
-                    issues,
-                    "E_SCHEMA163",
-                    path,
-                    f"subagent {name} output_contract.required_fields must be {sorted(SUBAGENT_OUTPUT_REQUIRED_FIELDS)}",
-                )
-            evidence_quality = output_contract.get("evidence_quality")
-            if not isinstance(evidence_quality, dict):
-                add(issues, "E_SCHEMA175", path, f"subagent {name} output_contract must declare evidence_quality")
-            else:
-                for key, expected in SUBAGENT_QUALITY_REQUIRED.items():
-                    if evidence_quality.get(key) != expected:
-                        add(issues, "E_SCHEMA176", path, f"subagent {name} evidence_quality.{key} must be {expected!r}")
-        writes = agent.get("writes")
-        if mode in READ_ONLY_SUBAGENT_MODES and isinstance(writes, list) and writes:
-            add(issues, "E_SCHEMA124", path, f"subagent {name} mode {mode} must not declare writes")
-        if mode == "scoped_write" and isinstance(writes, list) and not writes:
-            add(issues, "E_SCHEMA125", path, f"subagent {name} mode scoped_write must declare writes")
-        if mode != "scoped_write" or not isinstance(writes, list):
-            continue
-        for write in string_list(writes):
-            normalized_write = normalize_declared_path(write)
-            if normalized_write not in parent_writes:
-                add(
-                    issues,
-                    "E_SCHEMA157",
-                    path,
-                    f"subagent {name} write {write} is outside parent command writes",
-                )
-            if is_final_artifact_write(write):
-                add(
-                    issues,
-                    "E_SCHEMA158",
-                    path,
-                    f"subagent {name} must not write final artifact {write}",
-                )
-            previous_owner = scoped_write_owners.get(normalized_write)
-            if previous_owner is not None:
-                add(
-                    issues,
-                    "E_SCHEMA159",
-                    path,
-                    f"subagent {name} overlaps scoped write {write} with {previous_owner}",
-                )
-            scoped_write_owners[normalized_write] = str(name)
-    if len(scoped_write_owners) > 1 and not any(
-        "disjoint" in requirement or "parallel" in requirement for requirement in merge_requirements
-    ):
-        add(
-            issues,
-            "E_SCHEMA161",
-            path,
-            f"{command} subagents.merge_requirements must declare disjoint parallel write handling",
-        )
+    )
 
 
 def effective_result_contract(
@@ -861,36 +624,7 @@ def validate_result_contract(
 
 
 def validate_interaction_contract(command: str, manifest: dict[str, Any], path: Path, issues: list[Issue]) -> None:
-    if command not in INTERACTION_CONTRACT_COMMANDS:
-        return
-    contract = manifest.get("interaction_contract")
-    if not isinstance(contract, dict):
-        add(issues, "E_SCHEMA164", path, f"{command} must declare interaction_contract")
-        return
-    if contract.get("mode") != "interactive_required":
-        add(issues, "E_SCHEMA165", path, f"{command} interaction_contract.mode must be interactive_required")
-
-    section_names = {"clarification", "hard_gate", "confirmation", "selection"}
-    if not any(isinstance(contract.get(section), dict) for section in section_names):
-        add(issues, "E_SCHEMA166", path, f"{command} interaction_contract must declare at least one interaction section")
-
-    requirements = INTERACTION_REQUIREMENTS.get(command, {})
-    for (section_name, field), required_values in requirements.items():
-        section = contract.get(section_name)
-        if not isinstance(section, dict):
-            add(issues, "E_SCHEMA167", path, f"{command} interaction_contract.{section_name} must be an object")
-            continue
-        if section_name == "clarification" and section.get("resolution_required_before_ready") is not True:
-            add(
-                issues,
-                "E_SCHEMA168",
-                path,
-                f"{command} {section_name}.resolution_required_before_ready must be true",
-            )
-        actual_values = set(string_list(section.get(field)))
-        missing = sorted(required_values - actual_values)
-        if missing:
-            add(issues, "E_SCHEMA169", path, f"{command} {section_name}.{field} missing {missing}")
+    issues.extend(interaction_contract_issues(command, manifest, path))
 
 
 def validate_runtime_command_references(

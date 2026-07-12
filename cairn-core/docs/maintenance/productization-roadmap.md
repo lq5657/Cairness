@@ -1239,6 +1239,16 @@ CLI 脚本最终只负责参数解析、调用 service、渲染和退出码。
 - 风险/决策：Harness plan 只接收调用方解析后的环境/文件状态，不自行执行 IO；result contract profile 加载/merge 仍留 adapter；test-spec 保留 intentional string metadata 与文本匹配兼容。
 - 下一步：提取 subagent/interaction contract Issue 决策和 `cc-lint` runtime manifest lint，再评估 `cc-verify` 剩余 orchestration 是否值得继续拆分。
 
+#### 实施记录 2026-07-12（Runtime lint、Schema contract Issues 与 Verification auxiliary plan）
+
+- 状态：部分完成
+- Change/提交：`P2-06`（由本子任务的 Git 提交记录）
+- 已完成：`harness_runtime.runtime_manifest_lint` 接管 runtime core 文本声明检查；`harness_runtime.schema_subagent_contract_issues` 与 `schema_interaction_contract_issues` 接管 subagent/interaction contract 的 canonical Issue 决策；`harness_runtime.verification_auxiliary_plan` 接管 role/review/finding/risk/wave 可选步骤计划。三个 CLI 继续保留 Context、文件与 profile/role 加载、subprocess、Issue/result 渲染和退出码。
+- 验证：四个边界均由独立 package 测试覆盖，并保持 CLI 兼容导出、历史消息/Issue 顺序、change directory gate 和 wave Issue 收集合同；最终全量与 Harness 验证见本子任务完成验证。
+- 剩余：`cc-lint` governance/runtime command lint、`cc-schema-check` runtime reference 与 manifest validator 编排，以及 `cc-verify` project capability orchestration 仍在 CLI；P2-06 保持部分完成。
+- 风险/决策：纯模块不读取文件、不解析 Context、不执行 subprocess；保留 interaction clarification 的逐字段 `E_SCHEMA168` 重复诊断、subagent write overlap 顺序和 role check 在 change 目录缺失时仍执行的既有语义。
+- 下一步：并行选择三个不共享入口的稳定域继续小批提取，完成后重新评估 CLI 剩余职责与 P2-06 退出条件。
+
 ### 9.9 `P2-07` 只读 Dashboard/TUI
 
 **状态**：待开始
