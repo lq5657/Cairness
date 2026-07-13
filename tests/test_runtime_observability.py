@@ -21,6 +21,21 @@ def _verify():
     return SourceFileLoader("_p310_verify", str(SCRIPTS / "cc-verify")).load_module()
 
 
+def _runtime_event(
+    *, status: str = "passed", mode: str = "harness-only", duration_ms: int = 17
+):
+    return {
+        "schema_version": 1,
+        "event_type": "verification_run",
+        "occurred_at": "2026-07-13T00:00:00+00:00",
+        "command": "cc-verify",
+        "status": status,
+        "mode": mode,
+        "duration_ms": duration_ms,
+        "result_counts": {status: 1},
+    }
+
+
 def test_runtime_event_writer_records_sanitized_verify_result(tmp_path: Path):
     from harness_runtime.observability import (
         discover_runtime_events,
@@ -145,6 +160,13 @@ def test_stats_reports_automatic_collection_completeness():
         "automatic_runtime_events": 1,
         "automatic_verification_runs": 1,
     }
+    assert report["verification"] == {
+        "total_runs": 1,
+        "status_counts": {"passed": 1},
+        "pass_rate": 1.0,
+        "average_duration_ms": 17,
+        "mode_counts": {"harness-only": 1},
+    }
 
 
 def test_stats_readable_output_includes_collection_completeness(capsys):
@@ -168,11 +190,14 @@ def test_stats_readable_output_includes_collection_completeness(capsys):
 
     stats.print_readable(report)
 
-    assert "采集完整度: partial" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "采集完整度: partial" in output
+    assert "自动验证通过率: 100.0%" in output
+    assert "自动验证平均耗时: 17 ms" in output
 
 
 def test_dashboard_exposes_automatic_runtime_event_completeness(tmp_path: Path):
-    from harness_runtime.dashboard import build_dashboard
+    from harness_runtime.dashboard import build_dashboard, render_dashboard_html
 
     observability = tmp_path / ".cairness/observability"
     observability.mkdir(parents=True)
@@ -201,3 +226,99 @@ def test_dashboard_exposes_automatic_runtime_event_completeness(tmp_path: Path):
         "lifecycle_events": 0,
         "status": "partial",
     }
+    assert report["verification"] == {
+        "total_runs": 1,
+        "status_counts": {"passed": 1},
+        "pass_rate": 1.0,
+        "average_duration_ms": 17,
+        "mode_counts": {"harness-only": 1},
+    }
+    html = render_dashboard_html(report)
+    assert "pass rate 100.0%" in html
+    assert "average duration 17 ms" in html
+
+
+def test_verification_metrics_summarize_automatic_runs():
+    from harness_runtime.observability import verification_metrics
+
+    events = [
+        _runtime_event(status="passed", mode="harness-only", duration_ms=10),
+        _runtime_event(status="failed", mode="full", duration_ms=20),
+        _runtime_event(status="passed", mode="harness-only", duration_ms=30),
+        {"event_type": "unrelated", "status": "passed", "duration_ms": 999},
+    ]
+
+    assert verification_metrics(events) == {
+        "total_runs": 3,
+        "status_counts": {"failed": 1, "passed": 2},
+        "pass_rate": 0.6667,
+        "average_duration_ms": 20,
+        "mode_counts": {"full": 1, "harness-only": 2},
+    }
+
+
+def test_verification_metrics_do_not_treat_missing_samples_as_zero():
+    from harness_runtime.observability import verification_metrics
+
+    assert verification_metrics([]) == {
+        "total_runs": 0,
+        "status_counts": {},
+        "pass_rate": None,
+        "average_duration_ms": None,
+        "mode_counts": {},
+    }
+
+
+def test_gate_stats_json_exposes_automatic_verification_metrics(
+    harness_project: Path, run_harness_script
+):
+    observability = harness_project / ".cairness/observability"
+    observability.mkdir(parents=True)
+    (observability / "runtime-events.jsonl").write_text(
+        "\n".join(
+            json.dumps(event)
+            for event in [
+                _runtime_event(status="passed", duration_ms=10),
+                _runtime_event(status="failed", mode="full", duration_ms=30),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    completed = run_harness_script(harness_project, "cc-gate-stats", "--json")
+
+    assert completed.returncode == 0, completed.stderr
+    report = json.loads(completed.stdout)
+    assert report["collection"] == {
+        "status": "partial",
+        "lifecycle_events": 0,
+        "automatic_runtime_events": 2,
+        "automatic_verification_runs": 2,
+    }
+    assert report["verification"] == {
+        "total_runs": 2,
+        "status_counts": {"failed": 1, "passed": 1},
+        "pass_rate": 0.5,
+        "average_duration_ms": 20,
+        "mode_counts": {"full": 1, "harness-only": 1},
+    }
+
+
+def test_gate_stats_readable_output_includes_verification_summary(
+    harness_project: Path, run_harness_script
+):
+    observability = harness_project / ".cairness/observability"
+    observability.mkdir(parents=True)
+    (observability / "runtime-events.jsonl").write_text(
+        json.dumps(_runtime_event()) + "\n",
+        encoding="utf-8",
+    )
+
+    completed = run_harness_script(harness_project, "cc-gate-stats")
+
+    assert completed.returncode == 0, completed.stderr
+    assert "采集完整度: partial" in completed.stdout
+    assert "自动 verification runs: 1" in completed.stdout
+    assert "通过率: 100.0%" in completed.stdout
+    assert "平均耗时: 17 ms" in completed.stdout

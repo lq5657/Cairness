@@ -104,3 +104,46 @@ def collection_summary(
         "automatic_runtime_events": len(runtime_events),
         "automatic_verification_runs": automatic_runs,
     }
+
+
+def verification_metrics(
+    runtime_events: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize automatic verification events without inventing missing samples."""
+
+    runs = [
+        item for item in runtime_events if item.get("event_type") == "verification_run"
+    ]
+    status_counts = Counter(
+        item.get("status")
+        if isinstance(item.get("status"), str) and item.get("status")
+        else "unknown"
+        for item in runs
+    )
+    mode_counts = Counter(
+        item.get("mode")
+        if isinstance(item.get("mode"), str) and item.get("mode")
+        else "unknown"
+        for item in runs
+    )
+    durations = [
+        item["duration_ms"]
+        for item in runs
+        if isinstance(item.get("duration_ms"), (int, float))
+        and not isinstance(item.get("duration_ms"), bool)
+        and item["duration_ms"] >= 0
+    ]
+    total_runs = len(runs)
+    return {
+        "total_runs": total_runs,
+        "status_counts": dict(sorted(status_counts.items())),
+        "pass_rate": (
+            round(status_counts.get("passed", 0) / total_runs, 4)
+            if total_runs
+            else None
+        ),
+        "average_duration_ms": (
+            round(sum(durations) / len(durations)) if durations else None
+        ),
+        "mode_counts": dict(sorted(mode_counts.items())),
+    }

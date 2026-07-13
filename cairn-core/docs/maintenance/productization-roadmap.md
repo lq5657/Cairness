@@ -1737,10 +1737,11 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 **实施记录（2026-07-13）**：
 
 - 已完成首批本地自动采集：`cc-verify` 在目标项目的 `.cairness/observability/runtime-events.jsonl` 追加经过清洗的 verification run 摘要，包含状态、模式、耗时和子步骤状态计数；不记录 prompt、代码、路径、change ID、token 内容或 PII。
-- `cc-stats` 与只读 Dashboard 已消费该流，并公开 lifecycle event 与 automatic runtime event 的数量、verification run 数和 `not_collected|partial|complete` 完整度。
+- `cc-stats`、`cc-gate-stats` 与只读 Dashboard 已消费同一自动事件流，并公开 lifecycle event 与 automatic runtime event 的数量、verification run 数和 `not_collected|partial|complete` 完整度。
+- 三个消费者共享 `harness_runtime.observability` 的 verification 指标定义：总运行数、状态分布、模式分布、通过率和平均耗时；无样本时通过率与平均耗时为 `null`/“无样本”，不把缺失数据解释为 0。
 - `DO_NOT_TRACK=1|true|yes` 禁止写入；框架源码仓自豁免，避免 Cairness 开发本身污染其 `.cairness`。写入错误不改变 `cc-verify` gate 结论。
-- 验证：runtime observability、stats、Dashboard 与 verification 聚焦回归通过；全仓 `941 passed`，`git diff --check`、Python `py_compile` 和相关 Ruff 检查通过。
-- 剩余：扩展自动采集到其他稳定运行器，补齐完整度定义对应的指标计算；远程匿名遥测仍未实现，必须独立评审并保持 CI 默认关闭。
+- 验证：runtime observability 契约 `12 passed`，相关 stats、gate stats、Dashboard 与上下文回归 `122 passed`；全仓 `945 passed`，`git diff --check`、Python `py_compile` 和相关 Ruff 检查通过。
+- 剩余：扩展自动采集到其他稳定运行器，补齐首个成功 change、命令阻塞、CI 专属通过率和 upgrade failure 等指标所需的数据；远程匿名遥测仍未实现，必须独立评审并保持 CI 默认关闭。
 
 ## 11. 跨阶段依赖与推荐执行顺序
 
