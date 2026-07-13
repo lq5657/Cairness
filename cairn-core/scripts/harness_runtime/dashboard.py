@@ -13,6 +13,7 @@ from harness_runtime.deps import discover_changes
 from harness_runtime.observability import (
     collection_summary,
     discover_runtime_events,
+    upgrade_metrics,
     verification_metrics,
 )
 
@@ -91,6 +92,7 @@ def build_dashboard(project_root: Path) -> dict[str, Any]:
         "gates": gates,
         "observability": collection_summary(events, runtime_events),
         "verification": verification_metrics(runtime_events),
+        "upgrade": upgrade_metrics(runtime_events),
         "diagnostics": diagnostics,
     }
 
@@ -132,6 +134,9 @@ def render_dashboard_html(report: dict[str, Any]) -> str:
     pass_rate_label = f"{pass_rate:.1%}" if isinstance(pass_rate, (int, float)) else "not collected"
     average_duration = verification.get("average_duration_ms")
     duration_label = f"{average_duration} ms" if isinstance(average_duration, (int, float)) else "not collected"
+    upgrade = report.get("upgrade", {})
+    failure_rate = upgrade.get("failure_rate")
+    failure_rate_label = f"{failure_rate:.1%}" if isinstance(failure_rate, (int, float)) else "not collected"
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,">
 <title>Cairness Dashboard</title><style>
@@ -142,7 +147,7 @@ ul{{padding-left:1.3rem}}li{{margin:.45rem 0}}small,.muted{{color:#57606a}}span{
 <section><h2>Active changes</h2><ul>{changes}</ul></section>
 <section><h2>Review findings</h2><ul>{findings}</ul></section>
 <section><h2>Verification and events</h2><ul>{events}</ul><h3>Gates</h3><ul>{gates}</ul></section>
-<section><h2>Collection coverage</h2><p>{esc(observability.get('status', 'not_collected'))}: automatic runs {esc(observability.get('automatic_verification_runs', 0))}, lifecycle events {esc(observability.get('lifecycle_events', 0))}; pass rate {esc(pass_rate_label)}, average duration {esc(duration_label)}</p></section>
+<section><h2>Collection coverage</h2><p>{esc(observability.get('status', 'not_collected'))}: automatic runs {esc(observability.get('automatic_verification_runs', 0))}, upgrade runs {esc(observability.get('automatic_upgrade_runs', 0))}, lifecycle events {esc(observability.get('lifecycle_events', 0))}; pass rate {esc(pass_rate_label)}, average duration {esc(duration_label)}, upgrade failure rate {esc(failure_rate_label)}</p></section>
 <section><h2>Diagnostics</h2><ul>{diagnostics}</ul></section></body></html>"""
 
 

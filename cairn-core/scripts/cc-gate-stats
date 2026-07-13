@@ -33,6 +33,7 @@ from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.observability import (
     collection_summary,
     discover_runtime_events,
+    upgrade_metrics,
     verification_metrics,
 )
 
@@ -380,7 +381,7 @@ def print_trend(
 
 
 def print_verification_summary(
-    collection: dict[str, Any], verification: dict[str, Any]
+    collection: dict[str, Any], verification: dict[str, Any], upgrade: dict[str, Any]
 ) -> None:
     pass_rate = verification["pass_rate"]
     average_duration = verification["average_duration_ms"]
@@ -393,6 +394,11 @@ def print_verification_summary(
     mode_label = ", ".join(
         f"{mode}={count}" for mode, count in verification["mode_counts"].items()
     ) or "无样本"
+    failure_rate = upgrade["failure_rate"]
+    failure_rate_label = f"{failure_rate:.1%}" if failure_rate is not None else "无样本"
+    outcome_label = ", ".join(
+        f"{outcome}={count}" for outcome, count in upgrade["outcome_counts"].items()
+    ) or "无样本"
     print(
         "── 自动验证观测 ──\n"
         f"  采集完整度: {collection['status']}\n"
@@ -401,6 +407,9 @@ def print_verification_summary(
         f"  平均耗时: {duration_label}\n"
         f"  状态分布: {status_label}\n"
         f"  模式分布: {mode_label}\n"
+        f"  自动 upgrade runs: {upgrade['total_runs']}\n"
+        f"  升级失败率: {failure_rate_label}\n"
+        f"  升级结果分布: {outcome_label}\n"
     )
 
 
@@ -442,6 +451,7 @@ def main() -> None:
     degraded = find_degraded(gates, gate_config)
     collection = collection_summary(events, runtime_events)
     verification = verification_metrics(runtime_events)
+    upgrade = upgrade_metrics(runtime_events)
 
     if args.json:
         output: dict[str, Any] = {
@@ -479,6 +489,7 @@ def main() -> None:
             "config": gate_config,
             "collection": collection,
             "verification": verification,
+            "upgrade": upgrade,
         }
         if args.gates:
             print(json.dumps(output["gates"], indent=2, ensure_ascii=False))
@@ -505,7 +516,7 @@ def main() -> None:
                 f"  分析范围: {len(reviews)} 个 change, "
                 f"{sum(len(r['findings']) for r in reviews)} 个 finding\n"
             )
-            print_verification_summary(collection, verification)
+            print_verification_summary(collection, verification, upgrade)
             print_gates(gates)
             print()
             print_degraded(degraded)

@@ -31,6 +31,7 @@ from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.observability import (
     collection_summary,
     discover_runtime_events,
+    upgrade_metrics,
     verification_metrics,
 )
 
@@ -252,6 +253,7 @@ def compute_stats(
         },
         "collection": collection_summary(events, runtime_events),
         "verification": verification_metrics(runtime_events),
+        "upgrade": upgrade_metrics(runtime_events),
     }
 
 
@@ -295,17 +297,27 @@ def print_readable(stats: dict[str, Any]) -> None:
 
     collection = stats["collection"]
     verification = stats["verification"]
+    upgrade = stats["upgrade"]
     pass_rate = verification["pass_rate"]
     average_duration = verification["average_duration_ms"]
     pass_rate_label = f"{pass_rate:.1%}" if pass_rate is not None else "无样本"
     duration_label = f"{average_duration} ms" if average_duration is not None else "无样本"
+    failure_rate = upgrade["failure_rate"]
+    failure_rate_label = f"{failure_rate:.1%}" if failure_rate is not None else "无样本"
+    upgrade_duration = upgrade["average_duration_ms"]
+    upgrade_duration_label = (
+        f"{upgrade_duration} ms" if upgrade_duration is not None else "无样本"
+    )
     print(
         "── 采集完整度 ──\n"
         f"  采集完整度: {collection['status']}\n"
         f"  自动 verification runs: {collection['automatic_verification_runs']}\n"
+        f"  自动 upgrade runs: {collection['automatic_upgrade_runs']}\n"
         f"  Lifecycle events: {collection['lifecycle_events']}\n"
         f"  自动验证通过率: {pass_rate_label}\n"
         f"  自动验证平均耗时: {duration_label}\n"
+        f"  升级失败率: {failure_rate_label}\n"
+        f"  升级平均耗时: {upgrade_duration_label}\n"
     )
 
     print("── 命令使用分布 ──")

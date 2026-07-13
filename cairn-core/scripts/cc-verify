@@ -271,7 +271,7 @@ def record_runtime_observability(
 
     try:
         record_verification_run(project_root, report, duration_ms=duration_ms)
-    except OSError:
+    except Exception:
         return
 
 

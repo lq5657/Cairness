@@ -27,31 +27,12 @@ def _result_counts(report: Mapping[str, Any]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
-def record_verification_run(
-    project_root: Path,
-    report: Mapping[str, Any],
-    *,
-    duration_ms: int,
-    occurred_at: datetime | None = None,
-) -> bool:
-    """Append one automatic, local-only summary of a ``cc-verify`` execution."""
-
+def _append_runtime_event(project_root: Path, event: Mapping[str, Any]) -> bool:
     if _tracking_disabled():
         return False
     root = Path(project_root).expanduser().resolve()
     if (root / "cairn_install").is_file() and (root / "cairn-core").is_dir():
         return False
-    timestamp = occurred_at or datetime.now(timezone.utc)
-    event = {
-        "schema_version": 1,
-        "event_type": "verification_run",
-        "occurred_at": timestamp.isoformat(),
-        "command": "cc-verify",
-        "status": str(report.get("status", "unknown")),
-        "mode": str(report.get("mode", "unknown")),
-        "duration_ms": max(0, int(duration_ms)),
-        "result_counts": _result_counts(report),
-    }
     path = root / RUNTIME_EVENTS_RELATIVE
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode(
@@ -63,6 +44,54 @@ def record_verification_run(
     finally:
         os.close(descriptor)
     return True
+
+
+def record_verification_run(
+    project_root: Path,
+    report: Mapping[str, Any],
+    *,
+    duration_ms: int,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Append one automatic, local-only summary of a ``cc-verify`` execution."""
+
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    event = {
+        "schema_version": 1,
+        "event_type": "verification_run",
+        "occurred_at": timestamp.isoformat(),
+        "command": "cc-verify",
+        "status": str(report.get("status", "unknown")),
+        "mode": str(report.get("mode", "unknown")),
+        "duration_ms": max(0, int(duration_ms)),
+        "result_counts": _result_counts(report),
+    }
+    return _append_runtime_event(project_root, event)
+
+
+def record_upgrade_run(
+    project_root: Path,
+    *,
+    status: str,
+    outcome: str,
+    duration_ms: int,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Append one sanitized summary of a ``cc-cairn update`` invocation."""
+
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    return _append_runtime_event(
+        project_root,
+        {
+            "schema_version": 1,
+            "event_type": "upgrade_run",
+            "occurred_at": timestamp.isoformat(),
+            "command": "cc-cairn update",
+            "status": str(status),
+            "outcome": str(outcome),
+            "duration_ms": max(0, int(duration_ms)),
+        },
+    )
 
 
 def discover_runtime_events(project_root: Path) -> list[dict[str, Any]]:
@@ -92,9 +121,12 @@ def collection_summary(
     automatic_runs = sum(
         1 for item in runtime_events if item.get("event_type") == "verification_run"
     )
-    if automatic_runs and lifecycle_events:
+    upgrade_runs = sum(
+        1 for item in runtime_events if item.get("event_type") == "upgrade_run"
+    )
+    if automatic_runs and upgrade_runs and lifecycle_events:
         status = "complete"
-    elif automatic_runs or lifecycle_events:
+    elif automatic_runs or upgrade_runs or lifecycle_events:
         status = "partial"
     else:
         status = "not_collected"
@@ -103,6 +135,7 @@ def collection_summary(
         "lifecycle_events": len(lifecycle_events),
         "automatic_runtime_events": len(runtime_events),
         "automatic_verification_runs": automatic_runs,
+        "automatic_upgrade_runs": upgrade_runs,
     }
 
 
@@ -146,4 +179,43 @@ def verification_metrics(
             round(sum(durations) / len(durations)) if durations else None
         ),
         "mode_counts": dict(sorted(mode_counts.items())),
+    }
+
+
+def upgrade_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Summarize update invocations and preserve an explicit no-sample state."""
+
+    runs = [item for item in runtime_events if item.get("event_type") == "upgrade_run"]
+    status_counts = Counter(
+        item.get("status")
+        if isinstance(item.get("status"), str) and item.get("status")
+        else "unknown"
+        for item in runs
+    )
+    outcome_counts = Counter(
+        item.get("outcome")
+        if isinstance(item.get("outcome"), str) and item.get("outcome")
+        else "unknown"
+        for item in runs
+    )
+    durations = [
+        item["duration_ms"]
+        for item in runs
+        if isinstance(item.get("duration_ms"), (int, float))
+        and not isinstance(item.get("duration_ms"), bool)
+        and item["duration_ms"] >= 0
+    ]
+    total_runs = len(runs)
+    return {
+        "total_runs": total_runs,
+        "status_counts": dict(sorted(status_counts.items())),
+        "failure_rate": (
+            round(status_counts.get("failed", 0) / total_runs, 4)
+            if total_runs
+            else None
+        ),
+        "average_duration_ms": (
+            round(sum(durations) / len(durations)) if durations else None
+        ),
+        "outcome_counts": dict(sorted(outcome_counts.items())),
     }

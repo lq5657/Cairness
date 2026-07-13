@@ -78,12 +78,14 @@ cc-help                 # 高频入口
 cc-help --advanced      # 全部底层命令
 ```
 
-只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件和本地自动 verification 运行摘要，并显示采集完整度：
+只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件，以及本地自动记录的 verification/update 运行摘要，并显示采集完整度、验证通过率和升级失败率：
 
 ```bash
 cc-dashboard --root .
 cc-dashboard --root . --json
 ```
+
+自动运行摘要只写入本地 `.cairness/observability/runtime-events.jsonl`，不记录 prompt、代码、路径、change ID 或 PII；该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，统计与 Dashboard 在没有摘要时仍可使用。
 
 ## 环境诊断
 
