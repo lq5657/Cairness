@@ -18,7 +18,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import project_path
 from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.runtime_layout import RuntimeLayout
 
 # 场景分组:按 core.yaml:workflow_order 的注释分组。
 # 与 cc-workflow-gen 的 section banner 同源;新命令加入 core.yaml 时须同步此处,
@@ -56,14 +58,26 @@ def build_signature(command: str, manifest: dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-def build_catalog(framework_root: Path | None = None) -> dict[str, dict[str, Any]]:
+def build_catalog(
+    framework_root: Path | None = None,
+    *,
+    layout: RuntimeLayout | None = None,
+) -> dict[str, dict[str, Any]]:
     """枚举 core.yaml:runtime_commands,逐个读 manifest summary/inputs。"""
     framework_root = framework_root or default_framework_root()
     core = load_yaml(core_path(framework_root))
     runtime_commands = core["runtime_commands"]
     catalog: dict[str, dict[str, Any]] = {}
     for command, rel in runtime_commands.items():
-        manifest = load_yaml(framework_root / rel.removeprefix(".claude/"))
+        manifest_path = project_path(
+            layout.project_root if layout is not None else framework_root.parent,
+            rel,
+            framework_root=framework_root,
+            layout=layout,
+        )
+        if manifest_path is None:
+            raise ValueError(f"unsupported command manifest path: {rel!r}")
+        manifest = load_yaml(manifest_path)
         inputs = manifest.get("inputs", {}) or {}
         catalog[command] = {
             "summary": manifest.get("summary_zh") or manifest.get("summary", ""),
@@ -145,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"E_CONTEXT001 {exc}", file=sys.stderr)
         return 2
 
-    catalog = build_catalog(context.framework_root)
+    catalog = build_catalog(context.framework_root, layout=context.layout)
     if args.json:
         print(
             json.dumps(

@@ -102,3 +102,23 @@ def test_product_profile_cli_apply_json_emits_one_valid_document(tmp_path, monke
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "applied"
     assert payload["profile"]["runtime_profile"] == "strict"
+
+
+def test_product_profile_uses_metadata_selected_framework_root(tmp_path, monkeypatch, capsys):
+    module = _cli_module(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    config = tmp_path / ".agent-x" / "harness.config.yaml"
+    config.parent.mkdir()
+    config.write_text("schema_version: 1\nprofile: standard\n", encoding="utf-8")
+    state = tmp_path / ".cairness"
+    state.mkdir()
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .agent-x\n",
+        encoding="utf-8",
+    )
+
+    module["cmd_profile"](["set", "regulated", "--apply", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "applied"
+    assert config.read_text(encoding="utf-8") == "schema_version: 1\nprofile: strict\n"

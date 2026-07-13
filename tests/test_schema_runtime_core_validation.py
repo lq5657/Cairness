@@ -38,8 +38,8 @@ def test_runtime_command_registration_preserves_issue_order_and_messages(tmp_pat
     core = {
         "migrated_commands": ["cc-good", "cc-missing"],
         "runtime_commands": {
-            "cc-good": ".claude/runtime/commands/cc-good.yaml",
-            "cc-extra": ".claude/runtime/commands/wrong.yaml",
+            "cc-good": "core://runtime/commands/cc-good.yaml",
+            "cc-extra": "core://runtime/commands/wrong.yaml",
         },
     }
 
@@ -59,13 +59,13 @@ def test_runtime_command_registration_preserves_issue_order_and_messages(tmp_pat
             "E_SCHEMA121",
             str(core_path),
             "runtime_commands.cc-extra must be "
-            ".claude/runtime/commands/cc-extra.yaml",
+            "core://runtime/commands/cc-extra.yaml",
         ),
         (
             "E_SCHEMA119",
             str(core_path),
             "runtime_commands.cc-extra references missing path "
-            ".claude/runtime/commands/wrong.yaml",
+            "core://runtime/commands/wrong.yaml",
         ),
     ]
 
@@ -78,8 +78,8 @@ def test_runtime_command_registration_handles_mixed_command_keys(tmp_path):
     core = {
         "migrated_commands": ["cc-zeta"],
         "runtime_commands": {
-            "cc-zeta": ".claude/runtime/commands/cc-zeta.yaml",
-            7: ".claude/runtime/commands/numeric.yaml",
+            "cc-zeta": "core://runtime/commands/cc-zeta.yaml",
+            7: "core://runtime/commands/numeric.yaml",
         },
     }
 
@@ -95,7 +95,7 @@ def test_runtime_command_registration_handles_mixed_command_keys(tmp_path):
         "E_SCHEMA119",
     ]
     assert issues[1].message == (
-        "runtime_commands.7 must be .claude/runtime/commands/7.yaml"
+        "runtime_commands.7 must be core://runtime/commands/7.yaml"
     )
 
 
@@ -111,7 +111,7 @@ def test_runtime_command_registration_uses_active_framework_root(tmp_path):
     core = {
         "migrated_commands": ["cc-good"],
         "runtime_commands": {
-            "cc-good": ".claude/runtime/commands/cc-good.yaml",
+            "cc-good": "core://runtime/commands/cc-good.yaml",
         },
     }
 
@@ -127,6 +127,23 @@ def test_runtime_command_registration_uses_active_framework_root(tmp_path):
     assert issues == []
 
 
+def test_schema_project_path_resolves_logical_roots_with_active_layout(tmp_path):
+    metadata = importlib.import_module("harness_runtime.schema_metadata")
+    framework_root = tmp_path / "installed-framework"
+    state_root = tmp_path / "runtime-state"
+
+    token = metadata.set_path_roots(framework_root, state_root)
+    try:
+        assert metadata.project_path(
+            tmp_path, "core://runtime/commands/cc-good.yaml"
+        ) == framework_root / "runtime" / "commands" / "cc-good.yaml"
+        assert metadata.project_path(
+            tmp_path, "state://changes/example/spec.md"
+        ) == state_root / "changes" / "example" / "spec.md"
+    finally:
+        metadata.reset_path_roots(token)
+
+
 def test_runtime_command_registration_preserves_generated_and_malformed_boundaries(tmp_path):
     validation = importlib.import_module(
         "harness_runtime.schema_runtime_core_validation"
@@ -135,7 +152,7 @@ def test_runtime_command_registration_preserves_generated_and_malformed_boundari
     for core in (
         {
             "migrated_commands": ["cc-generated"],
-            "runtime_commands": {"cc-generated": ".cairness/generated.yaml"},
+            "runtime_commands": {"cc-generated": "state://generated.yaml"},
         },
         {
             "migrated_commands": ["cc-invalid"],

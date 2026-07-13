@@ -23,7 +23,7 @@
     },
     "source_manifest": {
       "type": "string",
-      "pattern": "^\\.claude/runtime/commands/cc-[a-z0-9-]+\\.yaml$"
+      "pattern": "^(core://|\\.claude/)runtime/commands/cc-[a-z0-9-]+\\.yaml$"
     },
     "generated_from": {
       "type": "array",

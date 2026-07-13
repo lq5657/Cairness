@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from change_docs import parse_key_values
+from harness_runtime import project_path as resolve_project_path
 
 
 _PATH_ROOTS: ContextVar[tuple[Path | None, Path | None] | None] = ContextVar(
@@ -69,11 +70,27 @@ def project_path(
     if active_roots is not None:
         framework_root = framework_root or active_roots[0]
         state_root = state_root or active_roots[1]
-    if declared.startswith(".claude/"):
-        return (framework_root or project_root / ".claude") / declared.removeprefix(".claude/")
-    if declared.startswith(".cairness/"):
-        return (state_root or project_root / ".cairness") / declared.removeprefix(".cairness/")
-    return None
+    return resolve_project_path(
+        project_root,
+        declared,
+        framework_root=framework_root,
+        state_root=state_root,
+    )
+
+
+def is_state_path(project_root: Path, declared: Any) -> bool:
+    """Return whether a declaration resolves inside the configured state root."""
+    resolved = project_path(project_root, declared)
+    if resolved is None:
+        return False
+    active_roots = _PATH_ROOTS.get()
+    state_root = active_roots[1] if active_roots is not None else None
+    root = (state_root or project_root / ".cairness").expanduser().resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def normalize_declared_path(value: Any) -> str:

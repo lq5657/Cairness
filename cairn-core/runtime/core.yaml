@@ -1,7 +1,7 @@
 version: 1
 runtime_id: cc-spec-harness-runtime
 
-workflow_definition: .claude/workflows/cc-workflow.yaml
+workflow_definition: core://workflows/cc-workflow.yaml
 
 migrated_commands:
   - cc-new-project
@@ -51,106 +51,106 @@ workflow_order:
 
 
 runtime_commands:
-  cc-new-project: .claude/runtime/commands/cc-new-project.yaml
-  cc-preflight: .claude/runtime/commands/cc-preflight.yaml
-  cc-init: .claude/runtime/commands/cc-init.yaml
-  cc-enrich-context: .claude/runtime/commands/cc-enrich-context.yaml
-  cc-explain-system: .claude/runtime/commands/cc-explain-system.yaml
-  cc-inspect-codebase: .claude/runtime/commands/cc-inspect-codebase.yaml
-  cc-propose: .claude/runtime/commands/cc-propose.yaml
-  cc-apply: .claude/runtime/commands/cc-apply.yaml
-  cc-review: .claude/runtime/commands/cc-review.yaml
-  cc-fix: .claude/runtime/commands/cc-fix.yaml
-  cc-test: .claude/runtime/commands/cc-test.yaml
-  cc-archive: .claude/runtime/commands/cc-archive.yaml
-  cc-promote-audit: .claude/runtime/commands/cc-promote-audit.yaml
-  cc-discuss: .claude/runtime/commands/cc-discuss.yaml
+  cc-new-project: core://runtime/commands/cc-new-project.yaml
+  cc-preflight: core://runtime/commands/cc-preflight.yaml
+  cc-init: core://runtime/commands/cc-init.yaml
+  cc-enrich-context: core://runtime/commands/cc-enrich-context.yaml
+  cc-explain-system: core://runtime/commands/cc-explain-system.yaml
+  cc-inspect-codebase: core://runtime/commands/cc-inspect-codebase.yaml
+  cc-propose: core://runtime/commands/cc-propose.yaml
+  cc-apply: core://runtime/commands/cc-apply.yaml
+  cc-review: core://runtime/commands/cc-review.yaml
+  cc-fix: core://runtime/commands/cc-fix.yaml
+  cc-test: core://runtime/commands/cc-test.yaml
+  cc-archive: core://runtime/commands/cc-archive.yaml
+  cc-promote-audit: core://runtime/commands/cc-promote-audit.yaml
+  cc-discuss: core://runtime/commands/cc-discuss.yaml
 
 runtime_roles:
-  manifest: .claude/runtime/roles.yaml
-  schema: .claude/schemas/runtime-roles.schema.json
+  manifest: core://runtime/roles.yaml
+  schema: core://schemas/runtime-roles.schema.json
 
 runtime_readsets:
-  dir: .claude/runtime/readsets
-  index: .claude/runtime/readsets/index.yaml
-  schema: .claude/schemas/runtime-readset.schema.json
+  dir: core://runtime/readsets
+  index: core://runtime/readsets/index.yaml
+  schema: core://schemas/runtime-readset.schema.json
 
 runtime_protocol:
-  protocol: .claude/runtime/protocol.yaml
-  technology_decisions: .claude/runtime/protocol/technology-decisions.yaml
-  language_profile: .claude/runtime/protocol/language-profile.yaml
-  schema: .claude/schemas/command-protocol.schema.json
-  default_language_profile: .claude/runtime/languages/golang.yaml
+  protocol: core://runtime/protocol.yaml
+  technology_decisions: core://runtime/protocol/technology-decisions.yaml
+  language_profile: core://runtime/protocol/language-profile.yaml
+  schema: core://schemas/command-protocol.schema.json
+  default_language_profile: core://runtime/languages/golang.yaml
 
 legacy_fallback:
-  commands_dir: .claude/docs/maintenance/legacy/commands
-  checkpoints_dir: .claude/docs/maintenance/legacy/checkpoints
+  commands_dir: core://docs/maintenance/legacy/commands
+  checkpoints_dir: core://docs/maintenance/legacy/checkpoints
 
 governance:
-  task_board: .cairness/changes/task-board.md
-  dev_map: .cairness/context/dev-map.md
-  memory_policy: .claude/rules/memory-policy.md
-  subagent_policy: .claude/docs/maintenance/subagent-model.md
+  task_board: state://changes/task-board.md
+  dev_map: state://context/dev-map.md
+  memory_policy: core://rules/memory-policy.md
+  subagent_policy: core://docs/maintenance/subagent-model.md
 
 scripts:
-  verify: .claude/scripts/cc-verify
-  delta: .claude/scripts/cc-delta-check
-  role: .claude/scripts/cc-role-check
-  eval: .claude/scripts/cc-eval
-  readset: .claude/scripts/cc-readset
-  doctor: .claude/scripts/cc-doctor-check
-  event: .claude/scripts/cc-event-check
-  event-write: .claude/scripts/cc-event-write
-  state-transition: .claude/scripts/cc-state-transition
-  behavior: .claude/scripts/cc-behavior-check
-  upgrade: .claude/scripts/cc-upgrade-check
-  topic-trigger: .claude/scripts/cc-topic-trigger
-  stats: .claude/scripts/cc-stats
-  knowledge-check: .claude/scripts/cc-knowledge-check
-  budget-check: .claude/scripts/cc-budget-check
-  deps: .claude/scripts/cc-deps
-  wave-plan: .claude/scripts/cc-wave-plan
-  gate-stats: .claude/scripts/cc-gate-stats
-  help: .claude/scripts/cc-help
+  verify: core://scripts/cc-verify
+  delta: core://scripts/cc-delta-check
+  role: core://scripts/cc-role-check
+  eval: core://scripts/cc-eval
+  readset: core://scripts/cc-readset
+  doctor: core://scripts/cc-doctor-check
+  event: core://scripts/cc-event-check
+  event-write: core://scripts/cc-event-write
+  state-transition: core://scripts/cc-state-transition
+  behavior: core://scripts/cc-behavior-check
+  upgrade: core://scripts/cc-upgrade-check
+  topic-trigger: core://scripts/cc-topic-trigger
+  stats: core://scripts/cc-stats
+  knowledge-check: core://scripts/cc-knowledge-check
+  budget-check: core://scripts/cc-budget-check
+  deps: core://scripts/cc-deps
+  wave-plan: core://scripts/cc-wave-plan
+  gate-stats: core://scripts/cc-gate-stats
+  help: core://scripts/cc-help
 
 topic_rules:
-  verification: .claude/runtime/topic-rules/verification.yaml
-  testing_strategy: .claude/runtime/topic-rules/testing-strategy.yaml
-  change_sizing: .claude/runtime/topic-rules/change-sizing.yaml
-  coding_style: .claude/runtime/topic-rules/coding-style.yaml
-  debugging_workflow: .claude/runtime/topic-rules/debugging-workflow.yaml
-  database_changes: .claude/runtime/topic-rules/database-changes.yaml
-  api_compatibility: .claude/runtime/topic-rules/api-compatibility.yaml
-  configuration: .claude/runtime/topic-rules/configuration.yaml
-  observability: .claude/runtime/topic-rules/observability.yaml
-  release: .claude/runtime/topic-rules/release.yaml
-  security: .claude/runtime/topic-rules/security.yaml
-  source_driven_development: .claude/runtime/topic-rules/source-driven-development.yaml
-  git_workflow: .claude/runtime/topic-rules/git-workflow.yaml
-  interaction_guidance: .claude/runtime/topic-rules/interaction-guidance.yaml
-  knowledge_loading: .claude/runtime/topic-rules/knowledge-loading.yaml
-  gate_effectiveness: .claude/runtime/topic-rules/gate-effectiveness.yaml
-  change_dependencies: .claude/runtime/topic-rules/change-dependencies.yaml
-  spec_code_sync: .claude/runtime/topic-rules/spec-code-sync.yaml
-  go_coding_style: .claude/runtime/topic-rules/go-coding-style.yaml
-  go_concurrency: .claude/runtime/topic-rules/go-concurrency.yaml
-  go_performance: .claude/runtime/topic-rules/go-performance.yaml
-  python_coding_style: .claude/runtime/topic-rules/python-coding-style.yaml
-  python_concurrency: .claude/runtime/topic-rules/python-concurrency.yaml
-  python_performance: .claude/runtime/topic-rules/python-performance.yaml
-  java_coding_style: .claude/runtime/topic-rules/java-coding-style.yaml
-  java_concurrency: .claude/runtime/topic-rules/java-concurrency.yaml
-  java_performance: .claude/runtime/topic-rules/java-performance.yaml
-  typescript_coding_style: .claude/runtime/topic-rules/typescript-coding-style.yaml
-  typescript_concurrency: .claude/runtime/topic-rules/typescript-concurrency.yaml
-  typescript_performance: .claude/runtime/topic-rules/typescript-performance.yaml
-  cpp_coding_style: .claude/runtime/topic-rules/cpp-coding-style.yaml
-  cpp_concurrency: .claude/runtime/topic-rules/cpp-concurrency.yaml
-  cpp_performance: .claude/runtime/topic-rules/cpp-performance.yaml
-  discussion_assumptions_mode: .claude/runtime/topic-rules/discussion-assumptions-mode.yaml
+  verification: core://runtime/topic-rules/verification.yaml
+  testing_strategy: core://runtime/topic-rules/testing-strategy.yaml
+  change_sizing: core://runtime/topic-rules/change-sizing.yaml
+  coding_style: core://runtime/topic-rules/coding-style.yaml
+  debugging_workflow: core://runtime/topic-rules/debugging-workflow.yaml
+  database_changes: core://runtime/topic-rules/database-changes.yaml
+  api_compatibility: core://runtime/topic-rules/api-compatibility.yaml
+  configuration: core://runtime/topic-rules/configuration.yaml
+  observability: core://runtime/topic-rules/observability.yaml
+  release: core://runtime/topic-rules/release.yaml
+  security: core://runtime/topic-rules/security.yaml
+  source_driven_development: core://runtime/topic-rules/source-driven-development.yaml
+  git_workflow: core://runtime/topic-rules/git-workflow.yaml
+  interaction_guidance: core://runtime/topic-rules/interaction-guidance.yaml
+  knowledge_loading: core://runtime/topic-rules/knowledge-loading.yaml
+  gate_effectiveness: core://runtime/topic-rules/gate-effectiveness.yaml
+  change_dependencies: core://runtime/topic-rules/change-dependencies.yaml
+  spec_code_sync: core://runtime/topic-rules/spec-code-sync.yaml
+  go_coding_style: core://runtime/topic-rules/go-coding-style.yaml
+  go_concurrency: core://runtime/topic-rules/go-concurrency.yaml
+  go_performance: core://runtime/topic-rules/go-performance.yaml
+  python_coding_style: core://runtime/topic-rules/python-coding-style.yaml
+  python_concurrency: core://runtime/topic-rules/python-concurrency.yaml
+  python_performance: core://runtime/topic-rules/python-performance.yaml
+  java_coding_style: core://runtime/topic-rules/java-coding-style.yaml
+  java_concurrency: core://runtime/topic-rules/java-concurrency.yaml
+  java_performance: core://runtime/topic-rules/java-performance.yaml
+  typescript_coding_style: core://runtime/topic-rules/typescript-coding-style.yaml
+  typescript_concurrency: core://runtime/topic-rules/typescript-concurrency.yaml
+  typescript_performance: core://runtime/topic-rules/typescript-performance.yaml
+  cpp_coding_style: core://runtime/topic-rules/cpp-coding-style.yaml
+  cpp_concurrency: core://runtime/topic-rules/cpp-concurrency.yaml
+  cpp_performance: core://runtime/topic-rules/cpp-performance.yaml
+  discussion_assumptions_mode: core://runtime/topic-rules/discussion-assumptions-mode.yaml
 
 profiles:
-  dir: .claude/runtime/profiles
+  dir: core://runtime/profiles
   default: standard
   active_resolution: harness_config_profile_field
 

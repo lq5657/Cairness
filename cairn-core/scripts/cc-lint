@@ -9,7 +9,12 @@ import re
 import sys
 from pathlib import Path
 
-from harness_runtime import load_runtime_protocol, protocol_language_assets, runtime_protocol_asset_declarations
+from harness_runtime import (
+    load_runtime_protocol,
+    project_path as resolve_project_path,
+    protocol_language_assets,
+    runtime_protocol_asset_declarations,
+)
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue, build_report
@@ -298,11 +303,7 @@ def read(path: Path) -> str:
 
 
 def project_path(root: Path, declared: str) -> Path | None:
-    if declared.startswith(".claude/"):
-        return root / declared.removeprefix(".claude/")
-    if declared.startswith(".cairness/"):
-        return root.parent / ".cairness" / declared.removeprefix(".cairness/")
-    return None
+    return resolve_project_path(root.parent, declared, framework_root=root)
 
 
 def load_yaml_mapping(path: Path, errors: list[str]) -> dict[str, object]:

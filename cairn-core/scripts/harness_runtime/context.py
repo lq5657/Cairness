@@ -10,6 +10,7 @@ from harness_runtime.adapter_contract import (
     AdapterContractError,
     claude_code_adapter_contract,
 )
+from harness_runtime.onboarding import read_install_metadata
 from harness_runtime.runtime_layout import RuntimeLayout, RuntimeLayoutError
 
 
@@ -45,10 +46,47 @@ def _validate_directory(path: Path, label: str) -> Path:
     return resolved
 
 
+def resolve_framework_root(
+    project_root: Path,
+    *,
+    framework_prefix: str | None = None,
+    strict_metadata: bool = True,
+) -> Path:
+    """Resolve the installed core root from explicit or persisted layout metadata."""
+    root = Path(project_root).expanduser().resolve()
+    prefix = framework_prefix
+    metadata_selected = False
+    if prefix is None:
+        try:
+            prefix = read_install_metadata(root, strict=strict_metadata).get("framework_prefix")
+        except ValueError as exc:
+            raise HarnessContextError(str(exc)) from exc
+        metadata_selected = bool(prefix)
+    else:
+        metadata_selected = True
+    prefix = prefix or ".claude"
+    try:
+        framework_root = RuntimeLayout(
+            project_root=root,
+            core_root=root / prefix,
+            state_root=root / ".cairness",
+            framework_prefix=prefix,
+        ).core_root
+        if metadata_selected:
+            framework_root.relative_to(root)
+        return framework_root
+    except (RuntimeLayoutError, TypeError) as exc:
+        raise HarnessContextError(str(exc)) from exc
+    except ValueError as exc:
+        raise HarnessContextError(
+            f"framework root escapes project root: {framework_root} is outside {root}"
+        ) from exc
+
+
 def _discover_project_root(start: Path) -> Path:
     current = _validate_directory(start, "discovery start")
     for candidate in (current, *current.parents):
-        framework = candidate / ".claude"
+        framework = resolve_framework_root(candidate)
         if (framework / "harness.config.yaml").is_file() and (framework / "VERSION").is_file():
             return candidate
     raise HarnessContextError(f"no Cairness project found from {start}")
@@ -69,16 +107,21 @@ def load_harness_context(
         project_root = _validate_directory(framework_hint, "framework root").parent
     else:
         project_root = _discover_project_root(start or Path.cwd())
+    try:
+        metadata_prefix = (
+            read_install_metadata(project_root, strict=True).get("framework_prefix")
+            if framework_prefix is None and framework_hint is None
+            else None
+        )
+    except ValueError as exc:
+        raise HarnessContextError(str(exc)) from exc
     if framework_hint is not None:
         framework_root = _validate_directory(framework_hint, "framework root")
-        try:
-            framework_root.relative_to(project_root)
-        except ValueError as exc:
-            raise HarnessContextError(
-                f"framework root escapes project root: {framework_root} is outside {project_root}"
-            ) from exc
     else:
-        framework_root = project_root / ".claude"
+        framework_root = resolve_framework_root(
+            project_root,
+            framework_prefix=framework_prefix or metadata_prefix,
+        )
         if not framework_root.is_dir():
             raise HarnessContextError(f"framework root does not exist: {framework_root}")
 
@@ -97,7 +140,9 @@ def load_harness_context(
             project_root=project_root,
             core_root=framework_root,
             state_root=project_root / ".cairness",
-            framework_prefix=framework_prefix or adapter.framework_prefix,
+            framework_prefix=framework_prefix
+            or metadata_prefix
+            or adapter.framework_prefix,
         )
     except RuntimeLayoutError as exc:
         raise HarnessContextError(str(exc)) from exc

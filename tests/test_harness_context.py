@@ -31,6 +31,64 @@ def test_context_discovers_project_from_subdirectory(harness_project: Path):
     assert context.layout.framework_prefix == ".claude"
 
 
+def test_context_discovers_metadata_selected_framework_from_subdirectory(
+    tmp_path: Path,
+):
+    from harness_runtime.context import load_harness_context
+
+    project = tmp_path / "project"
+    framework = project / ".managed"
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
+    state = project / ".cairness"
+    state.mkdir()
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+    nested = project / "src" / "nested"
+    nested.mkdir(parents=True)
+
+    context = load_harness_context(start=nested)
+
+    assert context.project_root == project.resolve()
+    assert context.framework_root == framework.resolve()
+    assert context.layout.core_root == framework.resolve()
+    assert context.layout.framework_prefix == ".managed"
+    assert context.adapter.root == framework.resolve()
+
+
+def test_context_rejects_invalid_install_metadata_instead_of_falling_back(
+    tmp_path: Path,
+):
+    from harness_runtime.context import HarnessContextError, load_harness_context
+
+    project = tmp_path / "project"
+    state = project / ".cairness"
+    state.mkdir(parents=True)
+    (state / "install.yaml").write_text("- not a mapping\n", encoding="utf-8")
+
+    with pytest.raises(HarnessContextError, match="invalid install metadata"):
+        load_harness_context(explicit_root=project, validate_config=False)
+
+
+def test_framework_root_rejects_metadata_prefix_symlink_escape(tmp_path: Path):
+    from harness_runtime.context import HarnessContextError, resolve_framework_root
+
+    project = tmp_path / "project"
+    state = project / ".cairness"
+    state.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (project / ".managed").symlink_to(outside, target_is_directory=True)
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(HarnessContextError, match="escapes project root"):
+        resolve_framework_root(project)
+
+
 def test_context_uses_framework_hint_without_claude_directory_name(tmp_path: Path):
     from harness_runtime.context import load_harness_context
 

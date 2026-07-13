@@ -58,3 +58,16 @@ def test_runtime_core_manifest_handles_non_mapping_like_text_without_yaml_io():
         "migrated_commands missing cc-test",
         "runtime_commands missing cc-test",
     ]
+
+
+def test_runtime_core_manifest_accepts_canonical_core_uri_mapping():
+    manifest = importlib.import_module("harness_runtime.runtime_manifest_lint")
+    core_text = """migrated_commands:
+  - cc-test
+runtime_commands:
+  cc-test: core://runtime/commands/cc-test.yaml
+""" + "\n".join(f"{key}\n" for key in manifest.CORE_REQUIRED_KEYS if key not in {"migrated_commands:", "runtime_commands:"})
+
+    assert manifest.validate_runtime_core_text(
+        core_text, required_commands=["cc-test"], topic_rule_keys=[]
+    ) == []

@@ -10,17 +10,24 @@ def validate_runtime_readset_text(command: str, readset_text: str) -> list[str]:
 
     required_fields = (
         f"command: {command}",
-        f"source_manifest: .claude/runtime/commands/{command}.yaml",
         "generated_from:",
         "always_reads:",
         "optional_reads:",
         "conditional_reads:",
     )
-    return [
+    errors = [
         f"missing readset field {field.rstrip(':')}"
         for field in required_fields
         if field not in readset_text
     ]
+    manifest_declarations = (
+        f"source_manifest: core://runtime/commands/{command}.yaml",
+        f"source_manifest: .claude/runtime/commands/{command}.yaml",
+    )
+    if not any(field in readset_text for field in manifest_declarations):
+        errors.insert(1 if errors and errors[0].startswith("missing readset field command") else 0,
+                      f"missing readset field source_manifest: core://runtime/commands/{command}.yaml")
+    return errors
 
 
 def validate_runtime_readset_index_text(
@@ -32,5 +39,8 @@ def validate_runtime_readset_index_text(
     return [
         f"missing readset index entry {command}"
         for command in sorted(required_commands)
-        if f"{command}: .claude/runtime/readsets/{command}.yaml" not in index_text
+        if not any(
+            f"{command}: {prefix}runtime/readsets/{command}.yaml" in index_text
+            for prefix in ("core://", ".claude/")
+        )
     ]

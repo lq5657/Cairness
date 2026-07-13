@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from harness_runtime import require_yaml
+from harness_runtime import project_path, require_yaml
 from harness_runtime.issues import (
     Issue,
     build_report as build_issue_report,
@@ -134,8 +134,8 @@ def _load_manifest_writes(
         return None
     manifest_path = (
         context.resolve_path(declared)
-        if context is not None and declared.startswith((".claude/", ".cairness/"))
-        else project_root / declared if declared.startswith(".claude/") else None
+        if context is not None
+        else project_path(project_root, declared, framework_root=claude_root)
     )
     if manifest_path is None or not manifest_path.exists():
         return None

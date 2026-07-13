@@ -99,6 +99,31 @@ def test_onboard_rejects_unimplemented_adapter(tmp_path, monkeypatch):
     assert raised.value.code == 2
 
 
+def test_onboard_passes_selected_adapter_to_init(tmp_path, monkeypatch):
+    module = _cli_module(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    called = []
+
+    def fake_init(**kwargs):
+        called.append(kwargs)
+        framework = tmp_path / ".claude"
+        framework.mkdir()
+        (framework / "harness.config.yaml").write_text("profile: standard\n")
+
+    monkeypatch.setitem(module["cmd_onboard"].__globals__, "cmd_init", fake_init)
+    monkeypatch.setitem(
+        module["cmd_onboard"].__globals__,
+        "build_doctor_report",
+        lambda *args: {"status": "passed"},
+    )
+
+    module["cmd_onboard"](["--yes", "--adapter", "claude-code", "--language", "python"])
+
+    assert called == [
+        {"adapter": "claude-code", "assume_yes": True, "force_foreign": False}
+    ]
+
+
 def test_onboard_fails_when_post_install_doctor_fails(tmp_path, monkeypatch):
     module = _cli_module(monkeypatch)
     monkeypatch.chdir(tmp_path)

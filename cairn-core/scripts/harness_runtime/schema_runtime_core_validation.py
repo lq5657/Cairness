@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .issues import Issue, add
-from .schema_metadata import project_path
+from .schema_metadata import is_state_path, project_path
 
 
 def validate_runtime_command_registration(
@@ -33,7 +33,7 @@ def validate_runtime_command_registration(
             f"extra={sorted(mapped_set - migrated_set, key=str)}",
         )
     for command in sorted(mapped_set, key=str):
-        expected = f".claude/runtime/commands/{command}.yaml"
+        expected = f"core://runtime/commands/{command}.yaml"
         actual = runtime_commands.get(command)
         if actual != expected:
             add(
@@ -42,7 +42,7 @@ def validate_runtime_command_registration(
                 core_path,
                 f"runtime_commands.{command} must be {expected}",
             )
-        if isinstance(actual, str) and actual.startswith(".cairness/"):
+        if is_state_path(project_root, actual):
             continue
         resolved = project_path(project_root, actual)
         if resolved is not None and not resolved.exists():

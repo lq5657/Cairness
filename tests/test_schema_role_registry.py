@@ -22,8 +22,8 @@ def test_runtime_role_registry_declares_canonical_manifest_and_schema():
     )
 
     assert core["runtime_roles"] == {
-        "manifest": ".claude/runtime/roles.yaml",
-        "schema": ".claude/schemas/runtime-roles.schema.json",
+        "manifest": "core://runtime/roles.yaml",
+        "schema": "core://schemas/runtime-roles.schema.json",
     }
     assert roles["version"] == 1
     assert {role["id"] for role in roles["roles"]} >= {

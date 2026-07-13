@@ -30,7 +30,7 @@
     },
     "workflow_definition": {
       "type": "string",
-      "pattern": "^\\.claude/workflows/.+\\.yaml$"
+      "pattern": "^core://workflows/.+\\.yaml$"
     },
     "migrated_commands": {
       "type": "array",
@@ -54,7 +54,7 @@
       },
       "additionalProperties": {
         "type": "string",
-        "pattern": "^\\.claude/runtime/commands/cc-[a-z0-9-]+\\.yaml$"
+        "pattern": "^core://runtime/commands/cc-[a-z0-9-]+\\.yaml$"
       }
     },
     "runtime_roles": {
@@ -64,11 +64,11 @@
       "properties": {
         "manifest": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/roles\\.yaml$"
+          "pattern": "^core://runtime/roles\\.yaml$"
         },
         "schema": {
           "type": "string",
-          "pattern": "^\\.claude/schemas/runtime-roles\\.schema\\.json$"
+          "pattern": "^core://schemas/runtime-roles\\.schema\\.json$"
         }
       }
     },
@@ -79,15 +79,15 @@
       "properties": {
         "dir": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/readsets$"
+          "pattern": "^core://runtime/readsets$"
         },
         "index": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/readsets/index\\.yaml$"
+          "pattern": "^core://runtime/readsets/index\\.yaml$"
         },
         "schema": {
           "type": "string",
-          "pattern": "^\\.claude/schemas/runtime-readset\\.schema\\.json$"
+          "pattern": "^core://schemas/runtime-readset\\.schema\\.json$"
         }
       }
     },
@@ -98,23 +98,23 @@
       "properties": {
         "protocol": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/protocol\\.yaml$"
+          "pattern": "^core://runtime/protocol\\.yaml$"
         },
         "technology_decisions": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/protocol/technology-decisions\\.yaml$"
+          "pattern": "^core://runtime/protocol/technology-decisions\\.yaml$"
         },
         "language_profile": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/protocol/language-profile\\.yaml$"
+          "pattern": "^core://runtime/protocol/language-profile\\.yaml$"
         },
         "schema": {
           "type": "string",
-          "pattern": "^\\.claude/schemas/command-protocol\\.schema\\.json$"
+          "pattern": "^core://schemas/command-protocol\\.schema\\.json$"
         },
         "default_language_profile": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/languages/[a-z0-9_-]+\\.yaml$"
+          "pattern": "^core://runtime/languages/[a-z0-9_-]+\\.yaml$"
         }
       }
     },
@@ -238,7 +238,7 @@
       },
       "additionalProperties": {
         "type": "string",
-        "pattern": "^\\.claude/runtime/topic-rules/.+\\.(md|yaml)$"
+        "pattern": "^core://runtime/topic-rules/.+\\.(md|yaml)$"
       }
     },
     "profiles": {
@@ -248,7 +248,7 @@
       "properties": {
         "dir": {
           "type": "string",
-          "pattern": "^\\.claude/runtime/profiles$"
+          "pattern": "^core://runtime/profiles$"
         },
         "default": {
           "type": "string",

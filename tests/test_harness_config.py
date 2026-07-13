@@ -1,3 +1,5 @@
+import json
+import runpy
 from pathlib import Path
 
 import pytest
@@ -110,3 +112,25 @@ def test_migrate_adds_schema_version_without_removing_existing_values(tmp_path: 
     migrated = path.read_text(encoding="utf-8")
     assert migrated.startswith("schema_version: 1\n")
     assert "auto_commit: false" in migrated
+
+
+def test_config_uses_metadata_selected_framework_root(tmp_path: Path, monkeypatch, capsys):
+    cli = runpy.run_path(
+        str(Path(__file__).resolve().parent.parent / "cairn-core" / "cc-cairn.py"),
+        run_name="cc_config_metadata_test",
+    )
+    path = tmp_path / ".managed" / "harness.config.yaml"
+    path.parent.mkdir()
+    path.write_text("schema_version: 1\nprofile: standard\n", encoding="utf-8")
+    state = tmp_path / ".cairness"
+    state.mkdir()
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cli["cmd_config"](["validate", "--json"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["path"] == str(path)

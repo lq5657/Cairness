@@ -54,6 +54,112 @@ class AdapterInstallation:
     host_assets: tuple[HostAsset, ...]
 
 
+@dataclass(frozen=True)
+class AdapterInstallOperation:
+    """One resolved, side-effect-free adapter installation operation."""
+
+    name: str
+    action: str
+    source: Path
+    target: Path
+
+
+@dataclass(frozen=True)
+class AdapterInstallationPlan:
+    """Resolved host asset operations for one project installation."""
+
+    version: int
+    adapter: str
+    framework_prefix: str
+    root_convention: str
+    core_root: Path
+    project_root: Path
+    framework_root: Path
+    operations: tuple[AdapterInstallOperation, ...]
+
+
+def _resolve_within(root: Path, relative: Path, label: str) -> Path:
+    """Resolve a declared path while keeping it inside its installation root."""
+
+    try:
+        safe_relative = _safe_relative_path(str(relative), label)
+    except AdapterInstallationError as exc:
+        raise AdapterInstallationError(f"{label} escapes its installation root") from exc
+    resolved = (root / safe_relative).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise AdapterInstallationError(
+            f"{label} escapes its installation root: {relative}"
+        ) from exc
+    return resolved
+
+
+def build_adapter_installation_plan(
+    installation: AdapterInstallation,
+    *,
+    core_root: Path,
+    project_root: Path,
+) -> AdapterInstallationPlan:
+    """Resolve an adapter contract into project-scoped host asset operations.
+
+    Sources are rooted in the installed runtime-neutral core. Targets are
+    rooted in the adapter framework directory below the project. The returned
+    plan is declarative: in particular, ``generate`` operations are preserved
+    for a separate installer to execute.
+    """
+
+    if installation.root_convention != "project-relative":
+        raise AdapterInstallationError(
+            "unsupported adapter framework root convention: "
+            f"{installation.root_convention!r}"
+        )
+
+    resolved_core = Path(core_root).expanduser().resolve()
+    resolved_project = Path(project_root).expanduser().resolve()
+    framework_root = _resolve_within(
+        resolved_project,
+        Path(installation.framework_prefix),
+        "adapter framework prefix",
+    )
+    operations: list[AdapterInstallOperation] = []
+    targets: set[Path] = set()
+    for asset in installation.host_assets:
+        source = _resolve_within(
+            resolved_core,
+            asset.source,
+            f"host asset {asset.name} source",
+        )
+        target = _resolve_within(
+            framework_root,
+            asset.target,
+            f"host asset {asset.name} target",
+        )
+        if target in targets:
+            raise AdapterInstallationError(
+                f"adapter installation plan has duplicate target: {target}"
+            )
+        targets.add(target)
+        operations.append(
+            AdapterInstallOperation(
+                name=asset.name,
+                action=asset.action,
+                source=source,
+                target=target,
+            )
+        )
+    return AdapterInstallationPlan(
+        version=installation.version,
+        adapter=installation.adapter,
+        framework_prefix=installation.framework_prefix,
+        root_convention=installation.root_convention,
+        core_root=resolved_core,
+        project_root=resolved_project,
+        framework_root=framework_root,
+        operations=tuple(operations),
+    )
+
+
 def _read_contract(manifest_path: Path, schema_path: Path) -> dict[str, Any]:
     if not manifest_path.is_file():
         raise AdapterInstallationError(

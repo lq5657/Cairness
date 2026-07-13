@@ -177,7 +177,7 @@ Phase 3：Agent Governance Platform
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 完成 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
-| `P3-01` | Runtime-neutral core | Phase 3 | P0 | 部分完成 | Phase 2 |
+| `P3-01` | Runtime-neutral core | Phase 3 | P0 | 完成 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 待开始 | `P3-01` |
 | `P3-03` | Codex adapter | Phase 3 | P0 | 待开始 | `P3-01`、`P3-02` |
 | `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 待开始 | `P3-03` |
@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -1497,6 +1497,18 @@ adapters/
 - 风险/决策：`.claude` 继续作为兼容逻辑 alias，不再是中立 resolver 的固定物理根；未完成 manifest/installer 迁移前不得标记 P3-01 完成。
 - 下一步：迁移 runtime core 的逻辑路径声明，并让 init/update 由 adapter installation contract 生成宿主资产计划。
 
+#### 完成记录 2026-07-13（逻辑 Manifest、声明式安装与兼容升级）
+
+- 状态：完成
+- Change/提交：本批 P3-01 收尾提交
+- 已完成：`runtime/core.yaml` 的 core/state/project 资产声明迁移为 `core://`、`state://` 与 `project://`，readset 派生物同步使用逻辑 URI；workflow、help、schema、lint、role-check、eval 与 readset 的路径解析统一委托 `RuntimeLayout`/`HarnessContext`，不再因未知逻辑路径静默跳过校验。
+- 已完成：adapter installation contract 可生成宿主中立、无副作用的安装计划；`cc-cairn init/onboard/update` 按合同选择 framework root 并执行声明资产，非 `.claude` root 可被 Context、version、doctor、config、profile 与 explain 正确发现和消费。当前未实现的 `user-relative` convention 和 `generate` action 在项目变更前显式拒绝。
+- 已完成：旧的无 metadata `.claude/VERSION` 项目可按 Claude Code contract 原位升级；成功后原子补写 `.cairness/install.yaml` 和 `.cairness/upgrade-report.json`，报告 adapter、布局、版本、backup、legacy migration、安装操作及 overwritten/dropped/preserved 文件。损坏 metadata、custom root 身份不匹配、路径/symlink 逃逸和交换后失败均硬失败并恢复 framework、metadata 与旧报告。
+- 验证：`rtk pytest -q` → `829 passed`；`rtk cairn-core/scripts/cc-verify --harness-only` → 13 个 Harness 子检查全部通过；`cc-schema-check`、`cc-eval`、`cc-readset --check`、`cc-workflow-gen --check`、`py_compile` 与 `rtk git diff --check` → `passed`；两轮独立复审的 Critical/Important findings 已全部关闭并最终批准。
+- 剩余：无。Claude Code 的完整行为 parity 基线属于 `P3-02`；第二个正式宿主和 `user-relative/generate` 的实际语义由后续 adapter 工作按需交付。
+- 风险/决策：`.claude` 保留为无 metadata 旧项目兼容 alias；metadata 选择的 custom root 必须具有匹配 adapter 身份，不能仅凭 `VERSION` 重定向更新。Doctor 对损坏 onboarding metadata 保持只读诊断兼容，update/config/profile 等写入口使用严格 metadata 解析。
+- 下一步：`P3-02` Claude Code adapter 回归基线。
+
 ### 10.4 `P3-02` Claude Code adapter 回归基线
 
 **状态**：待开始
@@ -1799,12 +1811,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；Phase 2 产品层已完成，下一项进入 `P3-01 Runtime-neutral core`。
+当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-01 Runtime-neutral core` 已完成，下一项进入 `P3-02 Claude Code adapter 回归基线`。
 
 后续依赖链：
 
-1. `P3-01`：抽离 runtime-neutral core，建立稳定的 core API 和 adapter interface。
-2. `P3-02`：建立 Claude Code adapter 回归基线。
-3. `P3-03`：交付 Codex adapter，验证第二个正式宿主。
-4. `P3-04/P3-05/P3-06/P3-08`：在 adapter contract 稳定后扩展其他宿主、Policy Pack、Monorepo 和模型评测。
-5. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。
+1. `P3-02`：建立 Claude Code adapter 回归基线。
+2. `P3-03`：交付 Codex adapter，验证第二个正式宿主。
+3. `P3-04/P3-05/P3-06/P3-08`：在 adapter contract 稳定后扩展其他宿主、Policy Pack、Monorepo 和模型评测。
+4. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。

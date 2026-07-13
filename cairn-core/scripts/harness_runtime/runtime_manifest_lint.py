@@ -49,7 +49,7 @@ def validate_runtime_core_text(
             errors.append(f"migrated_commands missing {command}")
         expected_mapping = (
             rf"^\s+{re.escape(command)}:\s*"
-            rf"\.claude/runtime/commands/{re.escape(command)}\.yaml\s*$"
+            rf"(?:core://|\.claude/)runtime/commands/{re.escape(command)}\.yaml\s*$"
         )
         if re.search(expected_mapping, core_text, re.M) is None:
             errors.append(f"runtime_commands missing {command}")

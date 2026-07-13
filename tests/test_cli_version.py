@@ -59,3 +59,23 @@ def test_version_reports_invalid_installed_metadata(tmp_path, monkeypatch, capsy
     output = capsys.readouterr().out
     assert "cc-cairn (system): invalid metadata" in output
     assert "vlatest" not in output
+
+
+def test_version_uses_metadata_selected_framework_root(tmp_path, monkeypatch, capsys):
+    project = tmp_path / "project"
+    _write_install(project / ".managed", "1.0.7", "d" * 40)
+    state = project / ".cairness"
+    state.mkdir()
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(CLI, "get_data_dir", lambda: tmp_path / "missing-system")
+    monkeypatch.setattr(CLI, "find_repo", lambda: None)
+    monkeypatch.chdir(project)
+
+    CLI.cmd_version()
+
+    output = capsys.readouterr().out
+    assert f"Project ({project}): v1.0.7 (ddddddd)" in output
+    assert "not initialized" not in output

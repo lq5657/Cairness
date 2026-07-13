@@ -1,16 +1,16 @@
 version: 1
 command: cc-apply
-source_manifest: .claude/runtime/commands/cc-apply.yaml
+source_manifest: core://runtime/commands/cc-apply.yaml
 generated_from:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-apply.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-apply.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-apply.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-apply.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/changes/<change-id>/spec.md
 - .cairness/changes/<change-id>/tasks.md
@@ -81,7 +81,7 @@ conditional_reads:
   when_knowledge_keyword_matched:
   - .claude/runtime/topic-rules/knowledge-loading.yaml
   when_language_profile_resolution_is_required:
-  - .claude/runtime/protocol/language-profile.yaml
+  - core://runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml

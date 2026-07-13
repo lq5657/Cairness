@@ -1,16 +1,16 @@
 version: 1
 command: cc-new-project
-source_manifest: .claude/runtime/commands/cc-new-project.yaml
+source_manifest: core://runtime/commands/cc-new-project.yaml
 generated_from:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-new-project.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-new-project.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-new-project.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-new-project.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/context/project-summary.md
 - .cairness/context/dev-map.md
@@ -41,15 +41,15 @@ conditional_reads:
   when_project_touches_observability_strategy:
   - .claude/runtime/topic-rules/observability.yaml
   when_language_profile_resolution_is_required:
-  - .claude/runtime/protocol/language-profile.yaml
+  - core://runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml
   - .claude/runtime/languages/python.yaml
   - .claude/runtime/languages/typescript.yaml
   when_technology_decision_is_required:
-  - .claude/runtime/protocol/technology-decisions.yaml
-  - .claude/runtime/protocol/language-profile.yaml
+  - core://runtime/protocol/technology-decisions.yaml
+  - core://runtime/protocol/language-profile.yaml
   - .claude/runtime/languages/cpp.yaml
   - .claude/runtime/languages/golang.yaml
   - .claude/runtime/languages/java.yaml

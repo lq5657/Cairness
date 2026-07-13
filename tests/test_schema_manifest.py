@@ -77,7 +77,7 @@ def test_validate_runtime_core_reports_mixed_command_keys_without_crashing(monke
     core = {
         "migrated_commands": ["cc-zeta"],
         "runtime_commands": {
-            "cc-zeta": ".claude/runtime/commands/cc-zeta.yaml",
+            "cc-zeta": "core://runtime/commands/cc-zeta.yaml",
             7: "numeric.yaml",
         },
     }

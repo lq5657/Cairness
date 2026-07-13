@@ -1,16 +1,16 @@
 version: 1
 command: cc-review
-source_manifest: .claude/runtime/commands/cc-review.yaml
+source_manifest: core://runtime/commands/cc-review.yaml
 generated_from:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-review.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-review.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .claude/runtime/profiles/standard.yaml
 always_reads:
 - .claude/runtime/core.yaml
-- .claude/runtime/protocol.yaml
-- .claude/runtime/commands/cc-review.yaml
+- core://runtime/protocol.yaml
+- core://runtime/commands/cc-review.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/changes/<change-id>/spec.md
 - .cairness/changes/<change-id>/tasks.md

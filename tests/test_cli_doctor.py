@@ -82,6 +82,28 @@ def test_doctor_failure_includes_actionable_issue_guidance(harness_project: Path
     assert issue["doc_ref"]
 
 
+def test_doctor_uses_metadata_selected_framework_root(harness_project: Path):
+    framework = harness_project / ".managed"
+    (harness_project / ".claude").rename(framework)
+    for relative in ("context", "audits", "knowledge", "discussions"):
+        (harness_project / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
+    (harness_project / ".cairness" / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+
+    completed = run_doctor(harness_project, "--json")
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["summary"]["config"]["path"] == str(
+        framework / "harness.config.yaml"
+    )
+    assert report["summary"]["adapter"]["entrypoint"] == str(
+        framework / "CLAUDE.md"
+    )
+
+
 def test_safe_fix_rolls_back_created_directories_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from harness_runtime.doctor import apply_fix_plan
 

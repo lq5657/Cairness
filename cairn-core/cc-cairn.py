@@ -31,11 +31,22 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from harness_runtime.config import HarnessConfigError, load_harness_config
-from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.context import (
+    HarnessContextError,
+    load_harness_context,
+    resolve_framework_root,
+)
 from harness_runtime.doctor import apply_fix_plan, build_doctor_report, fix_plan
 from harness_runtime.explain import build_effective_contract
+from harness_runtime.adapter_installation import (
+    AdapterInstallationError,
+    build_adapter_installation_plan,
+    load_adapter_installation,
+)
+from harness_runtime.runtime_layout import RuntimeLayout
 from harness_runtime.versioning import VersionMetadataError, read_version
 from harness_runtime.onboarding import (
+    INSTALL_METADATA_RELATIVE,
     build_plan,
     inspect_project,
     read_install_metadata,
@@ -51,6 +62,10 @@ MIN_PYTHON = (3, 9)
 REMOTE_URL = "https://github.com/lq5657/Cairness.git"
 
 CI_TEMPLATE_DIR = "templates/ci"
+
+ADAPTER_INSTALLATION_SCHEMA = "schemas/adapter-installation.schema.json"
+ADAPTER_INSTALLATION_DIR = "runtime/adapters"
+UPGRADE_REPORT_RELATIVE = Path(".cairness/upgrade-report.json")
 
 STATE_SKELETON = [
     ".cairness/context",
@@ -268,6 +283,278 @@ def _replace_framework_dir(
     return backup
 
 
+def _adapter_installation_plan(data_dir: Path, project_root: Path, adapter: str):
+    """Load and resolve one declared adapter before making project changes."""
+    manifest = data_dir / ADAPTER_INSTALLATION_DIR / f"{adapter}.yaml"
+    installation = load_adapter_installation(
+        manifest, data_dir / ADAPTER_INSTALLATION_SCHEMA
+    )
+    plan = build_adapter_installation_plan(
+        installation, core_root=data_dir, project_root=project_root
+    )
+    if plan.adapter != adapter:
+        raise AdapterInstallationError(
+            f"adapter installation identity {plan.adapter!r} does not match "
+            f"requested adapter {adapter!r}"
+        )
+    unsupported = [op.name for op in plan.operations if op.action == "generate"]
+    if unsupported:
+        raise ValueError(
+            "adapter installation generate operations are not supported: "
+            + ", ".join(unsupported)
+        )
+    return plan
+
+
+def _framework_root_from_prefix(project_root: Path, framework_prefix: str) -> Path:
+    """Resolve persisted layout metadata without allowing project escape."""
+    root = Path(project_root).resolve()
+    layout = RuntimeLayout(
+        project_root=root,
+        core_root=root / framework_prefix,
+        state_root=root / ".cairness",
+        framework_prefix=framework_prefix,
+    )
+    framework_root = layout.core_root
+    try:
+        framework_root.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(
+            f"framework prefix escapes the project root: {framework_prefix!r}"
+        ) from exc
+    return framework_root
+
+
+def _restore_failed_adapter_swap(
+    framework_root: Path, backup: Path | None
+) -> None:
+    """Roll back a completed core swap when a host-asset operation fails."""
+    if framework_root.exists():
+        shutil.rmtree(framework_root)
+    if backup is not None and backup.exists():
+        os.rename(backup, framework_root)
+
+
+def _file_snapshot(path: Path) -> bytes | None:
+    """Capture an optional small state file for post-swap rollback."""
+    return path.read_bytes() if path.is_file() else None
+
+
+def _restore_file_snapshot(path: Path, snapshot: bytes | None) -> None:
+    """Restore the exact pre-update state of an optional state file."""
+    if snapshot is None:
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(snapshot)
+
+
+def _file_state_snapshot(path: Path) -> tuple[bytes, int] | None:
+    """Capture file content and permissions for rollback of executable hooks."""
+    if not path.is_file():
+        return None
+    return path.read_bytes(), path.stat().st_mode
+
+
+def _restore_file_state_snapshot(
+    path: Path, snapshot: tuple[bytes, int] | None
+) -> None:
+    if snapshot is None:
+        path.unlink(missing_ok=True)
+        return
+    content, mode = snapshot
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    path.chmod(mode)
+
+
+def _directory_file_snapshots(path: Path) -> dict[str, tuple[bytes, int]]:
+    if not path.is_dir():
+        return {}
+    return {
+        item.name: snapshot
+        for item in path.iterdir()
+        if item.is_file() and (snapshot := _file_state_snapshot(item)) is not None
+    }
+
+
+def _restore_directory_file_snapshots(
+    path: Path, snapshots: dict[str, tuple[bytes, int]], *, existed: bool
+) -> None:
+    if path.is_dir():
+        for item in path.iterdir():
+            if item.is_file() and item.name not in snapshots:
+                item.unlink()
+    for name, snapshot in snapshots.items():
+        _restore_file_state_snapshot(path / name, snapshot)
+    if not existed and path.is_dir():
+        try:
+            path.rmdir()
+        except OSError:
+            pass
+
+
+def _existing_directories(root: Path) -> set[Path]:
+    if not root.is_dir():
+        return set()
+    return {root, *(path for path in root.rglob("*") if path.is_dir())}
+
+
+def _remove_new_empty_directories(root: Path, existing: set[Path]) -> None:
+    if not root.exists():
+        return
+    directories = [path for path in root.rglob("*") if path.is_dir()]
+    directories.append(root)
+    for path in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+        if path not in existing:
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+
+
+def _require_custom_layout_identity(
+    framework_root: Path, *, adapter: str, contract_prefix: str, selected_prefix: str
+) -> None:
+    """Reject metadata redirects that do not identify an installed adapter."""
+    if selected_prefix == contract_prefix:
+        return
+    manifest = framework_root / ADAPTER_INSTALLATION_DIR / f"{adapter}.yaml"
+    schema = framework_root / ADAPTER_INSTALLATION_SCHEMA
+    try:
+        installation = load_adapter_installation(manifest, schema)
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            f"custom framework layout {selected_prefix!r} has no valid "
+            f"adapter installation identity for {adapter!r}: {manifest}"
+        ) from exc
+    if (
+        installation.adapter != adapter
+        or installation.framework_prefix != selected_prefix
+    ):
+        raise ValueError(
+            f"custom framework layout {selected_prefix!r} adapter installation "
+            f"identity does not match {adapter!r}: {manifest}"
+        )
+
+
+def _publish_install_result(
+    project_root: Path,
+    *,
+    adapter: str,
+    framework_prefix: str,
+    report: dict,
+) -> None:
+    """Publish install metadata and report as one rollback-safe record pair."""
+    metadata_path = project_root / INSTALL_METADATA_RELATIVE
+    report_path = project_root / UPGRADE_REPORT_RELATIVE
+    metadata_snapshot = _file_snapshot(metadata_path)
+    report_snapshot = _file_snapshot(report_path)
+    try:
+        _write_install_identity(
+            project_root,
+            adapter=adapter,
+            framework_prefix=framework_prefix,
+        )
+        _write_upgrade_report(project_root, report)
+    except Exception:
+        _restore_file_snapshot(metadata_path, metadata_snapshot)
+        _restore_file_snapshot(report_path, report_snapshot)
+        raise
+
+
+def _execute_adapter_operations(plan, framework_root: Path) -> list[dict[str, str]]:
+    """Apply validated copy operations to an already-installed core tree."""
+    applied: list[dict[str, str]] = []
+    for operation in plan.operations:
+        relative = operation.target.relative_to(plan.framework_root)
+        target = framework_root / relative
+        if operation.action == "copy-file":
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(operation.source, target)
+        elif operation.action == "copy-tree":
+            shutil.copytree(
+                operation.source,
+                target,
+                dirs_exist_ok=True,
+                ignore=SHIP_IGNORE,
+            )
+        else:
+            raise ValueError(
+                f"unsupported adapter installation action: {operation.action}"
+            )
+        applied.append(
+            {
+                "name": operation.name,
+                "action": operation.action,
+                "source": operation.source.relative_to(plan.core_root).as_posix(),
+                "target": relative.as_posix(),
+            }
+        )
+    return applied
+
+
+def _upgrade_file_changes(src: Path, dst: Path) -> dict[str, list[str]]:
+    """Describe upgrade effects before the framework swap mutates ``dst``."""
+    if not dst.exists():
+        return {
+            "overwritten_modified_files": [],
+            "dropped_stale_files": [],
+            "preserved_files": [],
+        }
+    src_files = _rel_file_set(src)
+    old_files = _rel_file_set(dst)
+    return {
+        "overwritten_modified_files": _modified_framework_files(dst, src),
+        "dropped_stale_files": sorted(
+            rel for rel in old_files - src_files if _is_framework_owned(rel)
+        ),
+        "preserved_files": sorted(
+            rel
+            for rel in old_files
+            if rel in PRESERVE_ON_UPGRADE
+            or (rel not in src_files and not _is_framework_owned(rel))
+        ),
+    }
+
+
+def _write_upgrade_report(project_root: Path, report: dict) -> Path:
+    """Atomically publish a completed installation or upgrade report."""
+    path = project_root / UPGRADE_REPORT_RELATIVE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(
+        prefix=".upgrade-report.", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(report, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+    return path
+
+
+def _write_install_identity(
+    project_root: Path, *, adapter: str, framework_prefix: str
+) -> Path:
+    metadata = read_install_metadata(project_root)
+    metadata.update(
+        {
+            "version": 1,
+            "adapter": adapter,
+            "framework_prefix": framework_prefix,
+        }
+    )
+    return write_install_metadata(project_root, metadata)
+
+
 def _copy_ci_templates(ci_src: Path, ci_dst: Path) -> None:
     """Copy CI workflow templates without clobbering user-edited files.
 
@@ -325,36 +612,10 @@ def write_commit_hash(directory, commit):
     (directory / "COMMIT").write_text(commit + "\n")
 
 
-def cmd_init(*, assume_yes=False, force_foreign=False):
-    data_dir = get_data_dir()
-    if not data_dir.exists():
-        sys.exit(f"Framework not installed. Run 'cairn_install' from the Cairness repo first.")
-
-    project_root = Path.cwd()
-    claude_dir = project_root / ".claude"
-
-    if claude_dir.exists():
-        if not (claude_dir / "VERSION").is_file():
-            print(f".claude/ already exists in {project_root} but is not a Cairness install.")
-            resp = "y" if (assume_yes or force_foreign) else input("Overwrite this foreign directory anyway? [y/N] ").strip().lower()
-            if resp != "y":
-                print("Aborted.")
-                return
-            force = True
-        else:
-            print(f".claude/ already exists in {project_root}")
-            resp = "y" if assume_yes else input("Overwrite? This will replace framework files (local additions are preserved). [y/N] ").strip().lower()
-            if resp != "y":
-                print("Aborted.")
-                return
-            force = False
-    else:
-        force = False
-
-    print(f"Installing Cairness framework to {claude_dir} ...")
-    _replace_framework_dir(data_dir, claude_dir, label="framework", force=force)
+def _finish_project_init(
+    *, project_root, framework_dir, plan, data_dir, from_version, backup, changes, operations
+):
     print("  Copied framework core.")
-
     for d in STATE_SKELETON:
         (project_root / d).mkdir(parents=True, exist_ok=True)
         print(f"  {d}/")
@@ -364,13 +625,13 @@ def cmd_init(*, assume_yes=False, force_foreign=False):
         (knowledge_root / sub).mkdir(parents=True, exist_ok=True)
     print("  .cairness/knowledge/ subdirectories")
 
-    tmpl = claude_dir / KNOWLEDGE_TEMPLATE
+    tmpl = framework_dir / KNOWLEDGE_TEMPLATE
     dst = project_root / KNOWLEDGE_TARGET
     if tmpl.exists() and not dst.exists():
         shutil.copy2(tmpl, dst)
         print(f"  {KNOWLEDGE_TARGET} (from template)")
 
-    ci_src = claude_dir / CI_TEMPLATE_DIR
+    ci_src = framework_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"
     if ci_src.exists():
         print("  CI templates:")
@@ -378,20 +639,117 @@ def cmd_init(*, assume_yes=False, force_foreign=False):
 
     gitignore = project_root / ".gitignore"
     existing = gitignore.read_text() if gitignore.exists() else ""
-    if ".claude/" not in existing:
+    framework_ignore = f"{plan.framework_prefix}/"
+    if framework_ignore not in existing:
         with gitignore.open("a") as f:
-            f.write(GITIGNORE_ADDITIONS)
+            f.write(GITIGNORE_ADDITIONS.replace(".claude/", framework_ignore, 1))
         print("  Updated .gitignore")
 
-    # Untrack any baseline files committed before this install (gitignore only
-    # blocks untracked files). Safe no-op when none exist.
-    _ensure_baseline_gitignored(project_root)
-
-    # Install Cairness git hooks (pre-commit, etc.).
-    _install_git_hooks(project_root)
+    _install_git_hooks(project_root, framework_dir)
 
     version = (data_dir / "VERSION").read_text().strip()
-    print(f"\nCairness v{version} initialized. Start Claude Code to begin.")
+    _publish_install_result(
+        project_root,
+        adapter=plan.adapter,
+        framework_prefix=plan.framework_prefix,
+        report={
+            "version": 1,
+            "status": "passed",
+            "adapter": plan.adapter,
+            "source_layout": plan.framework_prefix if from_version else "",
+            "target_layout": plan.framework_prefix,
+            "from_version": from_version,
+            "to_version": version,
+            "backup": str(backup) if backup else "",
+            "legacy_migration": False,
+            "operations": operations,
+            **changes,
+        },
+    )
+    print(f"\nCairness v{version} initialized for {plan.adapter}.")
+
+
+def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
+    data_dir = get_data_dir()
+    if not data_dir.exists():
+        sys.exit(f"Framework not installed. Run 'cairn_install' from the Cairness repo first.")
+
+    project_root = Path.cwd()
+    plan = _adapter_installation_plan(data_dir, project_root, adapter)
+    framework_dir = plan.framework_root
+
+    if framework_dir.exists():
+        if not (framework_dir / "VERSION").is_file():
+            print(f"{plan.framework_prefix}/ already exists in {project_root} but is not a Cairness install.")
+            resp = "y" if (assume_yes or force_foreign) else input("Overwrite this foreign directory anyway? [y/N] ").strip().lower()
+            if resp != "y":
+                print("Aborted.")
+                return
+            force = True
+        else:
+            print(f"{plan.framework_prefix}/ already exists in {project_root}")
+            resp = "y" if assume_yes else input("Overwrite? This will replace framework files (local additions are preserved). [y/N] ").strip().lower()
+            if resp != "y":
+                print("Aborted.")
+                return
+            force = False
+    else:
+        force = False
+
+    from_version = ""
+    version_path = framework_dir / "VERSION"
+    if version_path.is_file():
+        from_version = version_path.read_text(encoding="utf-8").strip()
+    changes = _upgrade_file_changes(data_dir, framework_dir)
+    print(f"Installing Cairness framework to {framework_dir} ...")
+    install_path = project_root / INSTALL_METADATA_RELATIVE
+    report_path = project_root / UPGRADE_REPORT_RELATIVE
+    install_snapshot = _file_snapshot(install_path)
+    report_snapshot = _file_snapshot(report_path)
+    hook_path = project_root / ".git" / "hooks" / "pre-commit"
+    hook_backup_path = hook_path.with_suffix(".bak")
+    hook_snapshot = _file_state_snapshot(hook_path)
+    hook_backup_snapshot = _file_state_snapshot(hook_backup_path)
+    gitignore_path = project_root / ".gitignore"
+    gitignore_snapshot = _file_snapshot(gitignore_path)
+    knowledge_path = project_root / KNOWLEDGE_TARGET
+    knowledge_snapshot = _file_snapshot(knowledge_path)
+    state_root = project_root / ".cairness"
+    state_directories = _existing_directories(state_root)
+    ci_path = project_root / ".github" / "workflows"
+    ci_existed = ci_path.is_dir()
+    ci_snapshots = _directory_file_snapshots(ci_path)
+    backup = _replace_framework_dir(
+        data_dir, framework_dir, label="framework", force=force
+    )
+    try:
+        operations = _execute_adapter_operations(plan, framework_dir)
+        _finish_project_init(
+            project_root=project_root,
+            framework_dir=framework_dir,
+            plan=plan,
+            data_dir=data_dir,
+            from_version=from_version,
+            backup=backup,
+            changes=changes,
+            operations=operations,
+        )
+    except Exception:
+        _restore_failed_adapter_swap(framework_dir, backup)
+        _restore_file_snapshot(install_path, install_snapshot)
+        _restore_file_snapshot(report_path, report_snapshot)
+        _restore_file_state_snapshot(hook_path, hook_snapshot)
+        _restore_file_state_snapshot(hook_backup_path, hook_backup_snapshot)
+        _restore_file_snapshot(gitignore_path, gitignore_snapshot)
+        _restore_file_snapshot(knowledge_path, knowledge_snapshot)
+        _restore_directory_file_snapshots(
+            ci_path, ci_snapshots, existed=ci_existed
+        )
+        _remove_new_empty_directories(state_root, state_directories)
+        raise
+    # Baseline cleanup is repository hygiene rather than installation identity,
+    # so run it only after the framework and record pair have committed.
+    _ensure_baseline_gitignored(project_root)
 
 
 def cmd_onboard(argv):
@@ -463,9 +821,17 @@ def cmd_onboard(argv):
                 (root / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
             print("Onboarding verified existing Cairness installation.")
         else:
-            cmd_init(assume_yes=True, force_foreign=force_foreign)
-        _apply_runtime_profile(root / ".claude", selected_profile)
-        metadata = dict(plan["metadata"])
+            cmd_init(
+                adapter=args.adapter,
+                assume_yes=True,
+                force_foreign=force_foreign,
+            )
+        identity = read_install_metadata(root)
+        framework_prefix = identity.get("framework_prefix", ".claude")
+        _apply_runtime_profile(root / framework_prefix, selected_profile)
+        metadata = dict(identity)
+        metadata.update(plan["metadata"])
+        metadata["framework_prefix"] = framework_prefix
         path = write_install_metadata(root, metadata)
     except (OSError, ValueError) as exc:
         print(f"Onboarding failed: {exc}", file=sys.stderr)
@@ -507,7 +873,8 @@ def _apply_runtime_profile(framework_root, profile):
 def _run_onboarding_doctor(project_root):
     """Run the product Doctor against the newly onboarded project."""
     root = Path(project_root).resolve()
-    framework_root = root / ".claude"
+    framework_prefix = read_install_metadata(root).get("framework_prefix", ".claude")
+    framework_root = root / framework_prefix
     return build_doctor_report(root, framework_root, get_data_dir())
 
 
@@ -666,14 +1033,17 @@ def _ensure_baseline_gitignored(project_root):
               file=sys.stderr)
 
 
-def _install_git_hooks(project_root: Path) -> None:
+def _install_git_hooks(
+    project_root: Path, framework_root: Path | None = None
+) -> None:
     """Install Cairness git hooks from .claude/hooks/ into .git/hooks/.
 
     Only the hooks listed in the hook_map are installed; framework hooks
     (like no-spec-no-code.py) that are Claude Code PreToolUse hooks, not
     git hooks, stay in .claude/hooks/ only.
     """
-    hooks_src = project_root / ".claude" / "hooks"
+    hooks_src = framework_root or (project_root / ".claude")
+    hooks_src = hooks_src / "hooks"
     git_hooks_dir = project_root / ".git" / "hooks"
 
     # Not a git repo — skip (same guard as _ensure_baseline_gitignored).
@@ -716,45 +1086,132 @@ def _install_git_hooks(project_root: Path) -> None:
 
 
 def sync_project(data_dir, project_root):
-    """Update project .claude/ from system installation. Returns True if updated."""
-    claude_dir = project_root / ".claude"
-    if not claude_dir.exists():
+    """Update the metadata-selected project adapter from the system install."""
+    project_root = Path(project_root).resolve()
+    metadata = read_install_metadata(project_root, strict=True)
+    legacy = not metadata and (project_root / ".claude" / "VERSION").is_file()
+    adapter = metadata.get("adapter") or ("claude-code" if legacy else "")
+    if not adapter:
         version = (data_dir / "VERSION").read_text().strip()
         print(f"System installation is v{version}.")
         print("Run 'cc-cairn init' in a project directory to install the framework.")
         return False
 
-    new_commit = read_commit_hash(data_dir)
-    old_commit = read_commit_hash(claude_dir)
-
-    if new_commit and old_commit and new_commit == old_commit:
-        project_ver = "unknown"
-        vf = claude_dir / "VERSION"
-        if vf.exists():
-            project_ver = vf.read_text().strip()
-        print(f"Project already up to date (v{project_ver}, {old_commit[:7]}).")
+    plan = _adapter_installation_plan(data_dir, project_root, adapter)
+    framework_prefix = metadata.get("framework_prefix") or plan.framework_prefix
+    # Validate persisted layout metadata before using it as a filesystem path.
+    framework_dir = _framework_root_from_prefix(project_root, framework_prefix)
+    if not framework_dir.exists():
+        version = (data_dir / "VERSION").read_text().strip()
+        print(f"System installation is v{version}.")
+        print(
+            f"Configured framework layout {framework_prefix}/ is missing; "
+            "run 'cc-cairn init' to install it."
+        )
         return False
+    _require_custom_layout_identity(
+        framework_dir,
+        adapter=adapter,
+        contract_prefix=plan.framework_prefix,
+        selected_prefix=framework_prefix,
+    )
+
+    new_commit = read_commit_hash(data_dir)
+    old_commit = read_commit_hash(framework_dir)
 
     new_ver = (data_dir / "VERSION").read_text().strip()
-    project_ver = "unknown"
-    vf = claude_dir / "VERSION"
-    if vf.exists():
-        project_ver = vf.read_text().strip()
+    version_file = framework_dir / "VERSION"
+    project_ver = (
+        version_file.read_text(encoding="utf-8").strip()
+        if version_file.is_file()
+        else "unknown"
+    )
 
-    print(f"Updating project .claude/: v{project_ver} → v{new_ver}")
+    if new_commit and old_commit and new_commit == old_commit:
+        print(f"Project already up to date (v{project_ver}, {old_commit[:7]}).")
+        _publish_install_result(
+            project_root,
+            adapter=plan.adapter,
+            framework_prefix=framework_prefix,
+            report={
+                "version": 1,
+                "status": "passed",
+                "adapter": plan.adapter,
+                "source_layout": framework_prefix,
+                "target_layout": framework_prefix,
+                "from_version": project_ver,
+                "to_version": new_ver,
+                "backup": "",
+                "legacy_migration": legacy,
+                "operations": [],
+                "overwritten_modified_files": [],
+                "dropped_stale_files": [],
+                "preserved_files": [],
+            },
+        )
+        return False
+
+    changes = _upgrade_file_changes(data_dir, framework_dir)
+    print(f"Updating project {framework_prefix}/: v{project_ver} → v{new_ver}")
+    metadata_path = project_root / ".cairness" / "install.yaml"
+    report_path = project_root / UPGRADE_REPORT_RELATIVE
+    metadata_snapshot = _file_snapshot(metadata_path)
+    report_snapshot = _file_snapshot(report_path)
+    hook_path = project_root / ".git" / "hooks" / "pre-commit"
+    hook_backup_path = hook_path.with_suffix(".bak")
+    hook_snapshot = _file_state_snapshot(hook_path)
+    hook_backup_snapshot = _file_state_snapshot(hook_backup_path)
+    backup = None
+    swapped = False
     try:
-        _replace_framework_dir(data_dir, claude_dir, label="project .claude/")
+        backup = _replace_framework_dir(
+            data_dir,
+            framework_dir,
+            label=f"project {framework_prefix}/",
+        )
+        swapped = True
     except UpgradeSafetyError as exc:
         print(f"error: {exc}", file=sys.stderr)
         print("hint: if this is intentionally a non-Cairness directory, run "
               "'cc-cairn init' with overwrite, or remove it manually.", file=sys.stderr)
         sys.exit(1)
-    print(f"Project updated to v{new_ver}. Local additions were preserved; "
-          f"previous .claude/ backed up to {claude_dir.name}.bak.")
-    # Untrack baselines committed before this rule shipped; backfill gitignore.
+    try:
+        operations = _execute_adapter_operations(plan, framework_dir)
+        # Re-install / update git hooks.
+        _install_git_hooks(project_root, framework_dir)
+        _publish_install_result(
+            project_root,
+            adapter=plan.adapter,
+            framework_prefix=framework_prefix,
+            report={
+                "version": 1,
+                "status": "passed",
+                "adapter": plan.adapter,
+                "source_layout": framework_prefix,
+                "target_layout": framework_prefix,
+                "from_version": project_ver,
+                "to_version": new_ver,
+                "backup": str(backup) if backup else "",
+                "legacy_migration": legacy,
+                "operations": operations,
+                **changes,
+            },
+        )
+    except Exception:
+        try:
+            if swapped:
+                _restore_failed_adapter_swap(framework_dir, backup)
+        finally:
+            _restore_file_snapshot(metadata_path, metadata_snapshot)
+            _restore_file_snapshot(report_path, report_snapshot)
+            _restore_file_state_snapshot(hook_path, hook_snapshot)
+            _restore_file_state_snapshot(hook_backup_path, hook_backup_snapshot)
+        raise
+    # Backfill the transient-baseline ignore rule after the installation
+    # transaction has committed; this cleanup is not part of update identity.
     _ensure_baseline_gitignored(project_root)
-    # Re-install / update git hooks.
-    _install_git_hooks(project_root)
+    print(f"Project updated to v{new_ver}. Local additions were preserved; "
+          f"previous {framework_prefix}/ backed up to {framework_dir.name}.bak.")
     return True
 
 
@@ -785,15 +1242,15 @@ def cmd_version():
 
     project_ver = "not initialized"
     project_commit = ""
-    claude_dir = Path.cwd() / ".claude"
-    if claude_dir.exists():
-        vf = claude_dir / "VERSION"
+    project_framework = resolve_framework_root(Path.cwd())
+    if project_framework.exists():
+        vf = project_framework / "VERSION"
         if vf.exists():
             try:
                 project_ver = read_version(vf)
             except VersionMetadataError:
                 project_ver = "invalid metadata"
-        cf = claude_dir / "COMMIT"
+        cf = project_framework / "COMMIT"
         if cf.exists():
             project_commit = cf.read_text().strip()[:7]
 
@@ -831,7 +1288,7 @@ def cmd_doctor(argv):
         parser.error("--apply requires --fix")
 
     project_root = Path.cwd().resolve()
-    project_framework = project_root / ".claude"
+    project_framework = resolve_framework_root(project_root, strict_metadata=False)
     framework_root = project_framework if (project_framework / "VERSION").is_file() else Path(__file__).resolve().parent
     system_root = get_data_dir()
     report = build_doctor_report(project_root, framework_root, system_root)
@@ -884,7 +1341,7 @@ def cmd_config(argv):
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
-    path = Path.cwd() / ".claude" / "harness.config.yaml"
+    path = resolve_framework_root(Path.cwd()) / "harness.config.yaml"
     if args.action == "migrate":
         if not path.is_file():
             print(f"E_CONFIG001 {path}: missing harness config", file=sys.stderr)
@@ -937,7 +1394,7 @@ def cmd_profile(argv):
         return
     if not args.profile:
         parser.error("set requires a profile")
-    config = Path.cwd() / ".claude" / "harness.config.yaml"
+    config = resolve_framework_root(Path.cwd()) / "harness.config.yaml"
     try:
         plan = build_profile_plan(config, args.profile)
     except ValueError as exc:
@@ -1034,7 +1491,7 @@ KNOWLEDGE_INIT_SUBDIRS_FALLBACK = [s for s, _ in KNOWLEDGE_INDEX_CATEGORIES_FALL
 def _resolve_catalog_path(project_root):
     """Locate knowledge-categories.yaml. Prefer project, fall back to system."""
     candidates = [
-        project_root / ".claude" / KNOWLEDGE_CATALOG_REL,
+        resolve_framework_root(project_root) / KNOWLEDGE_CATALOG_REL,
         get_data_dir() / KNOWLEDGE_CATALOG_REL,
     ]
     for c in candidates:
@@ -1314,10 +1771,12 @@ def _commit_index_text(project_root, index_path, original_text, new_text):
     if post_error_count is not None and pre_error_count is not None \
             and post_error_count > pre_error_count:
         index_path.write_text(original_text, encoding="utf-8")
+        checker = _index_checker_path(project_root)
+        checker_display = checker.relative_to(Path(project_root).resolve()).as_posix()
         return False, (
             f"cc-index-check reported {post_error_count - pre_error_count} new "
             f"error(s) after write; rolled back. Run "
-            f".claude/scripts/cc-index-check to inspect."
+            f"{checker_display} to inspect."
         )
     return True, ""
 
@@ -1624,12 +2083,16 @@ def cmd_add_knowledge(argv):
     print(f"wrote {inserted_count} entries to {index_path.relative_to(project_root)}")
 
 
+def _index_checker_path(project_root):
+    return resolve_framework_root(project_root) / "scripts" / "cc-index-check"
+
+
 def _count_index_errors(project_root, index_text):
     """Run cc-index-check against given index content (via temp file).
 
     Returns error count, or None if the lint script is unavailable / errored.
     """
-    lint_script = project_root / ".claude" / "scripts" / "cc-index-check"
+    lint_script = _index_checker_path(project_root)
     if not lint_script.is_file():
         return None
     with tempfile.TemporaryDirectory() as td:
@@ -1660,9 +2123,9 @@ def _count_index_errors(project_root, index_text):
 # Loop Engineering helpers
 # ---------------------------------------------------------------------------
 
-HARNESS_CONFIG_REL = ".claude/harness.config.yaml"
+HARNESS_CONFIG_REL = "harness.config.yaml"
 LOOP_CONFIG_REL = ".cairness/loop-config.yaml"
-LOOP_CONFIG_TEMPLATE_REL = ".claude/templates/loop-config.yaml"
+LOOP_CONFIG_TEMPLATE_REL = "templates/loop-config.yaml"
 
 VALID_PROFILES = ("minimal", "standard", "strict", "loop")
 DEFAULT_PROFILE = "standard"  # profile restored by 'cc-cairn loop disable'
@@ -1737,12 +2200,14 @@ def cmd_loop(argv: list[str]) -> None:
     args = parser.parse_args(argv)
 
     project_root = Path.cwd()
-    harness_cfg = project_root / HARNESS_CONFIG_REL
+    framework_root = resolve_framework_root(project_root)
+    harness_cfg = framework_root / HARNESS_CONFIG_REL
     loop_cfg = project_root / LOOP_CONFIG_REL
+    harness_cfg_display = harness_cfg.relative_to(project_root).as_posix()
 
     if not harness_cfg.is_file():
         sys.exit(
-            f"{HARNESS_CONFIG_REL} not found. "
+            f"{harness_cfg_display} not found. "
             "Run 'cc-cairn init' first to initialize the framework."
         )
 
@@ -1772,11 +2237,13 @@ def cmd_loop(argv: list[str]) -> None:
         if loop_cfg.is_file():
             print(f"  {LOOP_CONFIG_REL} already exists — keeping as-is.")
         else:
-            template = project_root / LOOP_CONFIG_TEMPLATE_REL
+            template = framework_root / LOOP_CONFIG_TEMPLATE_REL
+            template_display = template.relative_to(project_root).as_posix()
             if not template.is_file():
                 sys.exit(
-                    f"Template not found: {LOOP_CONFIG_TEMPLATE_REL}\n"
-                    "Your .claude/ may be outdated — run 'cc-cairn update' to refresh."
+                    f"Template not found: {template_display}\n"
+                    f"Your {framework_root.name}/ may be outdated — run "
+                    "'cc-cairn update' to refresh."
                 )
             loop_cfg.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(template, loop_cfg)
@@ -1790,7 +2257,7 @@ def cmd_loop(argv: list[str]) -> None:
             print(f"  Profile is already '{LOOP_PROFILE}' — nothing changed.")
         else:
             _set_profile(harness_cfg, LOOP_PROFILE)
-            print(f"  {HARNESS_CONFIG_REL}: profile set to '{LOOP_PROFILE}'.")
+            print(f"  {harness_cfg_display}: profile set to '{LOOP_PROFILE}'.")
 
         print("\nLoop Engineering enabled.")
         print("Next: review .cairness/loop-config.yaml, then start Claude Code.")
@@ -1800,7 +2267,7 @@ def cmd_loop(argv: list[str]) -> None:
             print(f"  Profile is already '{DEFAULT_PROFILE}' — nothing changed.")
         else:
             _set_profile(harness_cfg, DEFAULT_PROFILE)
-            print(f"  {HARNESS_CONFIG_REL}: profile set to '{DEFAULT_PROFILE}'.")
+            print(f"  {harness_cfg_display}: profile set to '{DEFAULT_PROFILE}'.")
 
         print("\nLoop Engineering disabled (standard mode restored).")
         print(f"  {LOOP_CONFIG_REL} is preserved — re-enable with 'cc-cairn loop enable'.")

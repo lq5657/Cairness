@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import project_path
 from harness_runtime.enums import enum_list, load_enums
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
@@ -57,11 +58,9 @@ def _load_yaml(path: Path) -> Any:
 
 
 def _project_path(project_root: Path, declared: Any, context: HarnessContext | None = None) -> Path | None:
-    if not isinstance(declared, str):
-        return None
-    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        return context.resolve_path(declared) if context is not None else project_root / declared
-    return None
+    if context is not None:
+        return context.resolve_path(declared) if isinstance(declared, str) else None
+    return project_path(project_root, declared)
 
 
 def _derive_inputs(manifest_inputs: Any) -> list[str]:

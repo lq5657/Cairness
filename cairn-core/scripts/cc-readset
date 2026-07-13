@@ -114,7 +114,14 @@ def check(project_root: Path, context: HarnessContext | None = None) -> dict[str
     files, issues = generated_files(project_root, context)
     expected_paths = set(files)
     for declared, expected in sorted(files.items()):
-        path = context.resolve_path(declared) if context is not None else project_root / declared
+        path = (
+            context.resolve_path(declared)
+            if context is not None
+            else project_path(project_root, declared)
+        )
+        if path is None:
+            issues.append(Issue("E_READSET005", str(project_root), f"unsupported generated readset path: {declared}"))
+            continue
         if not path.exists():
             issues.append(Issue("E_READSET007", str(path), "missing generated readset file; run cc-readset --write"))
             continue
@@ -143,7 +150,14 @@ def check(project_root: Path, context: HarnessContext | None = None) -> dict[str
 def write_generated(project_root: Path, context: HarnessContext | None = None) -> dict[str, Any]:
     files, issues = generated_files(project_root, context)
     for declared, text in sorted(files.items()):
-        path = context.resolve_path(declared) if context is not None else project_root / declared
+        path = (
+            context.resolve_path(declared)
+            if context is not None
+            else project_path(project_root, declared)
+        )
+        if path is None:
+            issues.append(Issue("E_READSET005", str(project_root), f"unsupported generated readset path: {declared}"))
+            continue
         write(path, text)
     return build_report(
         "cc-readset",

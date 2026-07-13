@@ -2,17 +2,17 @@ version: 1
 generated_by: .claude/scripts/cc-readset
 source_core: .claude/runtime/core.yaml
 commands:
-  cc-new-project: .claude/runtime/readsets/cc-new-project.yaml
-  cc-preflight: .claude/runtime/readsets/cc-preflight.yaml
-  cc-init: .claude/runtime/readsets/cc-init.yaml
-  cc-enrich-context: .claude/runtime/readsets/cc-enrich-context.yaml
-  cc-explain-system: .claude/runtime/readsets/cc-explain-system.yaml
-  cc-inspect-codebase: .claude/runtime/readsets/cc-inspect-codebase.yaml
-  cc-propose: .claude/runtime/readsets/cc-propose.yaml
-  cc-apply: .claude/runtime/readsets/cc-apply.yaml
-  cc-review: .claude/runtime/readsets/cc-review.yaml
-  cc-fix: .claude/runtime/readsets/cc-fix.yaml
-  cc-test: .claude/runtime/readsets/cc-test.yaml
-  cc-archive: .claude/runtime/readsets/cc-archive.yaml
-  cc-promote-audit: .claude/runtime/readsets/cc-promote-audit.yaml
-  cc-discuss: .claude/runtime/readsets/cc-discuss.yaml
+  cc-new-project: core://runtime/readsets/cc-new-project.yaml
+  cc-preflight: core://runtime/readsets/cc-preflight.yaml
+  cc-init: core://runtime/readsets/cc-init.yaml
+  cc-enrich-context: core://runtime/readsets/cc-enrich-context.yaml
+  cc-explain-system: core://runtime/readsets/cc-explain-system.yaml
+  cc-inspect-codebase: core://runtime/readsets/cc-inspect-codebase.yaml
+  cc-propose: core://runtime/readsets/cc-propose.yaml
+  cc-apply: core://runtime/readsets/cc-apply.yaml
+  cc-review: core://runtime/readsets/cc-review.yaml
+  cc-fix: core://runtime/readsets/cc-fix.yaml
+  cc-test: core://runtime/readsets/cc-test.yaml
+  cc-archive: core://runtime/readsets/cc-archive.yaml
+  cc-promote-audit: core://runtime/readsets/cc-promote-audit.yaml
+  cc-discuss: core://runtime/readsets/cc-discuss.yaml

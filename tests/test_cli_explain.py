@@ -80,6 +80,29 @@ def test_explain_reports_effective_profile_source(harness_project: Path):
     assert report["profile"]["resolved"]["id"] == "strict"
 
 
+def test_explain_uses_metadata_selected_framework_root(harness_project: Path):
+    framework = harness_project / ".managed"
+    (harness_project / ".claude").rename(framework)
+    (harness_project / ".cairness" / "install.yaml").write_text(
+        "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",
+        encoding="utf-8",
+    )
+
+    completed = run_explain(
+        REPO_ROOT,
+        "cc-apply",
+        "--root",
+        str(harness_project),
+        "--change",
+        "demo",
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["adapter"]["root"] == str(framework.resolve())
+    assert report["manifest"]["path"].startswith(str(framework.resolve()))
+
+
 def test_explain_surfaces_missing_required_change_without_hiding_contract():
     completed = run_explain(REPO_ROOT, "cc-apply")
 

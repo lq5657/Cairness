@@ -9,6 +9,7 @@ automation callers.
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
@@ -53,6 +54,8 @@ LANGUAGE_MARKERS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 
 _IGNORED_TOP_LEVEL = {".git", ".claude", ".cairness", ".venv", "node_modules", "vendor", "target", "dist", "build"}
+_ADAPTER_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+_FRAMEWORK_PREFIX = re.compile(r"^\.[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 
 
 def _root(project_root: Path | str) -> Path:
@@ -265,17 +268,54 @@ def build_plan(
     }
 
 
-def read_install_metadata(project_root: Path | str) -> dict[str, Any]:
-    """Read persisted onboarding choices; missing/invalid files return ``{}``."""
+def read_install_metadata(
+    project_root: Path | str, *, strict: bool = False
+) -> dict[str, Any]:
+    """Read persisted onboarding choices.
+
+    Missing metadata remains compatible with legacy installs.  Callers that
+    select an update target must use ``strict=True`` so an existing corrupt
+    file cannot be mistaken for a metadata-free legacy project.
+    """
     root = _root(project_root)
     path = root / INSTALL_METADATA_RELATIVE
     if not path.is_file():
         return {}
     try:
         loaded = require_yaml().safe_load(path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as exc:
+        if strict:
+            raise ValueError(f"invalid install metadata: {path}: {exc}") from exc
         return {}
-    return dict(loaded) if isinstance(loaded, Mapping) else {}
+    if not isinstance(loaded, Mapping):
+        if strict:
+            raise ValueError(
+                f"invalid install metadata: {path}: expected a mapping"
+            )
+        return {}
+    metadata = dict(loaded)
+    if strict:
+        version = metadata.get("version")
+        adapter = metadata.get("adapter")
+        framework_prefix = metadata.get("framework_prefix")
+        if type(version) is not int or version != 1:
+            raise ValueError(
+                f"invalid install metadata: {path}: version must be 1"
+            )
+        if not isinstance(adapter, str) or not _ADAPTER_ID.fullmatch(adapter):
+            raise ValueError(
+                f"invalid install metadata: {path}: adapter must be a safe, "
+                "non-empty identifier"
+            )
+        if framework_prefix is not None and (
+            not isinstance(framework_prefix, str)
+            or not _FRAMEWORK_PREFIX.fullmatch(framework_prefix)
+        ):
+            raise ValueError(
+                f"invalid install metadata: {path}: framework_prefix must be "
+                "a safe project-relative directory name"
+            )
+    return metadata
 
 
 def write_install_metadata(project_root: Path | str, metadata: Mapping[str, Any]) -> Path:

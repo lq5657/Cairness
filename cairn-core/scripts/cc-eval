@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from harness_runtime import project_path as resolve_project_path
 from harness_runtime.issues import Issue, issues_to_dicts
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
@@ -129,10 +130,13 @@ def project_path(project_root: Path, declared: str) -> Path | None:
         return None
     if declared == "README.md":
         return project_root / declared
-    if declared.startswith(".claude/") or declared.startswith(".cairness/"):
-        context = _ACTIVE_CONTEXT.get()
-        return context.resolve_path(declared) if context is not None else project_root / declared
-    return None
+    context = _ACTIVE_CONTEXT.get()
+    if context is not None:
+        try:
+            return context.resolve_path(declared)
+        except ValueError:
+            return None
+    return resolve_project_path(project_root, declared)
 
 
 def normalize(value: str) -> str:
@@ -263,13 +267,15 @@ def validate_case_semantics(
     expected_checks = list_field(case, path, "expected_checks", issues)
 
     registered_runtime_commands = {
-        value for value in core.get("runtime_commands", {}).values() if isinstance(value, str)
+        resolved for value in core.get("runtime_commands", {}).values()
+        if isinstance(value, str) and (resolved := project_path(project_root, value)) is not None
     } if isinstance(core.get("runtime_commands"), dict) else set()
     registered_topic_rules = {
-        value for value in core.get("topic_rules", {}).values() if isinstance(value, str)
+        resolved for value in core.get("topic_rules", {}).values()
+        if isinstance(value, str) and (resolved := project_path(project_root, value)) is not None
     } if isinstance(core.get("topic_rules"), dict) else set()
 
-    read_set = set(expected_reads)
+    resolved_read_set: set[Path] = set()
     corpus_paths: list[Path] = []
     for item in expected_reads:
         if isinstance(item, str) and item.startswith(".cairness/"):
@@ -282,9 +288,10 @@ def validate_case_semantics(
             issues.append(Issue("E_EVAL023", str(path), f"expected_reads path does not exist: {item}"))
             continue
         corpus_paths.append(resolved)
-        if item.startswith(".claude/runtime/commands/") and item not in registered_runtime_commands:
+        resolved_read_set.add(resolved)
+        if "/runtime/commands/" in item and resolved not in registered_runtime_commands:
             issues.append(Issue("E_EVAL024", str(path), f"runtime command read is not registered in runtime/core.yaml: {item}"))
-        if item.startswith(".claude/runtime/topic-rules/") and item not in registered_topic_rules:
+        if "/runtime/topic-rules/" in item and resolved not in registered_topic_rules:
             issues.append(Issue("E_EVAL025", str(path), f"topic rule read is not registered in runtime/core.yaml: {item}"))
         if item.startswith(".claude/rules/") and item not in GOVERNANCE_RULE_READS:
             issues.append(Issue("E_EVAL025", str(path), f"rules/ read is not a governance rule: {item}"))
@@ -293,10 +300,11 @@ def validate_case_semantics(
     if command:
         manifest = command_manifest_path(project_root, core, command)
         if manifest is not None:
-            declared = f".claude/runtime/commands/{command}.yaml"
-            if ".claude/runtime/core.yaml" not in read_set:
+            core_manifest = project_path(project_root, "core://runtime/core.yaml")
+            declared = f"core://runtime/commands/{command}.yaml"
+            if core_manifest not in resolved_read_set:
                 issues.append(Issue("E_EVAL026", str(path), f"{command} eval must include .claude/runtime/core.yaml in expected_reads"))
-            if declared not in read_set:
+            if manifest not in resolved_read_set:
                 issues.append(Issue("E_EVAL027", str(path), f"{command} eval must include {declared} in expected_reads"))
             if manifest.exists() and manifest not in corpus_paths:
                 corpus_paths.append(manifest)

@@ -29,7 +29,7 @@ def test_runtime_readset_preserves_missing_field_messages_and_order():
         "command: cc-other\nalways_reads: []\nconditional_reads: []\n",
     ) == [
         "missing readset field command: cc-review",
-        "missing readset field source_manifest: .claude/runtime/commands/cc-review.yaml",
+        "missing readset field source_manifest: core://runtime/commands/cc-review.yaml",
         "missing readset field generated_from",
         "missing readset field optional_reads",
     ]
@@ -59,6 +59,22 @@ optional_reads:
 conditional_reads:
 """
     index_text = "cc-test: .claude/runtime/readsets/cc-test.yaml\n"
+
+    assert readsets.validate_runtime_readset_text(command, readset_text) == []
+    assert readsets.validate_runtime_readset_index_text(index_text, [command]) == []
+
+
+def test_runtime_readset_accepts_canonical_core_uri_contracts():
+    readsets = importlib.import_module("harness_runtime.runtime_readset_lint")
+    command = "cc-test"
+    readset_text = """command: cc-test
+source_manifest: core://runtime/commands/cc-test.yaml
+generated_from:
+always_reads:
+optional_reads:
+conditional_reads:
+"""
+    index_text = "cc-test: core://runtime/readsets/cc-test.yaml\n"
 
     assert readsets.validate_runtime_readset_text(command, readset_text) == []
     assert readsets.validate_runtime_readset_index_text(index_text, [command]) == []
