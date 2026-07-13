@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +15,10 @@ from harness_runtime.adapter_capabilities import (
     AdapterCapabilitiesError,
     load_adapter_capabilities,
 )
+from harness_runtime.adapter_installation import (
+    AdapterInstallationError,
+    load_adapter_installation,
+)
 
 
 STATE_DIRECTORIES = (
@@ -23,6 +29,13 @@ STATE_DIRECTORIES = (
     ".cairness/discussions",
 )
 LOOP_STATE_DIRECTORY = ".cairness/loop-audit"
+REQUIRED_CLAUDE_HOST_ASSETS = (
+    "settings",
+    "instructions",
+    "pre-write-hook",
+    "capabilities",
+    "harness-skill",
+)
 
 ISSUE_GUIDANCE = {
     "E_DOCTOR101": (
@@ -39,6 +52,11 @@ ISSUE_GUIDANCE = {
         "The active adapter capability contract is missing or invalid.",
         "Restore runtime/adapters/claude-code-capabilities.yaml and its schema, then rerun Doctor.",
         ".claude/runtime/adapters/claude-code-capabilities.yaml",
+    ),
+    "E_DOCTOR104": (
+        "A required Claude Code host asset is missing or its PreToolUse binding is invalid.",
+        "Restore the adapter-owned host asset or reinstall the Claude Code adapter, then rerun Doctor.",
+        ".claude/runtime/adapters/claude-code.yaml",
     ),
 }
 
@@ -120,7 +138,8 @@ def _required_state_directories(config: dict[str, Any]) -> tuple[str, ...]:
 
 def _capability_summary(framework_root: Path) -> dict[str, Any]:
     try:
-        path, capabilities = load_adapter_capabilities(framework_root)
+        loaded = load_adapter_capabilities(framework_root)
+        path, capabilities = loaded
     except AdapterCapabilitiesError as exc:
         return {
             "status": "invalid",
@@ -132,7 +151,152 @@ def _capability_summary(framework_root: Path) -> dict[str, Any]:
         "status": "valid",
         "path": str(path),
         "capabilities": capabilities,
+        "evidence": {
+            capability: list(check_ids)
+            for capability, check_ids in loaded.evidence.items()
+        },
     }
+
+
+def _command_targets_asset(command: str, target: Path) -> bool:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+    if len(tokens) != 2 or not re.fullmatch(
+        r"python(?:\d+(?:\.\d+)*)?",
+        Path(tokens[0]).name,
+    ):
+        return False
+    expected = target.as_posix().removeprefix(".claude/")
+    normalized = tokens[1].replace("\\", "/")
+    return normalized == f"$CLAUDE_PROJECT_DIR/.claude/{expected}"
+
+
+def _pretooluse_binding(settings_path: Path, hook_target: Path) -> tuple[dict[str, str], str | None]:
+    result = {
+        "status": "invalid",
+        "matcher": "",
+        "command": "",
+        "target": hook_target.as_posix(),
+    }
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return result, f"settings.json cannot be parsed: {exc}"
+    hooks = settings.get("hooks") if isinstance(settings, dict) else None
+    bindings = hooks.get("PreToolUse") if isinstance(hooks, dict) else None
+    if not isinstance(bindings, list):
+        return result, "settings.json must declare hooks.PreToolUse"
+    for binding in bindings:
+        if not isinstance(binding, dict) or binding.get("matcher") != "Edit|Write":
+            continue
+        result["matcher"] = "Edit|Write"
+        commands = binding.get("hooks")
+        if not isinstance(commands, list):
+            continue
+        for declared in commands:
+            if not isinstance(declared, dict) or declared.get("type") != "command":
+                continue
+            command = declared.get("command")
+            if not isinstance(command, str):
+                continue
+            result["command"] = command
+            if _command_targets_asset(command, hook_target):
+                result["status"] = "valid"
+                return result, None
+        return result, (
+            "PreToolUse Edit|Write command does not execute "
+            f"{hook_target.as_posix()}"
+        )
+    return result, "settings.json must declare PreToolUse matcher Edit|Write"
+
+
+def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    manifest_path = framework_root / "runtime/adapters/claude-code.yaml"
+    schema_path = framework_root / "schemas/adapter-installation.schema.json"
+    try:
+        installation = load_adapter_installation(manifest_path, schema_path)
+    except AdapterInstallationError as exc:
+        issue = _issue("E_DOCTOR104", manifest_path, str(exc))
+        return {
+            "status": "invalid",
+            "path": str(manifest_path),
+            "assets": [],
+            "pretooluse_binding": {
+                "status": "invalid",
+                "matcher": "",
+                "command": "",
+                "target": "hooks/no-spec-no-code.py",
+            },
+        }, [issue]
+
+    issues: list[dict[str, str]] = []
+    assets: list[dict[str, str]] = []
+    assets_by_name = {asset.name: asset for asset in installation.host_assets}
+    missing_declarations = [
+        name for name in REQUIRED_CLAUDE_HOST_ASSETS if name not in assets_by_name
+    ]
+    if missing_declarations:
+        issues.append(
+            _issue(
+                "E_DOCTOR104",
+                manifest_path,
+                "required adapter host asset declarations are missing: "
+                + ", ".join(missing_declarations),
+            )
+        )
+    for asset in installation.host_assets:
+        path = framework_root / asset.target
+        if asset.name == "harness-skill":
+            valid = path.is_dir() and (path / "SKILL.md").is_file()
+        else:
+            valid = path.is_dir() if asset.action == "copy-tree" else path.is_file()
+        status = "valid" if valid else "missing"
+        assets.append(
+            {
+                "name": asset.name,
+                "action": asset.action,
+                "path": str(path),
+                "status": status,
+            }
+        )
+        if not valid:
+            issues.append(
+                _issue(
+                    "E_DOCTOR104",
+                    path,
+                    f"required adapter host asset {asset.name} is missing or has the wrong type",
+                )
+            )
+
+    settings_asset = assets_by_name.get("settings")
+    hook_asset = assets_by_name.get("pre-write-hook")
+    hook_target = hook_asset.target if hook_asset is not None else Path("hooks/no-spec-no-code.py")
+    settings_path = framework_root / (
+        settings_asset.target if settings_asset is not None else installation.settings_path
+    )
+    if settings_path.is_file():
+        binding, binding_error = _pretooluse_binding(settings_path, hook_target)
+        if binding_error is not None:
+            issues.append(_issue("E_DOCTOR104", settings_path, binding_error))
+            for asset in assets:
+                if asset["name"] == "settings":
+                    asset["status"] = "invalid"
+    else:
+        binding = {
+            "status": "invalid",
+            "matcher": "",
+            "command": "",
+            "target": hook_target.as_posix(),
+        }
+
+    return {
+        "status": "invalid" if issues else "valid",
+        "path": str(manifest_path),
+        "assets": assets,
+        "pretooluse_binding": binding,
+    }, issues
 
 
 def read_install_metadata(path: Path) -> dict[str, Any]:
@@ -169,7 +333,13 @@ def _onboarding_summary(project_root: Path) -> dict[str, Any]:
     return read_install_metadata(project_root / ".cairness" / "install.yaml")
 
 
-def _summary(project_root: Path, framework_root: Path, system_root: Path, internal: dict[str, Any]) -> dict[str, Any]:
+def _summary(
+    project_root: Path,
+    framework_root: Path,
+    system_root: Path,
+    internal: dict[str, Any],
+    host_assets: dict[str, Any],
+) -> dict[str, Any]:
     resolution = resolve_language_profile(project_root)
     workflow = framework_root / "workflows" / "cc-workflow.yaml"
     readset = framework_root / "runtime" / "readsets" / "index.yaml"
@@ -178,6 +348,7 @@ def _summary(project_root: Path, framework_root: Path, system_root: Path, intern
         project_root / ".github" / "workflows" / "harness.yml",
     )
     config = _config_summary(framework_root)
+    capability_contract = _capability_summary(framework_root)
     required_state = _required_state_directories(config)
     state_existing = [path for path in required_state if (project_root / path).is_dir()]
     return {
@@ -188,9 +359,15 @@ def _summary(project_root: Path, framework_root: Path, system_root: Path, intern
         "config": config,
         "adapter": {
             "name": "claude-code",
-            "status": "configured" if (framework_root / "settings.json").is_file() else "missing",
+            "status": (
+                "configured"
+                if host_assets["status"] == "valid"
+                and capability_contract["status"] == "valid"
+                else "incomplete"
+            ),
             "entrypoint": str(framework_root / "CLAUDE.md"),
-            "capability_contract": _capability_summary(framework_root),
+            "capability_contract": capability_contract,
+            "host_assets": host_assets,
         },
         "ci": {
             "status": "configured" if any(path.is_file() for path in ci_candidates) else "missing",
@@ -217,6 +394,8 @@ def _summary(project_root: Path, framework_root: Path, system_root: Path, intern
 
 def build_doctor_report(project_root: Path, framework_root: Path, system_root: Path) -> dict[str, Any]:
     internal, issues = _internal_report(project_root, framework_root)
+    host_assets, host_asset_issues = _host_asset_summary(framework_root)
+    issues.extend(host_asset_issues)
     config = _config_summary(framework_root)
     for relative in _required_state_directories(config):
         path = project_root / relative
@@ -235,7 +414,9 @@ def build_doctor_report(project_root: Path, framework_root: Path, system_root: P
         "tool": "cc-cairn doctor",
         "status": "failed" if issues else "passed",
         "project_root": str(project_root),
-        "summary": _summary(project_root, framework_root, system_root, internal),
+        "summary": _summary(
+            project_root, framework_root, system_root, internal, host_assets
+        ),
         "issues": issues,
         "fix": {"mode": "none", "actions": []},
     }

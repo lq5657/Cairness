@@ -127,6 +127,8 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             changed_dirs=changed_dirs,
             behavior_replay=os.environ.get("CC_BEHAVIOR_REPLAY") == "1",
             knowledge_index_exists=knowledge_index_path.is_file(),
+            adapter_name=context.adapter.name,
+            adapter_check_enabled=os.environ.get("CC_ADAPTER_CHECK_EMBEDDED") != "1",
         )
         for plan in plans:
             if plan.action == "skip":

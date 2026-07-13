@@ -178,7 +178,7 @@ Phase 3：Agent Governance Platform
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 完成 | Phase 2 |
-| `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 待开始 | `P3-01` |
+| `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 部分完成 | `P3-01` |
 | `P3-03` | Codex adapter | Phase 3 | P0 | 待开始 | `P3-01`、`P3-02` |
 | `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 待开始 | `P3-03` |
 | `P3-05` | Policy Pack 与扩展锁定 | Phase 3 | P1 | 待开始 | `P3-01` |
@@ -1511,7 +1511,7 @@ adapters/
 
 ### 10.4 `P3-02` Claude Code adapter 回归基线
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：抽离 core 后，Claude Code 现有能力不退化。
 
@@ -1522,6 +1522,19 @@ adapters/
 - 现有 `.claude/` 项目可升级；
 - behavior eval 与 full verify 全部通过；
 - adapter capability 报告准确。
+
+#### 实施记录 2026-07-13（回归基线与低成本宿主验收）
+
+- 状态：部分完成
+- Change/提交：本批 P3-02 提交
+- 已完成：新增机器可读 adapter regression manifest/schema 与 `cc-adapter-check`，覆盖 14 命令、五项宿主资产、精确 PreToolUse 执行绑定、Skill、subagent/fresh-context contract、behavior eval、session resume 和 full verify；legacy upgrade 会真实执行一次 metadata-free `.claude` 升级并验证 backup、metadata、report、版本替换与用户文件保留。
+- 已完成：`cc-verify --harness-only` 接入 embedded adapter 基线并保持递归安全；standalone adapter 运行完整默认 `cc-verify`。未执行的 embedded behavior/full verify 及其 capability 显示为 `delegated`，不提前声称 `supported`；Doctor readiness 同时受 capability contract 和五项 host assets 约束。
+- 已完成：真实宿主 runner 分为默认 `quick` 和显式 `release`。quick 强制单次 `fable/low`、60 秒 timeout、`project` settings、`Skill/Read/Write`、无会话持久化和显式预算；子进程使用最小 ambient env，只注入 allowlist 认证变量并脱敏已知值。release 保留八阶段验收，subagent/wave 1 必须观察 `Agent` tool event，wave summary 必须由 Agent 按合同写入，runner 不代写。
+- 验证：settled tree `rtk pytest -q` → `897 passed`；`cc-verify --harness-only`、full-mode `cc-verify --json`、standalone offline adapter、schema、readset、workflow、涉及文件 ruff、py_compile 与 `git diff --check` 均通过。full-mode 的项目语言检查因本仓同时包含五种语言 fixture 而明确 `skipped`，未计为 project pass；两轮独立终审均无 Critical/Important findings。
+- 真实宿主：首次 quick 使用 `user,project` 和 `$0.25` 预算请求，实际 `$0.274740` 后预算退出，只完成 Skill/Read；第二次 project-only 因认证依赖用户 settings env 而在模型调用前退出，费用 `$0`；引入认证环境桥接后，第三次以 `$0.35` 请求完成 Skill、Read、Write、14 命令与 `PreToolUse:Write`，实际 `$0.330239`。原报告因只接受纯 JSON 和旧 hook event 形态产生 false negative，验证器已按该真实 Claude Code 2.1.201 输出形态补回归并修复。相比原八阶段手工 smoke `$1.875991`，单次 quick 的实测费用降低约 82%。
+- 剩余：当前真实 quick 的能力证据齐全，但修复后的 runner 尚未再付费生成一份顶层 `status: passed` 报告；完整 release profile 也未在真实宿主执行。二者均需新的显式预算授权，因此 P3-02 保持部分完成，不阻塞本批回归基线实现合并。
+- 风险/决策：Claude Code 的 `--max-budget-usd` 可能被单个在途请求结算小幅越过；Cairness 会检测超支并停止，但不将其宣传为账户账单硬上限。quick 不声称 subagent、resume 或 fresh-context 获得实时观察；release 未运行前不扩大对应宿主支持证据。
+- 下一步：发布前以显式预算运行一次修复后的 quick 和 release；证据通过后将 P3-02 更新为完成，再进入 `P3-03`。
 
 ### 10.5 `P3-03` Codex adapter
 

@@ -211,6 +211,9 @@
         },
         "help": {
           "type": "string"
+        },
+        "adapter-check": {
+          "type": "string"
         }
       }
     },

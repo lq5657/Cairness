@@ -117,6 +117,8 @@ description: 在 Claude Code 中执行和维护 cc_spec Harness 包。当用户�
 .claude/scripts/cc-verify --harness-only
 .claude/scripts/cc-verify --change <change-id>
 .claude/scripts/cc-verify --fixture <fixture-path>
+.claude/scripts/cc-adapter-check --adapter claude-code --json
+.claude/scripts/cc-adapter-check --adapter claude-code --host-smoke --host-smoke-profile quick --max-budget-usd 0.35 --json
 .claude/scripts/cc-role-check --command <cc-command> --change <change-id>
 .claude/scripts/cc-schema-check .cairness/changes
 .claude/scripts/cc-eval .claude/evals

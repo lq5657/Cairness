@@ -13,6 +13,18 @@ from harness_runtime.context import HarnessContextError, load_harness_context
 
 REPO = Path(__file__).resolve().parent.parent
 CLI = REPO / "cairn-core" / "cc-cairn.py"
+REGRESSION_CHECK_IDS = {
+    "command-contract-parity",
+    "host-assets-roundtrip",
+    "pretooluse-binding",
+    "skill-command-parity",
+    "subagent-contracts",
+    "fresh-context-wave-contract",
+    "legacy-upgrade",
+    "behavior-eval",
+    "full-verify",
+    "session-resume",
+}
 
 
 def test_claude_code_capabilities_manifest_matches_schema():
@@ -56,6 +68,24 @@ def test_harness_context_carries_adapter_capabilities(harness_project: Path):
     ).resolve()
     assert context.adapter.capabilities["subagent_dispatch"] == "required"
     assert context.adapter.capabilities["pre_write_hook"] == "required"
+
+
+def test_capability_loader_preserves_machine_readable_regression_evidence():
+    from harness_runtime.adapter_capabilities import load_adapter_capabilities
+
+    loaded = load_adapter_capabilities(REPO / "cairn-core")
+    path, levels = loaded
+
+    assert path.name == "claude-code-capabilities.yaml"
+    assert levels["pre_write_hook"] == "required"
+    assert loaded.evidence["pre_write_hook"] == ("pretooluse-binding",)
+    assert set(loaded.evidence) == set(levels)
+    assert set().union(*map(set, loaded.evidence.values())) == REGRESSION_CHECK_IDS
+    assert all(
+        evidence and set(evidence) <= REGRESSION_CHECK_IDS
+        for capability, evidence in loaded.evidence.items()
+        if levels[capability] in {"required", "optional", "emulated"}
+    )
 
 
 @pytest.mark.parametrize("mode", ["missing", "invalid"])
@@ -102,6 +132,9 @@ def test_doctor_and_explain_json_surface_capability_contract(harness_project: Pa
     doctor_adapter = doctor_report["summary"]["adapter"]
     assert doctor_adapter["capability_contract"]["status"] == "valid"
     assert doctor_adapter["capability_contract"]["capabilities"]["pre_write_hook"] == "required"
+    assert doctor_adapter["capability_contract"]["evidence"]["pre_write_hook"] == [
+        "pretooluse-binding"
+    ]
 
     assert explain.returncode == 0, explain.stderr or explain.stdout
     explain_report = json.loads(explain.stdout)
@@ -125,4 +158,5 @@ def test_doctor_reports_invalid_capability_contract(harness_project: Path):
     assert completed.returncode == 1
     report = json.loads(completed.stdout)
     assert report["summary"]["adapter"]["capability_contract"]["status"] == "invalid"
+    assert report["summary"]["adapter"]["status"] == "incomplete"
     assert any(issue["code"] == "E_DOCTOR103" for issue in report["issues"])

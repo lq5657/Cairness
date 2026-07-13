@@ -19,11 +19,12 @@ Cairness 是一套**机器可执行的 YAML 合同体系**——不是给 AI 一
 
 ## 2. 确定性验证矩阵
 
-18 个脚本构成可复现的 CI 真相源，不是散文式 checklist：
+确定性脚本共同构成可复现的 CI 真相源，不是散文式 checklist：
 
 | 脚本 | 职责 |
 |------|------|
-| `cc-verify` | 8 合 1 门禁（lint / schema / readset / doctor / event / behavior / upgrade / sync） |
+| `cc-verify` | 聚合 Harness、adapter 和项目验证的统一门禁 |
+| `cc-adapter-check` | adapter 回归基线；离线合同/fixture 默认执行，真实宿主 smoke 显式 opt-in；`quick` 单调用低成本验收，`release` 显式完整验收 |
 | `cc-deps orphans` | 孤儿变更检测：git diff vs tasks.md 文件声明，找出未被任何 change 声明的文件修改 |
 | `cc-deps conflicts` | 跨 change 文件冲突检测：两个 change 不能声明同一文件 |
 | `cc-deps check` | 依赖满足检查：目标 change 的 depends_on 是否全部完成 |

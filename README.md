@@ -94,6 +94,46 @@ cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
 
 当前自动修复范围限于缺失的 Cairness 项目状态目录；不会修改业务代码、接受风险或改变治理策略。修复过程中发生错误时，本次已经创建的目录会回滚。
 
+## Adapter 回归基线
+
+离线 adapter 基线会校验 Claude Code 的 14 个命令合同、五项宿主资产、Skill、PreToolUse binding、subagent、fresh-context wave、legacy upgrade、behavior eval、full verify 和 capability evidence。该检查不调用模型，并已接入 `cc-verify --harness-only`：
+
+```bash
+.claude/scripts/cc-adapter-check --adapter claude-code
+.claude/scripts/cc-adapter-check --adapter claude-code --json
+```
+
+真实 Claude Code 宿主 smoke 是显式 opt-in 的付费检查。默认 `quick` profile 在一次性项目中只加载 `project` settings，并执行一次低 effort 的 `claude -p`，合并验证 transport、Skill、14 个命令和 PreToolUse hook，用显式预算请求与 60 秒超时限制消耗：
+
+```bash
+.claude/scripts/cc-adapter-check \
+  --adapter claude-code \
+  --host-smoke \
+  --host-smoke-profile quick \
+  --host-model fable \
+  --max-budget-usd 0.35 \
+  --host-timeout-seconds 60 \
+  --setting-sources project \
+  --json
+```
+
+完整 `release` profile 保留 subagent、session resume 和跨进程 fresh-context wave 等八阶段验收。fresh-context wave 1 要求 foreground Agent 按 `cc-apply` summary contract 写入磁盘交接文件，wave 2 由全新顶层进程读取；runner 只验证交接文件，不代写。该 profile 只在 Claude Code 大版本升级或正式发布前显式执行，并要求调用方提供总预算：
+
+```bash
+.claude/scripts/cc-adapter-check \
+  --adapter claude-code \
+  --host-smoke \
+  --host-smoke-profile release \
+  --max-budget-usd <explicit-cap> \
+  --json
+```
+
+普通 CI 只运行离线基线，不要求 Claude Code 登录，也不会产生模型费用。宿主报告包含 `coverage: quick|release`，严格区分 `contract`、`fixture` 和 `host-observed`；quick 不会把 subagent、resume 或 fresh-context wave 冒充为实时观察。成功后清理临时项目，失败、超时或不稳定时保留路径用于诊断；`unstable` 与 `failed` 都返回非零退出码。
+
+quick 只加载项目 settings；若当前认证依赖用户 settings 的 `env`，runner 仅继承受限的 Anthropic/Claude/provider 环境变量到最小子进程环境。用户插件、用户 hooks 和 ambient CI/数据库/部署凭据不会载入；已知认证值会从宿主结果中脱敏，报告只显示继承的变量名，不显示值。
+
+`--max-budget-usd` 会原样传给 Claude Code，但宿主可能在单个在途请求结算时报告略高于该值的实际费用。Cairness 会检测这种超支、将 smoke 标记失败并停止后续阶段；该参数不能替代账户侧账单限额。
+
 ## 框架升级
 
 ```bash

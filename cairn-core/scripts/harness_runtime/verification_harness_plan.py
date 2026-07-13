@@ -28,6 +28,8 @@ def harness_step_plan(
     changed_dirs: Sequence[Path],
     behavior_replay: bool,
     knowledge_index_exists: bool,
+    adapter_name: str = "claude-code",
+    adapter_check_enabled: bool = True,
 ) -> list[HarnessStepPlan]:
     """Return harness checks in their public execution order."""
     scripts = framework_root / "scripts"
@@ -74,6 +76,16 @@ def harness_step_plan(
                     run("cc-doctor-check"),
                 ]
             )
+            if adapter_check_enabled:
+                plans.append(
+                    run(
+                        "cc-adapter-check",
+                        "--adapter",
+                        adapter_name,
+                        "--embedded",
+                        "--json",
+                    )
+                )
             if not behavior_replay:
                 plans.append(run("cc-behavior-check"))
             plans.extend(
@@ -98,8 +110,18 @@ def harness_step_plan(
         run("cc-readset", "--check"),
         run("cc-workflow-gen", "--check"),
         run("cc-doctor-check"),
-        run("cc-event-check", str(sync_target)),
     ]
+    if adapter_check_enabled:
+        plans.append(
+            run(
+                "cc-adapter-check",
+                "--adapter",
+                adapter_name,
+                "--embedded",
+                "--json",
+            )
+        )
+    plans.append(run("cc-event-check", str(sync_target)))
     if not behavior_replay:
         plans.append(run("cc-behavior-check"))
     plans.extend(

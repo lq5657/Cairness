@@ -31,6 +31,7 @@ def test_full_harness_plan_preserves_step_order_and_commands(tmp_path: Path):
         "cc-readset",
         "cc-workflow-gen",
         "cc-doctor-check",
+        "cc-adapter-check",
         "cc-event-check",
         "cc-behavior-check",
         "cc-upgrade-check",
@@ -45,6 +46,13 @@ def test_full_harness_plan_preserves_step_order_and_commands(tmp_path: Path):
         str(sync_target),
     ]
     assert plans[4].command == [str(scripts / "cc-readset"), "--check"]
+    assert plans[7].command == [
+        str(scripts / "cc-adapter-check"),
+        "--adapter",
+        "claude-code",
+        "--embedded",
+        "--json",
+    ]
     assert plans[-1].command == [str(scripts / "cc-deps"), "orphans"]
     assert all(plan.action == "run" and plan.collect_issues for plan in plans)
 
@@ -74,6 +82,7 @@ def test_changed_only_plan_is_deterministic_for_change_and_harness_surfaces(tmp_
         "cc-readset",
         "cc-workflow-gen",
         "cc-doctor-check",
+        "cc-adapter-check",
         "cc-upgrade-check",
         "cc-schema-check",
         "cc-deps-orphans",

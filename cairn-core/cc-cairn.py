@@ -752,6 +752,15 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     _ensure_baseline_gitignored(project_root)
 
 
+def cmd_init_cli(argv):
+    parser = argparse.ArgumentParser(
+        prog="cc-cairn init",
+        description="Initialize Cairness in the current project.",
+    )
+    parser.parse_args(argv)
+    cmd_init()
+
+
 def cmd_onboard(argv):
     """Inspect a project, show a deterministic plan, and optionally apply it."""
     parser = argparse.ArgumentParser(prog="cc-cairn onboard")
@@ -2284,7 +2293,7 @@ def main():
 
     cmd = sys.argv[1]
     if cmd == "init":
-        cmd_init()
+        cmd_init_cli(sys.argv[2:])
     elif cmd == "onboard":
         cmd_onboard(sys.argv[2:])
     elif cmd == "profile":

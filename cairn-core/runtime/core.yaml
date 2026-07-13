@@ -112,6 +112,7 @@ scripts:
   wave-plan: core://scripts/cc-wave-plan
   gate-stats: core://scripts/cc-gate-stats
   help: core://scripts/cc-help
+  adapter-check: core://scripts/cc-adapter-check
 
 topic_rules:
   verification: core://runtime/topic-rules/verification.yaml

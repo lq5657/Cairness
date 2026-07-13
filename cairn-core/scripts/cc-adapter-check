@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""Validate one agent-host adapter against its regression contract."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import sys
+from pathlib import Path
+
+from harness_runtime.adapter_regression import (
+    AdapterRegressionError,
+    merge_host_smoke_report,
+    run_adapter_regression,
+)
+from harness_runtime.adapter_host_smoke import (
+    HostSmokeConfig,
+    HostSmokeRunner,
+    load_user_auth_environment,
+    prepare_host_smoke_project,
+)
+from harness_runtime.context import HarnessContextError, load_harness_context
+
+
+def _error_report(adapter: str, code: str, message: str) -> dict[str, object]:
+    return {
+        "tool": "cc-adapter-check",
+        "adapter": adapter,
+        "status": "failed",
+        "mode": "offline",
+        "checks": [],
+        "issues": [{"code": code, "path": "", "message": message}],
+    }
+
+
+def _print_text(report: dict[str, object]) -> None:
+    print(f"cc-adapter-check: {report['status']} ({report['adapter']})")
+    for check in report.get("checks", []):
+        print(f"{str(check['status']).upper():9} {check['id']}")
+    for issue in report.get("issues", []):
+        print(
+            f"{issue['code']} {issue['path']} {issue['message']}",
+            file=sys.stderr,
+        )
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run an adapter regression baseline."
+    )
+    parser.add_argument("--adapter", default="claude-code")
+    parser.add_argument("--root", help="Explicit Cairness project root.")
+    parser.add_argument(
+        "--embedded",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument("--json", action="store_true", help="Emit JSON report.")
+    parser.add_argument(
+        "--host-smoke",
+        action="store_true",
+        help="Opt in to paid, authenticated Claude Code host probes.",
+    )
+    parser.add_argument(
+        "--host-smoke-profile",
+        choices=("quick", "release"),
+        default="quick",
+        help="Host coverage profile (default: quick, one paid call).",
+    )
+    parser.add_argument(
+        "--max-budget-usd",
+        type=float,
+        help=(
+            "Required Claude host budget request; observed overrun fails the smoke."
+        ),
+    )
+    parser.add_argument(
+        "--per-call-budget-usd",
+        type=float,
+        help="Optional per-call cap; defaults to total cap for quick.",
+    )
+    parser.add_argument(
+        "--host-model",
+        default="fable",
+        help="Claude model used by paid host probes (default: fable).",
+    )
+    parser.add_argument(
+        "--host-effort",
+        choices=("low", "medium", "high", "xhigh", "max"),
+        default="low",
+        help="Claude effort used by paid host probes (default: low).",
+    )
+    parser.add_argument(
+        "--host-timeout-seconds",
+        type=int,
+        default=60,
+        help="Hard timeout for each Claude subprocess (default: 60).",
+    )
+    parser.add_argument(
+        "--setting-sources",
+        help="Claude Code setting sources (quick: project; release: user,project).",
+    )
+    parser.add_argument(
+        "--host-temp-parent",
+        help="Optional parent directory for the disposable smoke project.",
+    )
+    parser.add_argument(
+        "--keep-host-project",
+        action="store_true",
+        help="Preserve the disposable host project even when smoke passes.",
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+        report = run_adapter_regression(
+            context.framework_root,
+            args.adapter,
+            embedded=args.embedded,
+            project_root=context.project_root,
+        )
+        if args.host_smoke and report["status"] == "passed":
+            if args.adapter != "claude-code":
+                raise AdapterRegressionError(
+                    "live host smoke is currently implemented only for claude-code"
+                )
+            if args.max_budget_usd is None:
+                raise AdapterRegressionError(
+                    "--max-budget-usd is required with --host-smoke"
+                )
+            setting_sources = None
+            if args.setting_sources is not None:
+                setting_sources = tuple(
+                    source.strip()
+                    for source in args.setting_sources.split(",")
+                    if source.strip()
+                )
+            try:
+                auth_environment = load_user_auth_environment()
+            except ValueError as exc:
+                raise AdapterRegressionError(str(exc)) from exc
+            host_project = prepare_host_smoke_project(
+                context.framework_root,
+                parent=Path(args.host_temp_parent) if args.host_temp_parent else None,
+            )
+            per_call_budget = args.per_call_budget_usd
+            if per_call_budget is None:
+                per_call_budget = (
+                    args.max_budget_usd
+                    if args.host_smoke_profile == "quick"
+                    else min(0.5, args.max_budget_usd)
+                )
+            try:
+                host_report = HostSmokeRunner(
+                    HostSmokeConfig(
+                        project_root=host_project,
+                        profile=args.host_smoke_profile,
+                        total_budget_usd=args.max_budget_usd,
+                        per_call_budget_usd=per_call_budget,
+                        model=args.host_model,
+                        effort=args.host_effort,
+                        timeout_seconds=args.host_timeout_seconds,
+                        setting_sources=setting_sources,
+                        auth_environment=auth_environment,
+                    )
+                ).run()
+            except (OSError, ValueError) as exc:
+                host_report = {
+                    "status": "failed",
+                    "evidence_kind": "host-observed",
+                    "cost": 0.0,
+                    "stages": [],
+                    "issues": [
+                        {
+                            "code": "E_ADAPTER012",
+                            "path": str(host_project),
+                            "message": f"host smoke setup failed: {exc}",
+                        }
+                    ],
+                }
+            if host_report["status"] == "passed" and not args.keep_host_project:
+                shutil.rmtree(host_project)
+            else:
+                host_report["preserved_project"] = str(host_project.resolve())
+            report = merge_host_smoke_report(report, host_report)
+    except HarnessContextError as exc:
+        report = _error_report(args.adapter, "E_CONTEXT001", str(exc))
+        exit_code = 2
+    except AdapterRegressionError as exc:
+        report = _error_report(args.adapter, "E_ADAPTER000", str(exc))
+        exit_code = 2
+    else:
+        exit_code = 1 if report["status"] in {"failed", "unstable"} else 0
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        _print_text(report)
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
