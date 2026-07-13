@@ -29,6 +29,7 @@ from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums as _load_enums
 from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.observability import collection_summary, discover_runtime_events
 
 from change_docs import parse_findings
 
@@ -149,7 +150,11 @@ def parse_review(path: Path) -> dict[str, Any] | None:
     return result
 
 
-def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -> dict[str, Any]:
+def compute_stats(
+    events: list[dict[str, Any]],
+    reviews: list[dict[str, Any]],
+    runtime_events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     # Command usage
     cmd_counts: Counter = Counter()
     verification_results: Counter = Counter()
@@ -217,6 +222,7 @@ def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -
         for tag, count in root_cause_counter.most_common()
     ]
 
+    runtime_events = runtime_events or []
     return {
         "total_events": len(events),
         "total_changes_with_reviews": len(reviews),
@@ -241,6 +247,7 @@ def compute_stats(events: list[dict[str, Any]], reviews: list[dict[str, Any]]) -
         "trends": {
             "by_date": date_cmd_trend,
         },
+        "collection": collection_summary(events, runtime_events),
     }
 
 
@@ -281,6 +288,14 @@ def print_root_causes(stats: dict[str, Any]) -> None:
 
 def print_readable(stats: dict[str, Any]) -> None:
     print("=== cc_spec 项目可观测性报告 ===\n")
+
+    collection = stats["collection"]
+    print(
+        "── 采集完整度 ──\n"
+        f"  采集完整度: {collection['status']}\n"
+        f"  自动 verification runs: {collection['automatic_verification_runs']}\n"
+        f"  Lifecycle events: {collection['lifecycle_events']}\n"
+    )
 
     print("── 命令使用分布 ──")
     for cmd, count in sorted(stats["command_counts"].items()):
@@ -345,7 +360,7 @@ def main() -> None:
     root = context.project_root
     events = discover_events(root)
     reviews = discover_reviews(root)
-    stats = compute_stats(events, reviews)
+    stats = compute_stats(events, reviews, discover_runtime_events(root))
 
     if args.json:
         if args.findings:

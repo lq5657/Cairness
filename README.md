@@ -78,7 +78,7 @@ cc-help                 # 高频入口
 cc-help --advanced      # 全部底层命令
 ```
 
-只读 Dashboard 默认绑定 localhost，数据来自现有 change、review 和事件报告：
+只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件和本地自动 verification 运行摘要，并显示采集完整度：
 
 ```bash
 cc-dashboard --root .

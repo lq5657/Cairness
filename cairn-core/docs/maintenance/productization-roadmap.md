@@ -88,7 +88,7 @@ cairn-core/scripts/cc-behavior-check
 - `cairn-core/VERSION`：`1.1.0`
 - 基线提交：本次 `P3-03` Codex adapter 提交
 - 分支：`main`
-- 测试：`933 passed`
+- 测试：`941 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -103,7 +103,7 @@ cairn-core/scripts/cc-behavior-check
 | Scripts | 89 个文件 |
 | Eval cases | 65 |
 | Behavior cases | 9 |
-| Tests | 110 个 Python 文件，933 个用例 |
+| Tests | 111 个 Python 文件，941 个用例 |
 
 当前主要事实：
 
@@ -186,7 +186,7 @@ Phase 3：Agent Governance Platform
 | `P3-07` | 跨仓 change store | Phase 3 | P2 | 待开始 | `P3-06` |
 | `P3-08` | Model-driven eval matrix | Phase 3 | P1 | 待开始 | `P3-02`、`P3-03` |
 | `P3-09` | 结构化状态 sidecar 渐进迁移 | Phase 3 | P2 | 待开始 | `P2-06` |
-| `P3-10` | 治理指标与可选遥测闭环 | Phase 3 | P2 | 调研中 | `P2-07`、`P3-01` |
+| `P3-10` | 治理指标与可选遥测闭环 | Phase 3 | P2 | 实施中 | `P2-07`、`P3-01` |
 
 ## 8. Phase 1 — Trustworthy Runtime
 
@@ -1708,7 +1708,7 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 
 ### 10.12 `P3-10` 治理指标与可选遥测闭环
 
-**状态**：调研中
+**状态**：实施中
 
 **目标**：让 `cc-stats`、`cc-gate-stats` 和 Dashboard 使用由运行器自动记录的完整数据，而不是依赖 Agent 自愿填写。
 
@@ -1733,6 +1733,14 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 - 无遥测时所有本地能力仍可用。
 
 **验收标准**：能回答首个成功 change 时间、命令阻塞率、gate precision、CI pass rate 和 upgrade failure rate，并标注样本完整度。
+
+**实施记录（2026-07-13）**：
+
+- 已完成首批本地自动采集：`cc-verify` 在目标项目的 `.cairness/observability/runtime-events.jsonl` 追加经过清洗的 verification run 摘要，包含状态、模式、耗时和子步骤状态计数；不记录 prompt、代码、路径、change ID、token 内容或 PII。
+- `cc-stats` 与只读 Dashboard 已消费该流，并公开 lifecycle event 与 automatic runtime event 的数量、verification run 数和 `not_collected|partial|complete` 完整度。
+- `DO_NOT_TRACK=1|true|yes` 禁止写入；框架源码仓自豁免，避免 Cairness 开发本身污染其 `.cairness`。写入错误不改变 `cc-verify` gate 结论。
+- 验证：runtime observability、stats、Dashboard 与 verification 聚焦回归通过；全仓 `941 passed`，`git diff --check`、Python `py_compile` 和相关 Ruff 检查通过。
+- 剩余：扩展自动采集到其他稳定运行器，补齐完整度定义对应的指标计算；远程匿名遥测仍未实现，必须独立评审并保持 CI 默认关闭。
 
 ## 11. 跨阶段依赖与推荐执行顺序
 

@@ -11,10 +11,12 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from time import monotonic
 
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
+from harness_runtime.observability import record_verification_run
 from harness_runtime.verification_capabilities import (
     capability_display_name,
     capability_enabled,
@@ -262,6 +264,17 @@ def print_text(report: dict[str, object], verbose: bool) -> None:
                     print(f"doc_ref: {doc_ref}")
 
 
+def record_runtime_observability(
+    project_root: Path, report: dict[str, object], *, duration_ms: int
+) -> None:
+    """Record local verification coverage without changing gate outcome."""
+
+    try:
+        record_verification_run(project_root, report, duration_ms=duration_ms)
+    except OSError:
+        return
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Run Harness verification checks.")
     mode = parser.add_mutually_exclusive_group()
@@ -290,7 +303,13 @@ def main(argv: list[str]) -> int:
     except HarnessContextError as exc:
         print(f"E_CONTEXT001 {exc}", file=sys.stderr)
         return 2
+    started = monotonic()
     report = build_report(args, context)
+    record_runtime_observability(
+        context.project_root,
+        report,
+        duration_ms=int((monotonic() - started) * 1000),
+    )
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
