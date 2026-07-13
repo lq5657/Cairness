@@ -291,7 +291,7 @@ def test_quick_profile_combines_live_acceptance_into_one_bounded_call(
                         }
                     )
                     + f"\n```\n\nAcceptance completed. leaked={secret}",
-                    cost=0.08,
+                    cost=0.36,
                 ),
             )
         )
@@ -325,7 +325,14 @@ def test_quick_profile_combines_live_acceptance_into_one_bounded_call(
     ]
     assert report["status"] == "passed"
     assert report["coverage"] == "quick"
-    assert report["cost"] == pytest.approx(0.08)
+    assert report["cost"] == pytest.approx(0.36)
+    assert report["budget"] == {
+        "warning_threshold_usd": 0.35,
+        "observed_total_usd": pytest.approx(0.36),
+        "status": "exceeded",
+        "overrun_usd": pytest.approx(0.01),
+        "action": "observed_only",
+    }
     assert report["configuration"]["auth_environment_keys"] == [
         "ANTHROPIC_AUTH_TOKEN"
     ]
@@ -334,6 +341,12 @@ def test_quick_profile_combines_live_acceptance_into_one_bounded_call(
         "preflight",
         "quick_acceptance",
     ]
+    assert report["stages"][1]["budget"] == {
+        "provider_request_usd": 0.35,
+        "observed_usd": pytest.approx(0.36),
+        "status": "provider_limit_overrun",
+        "overrun_usd": pytest.approx(0.01),
+    }
 
 
 def test_quick_profile_fails_and_stops_when_host_call_times_out(tmp_path: Path):
@@ -587,44 +600,7 @@ def test_release_profile_defaults_to_user_and_project_settings(tmp_path: Path):
     assert config.setting_sources == ("user", "project")
 
 
-def test_runner_hard_stops_when_observed_total_budget_is_exhausted(tmp_path: Path):
-    print_calls = 0
-
-    def executor(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        nonlocal print_calls
-        if argv == ["claude", "--version"]:
-            return _completed(argv, stdout="2.1.0\n")
-        if argv == ["claude", "auth", "status", "--json"]:
-            return _completed(argv, stdout=json.dumps({"loggedIn": True}))
-        if argv == ["claude", "--help"]:
-            return _completed(argv, stdout="--setting-sources")
-        print_calls += 1
-        budget = float(argv[argv.index("--max-budget-usd") + 1])
-        assert budget <= 0.2
-        return _completed(argv, stdout=_result_event("TRANSPORT_OK", cost=0.2))
-
-    report = HostSmokeRunner(
-        HostSmokeConfig(
-            project_root=tmp_path,
-            profile="release",
-            total_budget_usd=0.2,
-            per_call_budget_usd=0.5,
-        ),
-        executor=executor,
-    ).run()
-
-    assert print_calls == 1
-    assert report["status"] == "failed"
-    assert report["cost"] == pytest.approx(0.2)
-    assert report["stages"][1]["status"] == "passed"
-    assert all(stage["status"] == "skipped" for stage in report["stages"][2:])
-    assert all(
-        stage["result"] == {"reason": "total_budget_exhausted"}
-        for stage in report["stages"][2:]
-    )
-
-
-def test_runner_uses_observed_cost_and_completes_low_cost_wave_handoff(
+def test_runner_observes_budget_overrun_and_completes_release_wave_handoff(
     tmp_path: Path,
 ):
     print_calls = 0
@@ -711,8 +687,8 @@ def test_runner_uses_observed_cost_and_completes_low_cost_wave_handoff(
         HostSmokeConfig(
             project_root=tmp_path,
             profile="release",
-            total_budget_usd=1.4,
-            per_call_budget_usd=0.5,
+            total_budget_usd=0.05,
+            per_call_budget_usd=0.005,
             session_id=session_id,
         ),
         executor=executor,
@@ -721,6 +697,22 @@ def test_runner_uses_observed_cost_and_completes_low_cost_wave_handoff(
     assert print_calls == 8
     assert report["status"] == "passed"
     assert report["cost"] == pytest.approx(0.08)
+    assert report["budget"] == {
+        "warning_threshold_usd": 0.05,
+        "observed_total_usd": pytest.approx(0.08),
+        "status": "exceeded",
+        "overrun_usd": pytest.approx(0.03),
+        "action": "observed_only",
+    }
+    paid_stages = report["stages"][1:]
+    assert all(
+        stage["budget"]["provider_request_usd"] == pytest.approx(0.005)
+        for stage in paid_stages
+    )
+    assert all(
+        stage["budget"]["status"] == "provider_limit_overrun"
+        for stage in paid_stages
+    )
     assert json.loads(
         (tmp_path / ".cairness/host-smoke/wave-1-summary.json").read_text(
             encoding="utf-8"
@@ -761,7 +753,7 @@ def test_runner_stops_paid_stages_after_first_unstable_result(tmp_path: Path):
 
 
 def test_config_rejects_implicit_or_unbounded_execution(tmp_path: Path):
-    with pytest.raises(ValueError, match="explicit total budget"):
+    with pytest.raises(ValueError, match="explicit budget warning threshold"):
         HostSmokeConfig(project_root=tmp_path)
     with pytest.raises(ValueError, match="positive"):
         HostSmokeConfig(project_root=tmp_path, total_budget_usd=0)

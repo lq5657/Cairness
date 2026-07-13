@@ -103,7 +103,7 @@ cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
 .claude/scripts/cc-adapter-check --adapter claude-code --json
 ```
 
-真实 Claude Code 宿主 smoke 是显式 opt-in 的付费检查。默认 `quick` profile 在一次性项目中只加载 `project` settings，并执行一次低 effort 的 `claude -p`，合并验证 transport、Skill、14 个命令和 PreToolUse hook，用显式预算请求与 60 秒超时限制消耗：
+真实 Claude Code 宿主 smoke 是显式 opt-in 的付费检查。默认 `quick` profile 在一次性项目中只加载 `project` settings，并执行一次低 effort 的 `claude -p`，合并验证 transport、Skill、14 个命令和 PreToolUse hook；调用方显式提供累计费用告警阈值和 Claude Code 单次调用 cap，并以 60 秒 timeout 限制运行时间：
 
 ```bash
 .claude/scripts/cc-adapter-check \
@@ -112,19 +112,21 @@ cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
   --host-smoke-profile quick \
   --host-model fable \
   --max-budget-usd 0.35 \
+  --per-call-budget-usd 0.35 \
   --host-timeout-seconds 60 \
   --setting-sources project \
   --json
 ```
 
-完整 `release` profile 保留 subagent、session resume 和跨进程 fresh-context wave 等八阶段验收。fresh-context wave 1 要求 foreground Agent 按 `cc-apply` summary contract 写入磁盘交接文件，wave 2 由全新顶层进程读取；runner 只验证交接文件，不代写。该 profile 只在 Claude Code 大版本升级或正式发布前显式执行，并要求调用方提供总预算：
+完整 `release` profile 保留 subagent、session resume 和跨进程 fresh-context wave 等八阶段验收。fresh-context wave 1 要求 foreground Agent 按 `cc-apply` summary contract 写入磁盘交接文件，wave 2 由全新顶层进程读取；runner 只验证交接文件，不代写。该 profile 只在 Claude Code 大版本升级或正式发布前显式执行，并要求调用方提供累计费用告警阈值与单次调用 cap：
 
 ```bash
 .claude/scripts/cc-adapter-check \
   --adapter claude-code \
   --host-smoke \
   --host-smoke-profile release \
-  --max-budget-usd <explicit-cap> \
+  --max-budget-usd <warning-threshold> \
+  --per-call-budget-usd <provider-call-cap> \
   --json
 ```
 
@@ -132,7 +134,7 @@ cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
 
 quick 只加载项目 settings；若当前认证依赖用户 settings 的 `env`，runner 仅继承受限的 Anthropic/Claude/provider 环境变量到最小子进程环境。用户插件、用户 hooks 和 ambient CI/数据库/部署凭据不会载入；已知认证值会从宿主结果中脱敏，报告只显示继承的变量名，不显示值。
 
-`--max-budget-usd` 会原样传给 Claude Code，但宿主可能在单个在途请求结算时报告略高于该值的实际费用。Cairness 会检测这种超支、将 smoke 标记失败并停止后续阶段；该参数不能替代账户侧账单限额。
+`--per-call-budget-usd` 作为 Claude Code 的 `--max-budget-usd` 传入每个独立调用；宿主仍可能在单个在途请求结算时报告略高于该值的实际费用。Cairness 使用 `--max-budget-usd` 作为整场 smoke 的累计费用告警阈值，只记录每阶段与整场的实际费用、阈值状态和超出金额，不因预算状态改变能力结论或停止后续阶段。调用是否因单次 cap 退出由 Claude Code 控制，这两个参数都不能替代账户侧账单限额。
 
 ## 框架升级
 

@@ -179,7 +179,7 @@ class HostOutput:
 
 @dataclass(frozen=True)
 class HostSmokeConfig:
-    """Explicit execution limits and host-facing settings for one smoke run."""
+    """Explicit cost observations and host-facing settings for one smoke run."""
 
     project_root: Path
     profile: str = "quick"
@@ -205,10 +205,12 @@ class HostSmokeConfig:
         if self.profile not in {"quick", "release"}:
             raise ValueError("host smoke profile must be quick or release")
         if self.total_budget_usd is None:
-            raise ValueError("host smoke requires an explicit total budget")
+            raise ValueError(
+                "host smoke requires an explicit budget warning threshold"
+            )
         total_budget = Decimal(str(self.total_budget_usd))
         if not total_budget.is_finite() or total_budget <= 0:
-            raise ValueError("total budget must be positive")
+            raise ValueError("budget warning threshold must be positive")
         per_call_budget = self.per_call_budget_usd
         if per_call_budget is None:
             per_call_budget = (
@@ -433,7 +435,7 @@ def parse_host_output(output: str) -> HostOutput:
 
 
 class HostSmokeRunner:
-    """Run isolated probes, detect host budget overruns, and sanitize evidence."""
+    """Run isolated probes, observe host costs, and sanitize evidence."""
 
     def __init__(
         self,
@@ -444,7 +446,7 @@ class HostSmokeRunner:
         self.config = config
         self._executor = executor or subprocess.run
         self._spent = Decimal("0")
-        self._budget_contract_violated = False
+        self._cost_observation_complete = True
 
     def _invoke(self, argv: list[str]) -> subprocess.CompletedProcess[str]:
         environment = {
@@ -529,12 +531,51 @@ class HostSmokeRunner:
             "result": result,
         }
 
-    def _remaining_budget(self) -> Decimal:
-        return Decimal(str(self.config.total_budget_usd)) - self._spent
-
     @staticmethod
     def _budget_arg(value: Decimal) -> str:
         return format(value.normalize(), "f")
+
+    @staticmethod
+    def _stage_budget(
+        provider_request: Decimal,
+        observed_cost: float | None,
+    ) -> dict[str, object]:
+        if observed_cost is None:
+            return {
+                "provider_request_usd": float(provider_request),
+                "observed_usd": None,
+                "status": "unknown",
+                "overrun_usd": None,
+            }
+        observed = Decimal(str(observed_cost))
+        overrun = max(Decimal("0"), observed - provider_request)
+        return {
+            "provider_request_usd": float(provider_request),
+            "observed_usd": observed_cost,
+            "status": (
+                "provider_limit_overrun"
+                if overrun > 0
+                else "within_provider_limit"
+            ),
+            "overrun_usd": float(overrun),
+        }
+
+    def _budget_summary(self) -> dict[str, object]:
+        threshold = Decimal(str(self.config.total_budget_usd))
+        overrun = max(Decimal("0"), self._spent - threshold)
+        if overrun > 0:
+            status = "exceeded"
+        elif self._cost_observation_complete:
+            status = "within_threshold"
+        else:
+            status = "unknown"
+        return {
+            "warning_threshold_usd": float(threshold),
+            "observed_total_usd": float(self._spent),
+            "status": status,
+            "overrun_usd": float(overrun),
+            "action": "observed_only",
+        }
 
     def _run_print_stage(
         self,
@@ -543,10 +584,7 @@ class HostSmokeRunner:
         *,
         extra_args: Sequence[str] = (),
     ) -> dict[str, object]:
-        remaining = self._remaining_budget()
-        if remaining <= 0 or self._budget_contract_violated:
-            return self._skipped(name, "total_budget_exhausted")
-        call_limit = min(Decimal(str(self.config.per_call_budget_usd)), remaining)
+        call_limit = Decimal(str(self.config.per_call_budget_usd))
         allowed_tools = self.config.stage_allowed_tools[name]
         argv = [
             "claude",
@@ -577,7 +615,8 @@ class HostSmokeRunner:
         try:
             completed = self._invoke(argv)
         except subprocess.TimeoutExpired:
-            return self._stage(
+            self._cost_observation_complete = False
+            stage = self._stage(
                 name,
                 "failed",
                 None,
@@ -586,13 +625,18 @@ class HostSmokeRunner:
                     "timeout_seconds": self.config.timeout_seconds,
                 },
             )
+            stage["budget"] = self._stage_budget(call_limit, None)
+            return stage
         except (OSError, subprocess.SubprocessError) as exc:
-            return self._stage(
+            self._cost_observation_complete = False
+            stage = self._stage(
                 name,
                 "failed",
-                0.0,
+                None,
                 {"reason": "executor_error", "error_type": type(exc).__name__},
             )
+            stage["budget"] = self._stage_budget(call_limit, None)
+            return stage
 
         parsed = parse_host_output(completed.stdout)
         observed_cost = (
@@ -602,13 +646,9 @@ class HostSmokeRunner:
         )
         if parsed.total_cost_usd is not None:
             self._spent += observed_cost
-        budget_violation = parsed.total_cost_usd is not None and (
-            observed_cost > call_limit
-            or self._spent > Decimal(str(self.config.total_budget_usd))
-        )
-        if budget_violation:
-            self._budget_contract_violated = True
-        status = "failed" if completed.returncode != 0 or budget_violation else parsed.status
+        else:
+            self._cost_observation_complete = False
+        status = "failed" if completed.returncode != 0 else parsed.status
         result: dict[str, object] = {
             "output": _redact_known_secrets(
                 parsed.result,
@@ -622,9 +662,8 @@ class HostSmokeRunner:
         if completed.returncode != 0:
             result["reason"] = "host_exit_nonzero"
             result["exit_code"] = completed.returncode
-        if budget_violation:
-            result["reason"] = "budget_contract_violated"
         stage = self._stage(name, status, parsed.total_cost_usd, result)
+        stage["budget"] = self._stage_budget(call_limit, parsed.total_cost_usd)
         self._validate_stage(stage)
         return stage
 
@@ -799,7 +838,7 @@ class HostSmokeRunner:
         """Execute all probes synchronously and return a sanitized report."""
 
         self._spent = Decimal("0")
-        self._budget_contract_violated = False
+        self._cost_observation_complete = True
         stages = [self.preflight()]
         if self.config.profile == "quick":
             if stages[0]["status"] == "passed":
@@ -825,11 +864,6 @@ class HostSmokeRunner:
                     stages.append(self._skipped(name, "prior_stage_not_passed"))
                     continue
                 if name == "fresh_context_wave_2":
-                    if self._remaining_budget() <= 0 or self._budget_contract_violated:
-                        stages.append(
-                            self._skipped(name, "total_budget_exhausted")
-                        )
-                        continue
                     if not wave_summary_persisted:
                         stages.append(
                             self._skipped(name, "wave_1_summary_unavailable")
@@ -865,6 +899,7 @@ class HostSmokeRunner:
             "evidence_kind": "host-observed",
             "coverage": self.config.profile,
             "cost": float(self._spent),
+            "budget": self._budget_summary(),
             "configuration": {
                 "opt_in": True,
                 "profile": self.config.profile,

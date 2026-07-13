@@ -1529,12 +1529,20 @@ adapters/
 - Change/提交：本批 P3-02 提交
 - 已完成：新增机器可读 adapter regression manifest/schema 与 `cc-adapter-check`，覆盖 14 命令、五项宿主资产、精确 PreToolUse 执行绑定、Skill、subagent/fresh-context contract、behavior eval、session resume 和 full verify；legacy upgrade 会真实执行一次 metadata-free `.claude` 升级并验证 backup、metadata、report、版本替换与用户文件保留。
 - 已完成：`cc-verify --harness-only` 接入 embedded adapter 基线并保持递归安全；standalone adapter 运行完整默认 `cc-verify`。未执行的 embedded behavior/full verify 及其 capability 显示为 `delegated`，不提前声称 `supported`；Doctor readiness 同时受 capability contract 和五项 host assets 约束。
-- 已完成：真实宿主 runner 分为默认 `quick` 和显式 `release`。quick 强制单次 `fable/low`、60 秒 timeout、`project` settings、`Skill/Read/Write`、无会话持久化和显式预算；子进程使用最小 ambient env，只注入 allowlist 认证变量并脱敏已知值。release 保留八阶段验收，subagent/wave 1 必须观察 `Agent` tool event，wave summary 必须由 Agent 按合同写入，runner 不代写。
+- 已完成：真实宿主 runner 分为默认 `quick` 和显式 `release`。quick 强制单次 `fable/low`、60 秒 timeout、`project` settings、`Skill/Read/Write`、无会话持久化、累计费用告警阈值和单次 provider cap；子进程使用最小 ambient env，只注入 allowlist 认证变量并脱敏已知值。release 保留八阶段验收，subagent/wave 1 必须观察 `Agent` tool event，wave summary 必须由 Agent 按合同写入，runner 不代写。
 - 验证：settled tree `rtk pytest -q` → `897 passed`；`cc-verify --harness-only`、full-mode `cc-verify --json`、standalone offline adapter、schema、readset、workflow、涉及文件 ruff、py_compile 与 `git diff --check` 均通过。full-mode 的项目语言检查因本仓同时包含五种语言 fixture 而明确 `skipped`，未计为 project pass；两轮独立终审均无 Critical/Important findings。
 - 真实宿主：首次 quick 使用 `user,project` 和 `$0.25` 预算请求，实际 `$0.274740` 后预算退出，只完成 Skill/Read；第二次 project-only 因认证依赖用户 settings env 而在模型调用前退出，费用 `$0`；引入认证环境桥接后，第三次以 `$0.35` 请求完成 Skill、Read、Write、14 命令与 `PreToolUse:Write`，实际 `$0.330239`。原报告因只接受纯 JSON 和旧 hook event 形态产生 false negative，验证器已按该真实 Claude Code 2.1.201 输出形态补回归并修复。相比原八阶段手工 smoke `$1.875991`，单次 quick 的实测费用降低约 82%。
-- 剩余：当前真实 quick 的能力证据齐全，但修复后的 runner 尚未再付费生成一份顶层 `status: passed` 报告；完整 release profile 也未在真实宿主执行。二者均需新的显式预算授权，因此 P3-02 保持部分完成，不阻塞本批回归基线实现合并。
-- 风险/决策：Claude Code 的 `--max-budget-usd` 可能被单个在途请求结算小幅越过；Cairness 会检测超支并停止，但不将其宣传为账户账单硬上限。quick 不声称 subagent、resume 或 fresh-context 获得实时观察；release 未运行前不扩大对应宿主支持证据。
-- 下一步：发布前以显式预算运行一次修复后的 quick 和 release；证据通过后将 P3-02 更新为完成，再进入 `P3-03`。
+- 剩余：当前真实 quick 的能力证据齐全，但修复后的 runner 尚未再付费生成一份顶层 `status: passed` 报告；完整 release profile 也未在真实宿主执行。二者均需新的显式费用授权，因此 P3-02 保持部分完成，不阻塞本批回归基线实现合并。
+- 风险/决策：Claude Code 的 `--max-budget-usd` 可能被单个在途请求结算小幅越过；Cairness 只记录单阶段与累计实际费用、告警阈值状态和超出金额，不因预算状态改变宿主能力结论或停止后续阶段。当前调用是否因单次 cap 退出由 Claude Code 控制，Cairness 不将观测阈值宣传为账户账单硬上限。quick 不声称 subagent、resume 或 fresh-context 获得实时观察；release 未运行前不扩大对应宿主支持证据。
+- 下一步：发布前以显式费用授权、累计告警阈值和单次 provider cap 运行一次修复后的 quick 和 release；证据通过后将 P3-02 更新为完成，再进入 `P3-03`。
+
+#### 实施补充 2026-07-13（预算观测职责收敛）
+
+- 状态：部分完成
+- Change/提交：本次 P3-02 补充提交
+- 已完成：移除预算状态对能力阶段结果和后续阶段调度的控制；每阶段固定向 Claude Code 传递显式单次 cap，Cairness 仅输出 provider 请求值、实际费用、单次越界状态，以及整场累计费用、告警阈值和超出金额。CLI 与 README 已明确区分累计告警阈值和 provider 单次 cap。
+- 验证：预算语义先以 quick 单次越界和 release 累计越界场景形成失败回归，再完成实现；聚焦 adapter/host smoke 回归 `48 passed`，全仓 `896 passed`，`cc-verify --harness-only`、离线 `cc-adapter-check`、readset、workflow、ruff、py_compile 与 `git diff --check` 均通过。
+- 边界：本次没有调用真实 Claude Code，不产生模型费用，也不新增宿主能力证据；P3-02 仍因修复后 quick 与完整 release 尚未获得新一轮真实宿主报告而保持部分完成。
 
 ### 10.5 `P3-03` Codex adapter
 

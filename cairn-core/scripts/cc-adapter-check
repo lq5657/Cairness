@@ -72,13 +72,17 @@ def main(argv: list[str]) -> int:
         "--max-budget-usd",
         type=float,
         help=(
-            "Required Claude host budget request; observed overrun fails the smoke."
+            "Required cumulative cost warning threshold; observed overrun is "
+            "reported only."
         ),
     )
     parser.add_argument(
         "--per-call-budget-usd",
         type=float,
-        help="Optional per-call cap; defaults to total cap for quick.",
+        help=(
+            "Optional Claude Code --max-budget-usd value for each call; defaults "
+            "to the warning threshold for quick."
+        ),
     )
     parser.add_argument(
         "--host-model",
