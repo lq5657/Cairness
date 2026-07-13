@@ -209,7 +209,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.3 `P1-01` GitHub-hosted CI 可直接运行
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：目标项目在 GitHub-hosted runner 上不依赖预装 `.claude/` 或 self-hosted runner，即可运行固定版本的 Cairness 校验。
 
@@ -1457,7 +1457,7 @@ unsupported
 
 ### 10.3 `P3-01` Runtime-neutral core
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：将 runtime、schema、验证器、state model 和模板从 Claude Code 安装布局中抽离。
 
@@ -1832,11 +1832,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-01 Runtime-neutral core` 已完成，下一项进入 `P3-02 Claude Code adapter 回归基线`。
+当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-02 Claude Code adapter 回归基线` 已完成离线实现并保留真实宿主验收债务，下一项进入 `P3-03 Codex adapter`。
 
 后续依赖链：
 
-1. `P3-02`：建立 Claude Code adapter 回归基线。
-2. `P3-03`：交付 Codex adapter，验证第二个正式宿主。
+1. `P3-02`：在正式发布窗口补 quick/release 真实 Claude Code 宿主证据。
+2. `P3-03`：当前实现项，交付 Codex adapter 并验证第二个正式宿主。
 3. `P3-04/P3-05/P3-06/P3-08`：在 adapter contract 稳定后扩展其他宿主、Policy Pack、Monorepo 和模型评测。
 4. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。
