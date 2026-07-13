@@ -83,6 +83,8 @@ def run_case(
 ) -> None:
     env = os.environ.copy()
     env["CC_BEHAVIOR_REPLAY"] = "1"
+    if context is not None:
+        env["CAIRNESS_FRAMEWORK_ROOT"] = str(context.framework_root)
     command = [
         str(context.resolve_path(token))
         if context is not None and token.startswith((".claude/", ".cairness/"))

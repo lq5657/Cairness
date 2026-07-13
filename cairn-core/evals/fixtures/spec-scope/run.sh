@@ -3,8 +3,7 @@
 # out_of_scope_flagged but log.md has no spec_review_flag record (E_SCOPE001).
 set -e
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-FRAMEWORK_ROOT="$REPO_ROOT/.claude"
+FRAMEWORK_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCOPE_CHECK="$FRAMEWORK_ROOT/scripts/cc-spec-scope-check"
 
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/cc-scope-eval.XXXXXX")"

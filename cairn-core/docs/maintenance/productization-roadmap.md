@@ -81,14 +81,14 @@ cairn-core/scripts/cc-behavior-check
 
 ## 4. 当前基线快照
 
-基线日期：`2026-07-12`
+基线日期：`2026-07-13`
 
 基线版本与提交：
 
 - `cairn-core/VERSION`：`1.1.0`
-- 基线提交：`1525daa feat: add safe onboarding workflow`
+- 基线提交：本次 `P3-03` Codex adapter 提交
 - 分支：`main`
-- 测试：`706 passed`
+- 测试：`933 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -99,15 +99,15 @@ cairn-core/scripts/cc-behavior-check
 | Generated readsets | 15（含 index） |
 | Topic rules | 35 |
 | Subagent contracts | 6 |
-| Schemas | 15 |
-| Scripts | 82 个受版本控制文件 |
-| Eval cases | 55 |
-| Behavior cases | 8 |
-| Tests | 94 个受版本控制文件，725 个用例 |
+| Schemas | 17 |
+| Scripts | 89 个文件 |
+| Eval cases | 65 |
+| Behavior cases | 9 |
+| Tests | 110 个 Python 文件，933 个用例 |
 
 当前主要事实：
 
-1. 核心运行时仍以 Claude Code 为唯一正式宿主：`.claude/`、`CLAUDE.md`、Skill、`settings.json` 和 `PreToolUse` hook 都带有宿主语义。
+1. Claude Code 与 Codex 均为正式 adapter：前者使用 `.claude/`，后者使用 `.codex/config.toml`、`.codex/CAIRNESS.md`、`.codex/hooks.json` 与项目级 `.agents/skills/cc-harness/`；两者可共存并共享 `.cairness/` 状态。
 2. 目标项目 CI 已支持固定版本和 checksum 的 ephemeral runner，不依赖预装 `.claude/`；仍缺一次正式发布后的 GitHub-hosted fixture run URL 作为远端完成证据。
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
@@ -179,7 +179,7 @@ Phase 3：Agent Governance Platform
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 完成 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 部分完成 | `P3-01` |
-| `P3-03` | Codex adapter | Phase 3 | P0 | 待开始 | `P3-01`、`P3-02` |
+| `P3-03` | Codex adapter | Phase 3 | P0 | 部分完成 | `P3-01`、`P3-02` |
 | `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 待开始 | `P3-03` |
 | `P3-05` | Policy Pack 与扩展锁定 | Phase 3 | P1 | 待开始 | `P3-01` |
 | `P3-06` | Monorepo 多 workspace | Phase 3 | P1 | 待开始 | `P3-01`、`P1-05` |
@@ -282,7 +282,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.4 `P1-02` 版本与发布元数据单一源
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：所有版本号、升级说明、发布 artifact 和安装信息都从一个权威版本源派生。
 
@@ -330,7 +330,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.5 `P1-03` 平台支持矩阵与 Windows 边界
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：平台支持声明与实际脚本、hook、安装器和 CI 证据一致。
 
@@ -1546,7 +1546,7 @@ adapters/
 
 ### 10.5 `P3-03` Codex adapter
 
-**状态**：待开始
+**状态**：完成
 
 **目标**：交付第二个正式 adapter，证明 core 真正中立。
 
@@ -1559,13 +1559,24 @@ adapters/
 - 同一项目允许 Claude Code 与 Codex adapter 共存，不覆盖彼此配置；
 - `.cairness/` 仍为共享项目状态真相源。
 
+**实施记录（2026-07-13）**：
+
+- 交付 Codex installation、capability 与 regression contracts；`cc-cairn init/onboard --adapter codex` 安装 `.codex/config.toml`、`CAIRNESS.md`、`hooks.json`、no-spec hook 和 `.agents/skills/cc-harness/`。
+- update 按 `.cairness/install.yaml` 的活动 adapter 更新；项目级 uninstall 支持 Claude Code/Codex，保留共享 `.cairness/`，并验证两 adapter 共存及反向卸载。
+- 项目级 Skill 采用窄命名空间和所有权保护：拒绝覆盖既有/已修改资产，卸载不跟随 symlink、不信任项目内可编辑 manifest，并恢复原 Git hook。
+- HarnessContext、Doctor 与 Explain 按安装元数据加载 Codex 能力；`pre_write_hook`/`file_write_interception` 明确为 `emulated`，`compaction_session_resume` 为 `optional`。
+- Codex 离线回归覆盖 14 个命令合同、六项宿主资产、Skill、hook、安装/更新/共存/卸载、propose/apply/review/archive 主干 lifecycle contract fixture 与 full verify；所有会创建 `.cairness/` 的验收均在 `/tmp` 临时项目执行。
+- 验证：资产安全/卸载事务回归 `14 passed`、pre-commit `10 passed`、onboarding/metadata `12 passed`、Context/Doctor/Explain `118 passed`，全仓 `933 passed`；`git diff --check`、Python `py_compile` 与 shell `bash -n` 通过。
+- 剩余：`adapter-mainline-contract` 目前是 contract fixture，不会驱动已安装 Codex Skill/entrypoint 将项目状态依次经过 propose/apply/review/archive。因此“主干通过行为 eval”尚无独立证据，P3-03 保持部分完成；下一步应在 `/tmp` 增加实际生命周期 fixture。真实 Codex 模型宿主观察仍是单独、未授权的证据增强项。
+- 边界：本次依据官方 Codex 宿主约定与本机 `codex-cli 0.144.1` 完成离线 contract/fixture 验收，没有调用真实 Codex 模型，因此不把任何证据标记为 `host-observed`。P3-02 的 Claude Code quick/release 真实宿主证据债务仍独立保留。
+
 ### 10.6 `P3-04` 其他 Agent adapters
 
 **状态**：待开始
 
 **候选**：Cursor、GitHub Copilot、OpenCode、Gemini 等。
 
-**进入条件**：只有 Codex adapter 证明 contract 可复用后才开始，不允许为每个宿主复制整套 runtime。
+**进入条件**：P3-03 补齐实际主干生命周期 fixture 后进入。后续 adapter 不允许复制整套 runtime，必须复用现有 contract、安装规划、Context 与回归入口。
 
 **验收标准**：每个正式 adapter 有安装、升级、doctor、capability matrix 和关键行为 eval。
 
@@ -1832,11 +1843,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-02 Claude Code adapter 回归基线` 已完成离线实现并保留真实宿主验收债务，下一项进入 `P3-03 Codex adapter`。
+当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-02 Claude Code adapter 回归基线` 保留真实宿主验收债务；`P3-03 Codex adapter` 已完成离线合同、安装生命周期与安全边界验收，但仍缺实际主干生命周期 fixture。
 
 后续依赖链：
 
 1. `P3-02`：在正式发布窗口补 quick/release 真实 Claude Code 宿主证据。
-2. `P3-03`：当前实现项，交付 Codex adapter 并验证第二个正式宿主。
-3. `P3-04/P3-05/P3-06/P3-08`：在 adapter contract 稳定后扩展其他宿主、Policy Pack、Monorepo 和模型评测。
+2. `P3-03`：在 `/tmp` 补 propose/apply/review/archive 的实际生命周期 fixture，并保持 contract/fixture/host-observed 证据类别严格分离。
+3. `P3-04/P3-08`：P3-03 完成后扩展其他宿主或 model-driven eval matrix；随后推进 `P3-05/P3-06`。
 4. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。

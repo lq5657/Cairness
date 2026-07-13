@@ -89,14 +89,18 @@ def test_onboard_noninteractive_refuses_unresolved_language(tmp_path, monkeypatc
         module["cmd_onboard"](["--yes"])
 
 
-def test_onboard_rejects_unimplemented_adapter(tmp_path, monkeypatch):
+def test_onboard_accepts_codex_adapter_without_mutating_dry_run(
+    tmp_path, monkeypatch, capsys
+):
     module = _cli_module(monkeypatch)
     monkeypatch.chdir(tmp_path)
 
-    with pytest.raises(SystemExit) as raised:
-        module["cmd_onboard"](["--dry-run", "--adapter", "codex"])
+    module["cmd_onboard"](["--dry-run", "--adapter", "codex"])
 
-    assert raised.value.code == 2
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["metadata"]["adapter"] == "codex"
+    assert not (tmp_path / ".codex").exists()
+    assert not (tmp_path / ".cairness").exists()
 
 
 def test_onboard_passes_selected_adapter_to_init(tmp_path, monkeypatch):

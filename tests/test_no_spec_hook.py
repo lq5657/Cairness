@@ -151,6 +151,26 @@ def test_edit_tool_triggers_same_as_write(tmp_path):
     assert "No Spec" in proc.stderr
 
 
+def test_codex_apply_patch_event_returns_non_blocking_system_message(tmp_path):
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "apply_patch",
+        "cwd": str(tmp_path),
+        "tool_input": {"patch": "*** Begin Patch\n*** End Patch"},
+    }
+    proc = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        env={key: value for key, value in os.environ.items() if key != "CLAUDE_PROJECT_DIR"},
+    )
+
+    assert proc.returncode == 0
+    assert proc.stderr == ""
+    assert "No Spec, No Code" in json.loads(proc.stdout)["systemMessage"]
+
+
 # --- malformed input is safe -----------------------------------------------
 
 def test_malformed_input_exits_zero(tmp_path):

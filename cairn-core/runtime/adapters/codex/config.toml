@@ -1,0 +1,4 @@
+model_instructions_file = "CAIRNESS.md"
+
+[features]
+hooks = true

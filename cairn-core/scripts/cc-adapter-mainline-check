@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Validate the adapter-neutral change-command mainline contract."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from harness_runtime import require_yaml
+from harness_runtime.context import HarnessContextError, load_harness_context
+
+
+EXPECTED = {
+    "cc-propose": {
+        "from": {"none", "propose"},
+        "to": "propose",
+        "forbid": "write_business_code",
+    },
+    "cc-apply": {
+        "from": {"propose", "apply"},
+        "to": "review",
+        "forbid": "mark_done_without_evidence",
+    },
+    "cc-review": {
+        "from": {"review"},
+        "to": "review",
+        "forbid": "direct_code_change",
+    },
+    "cc-archive": {
+        "from": {"review"},
+        "to": "done",
+        "forbid": "mark_done_before_knowledge_choice",
+    },
+}
+
+
+def build_report(root: Path) -> dict[str, object]:
+    context = load_harness_context(explicit_root=root)
+    issues: list[dict[str, str]] = []
+    checked = []
+    for command, expected in EXPECTED.items():
+        path = context.framework_root / "runtime" / "commands" / f"{command}.yaml"
+        payload = require_yaml().safe_load(path.read_text(encoding="utf-8"))
+        state = payload.get("state", {}) if isinstance(payload, dict) else {}
+        actual_from = set(state.get("change_from", []))
+        actual_to = state.get("change_to")
+        forbids = set(payload.get("forbids", [])) if isinstance(payload, dict) else set()
+        checked.append(command)
+        if (
+            payload.get("command") != command
+            or actual_from != expected["from"]
+            or actual_to != expected["to"]
+            or expected["forbid"] not in forbids
+        ):
+            issues.append(
+                {
+                    "code": "E_ADAPTER_MAINLINE001",
+                    "path": str(path),
+                    "message": f"{command} mainline contract differs from expected state/write boundary",
+                }
+            )
+    return {
+        "tool": "cc-adapter-mainline-check",
+        "status": "failed" if issues else "passed",
+        "evidence_kind": "contract",
+        "adapter": context.adapter.name,
+        "checked_commands": checked,
+        "issues": issues,
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", default=".")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        report = build_report(Path(args.root).resolve())
+    except (HarnessContextError, OSError, ValueError) as exc:
+        report = {
+            "tool": "cc-adapter-mainline-check",
+            "status": "failed",
+            "issues": [
+                {
+                    "code": "E_ADAPTER_MAINLINE000",
+                    "path": str(Path(args.root).resolve()),
+                    "message": str(exc),
+                }
+            ],
+        }
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print("cc-adapter-mainline-check: passed")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}")
+    return 0 if report["status"] == "passed" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

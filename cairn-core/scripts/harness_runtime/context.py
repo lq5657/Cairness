@@ -9,6 +9,7 @@ from harness_runtime.adapter_contract import (
     AdapterContract,
     AdapterContractError,
     claude_code_adapter_contract,
+    declared_adapter_contract,
 )
 from harness_runtime.onboarding import read_install_metadata
 from harness_runtime.runtime_layout import RuntimeLayout, RuntimeLayoutError
@@ -99,6 +100,7 @@ def load_harness_context(
     framework_hint: Path | None = None,
     validate_config: bool = True,
     framework_prefix: str | None = None,
+    adapter_name: str | None = None,
     adapter_factory: Callable[[Path], AdapterContract] | None = None,
 ) -> HarnessContext:
     if explicit_root is not None:
@@ -108,11 +110,29 @@ def load_harness_context(
     else:
         project_root = _discover_project_root(start or Path.cwd())
     try:
-        metadata_prefix = (
-            read_install_metadata(project_root, strict=True).get("framework_prefix")
-            if framework_prefix is None and framework_hint is None
-            else None
+        metadata = (
+            read_install_metadata(project_root, strict=True)
+            if framework_hint is None
+            else {}
         )
+        metadata_prefix = metadata.get("framework_prefix") if framework_prefix is None else None
+        metadata_adapter = metadata.get("adapter")
+        if adapter_name is not None and framework_hint is None:
+            adapters = metadata.get("adapters")
+            record = adapters.get(adapter_name) if isinstance(adapters, dict) else None
+            if not isinstance(record, dict) or not isinstance(
+                record.get("framework_prefix"), str
+            ):
+                raise HarnessContextError(
+                    f"adapter is not installed in this project: {adapter_name}"
+                )
+            selected_prefix = record["framework_prefix"]
+            if framework_prefix is not None and framework_prefix != selected_prefix:
+                raise HarnessContextError(
+                    f"adapter {adapter_name} uses {selected_prefix}, not {framework_prefix}"
+                )
+            metadata_prefix = selected_prefix
+            metadata_adapter = adapter_name
     except ValueError as exc:
         raise HarnessContextError(str(exc)) from exc
     if framework_hint is not None:
@@ -132,7 +152,12 @@ def load_harness_context(
         except HarnessConfigError as exc:
             raise HarnessContextError(str(exc)) from exc
     try:
-        adapter = (adapter_factory or claude_code_adapter_contract)(framework_root)
+        if adapter_factory is not None:
+            adapter = adapter_factory(framework_root)
+        elif metadata_adapter:
+            adapter = declared_adapter_contract(framework_root, metadata_adapter)
+        else:
+            adapter = claude_code_adapter_contract(framework_root)
     except (AdapterContractError, OSError, ValueError) as exc:
         raise HarnessContextError(str(exc)) from exc
     try:

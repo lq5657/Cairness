@@ -1,6 +1,7 @@
 #!/bin/bash
 # Pre-commit hook: enforce "No Spec, No Code" at commit time.
 # Installed and managed by Cairness (cc-cairn init/update).
+# cairness-managed-hook: pre-commit/v1
 #
 # Design:
 #   * HARD GATE at commit time — complements the non-blocking PreToolUse
@@ -9,7 +10,7 @@
 #     change's tasks.md.
 #   * Framework self-exempt: the Cairness repo itself is not governed by
 #     the cc-* change flow.
-#   * Policy (from .claude/harness.config.yaml):
+#   * Policy (from the active adapter's harness.config.yaml):
 #       strict  → block commit, must disposition orphan files
 #       warn    → show orphan files + options, allow commit
 #       minimal → silent skip
@@ -22,16 +23,35 @@ if [ -f "cairn_install" ] && [ -d "cairn-core" ]; then
     exit 0
 fi
 
+# Resolve the active adapter from Cairness metadata. Only known project
+# layouts are accepted; edited metadata cannot redirect hook execution.
+framework_root=""
+if [ -f .cairness/install.yaml ]; then
+    framework_root=$(sed -n 's/^framework_prefix:[[:space:]]*//p' .cairness/install.yaml | head -1)
+fi
+case "$framework_root" in
+    .claude|.codex) ;;
+    *)
+        if [ -d .claude ]; then
+            framework_root=".claude"
+        elif [ -d .codex ]; then
+            framework_root=".codex"
+        else
+            exit 0
+        fi
+        ;;
+esac
+
 # ── Read orphan_policy from harness config ──────────────────────────────
 orphan_policy="warn"
-if [ -f .claude/cc-cairn.py ] && [ -f .claude/harness.config.yaml ]; then
-    config_result=$(python3 .claude/cc-cairn.py config explain git.orphan_policy --json 2>/dev/null) || {
+if [ -f "$framework_root/cc-cairn.py" ] && [ -f "$framework_root/harness.config.yaml" ]; then
+    config_result=$(python3 "$framework_root/cc-cairn.py" config explain git.orphan_policy --json 2>/dev/null) || {
         echo "Cairness: invalid harness.config.yaml; commit blocked." >&2
         exit 1
     }
     orphan_policy=$(echo "$config_result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')
-elif [ -f .claude/harness.config.yaml ]; then
-    orphan_policy=$(grep -E '^[[:space:]]*orphan_policy:' .claude/harness.config.yaml | head -1 | sed 's/.*:[[:space:]]*//')
+elif [ -f "$framework_root/harness.config.yaml" ]; then
+    orphan_policy=$(grep -E '^[[:space:]]*orphan_policy:' "$framework_root/harness.config.yaml" | head -1 | sed 's/.*:[[:space:]]*//')
 fi
 
 # ── Minimal: skip entirely ──────────────────────────────────────────────
@@ -40,7 +60,7 @@ if [ "$orphan_policy" = "minimal" ]; then
 fi
 
 # ── Run orphan detection ────────────────────────────────────────────────
-cc_deps=".claude/scripts/cc-deps"
+cc_deps="$framework_root/scripts/cc-deps"
 if [ ! -x "$cc_deps" ] && [ ! -f "$cc_deps" ]; then
     # Framework not fully installed or scripts not executable; don't block.
     exit 0

@@ -98,6 +98,45 @@ def _host_assets_roundtrip(root: Path) -> tuple[list[str], list[dict[str, str]]]
     return [f"declared host assets: {', '.join(sorted(actual))}"], issues
 
 
+def _codex_host_assets_roundtrip(
+    root: Path,
+) -> tuple[list[str], list[dict[str, str]]]:
+    manifest = root / "runtime" / "adapters" / "codex.yaml"
+    installation = load_adapter_installation(
+        manifest,
+        root / "schemas" / "adapter-installation.schema.json",
+    )
+    expected = {
+        "settings",
+        "instructions",
+        "hooks",
+        "pre-write-hook",
+        "harness-skill",
+        "capabilities",
+    }
+    actual = {asset.name for asset in installation.host_assets}
+    issues = []
+    if actual != expected:
+        issues.append(
+            _issue(
+                "E_ADAPTER002",
+                manifest,
+                f"expected Codex host assets {sorted(expected)}, found {sorted(actual)}",
+            )
+        )
+    for asset in installation.host_assets:
+        source = root / asset.source
+        if not source.exists():
+            issues.append(
+                _issue(
+                    "E_ADAPTER002",
+                    source,
+                    f"Codex host asset source is missing: {asset.name}",
+                )
+            )
+    return [f"declared Codex host assets: {', '.join(sorted(actual))}"], issues
+
+
 def _pretooluse_binding(root: Path) -> tuple[list[str], list[dict[str, str]]]:
     settings_path = root / "settings.json"
     hook_path = root / "hooks" / "no-spec-no-code.py"
@@ -144,6 +183,44 @@ def _pretooluse_binding(root: Path) -> tuple[list[str], list[dict[str, str]]]:
     return ["PreToolUse matcher Edit|Write -> hooks/no-spec-no-code.py"], issues
 
 
+def _codex_pretooluse_binding(
+    root: Path,
+) -> tuple[list[str], list[dict[str, str]]]:
+    hooks_path = root / "runtime" / "adapters" / "codex" / "hooks.json"
+    hook_path = root / "hooks" / "no-spec-no-code.py"
+    issues = []
+    try:
+        settings = json.loads(hooks_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return [], [
+            _issue("E_ADAPTER003", hooks_path, f"Codex hooks cannot be parsed: {exc}")
+        ]
+    entries = settings.get("hooks", {}).get("PreToolUse", [])
+    valid = any(
+        isinstance(entry, dict)
+        and entry.get("matcher") == "Edit|Write"
+        and any(
+            isinstance(hook, dict)
+            and hook.get("type") == "command"
+            and "/.codex/hooks/no-spec-no-code.py" in str(hook.get("command", ""))
+            for hook in entry.get("hooks", [])
+        )
+        for entry in entries
+        if isinstance(entries, list)
+    )
+    if not valid:
+        issues.append(
+            _issue(
+                "E_ADAPTER003",
+                hooks_path,
+                "Codex PreToolUse binding does not execute no-spec-no-code.py",
+            )
+        )
+    if not hook_path.is_file():
+        issues.append(_issue("E_ADAPTER003", hook_path, "Codex hook source is missing"))
+    return ["Codex PreToolUse Edit|Write -> .codex hook"], issues
+
+
 def _skill_command_parity(root: Path) -> tuple[list[str], list[dict[str, str]]]:
     core_path = root / "runtime" / "core.yaml"
     skill_path = root / "skills" / "cc-harness" / "SKILL.md"
@@ -157,6 +234,94 @@ def _skill_command_parity(root: Path) -> tuple[list[str], list[dict[str, str]]]:
         extra = sorted(set(skill_commands) - set(migrated))
         issues.append(_issue("E_ADAPTER004", skill_path, f"Skill command parity mismatch; missing={missing}, extra={extra}"))
     return [f"Skill exposes {len(skill_commands)} migrated commands"], issues
+
+
+def _codex_skill_command_parity(
+    root: Path,
+) -> tuple[list[str], list[dict[str, str]]]:
+    core_path = root / "runtime" / "core.yaml"
+    skill_path = (
+        root
+        / "runtime"
+        / "adapters"
+        / "codex"
+        / "skills"
+        / "cc-harness"
+        / "SKILL.md"
+    )
+    migrated = tuple(_load_yaml(core_path).get("migrated_commands", []))
+    skill_commands = tuple(
+        re.findall(
+            r"^- `(?P<command>cc-[a-z0-9-]+)`\s*$",
+            skill_path.read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+    )
+    issues = []
+    if skill_commands != migrated:
+        issues.append(
+            _issue(
+                "E_ADAPTER004",
+                skill_path,
+                "Codex Skill command inventory differs from runtime/core.yaml",
+            )
+        )
+    return [f"Codex Skill exposes {len(skill_commands)} migrated commands"], issues
+
+
+def _codex_installation_lifecycle(
+    root: Path,
+) -> tuple[list[str], list[dict[str, str]]]:
+    cli_path = root / "cc-cairn.py"
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_cairness_codex_installation_probe",
+            cli_path,
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError("cannot load cc-cairn.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.get_data_dir = lambda: root
+        with tempfile.TemporaryDirectory(prefix="cairness-codex-adapter-") as raw:
+            project = Path(raw) / "project"
+            project.mkdir()
+            previous = Path.cwd()
+            try:
+                os.chdir(project)
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(
+                    io.StringIO()
+                ):
+                    module.cmd_init(adapter="codex")
+                    (project / ".codex" / "VERSION").write_text(
+                        "0.0.0\n", encoding="utf-8"
+                    )
+                    if module.sync_project(root, project) is not True:
+                        raise RuntimeError("Codex update did not run")
+                    module.cmd_init(adapter="claude-code")
+                    metadata = module.read_install_metadata(project, strict=True)
+                    if set(metadata.get("adapters", {})) != {"claude-code", "codex"}:
+                        raise RuntimeError("adapter coexistence metadata is incomplete")
+                    module.cmd_uninstall(["--adapter", "codex", "--yes"])
+            finally:
+                os.chdir(previous)
+            valid = (
+                not (project / ".codex").exists()
+                and (project / ".claude" / "settings.json").is_file()
+                and not (project / ".agents" / "skills" / "cc-harness").exists()
+                and (project / ".cairness").is_dir()
+            )
+            if not valid:
+                raise RuntimeError("Codex install/update/coexist/uninstall contract failed")
+    except Exception as exc:
+        return [], [
+            _issue(
+                "E_ADAPTER007",
+                cli_path,
+                f"Codex installation lifecycle failed: {exc}",
+            )
+        ]
+    return ["executed Codex install, update, coexistence, and uninstall lifecycle"], []
 
 
 def _subagent_contracts(root: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -273,6 +438,10 @@ RUNNERS: dict[str, CheckRunner] = {
     "subagent_contracts": _subagent_contracts,
     "fresh_context_wave_contract": _fresh_context_wave_contract,
     "legacy_upgrade": _legacy_upgrade,
+    "codex_host_assets_roundtrip": _codex_host_assets_roundtrip,
+    "codex_pretooluse_binding": _codex_pretooluse_binding,
+    "codex_skill_command_parity": _codex_skill_command_parity,
+    "codex_installation_lifecycle": _codex_installation_lifecycle,
 }
 
 
@@ -507,13 +676,27 @@ def run_adapter_regression(
             issues=issues,
         )
         results.append(base)
-    capability_contract = load_adapter_capabilities(root)
+    installation = load_adapter_installation(
+        root / "runtime" / "adapters" / f"{adapter}.yaml",
+        root / "schemas" / "adapter-installation.schema.json",
+    )
+    capability_contract = load_adapter_capabilities(
+        root,
+        manifest_relative=installation.capabilities_path,
+        schema_relative=installation.capabilities_schema_path,
+    )
     check_statuses = {str(check["id"]): str(check["status"]) for check in results}
     capability_results: dict[str, dict[str, object]] = {}
     capability_issues: list[dict[str, str]] = []
+    check_kinds = {
+        str(check["id"]): str(check["evidence_kind"]) for check in results
+    }
     for name, level in capability_contract.levels.items():
         evidence_ids = list(capability_contract.evidence.get(name, ()))
         evidence_statuses = [check_statuses.get(check_id, "unknown") for check_id in evidence_ids]
+        evidence_kinds = sorted(
+            {check_kinds.get(check_id, "unknown") for check_id in evidence_ids}
+        )
         supported = bool(evidence_ids) and all(
             status == "passed" for status in evidence_statuses
         )
@@ -523,19 +706,25 @@ def run_adapter_regression(
             and all(status in {"passed", "delegated"} for status in evidence_statuses)
         )
         if supported:
-            readiness = "supported"
+            if "host-observed" in evidence_kinds:
+                readiness = "host_observed"
+            elif "fixture" in evidence_kinds:
+                readiness = "fixture_verified"
+            else:
+                readiness = "contract_verified"
         elif delegated:
-            readiness = "delegated"
+            readiness = "host_unobserved"
         elif level == "optional" and all(
             status in {"skipped", "unknown"} for status in evidence_statuses
         ):
-            readiness = "unobserved"
+            readiness = "host_unobserved"
         else:
             readiness = "unsupported"
         capability_results[name] = {
             "level": level,
             "status": readiness,
             "evidence": evidence_ids,
+            "evidence_kinds": evidence_kinds,
         }
         if level in {"required", "emulated"} and not (supported or delegated):
             capability_issues.append(

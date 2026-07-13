@@ -1,0 +1,53 @@
+version: 1
+adapter: codex
+checks:
+  - id: command-contract-parity
+    required: true
+    evidence_kind: contract
+    runner: command_contract_parity
+    sources: [runtime/core.yaml, workflows/cc-workflow.yaml]
+  - id: host-assets-roundtrip
+    required: true
+    evidence_kind: fixture
+    runner: codex_host_assets_roundtrip
+    sources: [runtime/adapters/codex.yaml]
+  - id: pretooluse-binding
+    required: true
+    evidence_kind: fixture
+    runner: codex_pretooluse_binding
+    sources: [runtime/adapters/codex/hooks.json, hooks/no-spec-no-code.py]
+  - id: skill-command-parity
+    required: true
+    evidence_kind: fixture
+    runner: codex_skill_command_parity
+    sources: [runtime/adapters/codex/skills/cc-harness/SKILL.md, runtime/core.yaml]
+  - id: subagent-contracts
+    required: true
+    evidence_kind: contract
+    runner: subagent_contracts
+    sources: [runtime/subagents, schemas/runtime-subagent-contract.schema.json]
+  - id: fresh-context-wave-contract
+    required: true
+    evidence_kind: contract
+    runner: fresh_context_wave_contract
+    sources: [runtime/subagents/cc-apply.yaml, scripts/cc-wave-plan]
+  - id: adapter-installation
+    required: true
+    evidence_kind: fixture
+    runner: codex_installation_lifecycle
+    sources: [cc-cairn.py, runtime/adapters/codex.yaml]
+  - id: behavior-eval
+    required: true
+    evidence_kind: fixture
+    runner: behavior_eval
+    sources: [evals/behavior, scripts/cc-behavior-check]
+  - id: session-resume
+    required: false
+    evidence_kind: host-observed
+    runner: session_resume
+    sources: [runtime/adapters/codex-capabilities.yaml]
+  - id: full-verify
+    required: true
+    evidence_kind: fixture
+    runner: full_verify
+    sources: [scripts/cc-verify]

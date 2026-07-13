@@ -53,7 +53,7 @@ LANGUAGE_MARKERS: dict[str, dict[str, tuple[str, ...]]] = {
     },
 }
 
-_IGNORED_TOP_LEVEL = {".git", ".claude", ".cairness", ".venv", "node_modules", "vendor", "target", "dist", "build"}
+_IGNORED_TOP_LEVEL = {".git", ".claude", ".codex", ".agents", ".cairness", ".venv", "node_modules", "vendor", "target", "dist", "build"}
 _ADAPTER_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _FRAMEWORK_PREFIX = re.compile(r"^\.[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 
@@ -207,17 +207,18 @@ def build_plan(
     framework_status = str(inspection.get("framework_status", inspection.get("framework", {}).get("status", "missing")))
     language = inspection.get("language") if isinstance(inspection.get("language"), Mapping) else {}
     language_id = str(language_profile or inspection.get("language_profile") or language.get("language") or "")
+    framework_path = ".codex" if adapter == "codex" else ".claude"
     actions: list[dict[str, Any]] = []
     actions.append({"action": "select_adapter", "adapter": adapter, "status": "ready", "reason": "selected onboarding adapter"})
     actions.append({"action": "select_runtime_profile", "profile": selected_profile, "status": "ready", "reason": "selected runtime governance profile"})
     if framework_status == "missing":
-        actions.append({"action": "install_framework", "path": ".claude", "status": "ready", "reason": "Cairness framework is not installed"})
+        actions.append({"action": "install_framework", "path": framework_path, "status": "ready", "reason": "Cairness framework is not installed"})
     elif framework_status == "foreign":
-        actions.append({"action": "inspect_framework", "path": ".claude", "status": "requires_confirmation", "reason": "existing non-Cairness .claude directory must not be overwritten"})
+        actions.append({"action": "inspect_framework", "path": framework_path, "status": "requires_confirmation", "reason": f"existing non-Cairness {framework_path} directory must not be overwritten"})
     elif framework_status == "partial":
-        actions.append({"action": "repair_framework", "path": ".claude", "status": "requires_confirmation", "reason": "partial Cairness installation requires review"})
+        actions.append({"action": "repair_framework", "path": framework_path, "status": "requires_confirmation", "reason": "partial Cairness installation requires review"})
     else:
-        actions.append({"action": "verify_framework", "path": ".claude", "status": "ready", "reason": "Cairness framework is already installed"})
+        actions.append({"action": "verify_framework", "path": framework_path, "status": "ready", "reason": "Cairness framework is already installed"})
     state = inspection.get("state", {})
     state_directories = state.get("directories", {}) if isinstance(state, Mapping) else {}
     for relative in STATE_DIRECTORIES:
@@ -315,6 +316,35 @@ def read_install_metadata(
                 f"invalid install metadata: {path}: framework_prefix must be "
                 "a safe project-relative directory name"
             )
+        adapters = metadata.get("adapters")
+        if adapters is not None:
+            if not isinstance(adapters, Mapping) or any(
+                not isinstance(name, str)
+                or not _ADAPTER_ID.fullmatch(name)
+                or not isinstance(record, Mapping)
+                or not isinstance(record.get("framework_prefix"), str)
+                or not _FRAMEWORK_PREFIX.fullmatch(record["framework_prefix"])
+                for name, record in adapters.items()
+            ):
+                raise ValueError(
+                    f"invalid install metadata: {path}: adapters must map safe "
+                    "adapter identifiers to safe framework prefixes"
+                )
+            prefixes = [record["framework_prefix"] for record in adapters.values()]
+            if len(prefixes) != len(set(prefixes)):
+                raise ValueError(
+                    f"invalid install metadata: {path}: adapter framework prefixes "
+                    "must be unique"
+                )
+            active_record = adapters.get(adapter)
+            if (
+                not isinstance(active_record, Mapping)
+                or active_record.get("framework_prefix") != framework_prefix
+            ):
+                raise ValueError(
+                    f"invalid install metadata: {path}: active adapter and "
+                    "framework_prefix must match its adapters record"
+                )
     return metadata
 
 

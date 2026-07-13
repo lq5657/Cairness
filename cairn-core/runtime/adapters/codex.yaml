@@ -1,0 +1,36 @@
+version: 1
+adapter: codex
+framework:
+  prefix: .codex
+  root_convention: project-relative
+paths:
+  settings: config.toml
+  entrypoint: CAIRNESS.md
+  capabilities: runtime/adapters/codex-capabilities.yaml
+  capabilities_schema: schemas/adapter-capabilities.schema.json
+host_assets:
+  - name: settings
+    action: copy-file
+    source: runtime/adapters/codex/config.toml
+    target: config.toml
+  - name: instructions
+    action: copy-file
+    source: runtime/adapters/codex/CAIRNESS.md
+    target: CAIRNESS.md
+  - name: hooks
+    action: copy-file
+    source: runtime/adapters/codex/hooks.json
+    target: hooks.json
+  - name: pre-write-hook
+    action: copy-file
+    source: hooks/no-spec-no-code.py
+    target: hooks/no-spec-no-code.py
+  - name: harness-skill
+    action: copy-tree
+    source: runtime/adapters/codex/skills/cc-harness
+    target_root: project
+    target: .agents/skills/cc-harness
+  - name: capabilities
+    action: copy-file
+    source: runtime/adapters/codex-capabilities.yaml
+    target: runtime/adapters/codex-capabilities.yaml

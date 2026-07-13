@@ -18,7 +18,7 @@ command:
     * **依赖 / Wave**: depends_on=[T1]
     * **涉及文件**: b.go
     TASKS
-    .claude/scripts/cc-wave-plan --change chg-cycle --json
+    "$CAIRNESS_FRAMEWORK_ROOT/scripts/cc-wave-plan" --change chg-cycle --json
     code=$?
     exit $code
 expect_exit_code: 1

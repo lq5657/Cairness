@@ -61,6 +61,10 @@
           "type": "string",
           "enum": ["copy-file", "copy-tree", "generate"]
         },
+        "target_root": {
+          "type": "string",
+          "enum": ["adapter", "project"]
+        },
         "source": {"$ref": "#/$defs/relativePath"},
         "target": {"$ref": "#/$defs/relativePath"}
       }

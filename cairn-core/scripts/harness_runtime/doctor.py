@@ -29,14 +29,23 @@ STATE_DIRECTORIES = (
     ".cairness/discussions",
 )
 LOOP_STATE_DIRECTORY = ".cairness/loop-audit"
-REQUIRED_CLAUDE_HOST_ASSETS = (
-    "settings",
-    "instructions",
-    "pre-write-hook",
-    "capabilities",
-    "harness-skill",
-)
-
+REQUIRED_HOST_ASSETS = {
+    "claude-code": {
+        "settings",
+        "instructions",
+        "pre-write-hook",
+        "capabilities",
+        "harness-skill",
+    },
+    "codex": {
+        "settings",
+        "instructions",
+        "hooks",
+        "pre-write-hook",
+        "capabilities",
+        "harness-skill",
+    },
+}
 ISSUE_GUIDANCE = {
     "E_DOCTOR101": (
         "Required Cairness project-state directory is missing.",
@@ -50,13 +59,13 @@ ISSUE_GUIDANCE = {
     ),
     "E_DOCTOR103": (
         "The active adapter capability contract is missing or invalid.",
-        "Restore runtime/adapters/claude-code-capabilities.yaml and its schema, then rerun Doctor.",
-        ".claude/runtime/adapters/claude-code-capabilities.yaml",
+        "Restore the active adapter capability manifest and its schema, then rerun Doctor.",
+        "runtime/adapters/",
     ),
     "E_DOCTOR104": (
-        "A required Claude Code host asset is missing or its PreToolUse binding is invalid.",
-        "Restore the adapter-owned host asset or reinstall the Claude Code adapter, then rerun Doctor.",
-        ".claude/runtime/adapters/claude-code.yaml",
+        "A required agent-host asset is missing or its hook binding is invalid.",
+        "Restore the adapter-owned host asset or reinstall the active adapter, then rerun Doctor.",
+        "runtime/adapters/",
     ),
 }
 
@@ -136,14 +145,23 @@ def _required_state_directories(config: dict[str, Any]) -> tuple[str, ...]:
     return STATE_DIRECTORIES
 
 
-def _capability_summary(framework_root: Path) -> dict[str, Any]:
+def _capability_summary(
+    framework_root: Path,
+    *,
+    capabilities_path: Path,
+    capabilities_schema_path: Path,
+) -> dict[str, Any]:
     try:
-        loaded = load_adapter_capabilities(framework_root)
+        loaded = load_adapter_capabilities(
+            framework_root,
+            manifest_relative=capabilities_path,
+            schema_relative=capabilities_schema_path,
+        )
         path, capabilities = loaded
     except AdapterCapabilitiesError as exc:
         return {
             "status": "invalid",
-            "path": str(framework_root / "runtime/adapters/claude-code-capabilities.yaml"),
+            "path": str(framework_root / capabilities_path),
             "capabilities": {},
             "error": str(exc),
         }
@@ -212,8 +230,48 @@ def _pretooluse_binding(settings_path: Path, hook_target: Path) -> tuple[dict[st
     return result, "settings.json must declare PreToolUse matcher Edit|Write"
 
 
-def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict[str, str]]]:
-    manifest_path = framework_root / "runtime/adapters/claude-code.yaml"
+def _codex_pretooluse_binding(
+    hooks_path: Path, hook_target: Path
+) -> tuple[dict[str, str], str | None]:
+    result = {
+        "status": "invalid",
+        "matcher": "",
+        "command": "",
+        "target": hook_target.as_posix(),
+    }
+    try:
+        settings = json.loads(hooks_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return result, f"hooks.json cannot be parsed: {exc}"
+    hooks = settings.get("hooks") if isinstance(settings, dict) else None
+    bindings = hooks.get("PreToolUse") if isinstance(hooks, dict) else None
+    if not isinstance(bindings, list):
+        return result, "hooks.json must declare hooks.PreToolUse"
+    expected = f"/.codex/{hook_target.as_posix()}"
+    for binding in bindings:
+        if not isinstance(binding, dict) or binding.get("matcher") != "Edit|Write":
+            continue
+        result["matcher"] = "Edit|Write"
+        for declared in binding.get("hooks", []):
+            if not isinstance(declared, dict) or declared.get("type") != "command":
+                continue
+            command = declared.get("command")
+            if not isinstance(command, str):
+                continue
+            result["command"] = command
+            if expected in command.replace("\\", "/"):
+                result["status"] = "valid"
+                return result, None
+        return result, f"PreToolUse command does not execute {hook_target.as_posix()}"
+    return result, "hooks.json must declare PreToolUse matcher Edit|Write"
+
+
+def _host_asset_summary(
+    project_root: Path,
+    framework_root: Path,
+    adapter: str,
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    manifest_path = framework_root / f"runtime/adapters/{adapter}.yaml"
     schema_path = framework_root / "schemas/adapter-installation.schema.json"
     try:
         installation = load_adapter_installation(manifest_path, schema_path)
@@ -221,6 +279,10 @@ def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict
         issue = _issue("E_DOCTOR104", manifest_path, str(exc))
         return {
             "status": "invalid",
+            "adapter": adapter,
+            "entrypoint": str(framework_root / ""),
+            "capabilities_path": f"runtime/adapters/{adapter}-capabilities.yaml",
+            "capabilities_schema_path": "schemas/adapter-capabilities.schema.json",
             "path": str(manifest_path),
             "assets": [],
             "pretooluse_binding": {
@@ -234,20 +296,21 @@ def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict
     issues: list[dict[str, str]] = []
     assets: list[dict[str, str]] = []
     assets_by_name = {asset.name: asset for asset in installation.host_assets}
-    missing_declarations = [
-        name for name in REQUIRED_CLAUDE_HOST_ASSETS if name not in assets_by_name
-    ]
+    missing_declarations = REQUIRED_HOST_ASSETS.get(adapter, set()) - set(
+        assets_by_name
+    )
     if missing_declarations:
         issues.append(
             _issue(
                 "E_DOCTOR104",
                 manifest_path,
                 "required adapter host asset declarations are missing: "
-                + ", ".join(missing_declarations),
+                + ", ".join(sorted(missing_declarations)),
             )
         )
     for asset in installation.host_assets:
-        path = framework_root / asset.target
+        asset_root = project_root if asset.target_root == "project" else framework_root
+        path = asset_root / asset.target
         if asset.name == "harness-skill":
             valid = path.is_dir() and (path / "SKILL.md").is_file()
         else:
@@ -257,6 +320,7 @@ def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict
             {
                 "name": asset.name,
                 "action": asset.action,
+                "target_root": asset.target_root,
                 "path": str(path),
                 "status": status,
             }
@@ -271,18 +335,19 @@ def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict
             )
 
     settings_asset = assets_by_name.get("settings")
+    hooks_asset = assets_by_name.get("hooks")
     hook_asset = assets_by_name.get("pre-write-hook")
     hook_target = hook_asset.target if hook_asset is not None else Path("hooks/no-spec-no-code.py")
     settings_path = framework_root / (
         settings_asset.target if settings_asset is not None else installation.settings_path
     )
-    if settings_path.is_file():
+    if adapter == "codex" and hooks_asset is not None:
+        binding, binding_error = _codex_pretooluse_binding(
+            framework_root / hooks_asset.target,
+            hook_target,
+        )
+    elif settings_path.is_file():
         binding, binding_error = _pretooluse_binding(settings_path, hook_target)
-        if binding_error is not None:
-            issues.append(_issue("E_DOCTOR104", settings_path, binding_error))
-            for asset in assets:
-                if asset["name"] == "settings":
-                    asset["status"] = "invalid"
     else:
         binding = {
             "status": "invalid",
@@ -290,9 +355,24 @@ def _host_asset_summary(framework_root: Path) -> tuple[dict[str, Any], list[dict
             "command": "",
             "target": hook_target.as_posix(),
         }
+        binding_error = "adapter settings or hooks asset is missing"
+    if binding_error is not None:
+        binding_path = (
+            framework_root / hooks_asset.target
+            if adapter == "codex" and hooks_asset is not None
+            else settings_path
+        )
+        issues.append(_issue("E_DOCTOR104", binding_path, binding_error))
+        for asset in assets:
+            if asset["name"] in {"settings", "hooks"}:
+                asset["status"] = "invalid"
 
     return {
         "status": "invalid" if issues else "valid",
+        "adapter": installation.adapter,
+        "entrypoint": str(framework_root / installation.entrypoint_path),
+        "capabilities_path": installation.capabilities_path.as_posix(),
+        "capabilities_schema_path": installation.capabilities_schema_path.as_posix(),
         "path": str(manifest_path),
         "assets": assets,
         "pretooluse_binding": binding,
@@ -348,9 +428,25 @@ def _summary(
         project_root / ".github" / "workflows" / "harness.yml",
     )
     config = _config_summary(framework_root)
-    capability_contract = _capability_summary(framework_root)
+    capability_contract = _capability_summary(
+        framework_root,
+        capabilities_path=Path(host_assets["capabilities_path"]),
+        capabilities_schema_path=Path(host_assets["capabilities_schema_path"]),
+    )
     required_state = _required_state_directories(config)
     state_existing = [path for path in required_state if (project_root / path).is_dir()]
+    adapter_name = host_assets["adapter"]
+    codex_trust = adapter_name == "codex"
+    trust_prerequisites = {
+        "project_trust": {
+            "required": codex_trust,
+            "status": "unverified" if codex_trust else "not_applicable",
+        },
+        "hook_definition_trust": {
+            "required": codex_trust,
+            "status": "unverified" if codex_trust else "not_applicable",
+        },
+    }
     return {
         "versions": {
             "system": _version(system_root / "VERSION"),
@@ -358,14 +454,16 @@ def _summary(
         },
         "config": config,
         "adapter": {
-            "name": "claude-code",
+            "name": adapter_name,
             "status": (
                 "configured"
                 if host_assets["status"] == "valid"
                 and capability_contract["status"] == "valid"
                 else "incomplete"
             ),
-            "entrypoint": str(framework_root / "CLAUDE.md"),
+            "entrypoint": host_assets["entrypoint"],
+            "host_readiness": "requires_trust" if codex_trust else "unverified",
+            "trust_prerequisites": trust_prerequisites,
             "capability_contract": capability_contract,
             "host_assets": host_assets,
         },
@@ -392,16 +490,34 @@ def _summary(
     }
 
 
-def build_doctor_report(project_root: Path, framework_root: Path, system_root: Path) -> dict[str, Any]:
+def build_doctor_report(
+    project_root: Path,
+    framework_root: Path,
+    system_root: Path,
+    adapter: str | None = None,
+) -> dict[str, Any]:
     internal, issues = _internal_report(project_root, framework_root)
-    host_assets, host_asset_issues = _host_asset_summary(framework_root)
+    onboarding = _onboarding_summary(project_root)
+    metadata = onboarding.get("metadata", {})
+    adapter = adapter or (
+        metadata.get("adapter", "claude-code")
+        if isinstance(metadata, dict)
+        else "claude-code"
+    )
+    host_assets, host_asset_issues = _host_asset_summary(
+        project_root, framework_root, adapter
+    )
     issues.extend(host_asset_issues)
     config = _config_summary(framework_root)
     for relative in _required_state_directories(config):
         path = project_root / relative
         if not path.is_dir():
             issues.append(_issue("E_DOCTOR101", path, "missing project-state directory"))
-    capability_contract = _capability_summary(framework_root)
+    capability_contract = _capability_summary(
+        framework_root,
+        capabilities_path=Path(host_assets.get("capabilities_path", f"runtime/adapters/{adapter}-capabilities.yaml")),
+        capabilities_schema_path=Path(host_assets.get("capabilities_schema_path", "schemas/adapter-capabilities.schema.json")),
+    )
     if capability_contract["status"] != "valid":
         issues.append(
             _issue(

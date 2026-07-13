@@ -30,7 +30,7 @@ from pathlib import Path
 
 # Directories/files that are NOT business code (framework, state, config, tests).
 EXEMPT_PREFIXES = (
-    ".claude/", ".cairness/", "tests/", "test/", ".github/",
+    ".claude/", ".codex/", ".agents/", ".cairness/", "tests/", "test/", ".github/",
     "node_modules/", "vendor/",
 )
 EXEMPT_NAMES = {
@@ -128,15 +128,22 @@ def main():
     data = _read_input()
     tool_input = data.get("tool_input") or {}
     file_path = tool_input.get("file_path")
-    if not isinstance(file_path, str) or not file_path:
+    codex_event = not os.environ.get("CLAUDE_PROJECT_DIR") and isinstance(
+        data.get("cwd"), str
+    )
+    if (not isinstance(file_path, str) or not file_path) and data.get(
+        "tool_name"
+    ) != "apply_patch":
         return 0  # nothing to inspect
 
-    project_root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
+    project_root = Path(
+        os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or Path.cwd()
+    )
     if _is_framework_repo(project_root):
         return 0  # framework maintenance is exempt
 
-    rel = _rel_path(file_path, project_root)
-    if _is_exempt(rel):
+    rel = _rel_path(file_path, project_root) if isinstance(file_path, str) else ""
+    if rel and _is_exempt(rel):
         return 0  # not business code
 
     # Business-code write. Warn if no in-progress spec is governing it.
@@ -144,13 +151,17 @@ def main():
         return 0  # a spec is in progress — allowed
 
     # No governing spec. Non-blocking reminder.
-    print(
-        f"[cairness] No Spec, No Code: writing business code '{rel}' with no "
+    target = rel or "files through apply_patch"
+    message = (
+        f"[cairness] No Spec, No Code: writing business code '{target}' with no "
         f"in-progress change spec under .cairness/changes/. "
         f"Run `cc-propose <need>` first; if code is already written, backfill "
-        f"a spec.md for it before claiming the work done.",
-        file=sys.stderr,
+        f"a spec.md for it before claiming the work done."
     )
+    if codex_event:
+        print(json.dumps({"systemMessage": message}))
+    else:
+        print(message, file=sys.stderr)
     return 0
 
 

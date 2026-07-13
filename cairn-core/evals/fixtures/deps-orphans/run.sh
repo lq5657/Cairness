@@ -3,8 +3,7 @@
 # change's tasks.md and emit a structured E_ORPHAN001 issue.
 set -e
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-FRAMEWORK_ROOT="$REPO_ROOT/.claude"
+FRAMEWORK_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 CC_DEPS="$FRAMEWORK_ROOT/scripts/cc-deps"
 
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/cc-orphans-eval.XXXXXX")"

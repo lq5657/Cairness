@@ -95,6 +95,7 @@ GITIGNORE_ADDITIONS = """
 
 
 BASELINE_GITIGNORE_RULE = ".cairness/changes/*/baseline/"
+CAIRNESS_HOOK_MARKER = "# cairness-managed-hook: pre-commit/v1"
 
 
 # Files the release ships but whose local version must survive an upgrade
@@ -438,6 +439,30 @@ def _require_custom_layout_identity(
         )
 
 
+def _require_installed_adapter_identity(
+    framework_root: Path, *, adapter: str, framework_prefix: str
+) -> None:
+    """Verify destructive removal targets the adapter declared in that tree."""
+
+    manifest = framework_root / ADAPTER_INSTALLATION_DIR / f"{adapter}.yaml"
+    schema = framework_root / ADAPTER_INSTALLATION_SCHEMA
+    try:
+        installation = load_adapter_installation(manifest, schema)
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            f"installed framework has no valid adapter identity for {adapter!r}: "
+            f"{manifest}"
+        ) from exc
+    if (
+        installation.adapter != adapter
+        or installation.framework_prefix != framework_prefix
+    ):
+        raise ValueError(
+            f"installed framework adapter identity does not match {adapter!r}: "
+            f"{manifest}"
+        )
+
+
 def _publish_install_result(
     project_root: Path,
     *,
@@ -467,8 +492,17 @@ def _execute_adapter_operations(plan, framework_root: Path) -> list[dict[str, st
     """Apply validated copy operations to an already-installed core tree."""
     applied: list[dict[str, str]] = []
     for operation in plan.operations:
-        relative = operation.target.relative_to(plan.framework_root)
-        target = framework_root / relative
+        operation_root = (
+            plan.project_root
+            if operation.target_root == "project"
+            else plan.framework_root
+        )
+        relative = operation.target.relative_to(operation_root)
+        target = (
+            operation.target
+            if operation.target_root == "project"
+            else framework_root / relative
+        )
         if operation.action == "copy-file":
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(operation.source, target)
@@ -489,9 +523,103 @@ def _execute_adapter_operations(plan, framework_root: Path) -> list[dict[str, st
                 "action": operation.action,
                 "source": operation.source.relative_to(plan.core_root).as_posix(),
                 "target": relative.as_posix(),
+                "target_root": operation.target_root,
             }
         )
     return applied
+
+
+def _project_asset_operations(plan):
+    return tuple(
+        operation
+        for operation in plan.operations
+        if operation.target_root == "project"
+    )
+
+
+def _path_has_symlink(path: Path, root: Path) -> bool:
+    current = root
+    for part in path.relative_to(root).parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _asset_signature(path: Path):
+    if path.is_symlink() or not path.exists():
+        return None
+    if path.is_file():
+        return (("file", "", path.read_bytes()),)
+    if not path.is_dir():
+        return None
+    signature = []
+    for item in sorted(path.rglob("*")):
+        if item.is_symlink():
+            return None
+        relative = item.relative_to(path).as_posix()
+        if item.is_dir():
+            signature.append(("dir", relative, b""))
+        elif item.is_file():
+            signature.append(("file", relative, item.read_bytes()))
+        else:
+            return None
+    return tuple(signature)
+
+
+def _asset_matches(target: Path, source: Path) -> bool:
+    return _asset_signature(target) == _asset_signature(source) is not None
+
+
+def _remove_asset_no_follow(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink(missing_ok=True)
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def _preflight_project_assets(plan, previous_framework: Path) -> dict[Path, bool]:
+    """Refuse to overwrite foreign or locally modified project assets."""
+
+    existed: dict[Path, bool] = {}
+    for operation in _project_asset_operations(plan):
+        target = operation.target
+        present = target.exists() or target.is_symlink()
+        existed[target] = present
+        if not present:
+            continue
+        if _path_has_symlink(target, plan.project_root):
+            raise UpgradeSafetyError(
+                f"project adapter asset contains a symlink: {target}"
+            )
+        source_relative = operation.source.relative_to(plan.core_root)
+        previous_source = previous_framework / source_relative
+        if not previous_source.exists() or not _asset_matches(target, previous_source):
+            raise UpgradeSafetyError(
+                "project adapter asset already exists or was modified; "
+                f"preserving it without overwrite: {target}"
+            )
+    return existed
+
+
+def _restore_project_assets(
+    plan, previous_framework: Path, existed: dict[Path, bool]
+) -> None:
+    """Restore project-root assets after an init/update transaction failure."""
+
+    for operation in _project_asset_operations(plan):
+        target = operation.target
+        _remove_asset_no_follow(target)
+        if not existed.get(target, False):
+            _remove_empty_parents(target.parent, plan.project_root)
+            continue
+        source_relative = operation.source.relative_to(plan.core_root)
+        source = previous_framework / source_relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if operation.action == "copy-tree":
+            shutil.copytree(source, target, ignore=SHIP_IGNORE)
+        else:
+            shutil.copy2(source, target)
 
 
 def _upgrade_file_changes(src: Path, dst: Path) -> dict[str, list[str]]:
@@ -544,12 +672,21 @@ def _write_upgrade_report(project_root: Path, report: dict) -> Path:
 def _write_install_identity(
     project_root: Path, *, adapter: str, framework_prefix: str
 ) -> Path:
-    metadata = read_install_metadata(project_root)
+    metadata = read_install_metadata(project_root, strict=True)
+    adapters = metadata.get("adapters")
+    if not isinstance(adapters, dict):
+        adapters = {}
+        existing_adapter = metadata.get("adapter")
+        existing_prefix = metadata.get("framework_prefix")
+        if isinstance(existing_adapter, str) and isinstance(existing_prefix, str):
+            adapters[existing_adapter] = {"framework_prefix": existing_prefix}
+    adapters[adapter] = {"framework_prefix": framework_prefix}
     metadata.update(
         {
             "version": 1,
             "adapter": adapter,
             "framework_prefix": framework_prefix,
+            "adapters": adapters,
         }
     )
     return write_install_metadata(project_root, metadata)
@@ -676,6 +813,8 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
 
     project_root = Path.cwd()
     plan = _adapter_installation_plan(data_dir, project_root, adapter)
+    if (project_root / INSTALL_METADATA_RELATIVE).exists():
+        read_install_metadata(project_root, strict=True)
     framework_dir = plan.framework_root
 
     if framework_dir.exists():
@@ -708,8 +847,12 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     report_snapshot = _file_snapshot(report_path)
     hook_path = project_root / ".git" / "hooks" / "pre-commit"
     hook_backup_path = hook_path.with_suffix(".bak")
+    hook_cairness_backup_path = hook_path.with_name(
+        f"{hook_path.name}.cairness.bak"
+    )
     hook_snapshot = _file_state_snapshot(hook_path)
     hook_backup_snapshot = _file_state_snapshot(hook_backup_path)
+    hook_cairness_backup_snapshot = _file_state_snapshot(hook_cairness_backup_path)
     gitignore_path = project_root / ".gitignore"
     gitignore_snapshot = _file_snapshot(gitignore_path)
     knowledge_path = project_root / KNOWLEDGE_TARGET
@@ -719,6 +862,7 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     ci_path = project_root / ".github" / "workflows"
     ci_existed = ci_path.is_dir()
     ci_snapshots = _directory_file_snapshots(ci_path)
+    project_assets = _preflight_project_assets(plan, framework_dir)
     backup = _replace_framework_dir(
         data_dir, framework_dir, label="framework", force=force
     )
@@ -736,10 +880,14 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
         )
     except Exception:
         _restore_failed_adapter_swap(framework_dir, backup)
+        _restore_project_assets(plan, framework_dir, project_assets)
         _restore_file_snapshot(install_path, install_snapshot)
         _restore_file_snapshot(report_path, report_snapshot)
         _restore_file_state_snapshot(hook_path, hook_snapshot)
         _restore_file_state_snapshot(hook_backup_path, hook_backup_snapshot)
+        _restore_file_state_snapshot(
+            hook_cairness_backup_path, hook_cairness_backup_snapshot
+        )
         _restore_file_snapshot(gitignore_path, gitignore_snapshot)
         _restore_file_snapshot(knowledge_path, knowledge_snapshot)
         _restore_directory_file_snapshots(
@@ -757,14 +905,26 @@ def cmd_init_cli(argv):
         prog="cc-cairn init",
         description="Initialize Cairness in the current project.",
     )
-    parser.parse_args(argv)
-    cmd_init()
+    parser.add_argument(
+        "--adapter",
+        default="claude-code",
+        choices=("claude-code", "codex"),
+    )
+    args = parser.parse_args(argv)
+    if args.adapter == "claude-code":
+        cmd_init()
+    else:
+        cmd_init(adapter=args.adapter)
 
 
 def cmd_onboard(argv):
     """Inspect a project, show a deterministic plan, and optionally apply it."""
     parser = argparse.ArgumentParser(prog="cc-cairn onboard")
-    parser.add_argument("--adapter", default="claude-code", choices=("claude-code",))
+    parser.add_argument(
+        "--adapter",
+        default="claude-code",
+        choices=("claude-code", "codex"),
+    )
     parser.add_argument(
         "--profile",
         default="standard",
@@ -780,6 +940,26 @@ def cmd_onboard(argv):
     root = Path.cwd().resolve()
     selected_profile = args.profile
     inspection = inspect_project(root)
+    selected_prefix = ".codex" if args.adapter == "codex" else ".claude"
+    selected_framework = root / selected_prefix
+    if (selected_framework / "VERSION").is_file() and (
+        selected_framework / "harness.config.yaml"
+    ).is_file():
+        selected_status = "installed"
+    elif selected_framework.exists():
+        selected_status = (
+            "partial"
+            if (selected_framework / "VERSION").is_file()
+            else "foreign"
+        )
+    else:
+        selected_status = "missing"
+    inspection["framework"] = {
+        "status": selected_status,
+        "path": selected_prefix,
+    }
+    inspection["framework_status"] = selected_status
+    inspection["adapter"] = args.adapter if selected_status == "installed" else ""
     if args.language:
         inspection["language"] = {
             "status": "resolved",
@@ -836,7 +1016,15 @@ def cmd_onboard(argv):
                 force_foreign=force_foreign,
             )
         identity = read_install_metadata(root)
-        framework_prefix = identity.get("framework_prefix", ".claude")
+        adapter_records = identity.get("adapters", {})
+        selected_record = (
+            adapter_records.get(args.adapter, {})
+            if isinstance(adapter_records, dict)
+            else {}
+        )
+        framework_prefix = selected_record.get(
+            "framework_prefix", selected_prefix
+        )
         _apply_runtime_profile(root / framework_prefix, selected_profile)
         metadata = dict(identity)
         metadata.update(plan["metadata"])
@@ -850,6 +1038,11 @@ def cmd_onboard(argv):
     print(f"  Doctor: {report['status']}")
     if report["status"] != "passed":
         raise SystemExit(f"Onboarding failed: Doctor reported {report['status']}")
+    if args.adapter == "codex":
+        print(
+            "Next step: in Codex, trust this project and approve its hook "
+            "definitions before running cc-* workflows."
+        )
     print(f"Next command: {plan['next_command']}")
 
 
@@ -1045,11 +1238,10 @@ def _ensure_baseline_gitignored(project_root):
 def _install_git_hooks(
     project_root: Path, framework_root: Path | None = None
 ) -> None:
-    """Install Cairness git hooks from .claude/hooks/ into .git/hooks/.
+    """Install Cairness git hooks from the selected adapter into .git/hooks/.
 
     Only the hooks listed in the hook_map are installed; framework hooks
-    (like no-spec-no-code.py) that are Claude Code PreToolUse hooks, not
-    git hooks, stay in .claude/hooks/ only.
+    Host hooks such as no-spec-no-code.py remain inside their adapter root.
     """
     hooks_src = framework_root or (project_root / ".claude")
     hooks_src = hooks_src / "hooks"
@@ -1063,7 +1255,7 @@ def _install_git_hooks(
     if probe.returncode != 0:
         return
 
-    # Map: framework hook filename (under .claude/hooks/) → git hook name.
+    # Map: framework hook filename → git hook name.
     hook_map = {"pre-commit": "pre-commit"}
 
     for fw_name, git_name in hook_map.items():
@@ -1077,18 +1269,24 @@ def _install_git_hooks(
                 content = dst.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 content = ""
-            if "Cairness" in content:
+            if CAIRNESS_HOOK_MARKER in content:
                 # Existing Cairness-managed hook — update in place.
                 shutil.copy2(src, dst)
                 dst.chmod(0o755)
             else:
                 # Non-Cairness hook exists — back up, warn, install.
                 backup = dst.with_suffix(".bak")
+                if backup.exists():
+                    backup = dst.with_name(f"{dst.name}.cairness.bak")
+                if backup.exists():
+                    raise UpgradeSafetyError(
+                        f"cannot back up existing git hook safely: {backup}"
+                    )
                 shutil.move(str(dst), str(backup))
                 shutil.copy2(src, dst)
                 dst.chmod(0o755)
                 print(f"  ⚠ Existing .git/hooks/{git_name} backed up to "
-                      f".git/hooks/{git_name}.bak")
+                      f"{backup.relative_to(project_root / '.git' / 'hooks')}")
         else:
             shutil.copy2(src, dst)
             dst.chmod(0o755)
@@ -1168,10 +1366,15 @@ def sync_project(data_dir, project_root):
     report_snapshot = _file_snapshot(report_path)
     hook_path = project_root / ".git" / "hooks" / "pre-commit"
     hook_backup_path = hook_path.with_suffix(".bak")
+    hook_cairness_backup_path = hook_path.with_name(
+        f"{hook_path.name}.cairness.bak"
+    )
     hook_snapshot = _file_state_snapshot(hook_path)
     hook_backup_snapshot = _file_state_snapshot(hook_backup_path)
+    hook_cairness_backup_snapshot = _file_state_snapshot(hook_cairness_backup_path)
     backup = None
     swapped = False
+    project_assets = _preflight_project_assets(plan, framework_dir)
     try:
         backup = _replace_framework_dir(
             data_dir,
@@ -1210,11 +1413,15 @@ def sync_project(data_dir, project_root):
         try:
             if swapped:
                 _restore_failed_adapter_swap(framework_dir, backup)
+                _restore_project_assets(plan, framework_dir, project_assets)
         finally:
             _restore_file_snapshot(metadata_path, metadata_snapshot)
             _restore_file_snapshot(report_path, report_snapshot)
             _restore_file_state_snapshot(hook_path, hook_snapshot)
             _restore_file_state_snapshot(hook_backup_path, hook_backup_snapshot)
+            _restore_file_state_snapshot(
+                hook_cairness_backup_path, hook_cairness_backup_snapshot
+            )
         raise
     # Backfill the transient-baseline ignore rule after the installation
     # transaction has committed; this cleanup is not part of update identity.
@@ -1232,6 +1439,163 @@ def cmd_update():
     repo = ensure_repo()
     sync_system_install(data_dir, repo)
     sync_project(data_dir, Path.cwd())
+
+
+def _remove_empty_parents(path: Path, stop: Path) -> None:
+    current = path
+    while current != stop and current.is_dir():
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent
+
+
+def _finish_git_hook_uninstall(project_root: Path, adapters: dict) -> None:
+    hook = project_root / ".git" / "hooks" / "pre-commit"
+    backup = hook.with_suffix(".bak")
+    cairness_backup = hook.with_name(f"{hook.name}.cairness.bak")
+    if adapters:
+        active = next(iter(adapters))
+        prefix = adapters[active].get("framework_prefix")
+        if isinstance(prefix, str):
+            _install_git_hooks(
+                project_root,
+                _framework_root_from_prefix(project_root, prefix),
+            )
+        return
+    managed = False
+    if hook.is_file():
+        try:
+            managed = CAIRNESS_HOOK_MARKER in hook.read_text(
+                encoding="utf-8", errors="replace"
+            )
+        except OSError:
+            managed = False
+    if managed:
+        hook.unlink()
+    restore = cairness_backup if cairness_backup.is_file() else backup
+    if restore.is_file() and not hook.exists():
+        os.replace(restore, hook)
+
+
+def cmd_uninstall(argv):
+    """Remove one adapter while preserving shared Cairness project state."""
+    parser = argparse.ArgumentParser(prog="cc-cairn uninstall")
+    parser.add_argument("--adapter", required=True, choices=("claude-code", "codex"))
+    parser.add_argument("--yes", action="store_true", help="remove without prompting")
+    args = parser.parse_args(argv)
+    project_root = Path.cwd().resolve()
+    metadata = read_install_metadata(project_root, strict=True)
+    adapters = metadata.get("adapters")
+    if not isinstance(adapters, dict):
+        active = metadata.get("adapter")
+        prefix = metadata.get("framework_prefix")
+        adapters = (
+            {active: {"framework_prefix": prefix}}
+            if isinstance(active, str) and isinstance(prefix, str)
+            else {}
+        )
+    record = adapters.get(args.adapter)
+    if not isinstance(record, dict) or not isinstance(
+        record.get("framework_prefix"), str
+    ):
+        raise SystemExit(f"Adapter is not installed: {args.adapter}")
+    framework_root = _framework_root_from_prefix(
+        project_root, record["framework_prefix"]
+    )
+    plan = _adapter_installation_plan(get_data_dir(), project_root, args.adapter)
+    if record["framework_prefix"] != plan.framework_prefix:
+        raise ValueError(
+            f"installed adapter {args.adapter} prefix does not match its "
+            f"declared contract: {record['framework_prefix']!r}"
+        )
+    _require_installed_adapter_identity(
+        framework_root,
+        adapter=args.adapter,
+        framework_prefix=record["framework_prefix"],
+    )
+    if not args.yes and input(
+        f"Remove Cairness adapter {args.adapter} from this project? [y/N] "
+    ).strip().lower() != "y":
+        print("Aborted.")
+        return
+    metadata_path = project_root / INSTALL_METADATA_RELATIVE
+    report_path = project_root / UPGRADE_REPORT_RELATIVE
+    hook_path = project_root / ".git" / "hooks" / "pre-commit"
+    hook_backup_path = hook_path.with_suffix(".bak")
+    hook_cairness_backup_path = hook_path.with_name(
+        f"{hook_path.name}.cairness.bak"
+    )
+    snapshots = {
+        metadata_path: _file_state_snapshot(metadata_path),
+        report_path: _file_state_snapshot(report_path),
+        hook_path: _file_state_snapshot(hook_path),
+        hook_backup_path: _file_state_snapshot(hook_backup_path),
+        hook_cairness_backup_path: _file_state_snapshot(hook_cairness_backup_path),
+    }
+    staged: list[tuple[Path, Path]] = []
+
+    def stage(path: Path) -> None:
+        if not (path.exists() or path.is_symlink()):
+            return
+        temporary = path.with_name(f".{path.name}.cairness-uninstall")
+        if temporary.exists() or temporary.is_symlink():
+            raise UpgradeSafetyError(
+                f"cannot stage adapter removal safely; path exists: {temporary}"
+            )
+        os.rename(path, temporary)
+        staged.append((path, temporary))
+
+    remaining = dict(adapters)
+    remaining.pop(args.adapter)
+    try:
+        for operation in _project_asset_operations(plan):
+            target = operation.target
+            source_relative = operation.source.relative_to(plan.core_root)
+            installed_source = framework_root / source_relative
+            if (
+                not _path_has_symlink(target, project_root)
+                and _asset_matches(target, installed_source)
+            ):
+                stage(target)
+            elif target.exists() or target.is_symlink():
+                print(f"Preserved modified project adapter asset: {target}")
+        stage(framework_root)
+        if remaining:
+            next_adapter = next(iter(remaining))
+            next_record = remaining[next_adapter]
+            metadata.update(
+                {
+                    "adapter": next_adapter,
+                    "framework_prefix": next_record["framework_prefix"],
+                    "adapters": remaining,
+                }
+            )
+            write_install_metadata(project_root, metadata)
+        else:
+            metadata_path.unlink(missing_ok=True)
+            report_path.unlink(missing_ok=True)
+        _finish_git_hook_uninstall(project_root, remaining)
+    except Exception:
+        _restore_file_state_snapshot(metadata_path, snapshots[metadata_path])
+        _restore_file_state_snapshot(report_path, snapshots[report_path])
+        _restore_file_state_snapshot(hook_path, snapshots[hook_path])
+        _restore_file_state_snapshot(
+            hook_backup_path, snapshots[hook_backup_path]
+        )
+        _restore_file_state_snapshot(
+            hook_cairness_backup_path, snapshots[hook_cairness_backup_path]
+        )
+        for original, temporary in reversed(staged):
+            if temporary.exists() or temporary.is_symlink():
+                os.rename(temporary, original)
+        raise
+    for original, temporary in staged:
+        _remove_asset_no_follow(temporary)
+        if original != framework_root:
+            _remove_empty_parents(original.parent, project_root)
+    print(f"Removed Cairness adapter {args.adapter}; shared .cairness state preserved.")
 
 
 def cmd_version():
@@ -1289,6 +1653,10 @@ def cmd_version():
 
 def cmd_doctor(argv):
     parser = argparse.ArgumentParser(prog="cc-cairn doctor")
+    parser.add_argument(
+        "--adapter", choices=("claude-code", "codex"),
+        help="diagnose one installed adapter instead of the active adapter",
+    )
     parser.add_argument("--json", action="store_true", help="emit the complete structured readiness report")
     parser.add_argument("--fix", action="store_true", help="show a safe repair plan (dry-run by default)")
     parser.add_argument("--apply", action="store_true", help="apply the safe repair plan; requires --fix")
@@ -1297,10 +1665,29 @@ def cmd_doctor(argv):
         parser.error("--apply requires --fix")
 
     project_root = Path.cwd().resolve()
-    project_framework = resolve_framework_root(project_root, strict_metadata=False)
+    if args.adapter:
+        try:
+            metadata = read_install_metadata(project_root, strict=True)
+            records = metadata.get("adapters")
+            record = records.get(args.adapter) if isinstance(records, dict) else None
+            prefix = record.get("framework_prefix") if isinstance(record, dict) else None
+            if not isinstance(prefix, str):
+                raise ValueError(
+                    f"adapter is not installed in this project: {args.adapter}"
+                )
+            project_framework = _framework_root_from_prefix(project_root, prefix)
+        except ValueError as exc:
+            print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+            raise SystemExit(2)
+    else:
+        project_framework = resolve_framework_root(
+            project_root, strict_metadata=False
+        )
     framework_root = project_framework if (project_framework / "VERSION").is_file() else Path(__file__).resolve().parent
     system_root = get_data_dir()
-    report = build_doctor_report(project_root, framework_root, system_root)
+    report = build_doctor_report(
+        project_root, framework_root, system_root, adapter=args.adapter
+    )
 
     if args.fix:
         actions = fix_plan(report)
@@ -1310,7 +1697,9 @@ def cmd_doctor(argv):
             except OSError as exc:
                 print(f"E_DOCTOR_FIX {exc}", file=sys.stderr)
                 raise SystemExit(1)
-            report = build_doctor_report(project_root, framework_root, system_root)
+            report = build_doctor_report(
+                project_root, framework_root, system_root, adapter=args.adapter
+            )
             report["fix"] = {"mode": "applied", "actions": actions}
         else:
             report["fix"] = {"mode": "dry-run", "actions": actions}
@@ -1323,6 +1712,10 @@ def cmd_doctor(argv):
         print(f"  Version: project={summary['versions']['project']} system={summary['versions']['system']}")
         print(f"  Config: {summary['config']['status']}")
         print(f"  Adapter: {summary['adapter']['name']} ({summary['adapter']['status']})")
+        print(f"  Host readiness: {summary['adapter']['host_readiness']}")
+        for name, value in summary["adapter"]["trust_prerequisites"].items():
+            required = "required" if value["required"] else "not required"
+            print(f"  {name}: {required}, {value['status']}")
         print(f"  CI: {summary['ci']['status']}")
         language = summary["language_profile"]
         print(f"  Language: {language['name'] or language['status']} ({language['source']})")
@@ -1445,12 +1838,17 @@ def cmd_explain(argv):
     parser.add_argument("command", help="registered runtime command, for example cc-apply")
     parser.add_argument("--change", help="change ID used to resolve change-scoped readiness")
     parser.add_argument("--root", help="explicit Cairness project root")
+    parser.add_argument(
+        "--adapter", choices=("claude-code", "codex"),
+        help="explain against one installed adapter instead of the active adapter",
+    )
     parser.add_argument("--json", action="store_true", help="emit the structured effective contract")
     args = parser.parse_args(argv)
     try:
         context = load_harness_context(
             explicit_root=Path(args.root) if args.root else None,
             start=None if args.root else Path.cwd(),
+            adapter_name=args.adapter,
         )
     except HarnessContextError as exc:
         print(f"E_CONTEXT001 {exc}", file=sys.stderr)
@@ -2288,7 +2686,7 @@ def main():
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|onboard|profile|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -2296,6 +2694,8 @@ def main():
         cmd_init_cli(sys.argv[2:])
     elif cmd == "onboard":
         cmd_onboard(sys.argv[2:])
+    elif cmd == "uninstall":
+        cmd_uninstall(sys.argv[2:])
     elif cmd == "profile":
         cmd_profile(sys.argv[2:])
     elif cmd == "update":
@@ -2314,7 +2714,7 @@ def main():
         cmd_add_knowledge(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|onboard|profile|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge>")
         sys.exit(1)
 
 

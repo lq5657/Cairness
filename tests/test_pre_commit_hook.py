@@ -27,25 +27,28 @@ def _make_git_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _install_hook(tmp_path: Path) -> Path:
-    """Copy the real pre-commit hook into .claude/hooks/ and return its path."""
-    dst = tmp_path / ".claude" / "hooks" / "pre-commit"
+def _install_hook(tmp_path: Path, framework_prefix: str = ".claude") -> Path:
+    """Copy the real pre-commit hook into the adapter framework root."""
+    dst = tmp_path / framework_prefix / "hooks" / "pre-commit"
     dst.parent.mkdir(parents=True)
     shutil.copy(str(HOOK), str(dst))
     dst.chmod(0o755)
     return dst
 
 
-def _write_config(tmp_path: Path, orphan_policy: str) -> None:
+def _write_config(
+    tmp_path: Path, orphan_policy: str, framework_prefix: str = ".claude"
+) -> None:
     """Write a minimal harness.config.yaml with the given orphan_policy."""
-    config = tmp_path / ".claude" / "harness.config.yaml"
+    config = tmp_path / framework_prefix / "harness.config.yaml"
     config.write_text(f"git:\n  orphan_policy: {orphan_policy}\n")
 
 
 def _write_mock_cc_deps(tmp_path: Path, *, has_orphans: bool,
-                        orphan_files: list[str] | None = None) -> None:
-    """Write a mock .claude/scripts/cc-deps that returns controlled output."""
-    scripts_dir = tmp_path / ".claude" / "scripts"
+                        orphan_files: list[str] | None = None,
+                        framework_prefix: str = ".claude") -> None:
+    """Write a mock adapter scripts/cc-deps that returns controlled output."""
+    scripts_dir = tmp_path / framework_prefix / "scripts"
     scripts_dir.mkdir(parents=True)
 
     if not has_orphans:
@@ -78,9 +81,11 @@ sys.exit({exit_code})
     mock.chmod(0o755)
 
 
-def _run_hook(tmp_path: Path) -> subprocess.CompletedProcess:
+def _run_hook(
+    tmp_path: Path, framework_prefix: str = ".claude"
+) -> subprocess.CompletedProcess:
     """Run the pre-commit hook and return the process result."""
-    hook = tmp_path / ".claude" / "hooks" / "pre-commit"
+    hook = tmp_path / framework_prefix / "hooks" / "pre-commit"
     return subprocess.run(
         [str(hook)],
         cwd=str(tmp_path), capture_output=True, text=True,
@@ -131,6 +136,29 @@ def test_orphans_strict_blocks(tmp_path):
     assert "orphan_policy=strict" in stdout
     assert "secret_fix.py" in stdout
     assert "cc-propose" in stdout
+
+
+def test_codex_only_project_resolves_runtime_and_strict_orphans_block(tmp_path):
+    """A Codex-installed hook uses .codex config and cc-deps at commit time."""
+    _make_git_repo(tmp_path)
+    _install_hook(tmp_path, ".codex")
+    _write_config(tmp_path, "strict", ".codex")
+    _write_mock_cc_deps(
+        tmp_path,
+        has_orphans=True,
+        orphan_files=["src/codex_orphan.py"],
+        framework_prefix=".codex",
+    )
+    _stage_file(tmp_path, "src/codex_orphan.py")
+
+    assert not (tmp_path / ".claude").exists()
+
+    proc = _run_hook(tmp_path, ".codex")
+
+    assert proc.returncode == 1
+    assert "BLOCKED" in proc.stdout
+    assert "orphan_policy=strict" in proc.stdout
+    assert "codex_orphan.py" in proc.stdout
 
 
 # ── orphans + warn allows ──────────────────────────────────────────────────

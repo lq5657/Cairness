@@ -1,0 +1,17 @@
+id: adapter-mainline-contract
+description: |
+  The active adapter exposes the propose/apply/review/archive command mainline
+  with the expected lifecycle transitions and write-boundary safeguards.
+command:
+  - python3
+  - .claude/scripts/cc-adapter-mainline-check
+  - --root
+  - .
+  - --json
+expect_exit_code: 0
+expect_output_contains:
+  - '"status": "passed"'
+  - '"cc-propose"'
+  - '"cc-apply"'
+  - '"cc-review"'
+  - '"cc-archive"'

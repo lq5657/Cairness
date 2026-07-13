@@ -39,9 +39,12 @@ class LoadedAdapterCapabilities:
 
 def load_adapter_capabilities(
     framework_root: Path,
+    *,
+    manifest_relative: Path = CAPABILITY_MANIFEST,
+    schema_relative: Path = CAPABILITY_SCHEMA,
 ) -> LoadedAdapterCapabilities:
-    manifest_path = (framework_root / CAPABILITY_MANIFEST).resolve()
-    schema_path = (framework_root / CAPABILITY_SCHEMA).resolve()
+    manifest_path = (framework_root / manifest_relative).resolve()
+    schema_path = (framework_root / schema_relative).resolve()
     if not manifest_path.is_file():
         raise AdapterCapabilitiesError(
             f"adapter capability contract is missing: {manifest_path}"

@@ -1,0 +1,33 @@
+version: 1
+adapter: codex
+capabilities:
+  bootstrap_instruction_injection:
+    level: required
+    evidence: [host-assets-roundtrip]
+  skill_command_discovery:
+    level: required
+    evidence: [skill-command-parity]
+  pre_write_hook:
+    level: emulated
+    evidence: [pretooluse-binding]
+  subagent_dispatch:
+    level: required
+    evidence: [subagent-contracts]
+  fresh_context:
+    level: required
+    evidence: [fresh-context-wave-contract]
+  task_list:
+    level: required
+    evidence: [command-contract-parity]
+  user_confirmation_gate:
+    level: required
+    evidence: [behavior-eval]
+  structured_result:
+    level: required
+    evidence: [command-contract-parity, full-verify]
+  compaction_session_resume:
+    level: optional
+    evidence: [session-resume]
+  file_write_interception:
+    level: emulated
+    evidence: [pretooluse-binding]

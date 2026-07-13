@@ -88,16 +88,18 @@ def test_offline_adapter_regression_passes_direct_checks_and_delegates_parent_st
     assert checks["full-verify"]["status"] == "delegated"
     assert report["capabilities"]["pre_write_hook"] == {
         "level": "required",
-        "status": "supported",
+        "status": "fixture_verified",
         "evidence": ["pretooluse-binding"],
+        "evidence_kinds": ["fixture"],
     }
     assert report["capabilities"]["compaction_session_resume"] == {
         "level": "optional",
-        "status": "unobserved",
+        "status": "host_unobserved",
         "evidence": ["session-resume"],
+        "evidence_kinds": ["host-observed"],
     }
-    assert report["capabilities"]["user_confirmation_gate"]["status"] == "delegated"
-    assert report["capabilities"]["structured_result"]["status"] == "delegated"
+    assert report["capabilities"]["user_confirmation_gate"]["status"] == "host_unobserved"
+    assert report["capabilities"]["structured_result"]["status"] == "host_unobserved"
 
 
 def test_skill_command_drift_fails_with_stable_issue(harness_project: Path):

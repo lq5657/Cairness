@@ -5,11 +5,7 @@
 
 set -e
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-# Resolve framework root via .claude/ so the fixture works in both forms:
-#   dev repo: .claude is a symlink to cairn-core/
-#   cc-cairn init project: .claude is a real directory copied from cairn-core/
-FRAMEWORK_ROOT="$REPO_ROOT/.claude"
+FRAMEWORK_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 CAIRN_CLI="$FRAMEWORK_ROOT/cc-cairn.py"
 INDEX_CHECK="$FRAMEWORK_ROOT/scripts/cc-index-check"
 

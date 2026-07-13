@@ -3,8 +3,7 @@
 # passing review.md. Pins the cross-document sync hard gate (E_SYNC001).
 set -e
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
-FRAMEWORK_ROOT="$REPO_ROOT/.claude"
+FRAMEWORK_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SYNC_CHECK="$FRAMEWORK_ROOT/scripts/cc-sync-check"
 
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/cc-sync-eval.XXXXXX")"

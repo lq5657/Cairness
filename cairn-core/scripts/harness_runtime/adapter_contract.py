@@ -173,15 +173,32 @@ def load_adapter_contract(
 
 def claude_code_adapter_contract(root: Path) -> AdapterContract:
     """Load the current Claude Code capability contract."""
+    return declared_adapter_contract(root, "claude-code")
+
+
+def declared_adapter_contract(root: Path, name: str) -> AdapterContract:
+    """Load one adapter from its installation and capability declarations."""
     resolved_root = Path(root).expanduser().resolve()
     installation = load_adapter_installation(
-        resolved_root / "runtime/adapters/claude-code.yaml",
+        resolved_root / f"runtime/adapters/{name}.yaml",
         resolved_root / "schemas/adapter-installation.schema.json",
     )
+    if installation.adapter != name:
+        raise AdapterContractError(
+            f"adapter installation identity does not match {name!r}"
+        )
+
+    def capability_loader(framework_root: Path):
+        return load_adapter_capabilities(
+            framework_root,
+            manifest_relative=installation.capabilities_path,
+            schema_relative=installation.capabilities_schema_path,
+        )
+
     return load_adapter_contract(
         name=installation.adapter,
         root=resolved_root,
         paths=AdapterPaths.from_installation(installation),
         framework_prefix=installation.framework_prefix,
-        capability_loader=load_adapter_capabilities,
+        capability_loader=capability_loader,
     )

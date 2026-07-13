@@ -37,6 +37,7 @@ class HostAsset:
     action: str
     source: Path
     target: Path
+    target_root: str = "adapter"
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,7 @@ class AdapterInstallOperation:
     action: str
     source: Path
     target: Path
+    target_root: str = "adapter"
 
 
 @dataclass(frozen=True)
@@ -93,6 +95,23 @@ def _resolve_within(root: Path, relative: Path, label: str) -> Path:
             f"{label} escapes its installation root: {relative}"
         ) from exc
     return resolved
+
+
+def _project_target(root: Path, relative: Path, label: str) -> Path:
+    """Return a lexical project target without following repository symlinks."""
+
+    safe_relative = _safe_relative_path(str(relative), label)
+    parts = safe_relative.parts
+    if (
+        len(parts) != 3
+        or parts[:2] != (".agents", "skills")
+        or not parts[2]
+    ):
+        raise AdapterInstallationError(
+            f"{label} must target one project skill under .agents/skills/: "
+            f"{relative}"
+        )
+    return root / safe_relative
 
 
 def build_adapter_installation_plan(
@@ -130,11 +149,18 @@ def build_adapter_installation_plan(
             asset.source,
             f"host asset {asset.name} source",
         )
-        target = _resolve_within(
-            framework_root,
-            asset.target,
-            f"host asset {asset.name} target",
-        )
+        if asset.target_root == "project":
+            target = _project_target(
+                resolved_project,
+                asset.target,
+                f"host asset {asset.name} target",
+            )
+        else:
+            target = _resolve_within(
+                framework_root,
+                asset.target,
+                f"host asset {asset.name} target",
+            )
         if target in targets:
             raise AdapterInstallationError(
                 f"adapter installation plan has duplicate target: {target}"
@@ -146,6 +172,7 @@ def build_adapter_installation_plan(
                 action=asset.action,
                 source=source,
                 target=target,
+                target_root=asset.target_root,
             )
         )
     return AdapterInstallationPlan(
@@ -210,6 +237,7 @@ def load_adapter_installation(
             target=_safe_relative_path(
                 item["target"], f"host asset {item['name']} target"
             ),
+            target_root=item.get("target_root", "adapter"),
         )
         for item in manifest["host_assets"]
     )
