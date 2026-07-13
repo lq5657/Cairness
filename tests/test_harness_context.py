@@ -28,6 +28,7 @@ def test_context_discovers_project_from_subdirectory(harness_project: Path):
     assert context.state_root == (harness_project / ".cairness").resolve()
     assert context.config.values["profile"] == "standard"
     assert context.adapter.name == "claude-code"
+    assert context.layout.framework_prefix == ".claude"
 
 
 def test_context_uses_framework_hint_without_claude_directory_name(tmp_path: Path):
@@ -42,6 +43,50 @@ def test_context_uses_framework_hint_without_claude_directory_name(tmp_path: Pat
 
     assert context.project_root == project.resolve()
     assert context.framework_root == framework.resolve()
+    assert context.layout.core_root == framework.resolve()
+    assert context.resolve_path(".claude/runtime/core.yaml") == (
+        framework / "runtime/core.yaml"
+    ).resolve()
+
+
+def test_context_accepts_non_claude_adapter_contract(tmp_path: Path):
+    from harness_runtime.adapter_contract import AdapterContract, AdapterPaths
+    from harness_runtime.context import load_harness_context
+
+    project = tmp_path / "project"
+    core = project / "cairness-core"
+    adapter_root = project / ".codex"
+    core.mkdir(parents=True)
+    adapter_root.mkdir()
+    contract = AdapterContract(
+        name="codex",
+        root=adapter_root,
+        framework_prefix=".cairness-core",
+        paths=AdapterPaths(
+            settings=Path("config.toml"),
+            entrypoint=Path("AGENTS.md"),
+            capabilities_manifest=Path("capabilities.yaml"),
+            capabilities_schema=Path("capabilities.schema.json"),
+        ),
+        capabilities={"pre_write_hook": "unsupported"},
+    )
+
+    context = load_harness_context(
+        explicit_root=project,
+        framework_hint=core,
+        framework_prefix=".cairness-core",
+        adapter_factory=lambda _root: contract,
+        validate_config=False,
+    )
+
+    assert context.adapter.name == "codex"
+    assert context.adapter.root == adapter_root.resolve()
+    assert context.resolve_path(".cairness-core/runtime/core.yaml") == (
+        core / "runtime/core.yaml"
+    ).resolve()
+    assert context.resolve_path(".cairness/events.jsonl") == (
+        project / ".cairness/events.jsonl"
+    ).resolve()
 
 
 def test_doctor_runs_when_framework_directory_is_not_named_claude(tmp_path: Path):

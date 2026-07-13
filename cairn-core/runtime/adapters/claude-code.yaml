@@ -1,0 +1,31 @@
+version: 1
+adapter: claude-code
+framework:
+  prefix: .claude
+  root_convention: project-relative
+paths:
+  settings: settings.json
+  entrypoint: CLAUDE.md
+  capabilities: runtime/adapters/claude-code-capabilities.yaml
+  capabilities_schema: schemas/adapter-capabilities.schema.json
+host_assets:
+  - name: settings
+    action: copy-file
+    source: settings.json
+    target: settings.json
+  - name: instructions
+    action: copy-file
+    source: CLAUDE.md
+    target: CLAUDE.md
+  - name: pre-write-hook
+    action: copy-file
+    source: hooks/no-spec-no-code.py
+    target: hooks/no-spec-no-code.py
+  - name: capabilities
+    action: copy-file
+    source: runtime/adapters/claude-code-capabilities.yaml
+    target: runtime/adapters/claude-code-capabilities.yaml
+  - name: harness-skill
+    action: copy-tree
+    source: skills/cc-harness
+    target: skills/cc-harness

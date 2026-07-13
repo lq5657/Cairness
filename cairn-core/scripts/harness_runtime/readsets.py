@@ -30,6 +30,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
+from harness_runtime import project_path as resolve_project_path
 from harness_runtime import protocol_language_assets
 
 CORE_PATH = ".claude/runtime/core.yaml"
@@ -44,13 +45,11 @@ def _core_or_empty(core: Any) -> dict[str, Any]:
 
 
 def project_path(project_root: Path, declared: Any, framework_root: Path | None = None) -> Path | None:
-    if not isinstance(declared, str):
-        return None
-    if declared.startswith(".claude/"):
-        return (framework_root or project_root / ".claude") / declared.removeprefix(".claude/")
-    if declared.startswith(".cairness/"):
-        return project_root / declared
-    return None
+    return resolve_project_path(
+        project_root,
+        declared,
+        framework_root=framework_root,
+    )
 
 
 def string_list(value: Any) -> list[str]:

@@ -2,26 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from harness_runtime.config import HarnessConfig, HarnessConfigError, load_harness_config
-from harness_runtime.adapter_capabilities import (
-    AdapterCapabilitiesError,
-    load_adapter_capabilities,
+from harness_runtime.adapter_contract import (
+    AdapterContract,
+    AdapterContractError,
+    claude_code_adapter_contract,
 )
+from harness_runtime.runtime_layout import RuntimeLayout, RuntimeLayoutError
 
 
 class HarnessContextError(ValueError):
     pass
 
 
-@dataclass(frozen=True)
-class AdapterContext:
-    name: str
-    root: Path
-    settings_path: Path
-    entrypoint_path: Path
-    capabilities_path: Path
-    capabilities: dict[str, str]
+AdapterContext = AdapterContract
 
 
 @dataclass(frozen=True)
@@ -30,18 +26,14 @@ class HarnessContext:
     framework_root: Path
     state_root: Path
     config: HarnessConfig | None
-    adapter: AdapterContext
+    adapter: AdapterContract
+    layout: RuntimeLayout
 
     def resolve_path(self, declared: str) -> Path:
-        if declared == ".claude":
-            return self.framework_root
-        if declared.startswith(".claude/"):
-            return self.framework_root / declared.removeprefix(".claude/")
-        if declared == ".cairness":
-            return self.state_root
-        if declared.startswith(".cairness/"):
-            return self.state_root / declared.removeprefix(".cairness/")
-        raise HarnessContextError(f"unsupported declared path: {declared}")
+        try:
+            return self.layout.resolve_path(declared)
+        except RuntimeLayoutError as exc:
+            raise HarnessContextError(str(exc)) from exc
 
 
 def _validate_directory(path: Path, label: str) -> Path:
@@ -68,6 +60,8 @@ def load_harness_context(
     start: Path | None = None,
     framework_hint: Path | None = None,
     validate_config: bool = True,
+    framework_prefix: str | None = None,
+    adapter_factory: Callable[[Path], AdapterContract] | None = None,
 ) -> HarnessContext:
     if explicit_root is not None:
         project_root = _validate_directory(explicit_root, "explicit root")
@@ -95,20 +89,23 @@ def load_harness_context(
         except HarnessConfigError as exc:
             raise HarnessContextError(str(exc)) from exc
     try:
-        capabilities_path, capabilities = load_adapter_capabilities(framework_root)
-    except AdapterCapabilitiesError as exc:
+        adapter = (adapter_factory or claude_code_adapter_contract)(framework_root)
+    except (AdapterContractError, OSError, ValueError) as exc:
+        raise HarnessContextError(str(exc)) from exc
+    try:
+        layout = RuntimeLayout(
+            project_root=project_root,
+            core_root=framework_root,
+            state_root=project_root / ".cairness",
+            framework_prefix=framework_prefix or adapter.framework_prefix,
+        )
+    except RuntimeLayoutError as exc:
         raise HarnessContextError(str(exc)) from exc
     return HarnessContext(
         project_root=project_root,
         framework_root=framework_root,
         state_root=project_root / ".cairness",
         config=config,
-        adapter=AdapterContext(
-            name="claude-code",
-            root=framework_root,
-            settings_path=framework_root / "settings.json",
-            entrypoint_path=framework_root / "CLAUDE.md",
-            capabilities_path=capabilities_path,
-            capabilities=capabilities,
-        ),
+        adapter=adapter,
+        layout=layout,
     )

@@ -177,7 +177,7 @@ Phase 3：Agent Governance Platform
 | `P2-07` | 只读 Dashboard/TUI | Phase 2 | P2 | 完成 | `P2-04` |
 | `P2-08` | Legacy 活跃依赖清零 | Phase 2 | P1 | 完成 | `P2-05`、`P2-06` |
 | `P2-09` | Adapter capability contract | Phase 2 | P0 | 完成 | `P2-05` |
-| `P3-01` | Runtime-neutral core | Phase 3 | P0 | 待开始 | Phase 2 |
+| `P3-01` | Runtime-neutral core | Phase 3 | P0 | 部分完成 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 待开始 | `P3-01` |
 | `P3-03` | Codex adapter | Phase 3 | P0 | 待开始 | `P3-01`、`P3-02` |
 | `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 待开始 | `P3-03` |
@@ -1457,7 +1457,7 @@ unsupported
 
 ### 10.3 `P3-01` Runtime-neutral core
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：将 runtime、schema、验证器、state model 和模板从 Claude Code 安装布局中抽离。
 
@@ -1486,6 +1486,16 @@ adapters/
 - adapter 安装产物由模板生成；
 - runtime manifest 的逻辑路径不与物理 `.claude` 路径绑定；
 - 现有项目有兼容迁移路径和升级报告。
+
+#### 实施记录 2026-07-13（中立 Layout、Adapter 与安装合同）
+
+- 状态：部分完成
+- Change/提交：本批 P3-01 提交
+- 已完成：新增不可变 `RuntimeLayout`，统一解析 `core://`、`state://`、`project://` 与旧 `.claude/.cairness` 声明，拒绝绝对路径、逃逸、未知 scheme 和符号链接越界；新增宿主中立 `AdapterContract/AdapterPaths`，`HarnessContext` 可注入非 Claude adapter，并继续兼容现有访问面；新增声明式 adapter installation schema/loader 和 Claude Code 安装 manifest，settings、entrypoint、capability manifest/schema、hook 与 Skill 资产由合同声明；共享 `project_path` 与 readset resolver 已复用同一逻辑路径语义。
+- 验证：`rtk pytest -q` → `774 passed`；RuntimeLayout/Adapter/Context/安装合同/readset 专项均通过；`rtk cairn-core/scripts/cc-verify --harness-only`、readset/workflow check、py_compile 与 `rtk git diff --check` → `passed`。
+- 剩余：默认 runtime manifests 尚未从 `.claude/...` 迁移到 `core://`；`cc-cairn init/update` 尚未消费 adapter installation plan；旧项目兼容迁移报告仍需实现。
+- 风险/决策：`.claude` 继续作为兼容逻辑 alias，不再是中立 resolver 的固定物理根；未完成 manifest/installer 迁移前不得标记 P3-01 完成。
+- 下一步：迁移 runtime core 的逻辑路径声明，并让 init/update 由 adapter installation contract 生成宿主资产计划。
 
 ### 10.4 `P3-02` Claude Code adapter 回归基线
 

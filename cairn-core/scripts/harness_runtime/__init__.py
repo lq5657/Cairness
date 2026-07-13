@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.runtime_layout import RuntimeLayout
+
 
 IGNORED_TOP_LEVEL_DIRS = {".claude", ".cairness", ".git"}
 PENDING_LANGUAGE_VALUES = {
@@ -95,14 +97,21 @@ def project_path(
     *,
     framework_root: Path | None = None,
     state_root: Path | None = None,
+    layout: RuntimeLayout | None = None,
 ) -> Path | None:
     if not isinstance(declared, str):
         return None
-    if declared.startswith(".claude/"):
-        return (framework_root or project_root / ".claude") / declared.removeprefix(".claude/")
-    if declared.startswith(".cairness/"):
-        return (state_root or project_root / ".cairness") / declared.removeprefix(".cairness/")
-    return None
+    recognized = declared.startswith(
+        ("core://", "state://", "project://", ".claude/", ".cairness/")
+    )
+    if not recognized:
+        return None
+    active_layout = layout or RuntimeLayout(
+        project_root=project_root,
+        core_root=framework_root or project_root / ".claude",
+        state_root=state_root or project_root / ".cairness",
+    )
+    return active_layout.resolve_path(declared)
 
 
 def runtime_protocol_config(core: dict[str, Any]) -> dict[str, str]:
