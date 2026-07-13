@@ -180,13 +180,13 @@ Phase 3：Agent Governance Platform
 | `P3-01` | Runtime-neutral core | Phase 3 | P0 | 完成 | Phase 2 |
 | `P3-02` | Claude Code adapter 回归基线 | Phase 3 | P0 | 部分完成 | `P3-01` |
 | `P3-03` | Codex adapter | Phase 3 | P0 | 部分完成 | `P3-01`、`P3-02` |
-| `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 待开始 | `P3-03` |
+| `P3-04` | 其他 Agent adapters | Phase 3 | P1 | 取消 | 无 |
 | `P3-05` | Policy Pack 与扩展锁定 | Phase 3 | P1 | 待开始 | `P3-01` |
 | `P3-06` | Monorepo 多 workspace | Phase 3 | P1 | 待开始 | `P3-01`、`P1-05` |
 | `P3-07` | 跨仓 change store | Phase 3 | P2 | 待开始 | `P3-06` |
 | `P3-08` | Model-driven eval matrix | Phase 3 | P1 | 待开始 | `P3-02`、`P3-03` |
 | `P3-09` | 结构化状态 sidecar 渐进迁移 | Phase 3 | P2 | 待开始 | `P2-06` |
-| `P3-10` | 治理指标与可选遥测闭环 | Phase 3 | P2 | 待开始 | `P2-07`、`P3-01` |
+| `P3-10` | 治理指标与可选遥测闭环 | Phase 3 | P2 | 调研中 | `P2-07`、`P3-01` |
 
 ## 8. Phase 1 — Trustworthy Runtime
 
@@ -1546,7 +1546,7 @@ adapters/
 
 ### 10.5 `P3-03` Codex adapter
 
-**状态**：完成
+**状态**：部分完成
 
 **目标**：交付第二个正式 adapter，证明 core 真正中立。
 
@@ -1572,11 +1572,11 @@ adapters/
 
 ### 10.6 `P3-04` 其他 Agent adapters
 
-**状态**：待开始
+**状态**：取消
 
-**候选**：Cursor、GitHub Copilot、OpenCode、Gemini 等。
+**取消记录（2026-07-13）**：产品决策不再支持 Cursor、GitHub Copilot、OpenCode、Gemini 等额外 Agent adapter。本项不实施；现有 Claude Code/Codex adapter 保持维护，但不以新增宿主为路线图方向。
 
-**进入条件**：P3-03 补齐实际主干生命周期 fixture 后进入。后续 adapter 不允许复制整套 runtime，必须复用现有 contract、安装规划、Context 与回归入口。
+**替代方向**：不再扩展 adapter 数量；优先推进本地治理事件、指标和现有 adapter 的确定性证据。
 
 **验收标准**：每个正式 adapter 有安装、升级、doctor、capability matrix 和关键行为 eval。
 
@@ -1708,7 +1708,7 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 
 ### 10.12 `P3-10` 治理指标与可选遥测闭环
 
-**状态**：待开始
+**状态**：调研中
 
 **目标**：让 `cc-stats`、`cc-gate-stats` 和 Dashboard 使用由运行器自动记录的完整数据，而不是依赖 Agent 自愿填写。
 
@@ -1847,7 +1847,7 @@ Phase 2 完成
 
 后续依赖链：
 
-1. `P3-02`：在正式发布窗口补 quick/release 真实 Claude Code 宿主证据。
-2. `P3-03`：在 `/tmp` 补 propose/apply/review/archive 的实际生命周期 fixture，并保持 contract/fixture/host-observed 证据类别严格分离。
-3. `P3-04/P3-08`：P3-03 完成后扩展其他宿主或 model-driven eval matrix；随后推进 `P3-05/P3-06`。
-4. `P3-07/P3-09/P3-10`：随后推进跨仓 change store、结构化状态 sidecar 和治理指标闭环。
+1. `P3-10`：当前调研项。先交付本地确定性运行事件、完整度标识和 `cc-stats`/`cc-gate-stats`/Dashboard 消费，不做远程遥测。
+2. `P3-02`：在正式发布窗口补 quick/release 真实 Claude Code 宿主证据。
+3. `P3-03`：实际生命周期 fixture 暂缓；P3-04 已取消，P3-08 继续等待 P3-02/P3-03 的主干证据。
+4. `P3-05/P3-06/P3-09`：分别在 Policy Pack、Monorepo 前置条件和状态迁移时机明确后再推进；`P3-07` 继续依赖 P3-06。
