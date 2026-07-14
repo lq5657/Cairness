@@ -1,5 +1,25 @@
 # 升级指南
 
+## 升级到 1.2.0
+
+本版本完成从可信运行时到 runtime-neutral core 的产品化路线图，所有变更向后兼容——现有 Claude Code 项目无需迁移即可继续使用。
+
+### Codex adapter（新增，可选）
+
+Claude Code 与 Codex 现在都是正式 adapter。`cc-cairn init --adapter codex` 安装到 `.codex/`（含 `config.toml`、`CAIRNESS.md`、`hooks.json`）与项目级 `.agents/skills/cc-harness/`，两个 adapter 可在同一项目共存并共享 `.cairness/` 状态。Codex 的 `pre_write_hook`/`file_write_interception` 按 `emulated` 能力报告，`compaction_session_resume` 为 `optional`；这些差异由 doctor/explain 显式呈现，不宣称与 Claude Code 同等治理。
+
+### 本地运行时可观测性（默认本地、可关闭）
+
+`cc-verify` 与 `cc-cairn update` 会向 `.cairness/observability/runtime-events.jsonl` 追加脱敏运行摘要（状态、模式、耗时、子步骤计数），不记录 prompt、代码、路径、change ID 或 PII。该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，`cc-stats`/`cc-gate-stats`/Dashboard 在无样本时仍可用。
+
+### model-behavior eval（P3-08 scaffolding，opt-in）
+
+新增 `evals/model-behavior/` 与确定性评分器。它不接入任何默认 gate，只在显式调用时对已产出的 transcript 评分；用真实宿主产出 transcript 是单独的、需显式费用授权的步骤。现有验证路径行为不变。
+
+### 版本元数据
+
+`cairn-core/VERSION` 升级到 `1.2.0`，根 `pyproject.toml` 镜像已同步。发布流程与 1.1.0 一致：在带精确 release tag 的提交上执行 `cc-upgrade-check --require-release-tag --release-artifact dist/cairness-1.2.0.tar.gz`；在 release 资产可下载前不应宣称该版本 CI 分发完整可用。
+
 ## 升级到 1.1.0
 
 本版本新增 Loop Engineering 支持，所有变更向后兼容——未使用 loop profile 的项目无需任何迁移。

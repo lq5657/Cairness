@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.2.0 - 2026-07-14
+
+Productization release completing the roadmap from trustworthy runtime through
+runtime-neutral core. All changes are backward-compatible.
+
+### Trustworthy runtime (Phase 1)
+
+- Fixed-version, checksum-verified GitHub Action and ephemeral CI runner so target-project CI no longer requires a pre-installed `.claude/`.
+- Single authoritative version source (`cairn-core/VERSION`) with mirror/tag/artifact drift checks in `cc-upgrade-check`.
+- Formal `harness.config.yaml` schema, shared loader, effective-config source diagnostics, and project override layer.
+- Parametrized five-language (Go/Python/Java/TypeScript/C++) profile+fixture parity, with missing-toolchain reported as `blocked` and profile-optional gaps as `skipped`.
+- Formal `cc-cairn doctor` product entrypoint with stable code/cause/fix-hint/doc-ref per issue and dry-run-by-default safe fixes.
+- Documented platform support matrix (Linux/macOS/WSL supported, native Windows experimental).
+
+### Product & core boundaries (Phase 2)
+
+- `cc-cairn onboard` wizard, scenario product profiles (`starter/team/regulated/autonomous`), `cc-start` intent router, and progressive-disclosure `cc-help`.
+- `cc-cairn explain` effective-contract view sourced entirely from real resolvers.
+- Unified `HarnessContext` root resolution across all product entrypoints; core script domain logic modularized into the importable `harness_runtime` package.
+- Legacy documents demoted to history/compat fallback; runtime roles are the role source of truth.
+- Adapter capability contract with `required/optional/emulated/unsupported` levels surfaced by doctor/explain.
+- Read-only localhost `cc-dashboard`.
+
+### Agent governance platform (Phase 3)
+
+- Runtime-neutral core: logical `core://`/`state://`/`project://` layout, declarative adapter installation contracts, and compatible in-place upgrade with report.
+- Claude Code adapter regression baseline (`cc-adapter-check`) plus opt-in, budget-requested host smoke (quick/release).
+- Codex adapter: install/update/coexist/uninstall lifecycle, native host assets, capability downgrades (`pre_write_hook`/`file_write_interception` emulated, session resume optional).
+- Local, sanitized runtime observability (verification/upgrade/lifecycle events) with `DO_NOT_TRACK` opt-out; shared verification pass-rate, upgrade failure-rate, command block-rate, and collection-completeness metrics across `cc-stats`, `cc-gate-stats`, and the dashboard.
+- P3-08 scaffolding: deterministic model-behavior eval scorer plus three adversarial cases (`evals/model-behavior/`). Opt-in and not wired into any default gate; producing real host transcripts remains a separate budgeted step.
+
 ## 1.1.0 - 2026-07-07
 
 - Added the first `cc-cairn explain` effective-contract view, resolving the active profile and source, runtime manifest, generated readset, reads, writes, gates, stop conditions, subagent contract, auto-validation, and input/change readiness from the installed project assets.
