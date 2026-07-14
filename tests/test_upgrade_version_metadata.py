@@ -97,3 +97,62 @@ def test_release_artifact_reports_filename_and_internal_drift(tmp_path: Path):
     issues = UPGRADE.check_release_artifact(artifact, "1.2.3", "v1.2.3")
 
     assert [issue.code for issue in issues] == ["E_UPGRADE012", "E_UPGRADE013"]
+
+
+# --- state separation: framework source repo has no installed project state ---
+# The framework source repo (cairn_install + pyproject at root, .cairness/
+# gitignored) is not an installed target project, so its missing .cairness state
+# dirs must NOT raise E_UPGRADE004 on a clean checkout. E_UPGRADE005 (state
+# misplaced under the framework root) must still fire everywhere.
+
+
+def test_state_separation_requires_project_state_dirs_by_default(tmp_path: Path):
+    project_root = tmp_path
+    claude_root = tmp_path / ".claude"
+    claude_root.mkdir()
+
+    issues: list = []
+    UPGRADE.check_state_separation(project_root, claude_root, issues)
+
+    codes = {issue.code for issue in issues}
+    assert "E_UPGRADE004" in codes  # installed project must keep its state dirs
+
+
+def test_state_separation_can_skip_state_dir_requirement(tmp_path: Path):
+    project_root = tmp_path
+    claude_root = tmp_path / "cairn-core"
+    claude_root.mkdir()
+
+    issues: list = []
+    UPGRADE.check_state_separation(
+        project_root, claude_root, issues, require_state_dirs=False
+    )
+
+    assert issues == []  # framework source: no state dirs required, none misplaced
+
+
+def test_state_separation_still_flags_misplaced_state_when_skipping_requirement(tmp_path: Path):
+    project_root = tmp_path
+    claude_root = tmp_path / "cairn-core"
+    (claude_root / "knowledge").mkdir(parents=True)  # state misplaced under framework root
+
+    issues: list = []
+    UPGRADE.check_state_separation(
+        project_root, claude_root, issues, require_state_dirs=False
+    )
+
+    codes = {issue.code for issue in issues}
+    assert "E_UPGRADE004" not in codes  # requirement skipped
+    assert "E_UPGRADE005" in codes  # but misplacement still caught
+
+
+def test_build_report_on_framework_source_without_state_dirs_has_no_E_UPGRADE004(tmp_path: Path):
+    # Faithful to a clean CI checkout of the framework repo: cairn_install +
+    # pyproject at root, real framework assets under cairn-core, and NO
+    # .cairness/ state dirs (gitignored). Reuses the real cairn-core so the
+    # boundary/asset checks resolve without rebuilding the whole tree.
+    real_core = REPO / "cairn-core"
+    report = UPGRADE.build_report(project_root=tmp_path, claude_root=real_core)
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "E_UPGRADE004" not in codes

@@ -8,7 +8,6 @@ import json
 import subprocess
 import sys
 import tarfile
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -122,9 +121,21 @@ def check_release_artifact(artifact: Path, version: str, exact_tag: str) -> list
     return issues
 
 
-def check_state_separation(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:
-    for state_dir in ("context", "changes", "knowledge"):
-        require(project_root / ".cairness" / state_dir, "dir", issues, "E_UPGRADE004")
+def check_state_separation(
+    project_root: Path,
+    claude_root: Path,
+    issues: list[Issue],
+    *,
+    require_state_dirs: bool = True,
+) -> None:
+    # E_UPGRADE004 asserts an *installed target project* preserved its state
+    # dirs across upgrade. The framework source repo is not an installed
+    # project -- its .cairness/ is gitignored and legitimately absent on a
+    # clean checkout -- so callers pass require_state_dirs=False for it. The
+    # E_UPGRADE005 misplacement check below still runs everywhere.
+    if require_state_dirs:
+        for state_dir in ("context", "changes", "knowledge"):
+            require(project_root / ".cairness" / state_dir, "dir", issues, "E_UPGRADE004")
     legacy_state_paths = [
         claude_root / "context",
         claude_root / "changes" / "task-board.md",
@@ -221,12 +232,18 @@ def build_report(
     if project_root is None:
         project_root = claude_root.parent
     issues: list[Issue] = []
+    repository_root = claude_root.parent
+    is_framework_source = (
+        (repository_root / "pyproject.toml").is_file()
+        and (repository_root / "cairn_install").is_file()
+    )
     metadata = check_version_docs(claude_root, issues)
-    check_state_separation(project_root, claude_root, issues)
+    check_state_separation(
+        project_root, claude_root, issues, require_state_dirs=not is_framework_source
+    )
     check_state_pollution(project_root, issues)
     check_upgrade_boundaries(project_root, claude_root, issues, context)
-    repository_root = claude_root.parent
-    if (repository_root / "pyproject.toml").is_file() and (repository_root / "cairn_install").is_file():
+    if is_framework_source:
         exact_tag = exact_head_tag(repository_root)
         issues.extend(
             check_repository_version_metadata(
