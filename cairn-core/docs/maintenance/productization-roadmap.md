@@ -81,14 +81,14 @@ cairn-core/scripts/cc-behavior-check
 
 ## 4. 当前基线快照
 
-基线日期：`2026-07-13`
+基线日期：`2026-07-14`
 
 基线版本与提交：
 
 - `cairn-core/VERSION`：`1.1.0`
-- 基线提交：本次 `P3-03` Codex adapter 提交
+- 基线提交：`c23a470`（preserve adapter and project scan identity）
 - 分支：`main`
-- 测试：`941 passed`
+- 测试：`967 passed`
 - Harness 校验：`cc-verify --harness-only` 全部通过
 
 当前能力规模（文件数和行数按 `git ls-files` 统计，不包含本地缓存和未跟踪文件）：
@@ -100,14 +100,14 @@ cairn-core/scripts/cc-behavior-check
 | Topic rules | 35 |
 | Subagent contracts | 6 |
 | Schemas | 17 |
-| Scripts | 89 个文件 |
-| Eval cases | 65 |
+| Scripts | 91 个文件 |
+| Eval cases | 55 |
 | Behavior cases | 9 |
-| Tests | 111 个 Python 文件，941 个用例 |
+| Tests | 111 个 Python 文件，967 个用例 |
 
 当前主要事实：
 
-1. Claude Code 与 Codex 均为正式 adapter：前者使用 `.claude/`，后者使用 `.codex/config.toml`、`.codex/CAIRNESS.md`、`.codex/hooks.json` 与项目级 `.agents/skills/cc-harness/`；两者可共存并共享 `.cairness/` 状态。
+1. Claude Code 与 Codex 均为正式 adapter：前者使用 `.claude/`，后者使用 `.codex/config.toml`、`.codex/CAIRNESS.md`、`.codex/hooks.json` 与项目级 `.agents/skills/cc-harness/`；两者可共存并共享 `.cairness/` 状态。Context 按安装元数据保留 adapter 身份，项目扫描统一排除 Cairness 状态、宿主资产和活动 framework root，避免框架内容污染项目语言识别。
 2. 目标项目 CI 已支持固定版本和 checksum 的 ephemeral runner，不依赖预装 `.claude/`；仍缺一次正式发布后的 GitHub-hosted fixture run URL 作为远端完成证据。
 3. `cairn-core/VERSION` 为唯一权威版本源；根 `pyproject.toml` 镜像、release tag 与 artifact 可由 `cc-upgrade-check` 检测漂移。
 4. 平台矩阵已明确 Linux、macOS、WSL 正式支持，原生 Windows 实验性；Doctor 与安装器会显示对应边界，根 CI 覆盖 Ubuntu/macOS。
@@ -116,7 +116,7 @@ cairn-core/scripts/cc-behavior-check
 7. `cc-schema-check`、`cc-verify`、`cc-lint` 和 `cc-deps` 的领域决策已迁入 `harness_runtime` package API；extensionless CLI 保留 Context、I/O、编排、渲染与兼容重导出。
 8. Migrated command、doctor、schema、lint 和 eval 已清零 legacy 活跃依赖；legacy 只作为历史资料和 custom/non-migrated command 的显式兼容 fallback。
 9. 状态仍主要存放在 Markdown 文档和表格中，机器检查依赖 frontmatter、正则和表格解析。
-10. 已有 `cc-stats` 和 `cc-gate-stats`，但缺少自动采集完整性、统一 Dashboard 和跨运行时指标闭环。
+10. `cc-verify` 与 `cc-cairn update` 已自动记录脱敏的 verification/upgrade runtime event；lifecycle event v2 已记录显式命令结果。`cc-stats`、`cc-gate-stats` 和 Dashboard 共享 verification 通过率、upgrade 失败率、命令阻塞率与采集完整度，但首个成功 change、CI 专属通过率、自动 gate precision 和其他可选运行指标仍未闭环。
 
 当上述事实被代码改动改变时，必须同步更新本节，避免后续会话从过期前提出发。
 
@@ -282,11 +282,11 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.4 `P1-02` 版本与发布元数据单一源
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：所有版本号、升级说明、发布 artifact 和安装信息都从一个权威版本源派生。
 
-**当前问题**：`cairn-core/VERSION` 为 `1.1.0`，根 `pyproject.toml` 的镜像值为 `1.0.0`。
+**已解决问题**：`cairn-core/VERSION` 为 `1.1.0`，根 `pyproject.toml` 的镜像值已同步，并由升级检查防止后续漂移。
 
 **建议真相源**：保留 `cairn-core/VERSION`，其他版本字段在构建或检查阶段读取/生成。
 
@@ -330,7 +330,7 @@ Phase 1 只有在以下条件全部满足时才能标记完成：
 
 ### 8.5 `P1-03` 平台支持矩阵与 Windows 边界
 
-**状态**：部分完成
+**状态**：完成
 
 **目标**：平台支持声明与实际脚本、hook、安装器和 CI 证据一致。
 
@@ -1734,6 +1734,22 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 
 **验收标准**：能回答首个成功 change 时间、命令阻塞率、gate precision、CI pass rate 和 upgrade failure rate，并标注样本完整度。
 
+**指标覆盖快照（2026-07-14）**：
+
+| 指标 | 状态 | 当前证据与口径 | 未完成范围 |
+|---|---|---|---|
+| Verification 通过率、模式分布与平均耗时 | 已完成 | `cc-verify` 自动写入 `verification_run`；三个消费者共享 `verification_metrics`，无样本返回 `null` | 尚未区分本地与 CI 样本 |
+| Upgrade 失败率、结果分布与平均耗时 | 已完成 | `cc-cairn update` 自动写入 `upgrade_run`；三个消费者共享 `upgrade_metrics` | 无 |
+| 命令结果分布与阻塞率 | 已完成（显式结果样本） | lifecycle event v2 的 `result_status` 支持 `passed|blocked|partial`；比率只使用有显式结果的事件 | 旧 v1 事件不补猜结果；命令运行器尚未自动补齐 duration 等可选字段 |
+| 采集完整度 | 已完成（现有三类事件） | verification、upgrade、lifecycle 三类样本均存在且 lifecycle 结果覆盖完整时才为 `complete` | 新增事件类型后必须同步扩展完整度定义 |
+| Gate precision | 部分完成 | `cc-gate-stats` 可从 `review.md` 和 lifecycle `gate_effectiveness` 计算真实错误率与 false positive | gate 触发和真实错误确认仍依赖 Agent/人工填写，尚非稳定运行器自动采集 |
+| 首个成功 change 时间 | 未开始 | lifecycle event 已有 change、时间、transition 与结果，可作为后续聚合输入 | 尚未定义起点、成功终点和跨旧事件的兼容口径，也未在消费者中输出 |
+| CI pass rate | 未开始 | verification event 已有 status/mode，可复用当前聚合 | event 尚无脱敏 CI provenance，无法区分本地与 CI 样本 |
+| Validation count | 部分完成 | verification event 自动记录子步骤状态计数 | 尚未定义跨 mode 的统一 validation count 口径 |
+| Files changed、subagent、token、duration | 部分完成 | lifecycle schema 和 `cc-stats` 已支持可选字段 | 除 verification/upgrade duration 外仍依赖调用方填写；宿主不可提供时必须保持缺失而非估算 |
+| Retry、manual override、Topic Rule | 未开始 | 尚无稳定事件字段或自动写入入口 | 需先定义隐私边界、枚举合同和可重复采集点 |
+| 可选匿名远程遥测 | 未开始、非当前范围 | 已有 `DO_NOT_TRACK` 和本地脱敏边界 | 必须独立安全/隐私评审；CI 默认关闭，不能阻塞本地指标能力 |
+
 **实施记录（2026-07-13）**：
 
 - 已完成首批本地自动采集：`cc-verify` 在目标项目的 `.cairness/observability/runtime-events.jsonl` 追加经过清洗的 verification run 摘要，包含状态、模式、耗时和子步骤状态计数；不记录 prompt、代码、路径、change ID、token 内容或 PII。
@@ -1750,6 +1766,16 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 - 修正采集完整度语义：verification、upgrade 和 lifecycle 三类样本均存在，且每条 lifecycle event 都有合法 `result_status` 时才报告 `complete`；旧事件缺少结果字段时保持 `partial`，不再因“任意一条 lifecycle event”误报完整。
 - `harness_runtime.observability` 新增共享命令指标：明确状态样本数、状态分布、命令阻塞率和 lifecycle result-status 覆盖率。比率只使用明确记录的结果样本；无样本继续返回 `null`，不把缺失解释为零。`cc-stats`、`cc-gate-stats` 与 Dashboard 的 JSON/可读输出已统一消费。
 - 验证：事件、状态转换、完整度、stats、gate stats 和 Dashboard 聚焦回归 `84 passed`；加入 result contract 单一真相源守护后，全仓 `963 passed`。`git diff --check`、JSON 解析、Python `py_compile` 和相关 Ruff 检查通过。
+
+#### 路线图同步记录 2026-07-14
+
+- 状态：实施中
+- Change/提交：基线截至 `c23a470`；指标实现提交为 `7636f29`、`f0145c8`、`de53fb8`、`407cc76`
+- 已完成：明确 verification、upgrade、显式命令结果和采集完整度的已交付口径；区分可计算但依赖人工字段的 gate precision，以及尚未交付的首个成功 change、CI pass rate 和扩展运行指标。
+- 验证：`rtk proxy pytest --collect-only -q` → `967 tests collected`；资产规模通过 `rtk git ls-files` 重算。
+- 剩余：优先定义并实现首个成功 change 与 CI provenance/通过率；随后选择稳定运行器补齐 validation、gate、files changed、subagent、retry/manual override 和宿主可提供的 token 数据。远程匿名遥测继续保持独立评审、非当前范围。
+- 风险/决策：支持字段或离线聚合不等于自动完整采集；任何缺失样本继续返回 `null`/partial，不推断为零或成功。
+- 下一步：将“首个成功 change 时间”或“CI 专属通过率”拆为一个独立、可验收的 `P3-10` 子任务。
 
 ## 11. 跨阶段依赖与推荐执行顺序
 
@@ -1860,11 +1886,11 @@ Phase 2 完成
 
 ## 16. 下一步
 
-当前执行顺序：`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-02 Claude Code adapter 回归基线` 保留真实宿主验收债务；`P3-03 Codex adapter` 已完成离线合同、安装生命周期与安全边界验收，但仍缺实际主干生命周期 fixture。
+当前执行顺序：`P3-10` 已交付 verification、upgrade、显式命令结果和现有三类事件的完整度聚合，下一批只从未完成指标中选择一个独立子任务；`P1-01` 与 `P1-05` 的真实 GitHub-hosted 证据暂时保持现状；`P3-02 Claude Code adapter 回归基线` 保留真实宿主验收债务；`P3-03 Codex adapter` 已完成离线合同、安装生命周期与安全边界验收，但仍缺实际主干生命周期 fixture。
 
 后续依赖链：
 
-1. `P3-10`：当前调研项。先交付本地确定性运行事件、完整度标识和 `cc-stats`/`cc-gate-stats`/Dashboard 消费，不做远程遥测。
+1. `P3-10`：优先实现首个成功 change 时间或 CI 专属通过率；之后再按稳定采集点补 validation、gate、files changed、subagent、retry/manual override 和宿主可提供的 token 指标。远程匿名遥测不属于当前实现范围。
 2. `P3-02`：在正式发布窗口补 quick/release 真实 Claude Code 宿主证据。
 3. `P3-03`：实际生命周期 fixture 暂缓；P3-04 已取消，P3-08 继续等待 P3-02/P3-03 的主干证据。
 4. `P3-05/P3-06/P3-09`：分别在 Policy Pack、Monorepo 前置条件和状态迁移时机明确后再推进；`P3-07` 继续依赖 P3-06。
