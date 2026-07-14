@@ -183,8 +183,8 @@ def test_action_and_template_require_explicit_immutable_inputs():
     assert "version:" in action and "required: true" in action
     assert "checksums-url:" in action
     assert "@main" not in template
-    assert "@v1.1.0" in template
-    assert "version: 1.1.0" in template
+    assert "@v1.2.0" in template
+    assert "version: 1.2.0" in template
     assert "SHA256SUMS" in template
     assert "REPLACE_" not in template
     assert "expected to fail" not in template
