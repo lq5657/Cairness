@@ -69,7 +69,11 @@ def _events(change_dir: Path) -> list[dict]:
     log = change_dir / "events.jsonl"
     if not log.exists():
         return []
-    return [json.loads(l) for l in log.read_text(encoding="utf-8").splitlines() if l.strip()]
+    return [
+        json.loads(line)
+        for line in log.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 _ARCHIVE = ["--change-id", "c-evt", "--command", "cc-archive",
@@ -83,6 +87,7 @@ def test_core_advance_writes_spec_and_event(tmp_path):
     assert proc.returncode == 0, proc.stderr
     report = json.loads(proc.stdout)
     assert report["status"] == "passed"
+    assert report["result_status"] == "passed"
     assert report["event_written"] is True
     assert report["spec_written"] is True
     assert _spec_status(change_dir) == "done"
@@ -90,6 +95,7 @@ def test_core_advance_writes_spec_and_event(tmp_path):
     assert len(events) == 1
     assert events[0]["transition"] == {"from": "review", "to": "done"}
     assert events[0]["command"] == "cc-archive"
+    assert events[0]["result_status"] == "passed"
 
 
 def test_precheck_mismatch_e_state001_no_writes(tmp_path):
@@ -128,6 +134,36 @@ def test_to_unchanged_audit_noop_event_only(tmp_path):
     assert report["event_written"] is True
     assert _spec_status(change_dir) == "review"  # unchanged
     assert _events(change_dir)[0]["transition"] == {"from": "review", "to": "unchanged"}
+
+
+def test_blocked_outcome_records_event_without_advancing_spec(tmp_path):
+    change_dir = _change_dir(tmp_path, "propose")
+    args = [
+        "--change-id", "c-evt", "--command", "cc-apply",
+        "--from", "propose", "--to", "unchanged",
+        "--summary", "dependency missing", "--evidence", "doctor.json",
+        "--result-status", "blocked",
+    ]
+    proc = _run(args, tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["result_status"] == "blocked"
+    assert _spec_status(change_dir) == "propose"
+    assert _events(change_dir)[0]["result_status"] == "blocked"
+
+
+def test_blocked_outcome_rejects_state_advance(tmp_path):
+    change_dir = _change_dir(tmp_path, "propose")
+    args = [
+        "--change-id", "c-evt", "--command", "cc-apply",
+        "--from", "propose", "--to", "review",
+        "--summary", "dependency missing", "--evidence", "doctor.json",
+        "--result-status", "blocked",
+    ]
+    proc = _run(args, tmp_path)
+    assert proc.returncode == 1
+    assert any(i["code"] == "E_STATE006" for i in json.loads(proc.stdout)["issues"])
+    assert _spec_status(change_dir) == "propose"
+    assert _events(change_dir) == []
 
 
 def test_wrong_to_for_command_e_state006(tmp_path):

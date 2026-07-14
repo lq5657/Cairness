@@ -59,6 +59,23 @@ def _upgrade_event(
     }
 
 
+def _lifecycle_event(*, status: str | None = "passed", command: str = "cc-apply"):
+    event = {
+        "schema_version": 2,
+        "event_id": f"{command}-sample".replace("cc-", "event-"),
+        "occurred_at": "2026-07-13T00:02:00+00:00",
+        "command": command,
+        "change_id": "sample",
+        "actor": "agent",
+        "transition": {"from": "propose", "to": "unchanged"},
+        "summary": "sample outcome",
+        "evidence": ["log.md"],
+    }
+    if status is not None:
+        event["result_status"] = status
+    return event
+
+
 def test_runtime_event_writer_records_sanitized_verify_result(tmp_path: Path):
     from harness_runtime.observability import (
         discover_runtime_events,
@@ -374,6 +391,14 @@ def test_stats_reports_automatic_collection_completeness():
         "automatic_runtime_events": 2,
         "automatic_verification_runs": 1,
         "automatic_upgrade_runs": 1,
+        "lifecycle_events_with_result_status": 0,
+    }
+    assert report["commands"] == {
+        "total_events": 0,
+        "measured_runs": 0,
+        "status_counts": {},
+        "blocking_rate": None,
+        "result_status_coverage": None,
     }
     assert report["verification"] == {
         "total_runs": 1,
@@ -394,7 +419,7 @@ def test_stats_reports_automatic_collection_completeness():
 def test_stats_readable_output_includes_collection_completeness(capsys):
     stats = _stats()
     report = stats.compute_stats(
-        [],
+        [_lifecycle_event(status="blocked"), _lifecycle_event(status=None)],
         [],
         [
             {
@@ -415,6 +440,8 @@ def test_stats_readable_output_includes_collection_completeness(capsys):
 
     output = capsys.readouterr().out
     assert "采集完整度: partial" in output
+    assert "命令结果状态覆盖率: 50.0%" in output
+    assert "命令阻塞率: 100.0%" in output
     assert "自动验证通过率: 100.0%" in output
     assert "自动验证平均耗时: 17 ms" in output
     assert "升级失败率: 100.0%" in output
@@ -432,6 +459,19 @@ def test_dashboard_exposes_automatic_runtime_event_completeness(tmp_path: Path):
         + "\n",
         encoding="utf-8",
     )
+    change = tmp_path / ".cairness/changes/sample"
+    change.mkdir(parents=True)
+    (change / "spec.md").write_text(
+        "---\nchange_id: sample\nstatus: propose\ndepends_on: []\n---\n",
+        encoding="utf-8",
+    )
+    (change / "events.jsonl").write_text(
+        json.dumps(_lifecycle_event(status="blocked"))
+        + "\n"
+        + json.dumps(_lifecycle_event(status=None))
+        + "\n",
+        encoding="utf-8",
+    )
 
     report = build_dashboard(tmp_path)
 
@@ -439,8 +479,16 @@ def test_dashboard_exposes_automatic_runtime_event_completeness(tmp_path: Path):
         "automatic_runtime_events": 2,
         "automatic_verification_runs": 1,
         "automatic_upgrade_runs": 1,
-        "lifecycle_events": 0,
+        "lifecycle_events": 2,
+        "lifecycle_events_with_result_status": 1,
         "status": "partial",
+    }
+    assert report["commands"] == {
+        "total_events": 2,
+        "measured_runs": 1,
+        "status_counts": {"blocked": 1},
+        "blocking_rate": 1.0,
+        "result_status_coverage": 0.5,
     }
     assert report["verification"] == {
         "total_runs": 1,
@@ -454,6 +502,8 @@ def test_dashboard_exposes_automatic_runtime_event_completeness(tmp_path: Path):
     assert "pass rate 100.0%" in html
     assert "average duration 17 ms" in html
     assert "upgrade failure rate 100.0%" in html
+    assert "result status coverage 50.0%" in html
+    assert "command blocking rate 100.0%" in html
 
 
 def test_verification_metrics_summarize_automatic_runs():
@@ -506,16 +556,59 @@ def test_upgrade_metrics_summarize_update_outcomes():
     }
 
 
-def test_collection_is_complete_only_with_all_automatic_sources():
+def test_collection_is_complete_only_when_lifecycle_result_status_is_complete():
     from harness_runtime.observability import collection_summary
 
     report = collection_summary(
-        [{"command": "cc-apply"}],
+        [_lifecycle_event(status="passed")],
         [_runtime_event(), _upgrade_event()],
     )
 
     assert report["status"] == "complete"
     assert report["automatic_upgrade_runs"] == 1
+
+
+def test_collection_does_not_claim_complete_for_legacy_lifecycle_events():
+    from harness_runtime.observability import collection_summary
+
+    report = collection_summary(
+        [_lifecycle_event(status=None)],
+        [_runtime_event(), _upgrade_event()],
+    )
+
+    assert report["status"] == "partial"
+    assert report["lifecycle_events_with_result_status"] == 0
+
+
+def test_command_metrics_report_blocking_rate_and_status_coverage():
+    from harness_runtime.observability import command_metrics
+
+    events = [
+        _lifecycle_event(status="passed"),
+        _lifecycle_event(status="blocked"),
+        _lifecycle_event(status="blocked"),
+        _lifecycle_event(status=None),
+    ]
+
+    assert command_metrics(events) == {
+        "total_events": 4,
+        "measured_runs": 3,
+        "status_counts": {"blocked": 2, "passed": 1},
+        "blocking_rate": 0.6667,
+        "result_status_coverage": 0.75,
+    }
+
+
+def test_command_metrics_preserve_no_sample_state():
+    from harness_runtime.observability import command_metrics
+
+    assert command_metrics([]) == {
+        "total_events": 0,
+        "measured_runs": 0,
+        "status_counts": {},
+        "blocking_rate": None,
+        "result_status_coverage": None,
+    }
 
 
 def test_gate_stats_json_exposes_automatic_verification_metrics(
@@ -535,18 +628,27 @@ def test_gate_stats_json_exposes_automatic_verification_metrics(
         + "\n",
         encoding="utf-8",
     )
+    change = harness_project / ".cairness/changes/observability-command"
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "events.jsonl").write_text(
+        json.dumps(_lifecycle_event(status="blocked")) + "\n",
+        encoding="utf-8",
+    )
 
     completed = run_harness_script(harness_project, "cc-gate-stats", "--json")
 
     assert completed.returncode == 0, completed.stderr
     report = json.loads(completed.stdout)
     assert report["collection"] == {
-        "status": "partial",
-        "lifecycle_events": 0,
+        "status": "complete",
+        "lifecycle_events": 1,
         "automatic_runtime_events": 3,
         "automatic_verification_runs": 2,
         "automatic_upgrade_runs": 1,
+        "lifecycle_events_with_result_status": 1,
     }
+    assert report["commands"]["blocking_rate"] == 1.0
+    assert report["commands"]["result_status_coverage"] == 1.0
     assert report["verification"] == {
         "total_runs": 2,
         "status_counts": {"failed": 1, "passed": 1},
@@ -569,11 +671,19 @@ def test_gate_stats_readable_output_includes_verification_summary(
         + "\n",
         encoding="utf-8",
     )
+    change = harness_project / ".cairness/changes/observability-command"
+    change.mkdir(parents=True, exist_ok=True)
+    (change / "events.jsonl").write_text(
+        json.dumps(_lifecycle_event(status="blocked")) + "\n",
+        encoding="utf-8",
+    )
 
     completed = run_harness_script(harness_project, "cc-gate-stats")
 
     assert completed.returncode == 0, completed.stderr
-    assert "采集完整度: partial" in completed.stdout
+    assert "采集完整度: complete" in completed.stdout
+    assert "命令结果状态覆盖率: 100.0%" in completed.stdout
+    assert "命令阻塞率: 100.0%" in completed.stdout
     assert "自动 verification runs: 1" in completed.stdout
     assert "通过率: 100.0%" in completed.stdout
     assert "平均耗时: 17 ms" in completed.stdout

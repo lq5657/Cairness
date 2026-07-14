@@ -1742,7 +1742,14 @@ YAML 是机器真相源，Markdown 是人类投影；写入必须走统一 write
 - 三个消费者共享 `harness_runtime.observability` 的 verification/upgrade 指标定义：总运行数、状态/模式/结果分布、验证通过率、升级失败率和平均耗时；无样本时比率与平均耗时为 `null`/“无样本”，不把缺失数据解释为 0。
 - `DO_NOT_TRACK=1|true|yes` 禁止写入；框架源码仓自豁免，目标项目的 `.cairness/observability/` 由 init/update 加入 `.gitignore`，历史已跟踪事件从 index 移除但保留本地文件。写入错误不改变 `cc-verify` gate 或 `cc-cairn update` 结论。
 - 验证：runtime observability 契约 `12 passed`，相关 stats、gate stats、Dashboard 与上下文回归 `122 passed`；全仓 `945 passed`，`git diff --check`、Python `py_compile` 和相关 Ruff 检查通过。
-- 剩余：扩展自动采集到其他稳定运行器，补齐首个成功 change、命令阻塞和 CI 专属通过率等指标所需的数据；远程匿名遥测仍未实现，必须独立评审并保持 CI 默认关闭。
+- 剩余：扩展自动采集到其他稳定运行器，补齐首个成功 change 和 CI 专属通过率等指标所需的数据；远程匿名遥测仍未实现，必须独立评审并保持 CI 默认关闭。
+
+**实施记录（2026-07-14）**：
+
+- lifecycle event v2 新增与标准 result contract 一致的 `result_status: passed|blocked|partial`；`cc-event-write` 和 `cc-state-transition` 对新事件默认记录 `passed`，并允许 blocked/partial 以 `to=unchanged` 留下可度量结果而不推进 change 状态。schema、运行时 validator 和标准结果合同由一致性测试防漂移。
+- 修正采集完整度语义：verification、upgrade 和 lifecycle 三类样本均存在，且每条 lifecycle event 都有合法 `result_status` 时才报告 `complete`；旧事件缺少结果字段时保持 `partial`，不再因“任意一条 lifecycle event”误报完整。
+- `harness_runtime.observability` 新增共享命令指标：明确状态样本数、状态分布、命令阻塞率和 lifecycle result-status 覆盖率。比率只使用明确记录的结果样本；无样本继续返回 `null`，不把缺失解释为零。`cc-stats`、`cc-gate-stats` 与 Dashboard 的 JSON/可读输出已统一消费。
+- 验证：事件、状态转换、完整度、stats、gate stats 和 Dashboard 聚焦回归 `84 passed`；加入 result contract 单一真相源守护后，全仓 `963 passed`。`git diff --check`、JSON 解析、Python `py_compile` 和相关 Ruff 检查通过。
 
 ## 11. 跨阶段依赖与推荐执行顺序
 

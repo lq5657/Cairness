@@ -78,7 +78,7 @@ cc-help                 # 高频入口
 cc-help --advanced      # 全部底层命令
 ```
 
-只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件，以及本地自动记录的 verification/update 运行摘要，并显示采集完整度、验证通过率和升级失败率：
+只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件，以及本地自动记录的 verification/update 运行摘要，并显示采集完整度、命令结果状态覆盖率、命令阻塞率、验证通过率和升级失败率：
 
 ```bash
 cc-dashboard --root .
@@ -86,6 +86,8 @@ cc-dashboard --root . --json
 ```
 
 自动运行摘要只写入本地 `.cairness/observability/runtime-events.jsonl`，不记录 prompt、代码、路径、change ID 或 PII；该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，统计与 Dashboard 在没有摘要时仍可使用。
+
+新写入的 lifecycle event 使用标准命令结果 `passed|blocked|partial`。只有 verification、upgrade 和 lifecycle 三类样本均存在，且所有 lifecycle event 都带命令结果时，采集完整度才会显示 `complete`；历史事件缺少结果字段时保持 `partial`，阻塞率只按明确记录结果的样本计算。
 
 ## 环境诊断
 

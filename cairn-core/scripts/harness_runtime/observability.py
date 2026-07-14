@@ -124,7 +124,15 @@ def collection_summary(
     upgrade_runs = sum(
         1 for item in runtime_events if item.get("event_type") == "upgrade_run"
     )
-    if automatic_runs and upgrade_runs and lifecycle_events:
+    measured_lifecycle_runs = sum(
+        1
+        for item in lifecycle_events
+        if item.get("result_status") in {"passed", "blocked", "partial"}
+    )
+    lifecycle_status_complete = bool(lifecycle_events) and measured_lifecycle_runs == len(
+        lifecycle_events
+    )
+    if automatic_runs and upgrade_runs and lifecycle_status_complete:
         status = "complete"
     elif automatic_runs or upgrade_runs or lifecycle_events:
         status = "partial"
@@ -136,6 +144,33 @@ def collection_summary(
         "automatic_runtime_events": len(runtime_events),
         "automatic_verification_runs": automatic_runs,
         "automatic_upgrade_runs": upgrade_runs,
+        "lifecycle_events_with_result_status": measured_lifecycle_runs,
+    }
+
+
+def command_metrics(lifecycle_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Summarize explicit command outcomes without guessing legacy event status."""
+
+    statuses = [
+        item.get("result_status")
+        for item in lifecycle_events
+        if item.get("result_status") in {"passed", "blocked", "partial"}
+    ]
+    status_counts = Counter(statuses)
+    total_events = len(lifecycle_events)
+    measured_runs = len(statuses)
+    return {
+        "total_events": total_events,
+        "measured_runs": measured_runs,
+        "status_counts": dict(sorted(status_counts.items())),
+        "blocking_rate": (
+            round(status_counts.get("blocked", 0) / measured_runs, 4)
+            if measured_runs
+            else None
+        ),
+        "result_status_coverage": (
+            round(measured_runs / total_events, 4) if total_events else None
+        ),
     }
 
 

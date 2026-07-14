@@ -31,3 +31,8 @@ Use `.codex/runtime/commands/<command>.yaml` as the command truth source and
 transitions, confirmation gates, subagent contracts, and automatic validation.
 Return the declared structured result fields: status, summary, writes,
 evidence, risks, and next_action.
+
+Finish lifecycle commands through `.codex/scripts/cc-state-transition` and pass
+the structured result as `--result-status passed|blocked|partial`. A passed
+result uses the manifest's `state.change_to`; blocked or partial results use
+`--to unchanged` so the event is measurable without advancing lifecycle state.

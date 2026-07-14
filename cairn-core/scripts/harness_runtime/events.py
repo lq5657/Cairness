@@ -41,6 +41,7 @@ _ENUMS = load_enums()
 VALID_FROM = enum_set(_ENUMS, "change_status", "from_set")
 VALID_TO = enum_set(_ENUMS, "change_status", "to_set")
 VALID_VERIFICATION_STATUS = {"passed", "failed", "partial", "not_run"}
+VALID_RESULT_STATUS = {"passed", "blocked", "partial"}
 VALID_SCHEMA_VERSIONS = {1, 2}
 
 # A command's transition.to is fixed by the lifecycle it performs. Commands that
@@ -95,9 +96,22 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
             add(issues, "E_EVENT009", path, f"line {line_no}: invalid transition.from {from_state}")
         if to_state not in VALID_TO:
             add(issues, "E_EVENT010", path, f"line {line_no}: invalid transition.to {to_state}")
+        result_status = event.get("result_status")
         expected_to = COMMAND_TO.get(command)
+        if result_status in {"blocked", "partial"}:
+            expected_to = "unchanged"
         if expected_to and to_state != expected_to:
-            add(issues, "E_EVENT011", path, f"line {line_no}: {command} must transition to {expected_to}")
+            status_context = (
+                f" with result_status {result_status}"
+                if result_status in {"blocked", "partial"}
+                else ""
+            )
+            add(
+                issues,
+                "E_EVENT011",
+                path,
+                f"line {line_no}: {command}{status_context} must transition to {expected_to}",
+            )
     evidence = event.get("evidence")
     if not isinstance(evidence, list) or not evidence or not all(isinstance(item, str) and item for item in evidence):
         add(issues, "E_EVENT012", path, f"line {line_no}: evidence must be a non-empty string list")
@@ -109,6 +123,9 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
         vs = event.get("verification_status")
         if vs is not None and vs not in VALID_VERIFICATION_STATUS:
             add(issues, "E_EVENT017", path, f"line {line_no}: invalid verification_status {vs}")
+        result_status = event.get("result_status")
+        if result_status is not None and result_status not in VALID_RESULT_STATUS:
+            add(issues, "E_EVENT022", path, f"line {line_no}: invalid result_status {result_status}")
         fs = event.get("findings_summary")
         if fs is not None:
             if not isinstance(fs, dict):

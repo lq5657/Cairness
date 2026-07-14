@@ -43,8 +43,8 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.context import HarnessContextError, load_harness_context
-from harness_runtime.events import CHANGE_ID_RE, E_CODE_RE, validate_event
-from harness_runtime.issues import Issue, add, build_report, issues_to_dicts
+from harness_runtime.events import E_CODE_RE, validate_event
+from harness_runtime.issues import Issue, add, build_report
 
 WRITER_ISSUE_PATH = "<cc-event-write>"  # synthetic path for writer-local issues
 
@@ -101,6 +101,8 @@ def build_event(args: argparse.Namespace, now: datetime) -> tuple[dict[str, Any]
             event[field] = val
     if args.verification_status is not None:
         event["verification_status"] = args.verification_status
+    if args.schema_version == 2:
+        event["result_status"] = args.result_status
     if args.findings_summary is not None:
         event["findings_summary"] = args.findings_summary
     if args.gate_effectiveness is not None:
@@ -206,6 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--subagent-count", default=None, help="v2: non-negative integer.")
     parser.add_argument("--files-changed", default=None, help="v2: non-negative integer.")
     parser.add_argument("--verification-status", choices=["passed", "failed", "partial", "not_run"], default=None, help="v2: verification outcome.")
+    parser.add_argument("--result-status", choices=["passed", "blocked", "partial"], default="passed", help="v2: command outcome (default: passed); blocked/partial requires --to unchanged.")
     parser.add_argument("--findings-summary", default=None, help="v2: JSON object.")
     parser.add_argument("--gate-effectiveness", default=None, help="v2: JSON object.")
     parser.add_argument("--error-codes", action="append", default=None, help="v2: error code (E_*), repeatable.")

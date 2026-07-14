@@ -30,14 +30,17 @@ Transition semantics are DERIVED, not flagged by the caller (minimal agent
 surface — same six flags as cc-event-write's core):
 
   - write_event  = always (every lifecycle command records an audit event)
-  - change_spec  = (to in core) and (to != from) and (from != none)
+  - change_spec  = (result_status == passed) and (to in core) and
+                   (to != from) and (from != none)
                    i.e. skip on ``to=unchanged`` (audit no-op: cc-review/fix/test)
                    and on ``from=none`` (creation: cc-propose scaffolds spec.md
-                   itself, this script does not create it).
+                   itself, this script does not create it). Blocked or partial
+                   outcomes use ``to=unchanged`` and never advance state.
 
-``--from``/``--to`` must be the same values the command's manifest ``state``
-block declares; ``COMMAND_TO`` (imported from harness_runtime.events) is the
-authority for what ``to`` a given command may assert.
+For passed results, ``--from``/``--to`` use the command manifest's ``state``
+block. Blocked or partial results preserve ``--from`` and use ``--to unchanged``.
+``COMMAND_TO`` (imported from harness_runtime.events) remains the authority for
+the successful destination.
 
 Exit codes: 0 on success, 1 on precheck/event/spec failure, 2 on argparse error.
 """
@@ -134,6 +137,7 @@ def run_event_write(args: argparse.Namespace) -> tuple[bool, str]:
     ]
     for ev in args.evidence:
         cmd += ["--evidence", ev]
+    cmd += ["--result-status", args.result_status]
     if args.actor:
         cmd += ["--actor", args.actor]
     if args.dry_run:
@@ -155,7 +159,9 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
         add(issues, "E_STATE002", ISSUE_PATH, f"change dir not found: {change_dir}")
         return _report(args, spec_path, issues)
 
-    will_change_spec = spec_changes(args.from_state, args.to_state)
+    will_change_spec = args.result_status == "passed" and spec_changes(
+        args.from_state, args.to_state
+    )
 
     # 1. Precheck — spec status must match --from (unless creation from=none).
     if will_change_spec:
@@ -200,6 +206,7 @@ def _report(args: argparse.Namespace, spec_path: Path, issues: list[Issue], *,
             "project_root": str(Path(args.project_root).resolve()),
             "change_id": args.change_id,
             "command": args.command,
+            "result_status": args.result_status,
             "from": args.from_state,
             "to": args.to_state,
             "spec_path": str(spec_path),
@@ -220,6 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", required=True, help="One-line transition summary.")
     parser.add_argument("--evidence", action="append", required=True, help="Evidence reference (repeatable, >=1).")
     parser.add_argument("--actor", default="claude-agent", help="Who/what performed the transition.")
+    parser.add_argument("--result-status", choices=["passed", "blocked", "partial"], default="passed", help="Command outcome (default: passed); blocked/partial requires --to unchanged.")
     root_group = parser.add_mutually_exclusive_group()
     root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
     root_group.add_argument("--project-root", default=None, help="Legacy project directory override.")
@@ -247,6 +255,8 @@ def main(argv: list[str]) -> int:
 
     # Guard: --to must be consistent with the command's declared lifecycle.
     expected_to = COMMAND_TO.get(args.command)
+    if args.result_status in {"blocked", "partial"}:
+        expected_to = "unchanged"
     if expected_to and args.to_state != expected_to:
         report = build_report(
             "cc-state-transition",

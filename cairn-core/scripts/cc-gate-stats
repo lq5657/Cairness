@@ -31,6 +31,7 @@ from harness_runtime import require_yaml
 from harness_runtime.config import load_harness_config
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.observability import (
+    command_metrics,
     collection_summary,
     discover_runtime_events,
     upgrade_metrics,
@@ -381,7 +382,10 @@ def print_trend(
 
 
 def print_verification_summary(
-    collection: dict[str, Any], verification: dict[str, Any], upgrade: dict[str, Any]
+    collection: dict[str, Any],
+    commands: dict[str, Any],
+    verification: dict[str, Any],
+    upgrade: dict[str, Any],
 ) -> None:
     pass_rate = verification["pass_rate"]
     average_duration = verification["average_duration_ms"]
@@ -399,9 +403,21 @@ def print_verification_summary(
     outcome_label = ", ".join(
         f"{outcome}={count}" for outcome, count in upgrade["outcome_counts"].items()
     ) or "无样本"
+    blocking_rate = commands["blocking_rate"]
+    blocking_rate_label = (
+        f"{blocking_rate:.1%}" if blocking_rate is not None else "无样本"
+    )
+    result_status_coverage = commands["result_status_coverage"]
+    result_status_coverage_label = (
+        f"{result_status_coverage:.1%}"
+        if result_status_coverage is not None
+        else "无样本"
+    )
     print(
         "── 自动验证观测 ──\n"
         f"  采集完整度: {collection['status']}\n"
+        f"  命令结果状态覆盖率: {result_status_coverage_label}\n"
+        f"  命令阻塞率: {blocking_rate_label}\n"
         f"  自动 verification runs: {verification['total_runs']}\n"
         f"  通过率: {pass_rate_label}\n"
         f"  平均耗时: {duration_label}\n"
@@ -450,6 +466,7 @@ def main() -> None:
     clusters = compute_root_cause_clusters(reviews)
     degraded = find_degraded(gates, gate_config)
     collection = collection_summary(events, runtime_events)
+    commands = command_metrics(events)
     verification = verification_metrics(runtime_events)
     upgrade = upgrade_metrics(runtime_events)
 
@@ -488,6 +505,7 @@ def main() -> None:
             },
             "config": gate_config,
             "collection": collection,
+            "commands": commands,
             "verification": verification,
             "upgrade": upgrade,
         }
@@ -516,7 +534,7 @@ def main() -> None:
                 f"  分析范围: {len(reviews)} 个 change, "
                 f"{sum(len(r['findings']) for r in reviews)} 个 finding\n"
             )
-            print_verification_summary(collection, verification, upgrade)
+            print_verification_summary(collection, commands, verification, upgrade)
             print_gates(gates)
             print()
             print_degraded(degraded)

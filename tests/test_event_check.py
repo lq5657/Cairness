@@ -142,6 +142,19 @@ def test_latest_meaningful_wins_over_unchanged(tmp_path):
     assert any(i["code"] == "E_EVENT020" for i in json.loads(proc.stdout)["issues"])
 
 
+def test_invalid_result_status_is_rejected(tmp_path):
+    change = _change(tmp_path, "c-x")
+    _write_spec(change, "propose")
+    event = _event("c-x", "cc-propose", "none", "propose")
+    event["result_status"] = "failed"
+    _write_events(change, [event])
+
+    proc = _run(["--json", str(change)])
+
+    assert proc.returncode == 1
+    assert any(i["code"] == "E_EVENT022" for i in json.loads(proc.stdout)["issues"])
+
+
 def test_framework_repo_self_exemption(tmp_path):
     """Running at a root with no .cairness/changes/<id>/events.jsonl → checked_event_logs empty, pass."""
     empty_root = tmp_path / "empty-project"

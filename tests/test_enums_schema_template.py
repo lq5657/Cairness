@@ -80,6 +80,23 @@ def test_command_event_transition_matches(enums):
     assert set(transition["to"]["enum"]) == enum_set(enums, "change_status", "to_set")
 
 
+def test_command_event_result_status_matches_standard_result_contract():
+    """Lifecycle metrics use the same outcomes as structured command results."""
+    from harness_runtime import require_yaml
+    from harness_runtime.events import VALID_RESULT_STATUS
+
+    schema = _schema("command-event.schema.json")
+    result_contract = require_yaml().safe_load(
+        (REPO_ROOT / "cairn-core/runtime/result-contracts/standard-command.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    expected = set(result_contract["status_values"])
+
+    assert set(schema["properties"]["result_status"]["enum"]) == expected
+    assert VALID_RESULT_STATUS == expected
+
+
 # --- template enum line == enums.yaml core ---------------------------------
 
 def test_tasks_template_task_status_line_matches(enums):

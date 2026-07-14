@@ -57,6 +57,7 @@ def test_valid_minimal_append_creates_file(tmp_path):
     events = _read_events(change_dir)
     assert len(events) == 1
     assert events[0]["command"] == "cc-propose"
+    assert events[0]["result_status"] == "passed"
     assert events[0]["transition"] == {"from": "none", "to": "propose"}
     assert (change_dir / "events.jsonl").read_text(encoding="utf-8").endswith("\n")
 
@@ -162,6 +163,39 @@ def test_v2_optional_fields_accepted(tmp_path):
     assert events[-1]["duration_ms"] == 10
     assert events[-1]["verification_status"] == "passed"
     assert events[-1]["findings_summary"]["total_fixed"] == 2
+
+
+def test_blocked_result_records_unchanged_event(tmp_path):
+    change_dir = _change_dir(tmp_path)
+    proc = _run(
+        [
+            "--change-id", "c-evt", "--command", "cc-apply",
+            "--from", "propose", "--to", "unchanged",
+            "--summary", "dependency missing", "--evidence", "doctor.json",
+            "--result-status", "blocked",
+        ],
+        tmp_path,
+    )
+    assert proc.returncode == 0, proc.stderr
+    event = _read_events(change_dir)[-1]
+    assert event["result_status"] == "blocked"
+    assert event["transition"] == {"from": "propose", "to": "unchanged"}
+
+
+def test_blocked_result_cannot_advance_lifecycle(tmp_path):
+    change_dir = _change_dir(tmp_path)
+    proc = _run(
+        [
+            "--change-id", "c-evt", "--command", "cc-apply",
+            "--from", "propose", "--to", "review",
+            "--summary", "dependency missing", "--evidence", "doctor.json",
+            "--result-status", "blocked",
+        ],
+        tmp_path,
+    )
+    assert proc.returncode == 1
+    assert any(i["code"] == "E_EVENT011" for i in json.loads(proc.stdout)["issues"])
+    assert not (change_dir / "events.jsonl").exists()
 
 
 def test_bad_numeric_flag_rejected(tmp_path):

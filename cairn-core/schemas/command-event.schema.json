@@ -86,6 +86,11 @@
       "enum": ["passed", "failed", "partial", "not_run"],
       "description": "验证门禁结果"
     },
+    "result_status": {
+      "type": "string",
+      "enum": ["passed", "blocked", "partial"],
+      "description": "命令最终结果；blocked/partial 事件必须使用 unchanged transition"
+    },
     "error_codes": {
       "type": "array",
       "uniqueItems": true,
