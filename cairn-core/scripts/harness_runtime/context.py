@@ -102,6 +102,8 @@ def load_harness_context(
     framework_prefix: str | None = None,
     adapter_name: str | None = None,
     adapter_factory: Callable[[Path], AdapterContract] | None = None,
+    validate_adapter_capabilities: bool = True,
+    strict_metadata: bool = True,
 ) -> HarnessContext:
     if explicit_root is not None:
         project_root = _validate_directory(explicit_root, "explicit root")
@@ -109,35 +111,58 @@ def load_harness_context(
         project_root = _validate_directory(framework_hint, "framework root").parent
     else:
         project_root = _discover_project_root(start or Path.cwd())
+    framework_root = (
+        _validate_directory(framework_hint, "framework root")
+        if framework_hint is not None
+        else None
+    )
     try:
-        metadata = (
-            read_install_metadata(project_root, strict=True)
-            if framework_hint is None
-            else {}
-        )
+        metadata = read_install_metadata(project_root, strict=strict_metadata)
         metadata_prefix = metadata.get("framework_prefix") if framework_prefix is None else None
         metadata_adapter = metadata.get("adapter")
-        if adapter_name is not None and framework_hint is None:
-            adapters = metadata.get("adapters")
+        adapters = metadata.get("adapters")
+        if adapter_name is not None:
             record = adapters.get(adapter_name) if isinstance(adapters, dict) else None
-            if not isinstance(record, dict) or not isinstance(
-                record.get("framework_prefix"), str
-            ):
+            selected_prefix = record.get("framework_prefix") if isinstance(record, dict) else None
+            if selected_prefix is None and metadata_adapter == adapter_name:
+                selected_prefix = metadata.get("framework_prefix")
+            if not isinstance(selected_prefix, str):
                 raise HarnessContextError(
                     f"adapter is not installed in this project: {adapter_name}"
                 )
-            selected_prefix = record["framework_prefix"]
             if framework_prefix is not None and framework_prefix != selected_prefix:
                 raise HarnessContextError(
                     f"adapter {adapter_name} uses {selected_prefix}, not {framework_prefix}"
                 )
+            if framework_root is not None and (project_root / selected_prefix).resolve() != framework_root:
+                raise HarnessContextError(
+                    f"adapter {adapter_name} uses {selected_prefix}, not {framework_root}"
+                )
             metadata_prefix = selected_prefix
             metadata_adapter = adapter_name
+        elif framework_root is not None and isinstance(adapters, dict) and adapters:
+            matches = [
+                (name, record.get("framework_prefix"))
+                for name, record in adapters.items()
+                if isinstance(record, dict)
+                and isinstance(record.get("framework_prefix"), str)
+                and (project_root / record["framework_prefix"]).resolve() == framework_root
+            ]
+            if len(matches) != 1:
+                raise HarnessContextError(
+                    f"framework root is not uniquely registered in install metadata: {framework_root}"
+                )
+            metadata_adapter, metadata_prefix = matches[0]
+        elif framework_root is not None and metadata_adapter:
+            selected_prefix = metadata.get("framework_prefix")
+            if isinstance(selected_prefix, str) and (project_root / selected_prefix).resolve() != framework_root:
+                raise HarnessContextError(
+                    f"framework root does not match install metadata: {framework_root}"
+                )
+            metadata_prefix = selected_prefix
     except ValueError as exc:
         raise HarnessContextError(str(exc)) from exc
-    if framework_hint is not None:
-        framework_root = _validate_directory(framework_hint, "framework root")
-    else:
+    if framework_root is None:
         framework_root = resolve_framework_root(
             project_root,
             framework_prefix=framework_prefix or metadata_prefix,
@@ -155,7 +180,17 @@ def load_harness_context(
         if adapter_factory is not None:
             adapter = adapter_factory(framework_root)
         elif metadata_adapter:
-            adapter = declared_adapter_contract(framework_root, metadata_adapter)
+            adapter = declared_adapter_contract(
+                framework_root,
+                metadata_adapter,
+                validate_capabilities=validate_adapter_capabilities,
+            )
+        elif not validate_adapter_capabilities:
+            adapter = declared_adapter_contract(
+                framework_root,
+                "claude-code",
+                validate_capabilities=False,
+            )
         else:
             adapter = claude_code_adapter_contract(framework_root)
     except (AdapterContractError, OSError, ValueError) as exc:

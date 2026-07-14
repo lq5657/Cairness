@@ -350,7 +350,11 @@ def check_loop_mode_readiness(project_root: Path, claude_root: Path, issues: lis
 
 
 def build_report(context: HarnessContext | None = None) -> dict[str, Any]:
-    context = context or load_harness_context(framework_hint=Path(__file__).resolve().parent.parent)
+    context = context or load_harness_context(
+        framework_hint=Path(__file__).resolve().parent.parent,
+        validate_adapter_capabilities=False,
+        strict_metadata=False,
+    )
     claude_root = context.framework_root
     project_root = context.project_root
     issues: list[Issue] = []
@@ -388,6 +392,8 @@ def main(argv: list[str]) -> int:
         context = load_harness_context(
             explicit_root=Path(args.root) if args.root else None,
             framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            validate_adapter_capabilities=False,
+            strict_metadata=False,
         )
     except HarnessContextError as exc:
         print(f"E_CONTEXT001 {exc}", file=sys.stderr)

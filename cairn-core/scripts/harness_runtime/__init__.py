@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 import re
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.project_scan import is_excluded, iter_project_files, scan_exclusions
 from harness_runtime.runtime_layout import RuntimeLayout
 
 
-IGNORED_TOP_LEVEL_DIRS = {".claude", ".cairness", ".git"}
 PENDING_LANGUAGE_VALUES = {
     "",
     "-",
@@ -238,7 +237,12 @@ def resolve_language_profile(
     project_state_paths = tuple(item for item in resolution.get("project_state_paths", []) if isinstance(item, str))
     new_project_requires_confirmation = resolution.get("new_project_requires_confirmation") is True
     scan_root = target_root.resolve() if target_root is not None else project_root.resolve()
-    matches = repository_detection_matches(scan_root, profiles)
+    excluded_roots = (framework_root,) if framework_root is not None else ()
+    matches = repository_detection_matches(
+        scan_root,
+        profiles,
+        excluded_roots=excluded_roots,
+    )
     project_state_candidate = (
         project_state_language(project_root, project_state_paths, profiles) if include_project_state else ""
     )
@@ -325,16 +329,30 @@ def resolve_language_profile(
     return LanguageResolution(status="unsupported", source="repository_detection", matched_profiles=matched_names)
 
 
-def repository_detection_matches(scan_root: Path, profiles: list[LanguageProfile]) -> dict[str, list[str]]:
+def repository_detection_matches(
+    scan_root: Path,
+    profiles: list[LanguageProfile],
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> dict[str, list[str]]:
     matches: dict[str, list[str]] = {}
     for profile in profiles:
-        detected = profile_detection_reasons(scan_root, profile)
+        detected = profile_detection_reasons(
+            scan_root,
+            profile,
+            excluded_roots=excluded_roots,
+        )
         if detected:
             matches[profile.name] = detected
     return matches
 
 
-def profile_detection_reasons(scan_root: Path, profile: LanguageProfile) -> list[str]:
+def profile_detection_reasons(
+    scan_root: Path,
+    profile: LanguageProfile,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> list[str]:
     project_detection = profile.data.get("project_detection") if isinstance(profile.data.get("project_detection"), dict) else {}
     module_files = list(dict.fromkeys(_string_list(project_detection.get("module_files")) + _string_list(project_detection.get("module_file"))))
     lockfiles = _string_list(project_detection.get("lockfiles"))
@@ -342,37 +360,43 @@ def profile_detection_reasons(scan_root: Path, profile: LanguageProfile) -> list
 
     reasons: list[str] = []
     for file_name in module_files:
-        match = first_named_file(scan_root, file_name)
+        match = first_named_file(scan_root, file_name, excluded_roots=excluded_roots)
         if match is not None:
             reasons.append(f"module_file={match.relative_to(scan_root).as_posix()}")
     for file_name in lockfiles:
-        match = first_named_file(scan_root, file_name)
+        match = first_named_file(scan_root, file_name, excluded_roots=excluded_roots)
         if match is not None:
             reasons.append(f"lockfile={match.relative_to(scan_root).as_posix()}")
     for pattern in source_globs:
-        match = first_glob_match(scan_root, pattern)
+        match = first_glob_match(scan_root, pattern, excluded_roots=excluded_roots)
         if match is not None:
             reasons.append(f"source={match.relative_to(scan_root).as_posix()} ({pattern})")
     return reasons
 
 
-def first_named_file(scan_root: Path, file_name: str) -> Path | None:
-    for current_root, _, files in os.walk(scan_root):
-        root_path = Path(current_root)
-        relative_root = root_path.relative_to(scan_root)
-        if relative_root.parts and relative_root.parts[0] in IGNORED_TOP_LEVEL_DIRS:
-            continue
-        if file_name in files:
-            return root_path / file_name
+def first_named_file(
+    scan_root: Path,
+    file_name: str,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> Path | None:
+    for path in iter_project_files(scan_root, additional_roots=excluded_roots):
+        if path.name == file_name:
+            return path
     return None
 
 
-def first_glob_match(scan_root: Path, pattern: str) -> Path | None:
+def first_glob_match(
+    scan_root: Path,
+    pattern: str,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> Path | None:
+    exclusions = scan_exclusions(scan_root, excluded_roots)
     for path in scan_root.glob(pattern):
         if not path.is_file():
             continue
-        relative = path.relative_to(scan_root)
-        if relative.parts and relative.parts[0] in IGNORED_TOP_LEVEL_DIRS:
+        if is_excluded(path, exclusions):
             continue
         return path
     return None

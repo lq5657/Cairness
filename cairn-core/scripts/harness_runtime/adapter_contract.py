@@ -176,7 +176,12 @@ def claude_code_adapter_contract(root: Path) -> AdapterContract:
     return declared_adapter_contract(root, "claude-code")
 
 
-def declared_adapter_contract(root: Path, name: str) -> AdapterContract:
+def declared_adapter_contract(
+    root: Path,
+    name: str,
+    *,
+    validate_capabilities: bool = True,
+) -> AdapterContract:
     """Load one adapter from its installation and capability declarations."""
     resolved_root = Path(root).expanduser().resolve()
     installation = load_adapter_installation(
@@ -186,6 +191,14 @@ def declared_adapter_contract(root: Path, name: str) -> AdapterContract:
     if installation.adapter != name:
         raise AdapterContractError(
             f"adapter installation identity does not match {name!r}"
+        )
+    if not validate_capabilities:
+        return AdapterContract(
+            name=installation.adapter,
+            root=resolved_root,
+            paths=AdapterPaths.from_installation(installation),
+            framework_prefix=installation.framework_prefix,
+            capabilities={},
         )
 
     def capability_loader(framework_root: Path):

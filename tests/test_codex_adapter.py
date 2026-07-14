@@ -99,6 +99,94 @@ def test_context_loads_metadata_selected_codex_adapter(tmp_path: Path):
     assert context.adapter.capabilities["structured_result"] == "required"
 
 
+def test_context_framework_hint_selects_registered_adapter_in_coexisting_install(
+    tmp_path: Path, monkeypatch
+):
+    from harness_runtime.context import load_harness_context
+
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="claude-code")
+    module.cmd_init(adapter="codex")
+
+    claude = load_harness_context(framework_hint=project / ".claude")
+    codex = load_harness_context(framework_hint=project / ".codex")
+
+    assert claude.adapter.name == "claude-code"
+    assert claude.layout.framework_prefix == ".claude"
+    assert codex.adapter.name == "codex"
+    assert codex.layout.framework_prefix == ".codex"
+
+
+def test_codex_framework_fixtures_do_not_ambiguate_project_language(
+    tmp_path: Path, monkeypatch
+):
+    from harness_runtime import resolve_language_profile
+
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="codex")
+    (project / "pyproject.toml").write_text(
+        "[project]\nname = 'scan-boundary'\nversion = '0.1.0'\n",
+        encoding="utf-8",
+    )
+    (project / "greeting.py").write_text("VALUE = 'hello'\n", encoding="utf-8")
+
+    resolution = resolve_language_profile(
+        project,
+        framework_root=project / ".codex",
+    )
+
+    assert resolution.status == "resolved"
+    assert resolution.profile_name == "python"
+    assert resolution.matched_profiles == ("python",)
+    assert all(".codex/" not in reason for reason in resolution.reasons)
+
+
+def test_installed_codex_full_verify_checks_codex_adapter(
+    tmp_path: Path, monkeypatch
+):
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "README.md").write_text("# Codex verify fixture\n", encoding="utf-8")
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="codex")
+    env = os.environ.copy()
+    env["CC_BEHAVIOR_REPLAY"] = "1"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(project / ".codex/scripts/cc-verify"),
+            "--harness-only",
+            "--json",
+        ],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    adapter_step = next(
+        result for result in report["results"] if result["name"] == "cc-adapter-check"
+    )
+    assert adapter_step["status"] == "passed"
+    assert adapter_step["command"][
+        adapter_step["command"].index("--adapter") + 1
+    ] == "codex"
+    assert '"adapter": "codex"' in adapter_step["stdout"]
+
+
 def test_codex_init_installs_native_assets_and_multi_adapter_metadata(
     tmp_path: Path, monkeypatch
 ):

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from harness_runtime import require_yaml
+from harness_runtime.project_scan import iter_project_files
 
 
 INSTALL_METADATA_RELATIVE = Path(".cairness/install.yaml")
@@ -53,7 +54,6 @@ LANGUAGE_MARKERS: dict[str, dict[str, tuple[str, ...]]] = {
     },
 }
 
-_IGNORED_TOP_LEVEL = {".git", ".claude", ".codex", ".agents", ".cairness", ".venv", "node_modules", "vendor", "target", "dist", "build"}
 _ADAPTER_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _FRAMEWORK_PREFIX = re.compile(r"^\.[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 
@@ -67,16 +67,7 @@ def _root(project_root: Path | str) -> Path:
 
 def _files(root: Path) -> list[Path]:
     """Return files under *root*, skipping generated/dependency directories."""
-    found: list[Path] = []
-    for current, directories, names in os.walk(root):
-        current_path = Path(current)
-        relative = current_path.relative_to(root)
-        if relative.parts and relative.parts[0] in _IGNORED_TOP_LEVEL:
-            directories[:] = []
-            continue
-        directories[:] = sorted(d for d in directories if d not in _IGNORED_TOP_LEVEL)
-        found.extend(current_path / name for name in sorted(names))
-    return found
+    return list(iter_project_files(root))
 
 
 def detect_language(project_root: Path | str) -> dict[str, Any]:
