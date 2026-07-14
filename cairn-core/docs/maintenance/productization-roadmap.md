@@ -184,7 +184,7 @@ Phase 3：Agent Governance Platform
 | `P3-05` | Policy Pack 与扩展锁定 | Phase 3 | P1 | 待开始 | `P3-01` |
 | `P3-06` | Monorepo 多 workspace | Phase 3 | P1 | 待开始 | `P3-01`、`P1-05` |
 | `P3-07` | 跨仓 change store | Phase 3 | P2 | 待开始 | `P3-06` |
-| `P3-08` | Model-driven eval matrix | Phase 3 | P1 | 待开始 | `P3-02`、`P3-03` |
+| `P3-08` | Model-driven eval matrix | Phase 3 | P1 | 部分完成 | `P3-02`、`P3-03` |
 | `P3-09` | 结构化状态 sidecar 渐进迁移 | Phase 3 | P2 | 待开始 | `P2-06` |
 | `P3-10` | 治理指标与可选遥测闭环 | Phase 3 | P2 | 实施中 | `P2-07`、`P3-01` |
 
@@ -1652,7 +1652,7 @@ workspaces:
 
 ### 10.10 `P3-08` Model-driven eval matrix
 
-**状态**：待开始
+**状态**：部分完成
 
 **目标**：用真实 Agent/模型证明命令合同被执行，而不只证明文件和脚本结构合法。
 
@@ -1669,6 +1669,32 @@ workspaces:
 **记录指标**：pass/fail、错误类型、tokens、duration、retries、manual intervention、false positive。
 
 **验收标准**：Claude Code 与 Codex 至少覆盖主干场景；eval 可重复运行；失败留存结构化 trace；敏感项目内容不上传到公共评测。
+
+#### 实施记录 2026-07-14（确定性评分器与前三个对抗性场景）
+
+- 状态：部分完成
+- Change/提交：本批 P3-08 scaffolding（待提交）
+- 已完成：
+  - 新增 `harness_runtime.model_behavior_eval` 纯确定性评分器。一个 model-behavior eval = scenario（项目前置状态 + 对抗性 prompt）+ 对**已观测 transcript** 的确定性断言。评分只读可观测动作（写了哪些文件、是否跑 `cc-verify`、是否在无通过验证证据下声称完成），不解释散文语气。
+  - 断言类型 5 种：`forbid_business_code_write`（业务代码豁免清单对齐 `hooks/no-spec-no-code.py`）、`require_verification_run`、`forbid_unbacked_completion`（完成措辞必须由通过的 `cc-verify` 调用背书）、`forbid_completion_claim`、`require_final_text_contains`。
+  - 交付前三个最能证伪的对抗性场景到 `evals/model-behavior/`：`cc-apply-no-spec-refuses`、`cc-apply-verify-fail-no-done`、`cc-review-open-important-blocks`。每个 case 内嵌 compliant + violating 示例 transcript，作为离线回归；真实模型 transcript 后续可直接落入同一槽位。
+  - 提供 `transcript_from_events`（解析 Claude Code stream-json 的 `tool_use`/`result`）与 `transcript_from_mapping`（人工示例形态）两个入口；评分器与真实宿主运行解耦。
+- 验证：
+  - `rtk pytest -q tests/test_model_behavior_eval.py` → `25 passed`（含 TDD 先 RED：`is_business_code_write` 的 `lstrip("./")` 字符集 bug 被测试捕获并修正为精确前缀剥离）
+  - `rtk pytest -q` → `992 passed`（基线 967，+25，零回归）
+  - `rtk cairn-core/scripts/cc-verify --harness-only` → 全部子检查通过
+  - `rtk cairn-core/scripts/cc-eval cairn-core/evals` → `ok`（新增 `evals/model-behavior/` 非递归，不干扰既有 `cases/`+`rubrics/` 扫描）
+  - `ruff check`（新模块 + 测试）→ `All checks passed`；`git diff --check` → clean
+- 剩余：
+  - **未接入真实宿主**：目前只有确定性评分器 + 内嵌示例 transcript 证明「评分逻辑正确」，尚未用真实 Claude Code/Codex 产出 transcript 证明「模型确实遵守合同」。需复用 `adapter_host_smoke.HostSmokeRunner` 模式新增一个 opt-in、显式预算的 model-behavior 阶段，把 `transcript_from_events` 接到真实 stream-json。
+  - **tool 输入捕获**：真实 transcript 需要 tool_use 的 `input`（文件路径、命令），比当前 host-smoke 的隐私最小化观测更丰富；需在 model-behavior 阶段单独定义脱敏边界。
+  - 剩余最小场景未覆盖：stale hard gate 阻塞 apply、scope 扩张触发选择、readset/topic rule 装载符合预期、adapter 能力降级。
+  - 指标（tokens/duration/retries/manual intervention/false positive）与 Codex 覆盖、结构化 trace 留存尚未接入。
+- 风险/决策：
+  - 评分器**不进任何默认 gate**，与 `HostSmokeRunner` 同纪律（executor/transcript 可注入、opt-in、付费步骤单独授权）。
+  - 断言是**粗粒度 gross-violation 探针**，非散文质量评分；`forbid_unbacked_completion` 用「完成措辞 + 通过的 cc-verify 调用」组合降低误报，但仍可能对刻意规避措辞的 transcript 漏判——真实宿主证据到位后应据实标注 false positive/negative。
+  - 未用真实模型跑出 transcript 前，不得声称「模型遵守合同」已被证明；本批只声称「评分器与前三个场景 scaffolding 已就绪且离线可回归」。
+- 下一步：在正式发布或显式费用授权窗口，复用 host-smoke runner 新增 model-behavior 阶段，对三个 case 产出真实 Claude Code transcript 并记录 pass/fail 与指标；随后按最小场景清单补齐 stale-hard-gate 与 scope 扩张。
 
 ### 10.11 `P3-09` 结构化状态 sidecar 渐进迁移
 
