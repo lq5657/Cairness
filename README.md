@@ -184,16 +184,6 @@ cc-cairn update       # 拉取最新版并更新元数据所选活动 adapter（
 
 `mode` 可设为 `full`、`harness-only` 或 `project-only`。下载、checksum 或内部 VERSION 不一致会硬失败；验证问题以 GitHub annotation 和 Job Summary 输出。
 
-## Loop Engineering（自主循环模式）快速开关
-
-```bash
-cc-cairn loop enable   # 开启 loop 模式（复制信任包络模板 + 切换 profile）
-cc-cairn loop disable  # 关闭 loop 模式（恢复 standard profile）
-cc-cairn loop status   # 查看当前 loop 模式状态与信任包络摘要
-```
-
-`enable` 会自动将 `.claude/templates/loop-config.yaml` 复制为 `.cairness/loop-config.yaml`（已存在则保留原文件），然后将 `.claude/harness.config.yaml` 的 `profile` 切换为 `loop`。`disable` 只改 profile，不删除 `loop-config.yaml`，方便随时重新开启。详细配置说明见下方「Loop Engineering」章节。
-
 ## 知识管理
 
 `.cairness/knowledge/index.md` 维护「关键词 → 知识文件」三元组索引（`**关键词** : 一句话说明 → 路径`）。LLM 通过语义匹配关键词来决定加载哪些知识文件，因此 index.md 必须保持格式合法、关键词唯一、路径存在。
@@ -259,18 +249,18 @@ Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Sp
 
 | 如果你用过 | 你会发现 | Cairness 的提升 |
 |-----------|---------|----------------|
-| **Spec Kit** | `/speckit.specify → plan → tasks → implement` 的 spec 驱动流程 | 用 YAML 合约替代散文约定——每个命令的输入、输出、禁止项、停止条件都是机器可校验的，而非依赖 LLM 自行理解 |
-| **Open Spec** | `proposal → review → implement → archive` 的变更生命周期，specs/ 为真相源、changes/ 为补丁 | 增加确定性验证矩阵（18 个脚本）——孤儿检测、基线对比、schema 校验、预算监控——而非仅靠 LLM 自审 |
+| **Spec Kit** | `/speckit.specify → plan → tasks → implement` 的 spec 驱动流程 | 用 YAML 合约替代散文约定——命令的输入、输出、写边界由 schema 机器校验，禁止项与停止条件在 agent loop 内显式声明、由事后脚本兜底，而非仅靠 LLM 自行理解 |
+| **Open Spec** | `proposal → review → implement → archive` 的变更生命周期，specs/ 为真相源、changes/ 为补丁 | 增加确定性验证矩阵——孤儿检测、基线对比、schema 校验、预算监控——而非仅靠 LLM 自审 |
 | **Superpowers** | 14 个 Agent Skills（brainstorming → TDD → review → verification）的工程化工作流 | 34 个声明式 Topic Rules + 1 个检测模式目录，**按代码模式自动触发**——不用手动调用 skill，检测到数据库迁移、API 变更、并发代码时自动加载对应规约 |
 | **GSD** | `discuss → plan → execute → review` 多阶段流程、Wave 并行执行、原子 Git 提交 | Readset 上下文预算控制 + 团队知识关键词匹配自动加载——每命令只加载必需的上下文，相关知识自动注入而非手动查找 |
 
 ### 核心特色
 
 **结构化生命周期 + Hard Gate**
-14 个 `cc-*` 命令强制 `propose → apply → review → done` 四阶段流转。`cc-propose` 的 Hard Gate 是用户必须显式确认的结构化阻断点，LLM 无法自行绕过进入实现。
+14 个 `cc-*` 命令覆盖 `propose → apply → review → done` 四阶段流转。标准模式下 `cc-propose` 的 Hard Gate 要求用户显式确认后才进入实现。它的约束力来自三层组合：命令合同在 agent loop 内声明 `forbids` / `stop_conditions`、`No Spec, No Code` 宿主钩子做非阻塞提示、`cc-verify` 等脚本做事后确定性校验——而不是宿主层的硬拦截。
 
 **确定性验证矩阵**
-18 个脚本构成可复现的 CI 真相源：孤儿变更检测（`cc-deps orphans`）、实现前后基线对比（`cc-delta-check`）、跨 change 文件冲突检测、token/时间预算实时监控。不是散文式 checklist，是机器可运行的校验。
+一组脚本构成可复现的 CI 真相源：`cc-verify --harness-only` 一次运行全部 Harness 子检查（当前 14 项，含 lint、schema、readset/workflow 一致性、事件与升级完整性），另有孤儿变更检测（`cc-deps orphans`）、实现前后基线对比（`cc-delta-check`）、跨 change 文件冲突检测、token/时间预算监控。不是散文式 checklist，是机器可运行的校验。
 
 **Readset 上下文预算控制**
 每个命令在 `readsets/<command>.yaml` 中精确声明要读的文件——`always_reads`（启动加载）、`conditional_reads`（触发加载）、`optional_reads`（按需参考）。Readsets 由命令 YAML 自动生成并通过校验脚本检测一致性，防止上下文膨胀。
@@ -339,10 +329,11 @@ Loop Engineering 是一种让 AI agent 在人类划定的边界内**自主运转
 **第一步：开启 loop 模式（一条命令完成）**
 
 ```bash
-cc-cairn loop enable
+cc-cairn loop enable    # 开启 loop 模式
+cc-cairn loop disable   # 关闭 loop 模式（仅恢复 standard profile，保留 loop-config.yaml）
 ```
 
-这条命令会自动：
+`enable` 会自动：
 - 将 `.claude/templates/loop-config.yaml` 复制为 `.cairness/loop-config.yaml`（已存在则保留）
 - 将 `.claude/harness.config.yaml` 的 `profile` 切换为 `loop`
 
