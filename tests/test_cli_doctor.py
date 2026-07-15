@@ -37,7 +37,8 @@ def test_doctor_json_summarizes_product_readiness():
         "project_state",
         "onboarding",
     }
-    assert report["summary"]["versions"]["project"] == "1.2.0"
+    expected_version = (REPO_ROOT / "cairn-core" / "VERSION").read_text().strip()
+    assert report["summary"]["versions"]["project"] == expected_version
     assert report["summary"]["config"]["status"] == "valid"
     assert report["summary"]["adapter"]["name"] == "claude-code"
     host_assets = report["summary"]["adapter"]["host_assets"]
