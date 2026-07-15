@@ -9,7 +9,7 @@ alwaysApply: true
 补充边界：
 - `cc-init` 只负责识别后续命令高频复用、且能低成本确认的基础事实
 - `cc-enrich-context` 负责补充高解释成本但仍属于项目事实的内容
-- `cc-init` 与 `cc-enrich-context` 都只回写本文件，不负责创建脚手架资产
+- `cc-init` 会协调更新 `project-summary.md`、`project-context.md`、`domain-language.md` 与 `dev-map.md`；`cc-enrich-context` 按其 manifest 更新相关上下文文件；两者都不负责创建脚手架资产
 - 若要做存量项目体检，使用 `cc-inspect-codebase`
 - 若要输出面向人的系统讲解材料，使用 `cc-explain-system`
 
@@ -26,6 +26,8 @@ alwaysApply: true
 
 1. 基础事实层：由 `cc-init` 建立，长期驻留上下文，用于后续命令快速定位
 2. 补充事实层：由 `cc-enrich-context` 补充，用于后续命令获得更完整但仍以事实为主的系统认知
+
+存量项目重跑 `cc-init` 时，只按需读取并对账“基础事实层”以及与其直接相关的“已确认事实范围”“本轮确认依据”“待确认事项”。不得为了提高完整度加载或重写“补充事实层”；第 7-14 节由 `cc-enrich-context` 维护，`cc-init` 必须原样保留。
 
 `cc-init` 目标不是把所有章节一次填满，而是让后续命令知道：
 - 项目是什么

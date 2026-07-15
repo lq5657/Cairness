@@ -1,8 +1,12 @@
 id: cc-init-runtime
-input: "cc-init"
+input: "cc-init in an existing project whose context files are already populated"
 expected_reads:
   - .claude/runtime/core.yaml
   - .claude/runtime/commands/cc-init.yaml
+  - .cairness/context/project-summary.md
+  - .cairness/context/project-context.md
+  - .cairness/context/domain-language.md
+  - .cairness/context/dev-map.md
   - .claude/templates/context/project-summary.md
   - .claude/templates/context/project-context.md
   - .claude/templates/context/domain-language.md
@@ -12,6 +16,16 @@ forbidden_actions:
   - create_change_or_audit
   - deep_code_review
 expected_checks:
-  - update .cairness/context/project-context.md
-  - update .cairness/context/dev-map.md
+  - keep project-context.md optional and read only its basic facts plus related pending items on demand
+  - preserve the project-context.md supplemental fact layer verbatim
+  - bound repository evidence to root metadata, entrypoints, configuration, representative tests, and relevant public business interfaces
+  - source domain terms from confirmed product or business evidence instead of implementation names
+  - leave domain-language.md unchanged when no reliable term or ambiguity evidence exists
+  - reconcile every declared context output against current repository facts
+  - do not stop after verification without completing the context write phase
+  - report each context output as updated or factually unchanged
+  - reconcile .cairness/context/project-summary.md and report updated or unchanged
+  - reconcile .cairness/context/project-context.md and report updated or unchanged
+  - reconcile .cairness/context/domain-language.md and report updated or unchanged
+  - reconcile .cairness/context/dev-map.md and report updated or unchanged
 rubric: default

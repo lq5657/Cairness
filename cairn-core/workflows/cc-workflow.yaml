@@ -69,8 +69,8 @@ commands:
     inputs: []
     outputs: [.cairness/context/project-summary.md, .cairness/context/project-context.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md]
     writes: [.cairness/context/project-summary.md, .cairness/context/project-context.md, .cairness/context/domain-language.md, .cairness/context/dev-map.md]
-    validates: [claude_scaffold_exists, entrypoints_status_recorded, domain_language_status_recorded, unknowns_recorded, memory_policy]
-    forbids: [create_scaffold_assets, create_change_or_audit, deep_code_review, expand_into_enrich_explain_or_inspect, record_assumptions_as_facts, treat_planned_paths_as_confirmed_facts]
+    validates: [claude_scaffold_exists, entrypoints_status_recorded, domain_language_status_recorded, unknowns_recorded, memory_policy, existing_context_reconciled_against_repository, context_outputs_accounted_for_before_completion, project_context_basic_fact_read_is_bounded, project_context_supplemental_fact_layer_preserved, domain_language_evidence_sources_constrained]
+    forbids: [create_scaffold_assets, create_change_or_audit, deep_code_review, expand_into_enrich_explain_or_inspect, record_assumptions_as_facts, treat_planned_paths_as_confirmed_facts, verification_only_completion, skip_reconciliation_because_context_files_exist, read_full_project_context_when_section_boundaries_are_available, rewrite_project_context_supplemental_fact_layer, broad_business_code_or_change_history_scan, promote_implementation_names_to_confirmed_domain_terms, force_domain_language_write_without_reliable_evidence]
     auto_validation: []
 
   cc-enrich-context:

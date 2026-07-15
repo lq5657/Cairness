@@ -15,6 +15,18 @@ It is not split by programming language. Split it only by domain context or boun
 - When a user uses a term that conflicts with this file, call out the conflict before freezing scope.
 - If multiple contexts exist, keep this file as the root map and link to context-specific files such as `.cairness/context/domain/ordering.md`.
 
+## Evidence Priority
+
+Use the first reliable source available in this order:
+
+1. User-confirmed business terminology.
+2. Product language in the root README or project description.
+3. Existing entries in this file as a baseline that still requires reconciliation.
+4. Public API, CLI, user-visible nouns, or explicit business-state enums when they are low-cost to inspect.
+5. Already-relevant archived change material; do not scan change history to populate this file.
+
+The basic facts in `project-context.md` may locate evidence but do not define a term by themselves. Package, directory, class, function, database table, and other implementation names are supporting evidence only and must not automatically become confirmed domain terms. If reliable evidence is absent, leave the file unchanged or record only a specific evidence-backed ambiguity as `pending`.
+
 ## Terms
 
 **Term**: One-sentence definition of the domain concept.

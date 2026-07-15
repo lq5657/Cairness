@@ -17,6 +17,11 @@ validates:
   - domain_language_status_recorded
   - unknowns_recorded
   - memory_policy
+  - existing_context_reconciled_against_repository
+  - context_outputs_accounted_for_before_completion
+  - project_context_basic_fact_read_is_bounded
+  - project_context_supplemental_fact_layer_preserved
+  - domain_language_evidence_sources_constrained
 inputs:
   required: []
 
@@ -38,6 +43,13 @@ forbids:
   - expand_into_enrich_explain_or_inspect
   - record_assumptions_as_facts
   - treat_planned_paths_as_confirmed_facts
+  - verification_only_completion
+  - skip_reconciliation_because_context_files_exist
+  - read_full_project_context_when_section_boundaries_are_available
+  - rewrite_project_context_supplemental_fact_layer
+  - broad_business_code_or_change_history_scan
+  - promote_implementation_names_to_confirmed_domain_terms
+  - force_domain_language_write_without_reliable_evidence
 
 required_reads:
   - .cairness/context/project-summary.md
@@ -66,19 +78,48 @@ preconditions:
   - distinguish_confirmed_facts_from_unknowns
   - record_entrypoints_as_confirmed_planned_or_unknown
   - do_not_install_or_repair_harness_scaffold
+  - bound_repository_reads_to_root_metadata_entrypoints_configuration_and_representative_tests
+
+anti_rationalizations:
+  - treat_existing_context_as_proof_that_no_write_phase_is_needed
+  - stop_after_confirming_recorded_facts_without_reconciling_all_outputs
+  - announce_a_future_structural_change_check_instead_of_completing_it
+  - load_project_context_supplemental_facts_just_to_increase_completeness
+  - infer_domain_vocabulary_from_package_class_function_or_table_names
+  - rewrite_an_unchanged_output_to_make_the_command_look_productive
+
+red_flags:
+  - successful_result_omits_updated_or_unchanged_status_for_any_context_output
+  - final_output_claims_verification_complete_before_output_reconciliation
+  - final_output_ends_with_an_unperformed_check_or_future_action
+  - project_context_supplemental_fact_layer_changes_during_basic_fact_reconciliation
+  - domain_language_contains_implementation_terms_without_product_or_business_evidence
+  - unchanged_context_output_has_meaningless_formatting_or_timestamp_churn
 
 steps:
   - verify_scaffold_and_context_files
+  - read_existing_lightweight_context_as_a_baseline_not_as_a_completion_signal
+  - locate_project_context_basic_fact_and_related_fact_boundary_sections
+  - read_only_project_context_basic_fact_and_related_pending_items_on_demand
   - identify_project_identity_and_runtime_shape
   - identify_dependency_build_and_start_entries
   - identify_key_directories_configuration_and_test_entries
-  - identify_low_cost_domain_terms_or_leave_pending
+  - inspect_only_root_metadata_one_or_two_start_entries_one_configuration_entry_and_at_most_two_representative_tests
+  - collect_domain_terms_in_priority_order_from_user_confirmed_language_root_product_docs_existing_glossary_and_public_business_interfaces
+  - use_project_context_basic_facts_only_to_locate_domain_evidence
+  - consult_archived_changes_only_when_already_relevant_without_scanning_history
+  - reject_implementation_names_as_confirmed_domain_terms_without_stronger_evidence
   - record_unknowns_for_unconfirmed_high_cost_context
-  - load_context_artifact_templates_before_writing
-  - update_project_summary_for_default_runtime_reads
-  - update_project_context_basic_fact_layer
-  - update_domain_language_without_language_specific_splits
-  - update_dev_map_basic_navigation
+  - reconcile_project_summary_with_confirmed_repository_facts
+  - reconcile_project_context_basic_fact_layer_and_related_fact_boundaries_with_confirmed_repository_facts
+  - preserve_project_context_supplemental_fact_layer_verbatim
+  - reconcile_domain_language_only_from_reliable_low_cost_business_evidence
+  - leave_domain_language_unchanged_or_record_only_evidence_backed_pending_ambiguities_when_terms_are_unconfirmed
+  - reconcile_dev_map_basic_navigation_with_confirmed_repository_facts
+  - load_context_artifact_templates_only_for_outputs_that_require_writes
+  - write_changed_context_outputs_and_mark_factually_unchanged_outputs_unchanged
+  - verify_every_declared_output_is_updated_or_explicitly_unchanged
+  - render_structured_result_with_writes_evidence_risks_and_next_action
   - stop_without_entering_other_cc_workflows
 
 auto_validation: []
@@ -90,12 +131,14 @@ result_contract:
     sources:
       - written_artifacts
       - updated_context_files
+      - unchanged_context_files
       - recorded_unknowns
   risks:
     required: true
     sources:
       - stop_conditions
       - forbids
+      - red_flags
   next_actions:
     - proceed_to_propose_or_inspect
 
