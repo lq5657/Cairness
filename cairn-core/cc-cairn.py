@@ -48,6 +48,12 @@ from harness_runtime.adapter_installation import (
 )
 from harness_runtime.runtime_layout import RuntimeLayout
 from harness_runtime.versioning import VersionMetadataError, read_version
+from harness_runtime.release import (
+    ReleaseError,
+    apply_release,
+    plan_release,
+    render_ci_template,
+)
 from harness_runtime.onboarding import (
     INSTALL_METADATA_RELATIVE,
     build_plan,
@@ -699,11 +705,14 @@ def _write_install_identity(
     return write_install_metadata(project_root, metadata)
 
 
-def _copy_ci_templates(ci_src: Path, ci_dst: Path) -> None:
-    """Copy CI workflow templates without clobbering user-edited files.
+def _copy_ci_templates(ci_src: Path, ci_dst: Path, version: str) -> None:
+    """Render CI workflow templates (version placeholder -> pinned version).
 
-    Existing files that differ from the template are written to
-    ``<name>.cairness.new`` with a warning instead of being overwritten.
+    The templates ship a ``__CAIRNESS_VERSION__`` placeholder so the source
+    never carries a per-release literal; ``cc-cairn init`` pins it to the
+    installed version here. Existing files that differ from the rendered
+    template are written to ``<name>.cairness.new`` with a warning instead of
+    being overwritten.
     """
     if not ci_src.exists():
         return
@@ -711,13 +720,14 @@ def _copy_ci_templates(ci_src: Path, ci_dst: Path) -> None:
     for f in ci_src.iterdir():
         if not f.is_file():
             continue
+        rendered = render_ci_template(f.read_text(encoding="utf-8"), version)
         target = ci_dst / f.name
-        if target.exists() and target.read_bytes() != f.read_bytes():
+        if target.exists() and target.read_text(encoding="utf-8") != rendered:
             alt = ci_dst / (f.name + ".cairness.new")
-            shutil.copy2(f, alt)
+            alt.write_text(rendered, encoding="utf-8")
             print(f"  CI template {f.name} differs from existing; wrote {alt.name} (review and merge manually)")
         else:
-            shutil.copy2(f, target)
+            target.write_text(rendered, encoding="utf-8")
             print(f"  .github/workflows/{f.name}")
 
 
@@ -775,11 +785,12 @@ def _finish_project_init(
         shutil.copy2(tmpl, dst)
         print(f"  {KNOWLEDGE_TARGET} (from template)")
 
+    version = (data_dir / "VERSION").read_text().strip()
     ci_src = framework_dir / CI_TEMPLATE_DIR
     ci_dst = project_root / ".github" / "workflows"
     if ci_src.exists():
         print("  CI templates:")
-        _copy_ci_templates(ci_src, ci_dst)
+        _copy_ci_templates(ci_src, ci_dst, version)
 
     gitignore = project_root / ".gitignore"
     existing = gitignore.read_text() if gitignore.exists() else ""
@@ -791,7 +802,6 @@ def _finish_project_init(
 
     _install_git_hooks(project_root, framework_dir)
 
-    version = (data_dir / "VERSION").read_text().strip()
     _publish_install_result(
         project_root,
         adapter=plan.adapter,
@@ -2786,13 +2796,73 @@ def cmd_loop(argv: list[str]) -> None:
         print(f"  {LOOP_CONFIG_REL} is preserved — re-enable with 'cc-cairn loop enable'.")
 
 
+def cmd_release(argv):
+    """Rewrite every version-identity file for a new release in one step (A).
+
+    Dry-run by default: prints the plan and the exact tag/push steps. `--apply`
+    writes the edits. This never commits, tags, or pushes -- those stay explicit
+    operator steps run after the release gate (cc-upgrade-check on a clean tag).
+    """
+    parser = argparse.ArgumentParser(prog="cc-cairn release")
+    parser.add_argument("version", help="new release version, plain MAJOR.MINOR.PATCH")
+    parser.add_argument("--apply", action="store_true", help="write the edits (default: dry-run preview)")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    repo = find_repo()
+    if repo is None:
+        print(
+            "E_RELEASE001 not inside a Cairness framework source repo "
+            "(need cairn-core/VERSION and cairn_install)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    try:
+        plan = plan_release(repo, args.version)
+    except ReleaseError as exc:
+        print(f"E_RELEASE002 {exc}", file=sys.stderr)
+        raise SystemExit(1)
+
+    rel = [str(edit.path.relative_to(repo)) for edit in plan.edits]
+    tag = f"v{plan.new_version}"
+    next_steps = [
+        f"git commit -am 'release: bump version to {plan.new_version}'",
+        f"git tag {tag} && git push origin HEAD {tag}   # triggers release.yml",
+    ]
+    if args.apply:
+        apply_release(plan)
+    status = "applied" if args.apply else "planned"
+
+    if args.json:
+        print(json.dumps({
+            "status": status,
+            "current_version": plan.current_version,
+            "new_version": plan.new_version,
+            "files": rel,
+            "next_steps": next_steps,
+        }, ensure_ascii=False, indent=2))
+    else:
+        verb = "Wrote" if args.apply else "Would write"
+        print(f"Release {plan.current_version} -> {plan.new_version} ({status})")
+        print(f"{verb} {len(rel)} version-identity files:")
+        for path in rel:
+            print(f"  {path}")
+        if args.apply:
+            print("\nReview the CHANGELOG/UPGRADE scaffolds, then:")
+            for step in next_steps:
+                print(f"  {step}")
+        else:
+            print("\nRe-run with --apply to write these edits.")
+
+
 def main():
     if sys.version_info < MIN_PYTHON:
         v = ".".join(map(str, MIN_PYTHON))
         sys.exit(f"Cairness requires Python {v}+")
 
     if len(sys.argv) < 2:
-        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge|release>")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -2818,9 +2888,11 @@ def main():
         cmd_loop(sys.argv[2:])
     elif cmd == "add-knowledge":
         cmd_add_knowledge(sys.argv[2:])
+    elif cmd == "release":
+        cmd_release(sys.argv[2:])
     else:
         print(f"Unknown command: {cmd}")
-        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge>")
+        print("Usage: cc-cairn <init|onboard|uninstall|profile|update|version|doctor|explain|config|loop|add-knowledge|release>")
         sys.exit(1)
 
 

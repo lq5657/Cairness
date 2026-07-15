@@ -7,9 +7,10 @@ name: cairness
 # push/PR gate.
 #
 # The action downloads an exact release archive, verifies SHA-256, installs it
-# ephemerally into .claude/, and caches the archive. Update version, URL, and
-# checksums URL together; checksum/network failures
-# are hard failures and the action never follows main/latest implicitly.
+# ephemerally into .claude/, and caches the archive. The version below is pinned
+# to the Cairness release you installed (rendered from __CAIRNESS_VERSION__ at
+# `cc-cairn init` time); checksum/network failures are hard failures and the
+# action never follows main/latest implicitly.
 #
 # Scope (per CLAUDE.md defaults, minus what is redundant for target projects):
 #   * cc-verify --harness-only  — project-compliance sub-checks (change/spec
@@ -31,9 +32,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify with pinned Cairness
-        uses: lq5657/Cairness/.github/actions/cairness@v1.2.0
+        uses: lq5657/Cairness/.github/actions/cairness@v__CAIRNESS_VERSION__
         with:
-          version: 1.2.0
-          archive-url: https://github.com/lq5657/Cairness/releases/download/v1.2.0/cairness-1.2.0.tar.gz
-          checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.2.0/SHA256SUMS
+          version: __CAIRNESS_VERSION__
+          archive-url: https://github.com/lq5657/Cairness/releases/download/v__CAIRNESS_VERSION__/cairness-__CAIRNESS_VERSION__.tar.gz
+          checksums-url: https://github.com/lq5657/Cairness/releases/download/v__CAIRNESS_VERSION__/SHA256SUMS
           mode: full

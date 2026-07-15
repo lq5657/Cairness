@@ -80,3 +80,36 @@ def test_bare_init_still_runs_initialization(tmp_path, monkeypatch):
 
     assert result is None
     assert calls == [True]
+
+
+def test_init_renders_ci_template_to_pinned_version(tmp_path, monkeypatch):
+    """B: _copy_ci_templates pins the shipped placeholder template to VERSION.
+
+    Drives the real seam against the actual shipped template so the CI workflow
+    a project receives carries a concrete version, never the placeholder.
+    """
+    module = _cli_module(monkeypatch)
+    ci_src = CLI.parent / "templates" / "ci"
+    version = (CLI.parent / "VERSION").read_text(encoding="utf-8").strip()
+    ci_dst = tmp_path / ".github" / "workflows"
+
+    module["_copy_ci_templates"](ci_src, ci_dst, version)
+
+    rendered = (ci_dst / "cairness.yml").read_text(encoding="utf-8")
+    assert "__CAIRNESS_VERSION__" not in rendered
+    assert f"@v{version}" in rendered
+    assert f"version: {version}" in rendered
+    assert f"download/v{version}/cairness-{version}.tar.gz" in rendered
+
+
+def test_init_ci_render_is_idempotent(tmp_path, monkeypatch):
+    """Re-rendering the same version must not spawn a .cairness.new conflict file."""
+    module = _cli_module(monkeypatch)
+    ci_src = CLI.parent / "templates" / "ci"
+    version = (CLI.parent / "VERSION").read_text(encoding="utf-8").strip()
+    ci_dst = tmp_path / ".github" / "workflows"
+
+    module["_copy_ci_templates"](ci_src, ci_dst, version)
+    module["_copy_ci_templates"](ci_src, ci_dst, version)
+
+    assert not (ci_dst / "cairness.yml.cairness.new").exists()

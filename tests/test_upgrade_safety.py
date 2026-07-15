@@ -237,9 +237,11 @@ def test_ci_templates_non_clobber_on_diff(tmp_path):
     dst = tmp_path / "workflows"
     _make_tree(dst, {"cairness.yml": "USER EDITED"})
 
-    mod._copy_ci_templates(src, dst)
+    mod._copy_ci_templates(src, dst, "1.2.0")
 
-    # Existing user file preserved; divergent template written aside.
+    # Existing user file preserved; divergent template written aside. (Content
+    # has no version placeholder, so rendering is a no-op; this test isolates
+    # the non-clobber semantics — substitution is covered in test_cli_init.py.)
     assert (dst / "cairness.yml").read_text() == "USER EDITED"
     assert (dst / "cairness.yml.cairness.new").read_text() == "NEW TEMPLATE"
 
@@ -251,7 +253,7 @@ def test_ci_templates_copy_when_identical_or_missing(tmp_path):
     dst = tmp_path / "workflows"
     _make_tree(dst, {"a.yml": "X"})  # identical -> overwritten harmlessly
 
-    mod._copy_ci_templates(src, dst)
+    mod._copy_ci_templates(src, dst, "1.2.0")
 
     assert (dst / "a.yml").read_text() == "X"
     assert (dst / "b.yml").read_text() == "Y"

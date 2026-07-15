@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tarfile
@@ -183,8 +184,12 @@ def test_action_and_template_require_explicit_immutable_inputs():
     assert "version:" in action and "required: true" in action
     assert "checksums-url:" in action
     assert "@main" not in template
-    assert "@v1.2.0" in template
-    assert "version: 1.2.0" in template
+    # The template ships a version placeholder, never a literal version, so it
+    # need not be hand-edited per release. `cc-cairn init` renders it (see the
+    # init substitution test). Guard: no literal semver leaks into the template.
+    assert "@v__CAIRNESS_VERSION__" in template
+    assert "version: __CAIRNESS_VERSION__" in template
+    assert not re.search(r"v?\d+\.\d+\.\d+", template)
     assert "SHA256SUMS" in template
     assert "REPLACE_" not in template
     assert "expected to fail" not in template
