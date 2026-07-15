@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 - 2026-07-15
+
+Release-workflow patch: cut a release with one command instead of hand-editing
+every version-identity file.
+
+- Added `cc-cairn release <version>`: rewrites `VERSION`, the `pyproject.toml` mirror, and README release pointers, and scaffolds CHANGELOG/UPGRADE sections in one step behind a version-monotonicity guard. Dry-run by default; `--apply` writes, `--json` emits a machine-readable plan.
+- CI template (`templates/ci/cairness.yml`) now ships a `__CAIRNESS_VERSION__` placeholder rendered at `cc-cairn init` time, so neither the template nor its test carries a literal version to bump per release.
+- `cc-cairn doctor` version test now reads the real `cairn-core/VERSION` instead of a hardcoded literal.
+- CI: install PyYAML on harness runners; bump harness Go to 1.23 for the macOS arm64 linker.
+
 ## 1.2.0 - 2026-07-14
 
 Productization release completing the roadmap from trustworthy runtime through

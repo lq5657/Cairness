@@ -1,5 +1,17 @@
 # 升级指南
 
+## 升级到 1.2.1
+
+补丁版本，向后兼容，现有项目无需迁移。本版本把"发布"从多文件手改降成一条命令。
+
+### 发布流程（面向框架维护者）
+
+以后 bump 版本只需 `cc-cairn release <version>`：它会一次性改写 `cairn-core/VERSION`、`pyproject.toml` 镜像、README 发布指针，并在 CHANGELOG/UPGRADE 顶部生成新章节骨架（受版本单调性护栏保护）。默认 dry-run，`--apply` 落盘，`--json` 输出可解析计划。生成后仍需手动把 CHANGELOG/UPGRADE 的 `TODO` 占位符替换成真实内容，再 `git commit` + `git tag v<version>` 触发 `release.yml`。
+
+### CI 模板占位符（对目标项目透明）
+
+`templates/ci/cairness.yml` 现在用 `__CAIRNESS_VERSION__` 占位符，在 `cc-cairn init` 时按当前 VERSION 渲染并 pin。模板与其测试不再携带任何字面版本号，因此发版时无需再逐处修改它们。已初始化的项目其 CI 文件不受影响，下次 `init`/升级时才会重新渲染。
+
 ## 升级到 1.2.0
 
 本版本完成从可信运行时到 runtime-neutral core 的产品化路线图，所有变更向后兼容——现有 Claude Code 项目无需迁移即可继续使用。
