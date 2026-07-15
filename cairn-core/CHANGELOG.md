@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.2 - 2026-07-15
+
+Context-initialization patch for reliable `cc-init` reruns in existing projects.
+All changes are backward-compatible.
+
+- Fixed `cc-init` so existing context files cannot be treated as proof that reconciliation is complete; all four declared context outputs must be reported as `updated` or `unchanged` before success.
+- Kept `project-context.md` outside the required startup readset while requiring an on-demand read of its basic facts and related pending items; the supplemental fact layer remains owned by `cc-enrich-context` and must be preserved verbatim.
+- Defined evidence priority for `domain-language.md`, rejected implementation names as confirmed domain terms without stronger product or business evidence, and allowed the file to remain unchanged when reliable evidence is absent.
+- Added an existing-project runtime eval and regression contracts for bounded reads, output reconciliation, structured completion, and unchanged-file churn prevention.
+
 ## 1.2.1 - 2026-07-15
 
 Release-workflow patch: cut a release with one command instead of hand-editing
