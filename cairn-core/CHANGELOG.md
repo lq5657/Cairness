@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.4 - 2026-07-16
+
+Codex adapter regression patch for commit-stamped framework installations. All
+changes are backward-compatible.
+
+- Fixed the `adapter-installation` lifecycle fixture so its simulated old Codex
+  project cannot be mistaken for a current install when source and project
+  `COMMIT` stamps match.
+- Added regression coverage that runs the Codex adapter baseline from a realistic
+  installed core containing a `COMMIT` stamp.
+- Kept the production `sync_project()` commit-identity behavior unchanged.
+
 ## 1.2.2 - 2026-07-15
 
 Context-initialization patch for reliable `cc-init` reruns in existing projects.

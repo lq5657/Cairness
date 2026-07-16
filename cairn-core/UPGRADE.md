@@ -1,5 +1,11 @@
 # 升级指南
 
+## 升级到 1.2.4
+
+补丁版本，向后兼容，现有项目无需迁移。本版本修复从带 `COMMIT` 标记的正式安装运行 Codex adapter regression 时，`adapter-installation` fixture 可能误报 `E_ADAPTER007: Codex update did not run` 的问题。
+
+受影响项目正常执行 `cc-cairn update` 即可。修复仅让 fixture 在模拟旧版本时同时清除项目侧的 commit 标记；真实项目中 `sync_project()` 对相同 commit 的“已是最新”判断保持不变。
+
 ## 升级到 1.2.2
 
 补丁版本，向后兼容，现有项目无需迁移。本版本修复存量项目重新执行 `cc-init` 时可能只完成事实验证、却没有继续对账和更新上下文输出的问题。
