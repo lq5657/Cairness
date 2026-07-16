@@ -296,6 +296,11 @@ def _codex_installation_lifecycle(
                     (project / ".codex" / "VERSION").write_text(
                         "0.0.0\n", encoding="utf-8"
                     )
+                    # Installed distributions stamp COMMIT into both the data
+                    # and project trees.  Leaving equal stamps here would make
+                    # sync_project correctly treat the fixture as current even
+                    # though VERSION was changed to simulate an older install.
+                    (project / ".codex" / "COMMIT").unlink(missing_ok=True)
                     if module.sync_project(root, project) is not True:
                         raise RuntimeError("Codex update did not run")
                     module.cmd_init(adapter="claude-code")

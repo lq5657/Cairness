@@ -484,6 +484,24 @@ def test_codex_adapter_regression_baseline_is_machine_readable():
     assert report["capabilities"]["structured_result"]["status"] == "host_unobserved"
 
 
+def test_codex_adapter_regression_passes_from_commit_stamped_installation(
+    tmp_path: Path,
+):
+    from harness_runtime.adapter_regression import run_adapter_regression
+
+    installed_core = tmp_path / "installed-core"
+    shutil.copytree(CORE, installed_core)
+    (installed_core / "COMMIT").write_text("installed-commit\n", encoding="utf-8")
+
+    report = run_adapter_regression(installed_core, "codex", embedded=True)
+
+    check = next(
+        item for item in report["checks"] if item["id"] == "adapter-installation"
+    )
+    assert check["status"] == "passed", check["issues"]
+    assert report["status"] == "passed", report["issues"]
+
+
 def test_codex_installed_project_runs_mainline_behavior_eval(
     tmp_path: Path, monkeypatch
 ):
