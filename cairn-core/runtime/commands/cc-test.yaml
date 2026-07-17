@@ -35,6 +35,7 @@ writes:
   - test_files
   - .cairness/changes/<change-id>/test-spec.md
   - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/events.jsonl
   - .cairness/changes/<change-id>/spec.md
   - .cairness/changes/task-board.md
 

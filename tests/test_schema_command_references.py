@@ -22,12 +22,70 @@ def test_command_reference_package_matches_schema_check_exports():
     for name in (
         "registered_topic_paths",
         "read_path_references",
+        "missing_state_transition_event_write",
         "missing_template_reads",
         "topic_rule_references",
         "contract_path_references",
     ):
         assert getattr(schema_check, name) is getattr(references, name)
     assert schema_check.TEMPLATE_READ_REQUIREMENTS is references.TEMPLATE_READ_REQUIREMENTS
+
+
+def test_state_transition_requires_declared_event_log_write():
+    references = importlib.import_module("harness_runtime.schema_command_references")
+    transition = {"steps": ["transition_via_cc_state_transition"]}
+
+    assert references.missing_state_transition_event_write(transition) is True
+    assert references.missing_state_transition_event_write(
+        {
+            **transition,
+            "writes": [references.CHANGE_EVENT_LOG_WRITE],
+        }
+    ) is False
+    assert references.missing_state_transition_event_write(
+        {"steps": ["invoke .claude/scripts/cc-state-transition"], "writes": []}
+    ) is True
+    assert references.missing_state_transition_event_write(
+        {"steps": ["write_change_documents"], "writes": []}
+    ) is False
+
+
+def test_schema_check_reports_missing_state_transition_event_write(tmp_path):
+    schema_check = _load_schema_check()
+    references = importlib.import_module("harness_runtime.schema_command_references")
+    manifest = {
+        "command": "cc-archive",
+        "state": {"change_from": ["review"], "change_to": "done"},
+        "steps": ["transition_state_review_to_done_via_cc_state_transition"],
+        "writes": [],
+        "anti_rationalizations": ["do_not_skip_transition"],
+        "red_flags": ["missing_transition"],
+    }
+
+    issues = []
+    schema_check.validate_runtime_command_references(
+        tmp_path,
+        None,
+        "cc-archive",
+        manifest,
+        tmp_path / "cc-archive.yaml",
+        issues,
+    )
+    assert [issue.code for issue in issues].count("E_SCHEMA200") == 1
+
+    issues = []
+    schema_check.validate_runtime_command_references(
+        tmp_path,
+        None,
+        "cc-archive",
+        {
+            **manifest,
+            "writes": [references.CHANGE_EVENT_LOG_WRITE],
+        },
+        tmp_path / "cc-archive.yaml",
+        issues,
+    )
+    assert all(issue.code != "E_SCHEMA200" for issue in issues)
 
 
 def test_registered_topic_paths_filters_malformed_core_values():

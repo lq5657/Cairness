@@ -48,8 +48,10 @@ from harness_runtime.schema_contract_policies import (
     result_sources,
 )
 from harness_runtime.schema_command_references import (
+    CHANGE_EVENT_LOG_WRITE,
     TEMPLATE_READ_REQUIREMENTS,
     contract_path_references,
+    missing_state_transition_event_write,
     missing_template_reads,
     read_path_references,
     registered_topic_paths,
@@ -660,6 +662,14 @@ def validate_runtime_command_references(
     state = manifest.get("state")
     if isinstance(state, dict) and state.get("change_to") == "done" and command != "cc-archive":
         add(issues, "E_SCHEMA128", path, "only cc-archive may set change_to done")
+
+    if missing_state_transition_event_write(manifest):
+        add(
+            issues,
+            "E_SCHEMA200",
+            path,
+            f"{command} invokes cc-state-transition but writes does not declare {CHANGE_EVENT_LOG_WRITE}",
+        )
 
     if command in ANTI_RATIONALIZATION_COMMANDS:
         for key in ("anti_rationalizations", "red_flags"):

@@ -97,6 +97,47 @@ def test_is_allowed_expands_directory_and_ellipsis_task_scopes():
     assert mod.is_allowed("gen/python/model_pb2.py", ["gen/python/..."], "demo") is True
 
 
+def test_state_transition_manifests_declare_change_event_log():
+    """Commands that invoke cc-state-transition must declare its event write."""
+    import yaml
+
+    event_log = ".cairness/changes/<change-id>/events.jsonl"
+    manifests = REPO / "cairn-core" / "runtime" / "commands"
+    transition_commands = set()
+    for path in sorted(manifests.glob("cc-*.yaml")):
+        manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+        steps = manifest.get("steps", [])
+        if any("cc_state_transition" in step for step in steps):
+            transition_commands.add(path.stem)
+            assert event_log in manifest.get("writes", []), (
+                f"{path.stem} invokes cc-state-transition but does not declare {event_log}"
+            )
+
+    assert transition_commands == {
+        "cc-propose",
+        "cc-apply",
+        "cc-review",
+        "cc-fix",
+        "cc-test",
+        "cc-archive",
+    }
+
+
+def test_archive_role_scope_allows_controlled_lifecycle_event():
+    """Reproduce the cc-arpa archive false positive against the real manifest."""
+    import yaml
+
+    mod = _load_role_check()
+    manifest_path = REPO / "cairn-core" / "runtime" / "commands" / "cc-archive.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+    assert mod.is_allowed(
+        ".cairness/changes/selector-config-trust-boundary/events.jsonl",
+        manifest["writes"],
+        "selector-config-trust-boundary",
+    ) is True
+
+
 # --- defect 2: baseline self-reference --------------------------------------
 
 

@@ -32,6 +32,7 @@ state:
 writes:
   - .cairness/changes/<change-id>/spec.md
   - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/events.jsonl
   - .cairness/changes/task-board.md
   - .cairness/knowledge/<category>/*.md
   - .cairness/knowledge/refinement-candidates/*.md

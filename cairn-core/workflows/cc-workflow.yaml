@@ -118,7 +118,7 @@ commands:
     change_to: propose
     inputs: [requirement_description]
     outputs: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md]
-    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md]
+    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/task-board.md]
     validates: [hard_gate, validation_matrix, dependencies, scope_freeze, task_traceability, task_board_sync, clarification_interaction, risk_resolution_interaction, hard_gate_user_choice]
     forbids: [write_business_code, enter_apply_without_hard_gate, skip_scope_freeze, skip_validation_mapping, create_oversized_or_mixed_scope_change, treat_listed_clarifications_as_resolved, treat_recommended_risk_resolution_as_if_user_selected_it, present_hard_gate_without_user_choice]
     auto_validation: [".claude/scripts/cc-deps conflicts --change <change-id>", ".claude/scripts/cc-verify --harness-only --change <change-id>"]
@@ -131,7 +131,7 @@ commands:
     change_to: review
     inputs: [change_id]
     outputs: [business_code_changes, change_docs_update, dev_map_update_if_needed, task_board_update, optional_commits]
-    writes: [task_declared_code_files, test_files, .cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/test-spec.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
+    writes: [task_declared_code_files, test_files, .cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/<change-id>/test-spec.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
     validates: [hard_gate, task_gate, minimum_verification, git_policy, dirty_worktree_policy, baseline_delta, memory_sync, hard_gate_resolution_choice]
     forbids: [out_of_scope_change_without_spec_review_flag, silently_expand_implementation_beyond_spec_boundary, defer_minimum_verification_to_cc_test, mark_done_without_evidence, auto_push_or_merge, start_apply_with_stale_or_missing_hard_gate, treat_missing_hard_gate_as_user_confirmation, dispatch_tasks_across_waves_in_parallel, start_next_wave_with_unresolved_blocked_tasks, skip_wave_confirmation_gate, manually_edit_wave_plan_json]
     auto_validation: [".claude/scripts/cc-deps check --change <change-id>", ".claude/scripts/cc-wave-plan --check --change <change-id>", ".claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/pre-apply.json --change <change-id>", ".claude/scripts/cc-delta-check --before <before-report> --after <after-report>", ".claude/scripts/cc-verify --change <change-id>", ".claude/scripts/cc-budget-check"]
@@ -144,7 +144,7 @@ commands:
     change_to: review
     inputs: [change_id]
     outputs: [.cairness/changes/<change-id>/review.md, .cairness/changes/task-board.md]
-    writes: [.cairness/changes/<change-id>/review.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md]
+    writes: [.cairness/changes/<change-id>/review.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/task-board.md]
     validates: [task_coverage, verification_evidence, finding_status, evidence_matrix, role_contracts, finding_acceptance_interaction]
     forbids: [direct_code_change, direct_archive, pass_with_open_critical_or_important, delete_audit_record, mark_finding_accepted_without_user_choice, treat_reviewer_recommendation_as_user_acceptance, skip_file_review_scope_when_writing_review, skip_risk_triage_when_change_exceeds_200_lines, skip_location_and_existing_code_in_finding_details]
     auto_validation: [".claude/scripts/cc-role-check --command cc-review --change <change-id>", ".claude/scripts/cc-verify --harness-only --change <change-id>", ".claude/scripts/cc-verify --check-review-coverage --change <change-id>", ".claude/scripts/cc-verify --check-finding-locations --change <change-id>", ".claude/scripts/cc-verify --check-risk-triage --change <change-id>", ".claude/scripts/cc-budget-check"]
@@ -157,7 +157,7 @@ commands:
     change_to: review
     inputs: [change_id, optional_fix_description]
     outputs: [fixed_code, updated_findings, synced_change_docs, task_board_update]
-    writes: [finding_related_code_files, test_files, .cairness/changes/<change-id>/review.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/test-spec.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
+    writes: [finding_related_code_files, test_files, .cairness/changes/<change-id>/review.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/tasks.md, .cairness/changes/<change-id>/test-spec.md, .cairness/context/dev-map.md, .cairness/changes/task-board.md]
     validates: [finding_exists, root_cause, minimum_fix, verification_level_not_reduced, memory_sync, finding_clarification_or_disposition_choice]
     forbids: [handle_unrecorded_scope, bypass_review, delete_open_finding_record, mark_fixed_without_verification, treat_unclear_finding_as_confirmed, mark_finding_accepted_without_user_choice, remove_or_rewrite_file_review_scope_section_in_review_md, remove_or_rewrite_existing_code_or_location_in_finding_details, alter_risk_triage_section_in_review_md]
     auto_validation: [".claude/scripts/cc-verify --change <change-id>"]
@@ -170,7 +170,7 @@ commands:
     change_to: unchanged
     inputs: [change_id, optional_mode]
     outputs: [.cairness/changes/<change-id>/test-spec.md, tests_or_evidence, updated_mapping_status, task_board_update]
-    writes: [test_files, .cairness/changes/<change-id>/test-spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/spec.md, .cairness/changes/task-board.md]
+    writes: [test_files, .cairness/changes/<change-id>/test-spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/<change-id>/spec.md, .cairness/changes/task-board.md]
     validates: [valid_mode, recovery_blocker_record, fresh_evidence, mapping_closure, task_board_sync]
     forbids: [use_cc_test_as_default_apply_minimum_verification, fabricate_red_green, mark_mapping_closed_without_evidence]
     auto_validation: [".claude/scripts/cc-verify --change <change-id>"]
@@ -182,7 +182,7 @@ commands:
     change_to: done
     inputs: [change_id]
     outputs: [done_status, archival_log, task_board_archive_state, optional_knowledge]
-    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/task-board.md, .cairness/knowledge/<category>/*.md, .cairness/knowledge/refinement-candidates/*.md]
+    writes: [.cairness/changes/<change-id>/spec.md, .cairness/changes/<change-id>/log.md, .cairness/changes/<change-id>/events.jsonl, .cairness/changes/task-board.md, .cairness/knowledge/<category>/*.md, .cairness/knowledge/refinement-candidates/*.md]
     validates: [review_pass, no_open_findings, no_blocked_tasks, no_unexplained_gap, fresh_evidence, memory_policy, knowledge_decision_user_choice]
     forbids: [business_code_write, skip_knowledge_decision, archive_with_open_or_blocked_state, set_done_from_other_command, infer_knowledge_decision_without_user_choice, mark_done_before_knowledge_choice, freeform_edit_of_knowledge_index_md]
     auto_validation: [".claude/scripts/cc-verify --change <change-id>", ".claude/scripts/cc-index-check"]

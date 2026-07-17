@@ -32,6 +32,7 @@ state:
 writes:
   - .cairness/changes/<change-id>/review.md
   - .cairness/changes/<change-id>/log.md
+  - .cairness/changes/<change-id>/events.jsonl
   - .cairness/changes/task-board.md
 
 forbids:

@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 
+CHANGE_EVENT_LOG_WRITE = ".cairness/changes/<change-id>/events.jsonl"
+
+
 TEMPLATE_READ_REQUIREMENTS: dict[str, dict[str, list[str]]] = {
     "cc-propose": {
         "when_writing_change_artifacts": [
@@ -167,3 +170,19 @@ def contract_path_references(manifest: dict[str, Any]) -> list[tuple[str, Any]]:
     if isinstance(result_contract, dict):
         references.append(("result_contract.profile", result_contract.get("profile")))
     return references
+
+
+def missing_state_transition_event_write(manifest: dict[str, Any]) -> bool:
+    """Return whether a state-transitioning command omits its event log write."""
+    steps = manifest.get("steps")
+    if not isinstance(steps, list):
+        return False
+    invokes_transition = any(
+        isinstance(step, str)
+        and ("cc_state_transition" in step or "cc-state-transition" in step)
+        for step in steps
+    )
+    if not invokes_transition:
+        return False
+    writes = manifest.get("writes")
+    return not isinstance(writes, list) or CHANGE_EVENT_LOG_WRITE not in writes
