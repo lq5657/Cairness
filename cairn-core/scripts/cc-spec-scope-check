@@ -18,7 +18,6 @@ the tasks-declared-vs-reviewed completeness axis).
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import json
 import re
 import sys
@@ -33,6 +32,7 @@ from change_docs import (
     parse_declared_paths,
     parse_file_table,
     parse_involved_files,
+    scopes_overlap,
 )
 
 
@@ -80,23 +80,6 @@ def _log_references_file(log_text: str, filename: str) -> bool:
     if filename in log_text:
         return True
     return any(line.endswith("/" + filename) for line in log_text.splitlines())
-
-
-def _scope_covers(declared: str, reviewed: str) -> bool:
-    """Return whether two exact, directory, or ``...`` scopes overlap."""
-    if declared == reviewed:
-        return True
-    if declared.endswith("/") and reviewed.startswith(declared):
-        return True
-    if reviewed.endswith("/") and declared.startswith(reviewed):
-        return True
-    declared_pattern = declared.replace("...", "*")
-    reviewed_pattern = reviewed.replace("...", "*")
-    if fnmatch.fnmatch(reviewed, declared_pattern):
-        return True
-    if fnmatch.fnmatch(declared, reviewed_pattern):
-        return True
-    return declared.endswith("/" + reviewed) or reviewed.endswith("/" + declared)
 
 
 def check_change(change_dir: Path, issues: list[Issue]) -> None:
@@ -150,7 +133,7 @@ def check_change(change_dir: Path, issues: list[Issue]) -> None:
         raw_name = cell(row, "File", "file")
         reviewed_files.update(parse_declared_paths(raw_name))
     for decl in sorted(declared):
-        if any(_scope_covers(decl, reviewed) for reviewed in reviewed_files):
+        if any(scopes_overlap(decl, reviewed) for reviewed in reviewed_files):
             continue
         issues.append(
             Issue(

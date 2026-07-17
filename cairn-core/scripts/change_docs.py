@@ -20,6 +20,8 @@ a lifecycle enum, and stays literal here.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
+from fnmatch import fnmatchcase
 from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums
@@ -234,6 +236,124 @@ def parse_declared_paths(value: str) -> set[str]:
         if backtick_paths or _looks_like_path(candidate):
             paths.add(candidate)
     return paths
+
+
+_RECURSIVE_SCOPE_SEGMENTS = {"...", "**"}
+
+
+def _declared_path_parts(value: str, *, directory_scope: bool = False) -> tuple[str, ...] | None:
+    """Normalize one project-relative path/scope into POSIX path segments."""
+    raw = value.strip().strip("`")
+    if not raw or raw.startswith("/") or "\\" in raw or "\x00" in raw:
+        return None
+    while raw.startswith("./"):
+        raw = raw[2:]
+    is_directory = directory_scope or raw.endswith("/")
+    raw = raw.rstrip("/")
+    if not raw:
+        return None
+    parts = tuple(raw.split("/"))
+    if any(part in ("", ".", "..") for part in parts):
+        return None
+    if is_directory:
+        parts += ("**",)
+    return parts
+
+
+def _match_path_parts(path_parts: tuple[str, ...], scope_parts: tuple[str, ...]) -> bool:
+    @lru_cache(maxsize=None)
+    def match(path_index: int, scope_index: int) -> bool:
+        if scope_index == len(scope_parts):
+            return path_index == len(path_parts)
+        scope_part = scope_parts[scope_index]
+        if scope_part in _RECURSIVE_SCOPE_SEGMENTS:
+            return match(path_index, scope_index + 1) or (
+                path_index < len(path_parts) and match(path_index + 1, scope_index)
+            )
+        if path_index == len(path_parts):
+            return False
+        return fnmatchcase(path_parts[path_index], scope_part) and match(
+            path_index + 1, scope_index + 1
+        )
+
+    return match(0, 0)
+
+
+def path_matches_scope(path: str, scope: str) -> bool:
+    """Match a Git path against an exact, directory, glob, or recursive scope.
+
+    Matching is anchored at the project root. A bare basename therefore only
+    matches that root-level file; it cannot absorb an unrelated nested path.
+    ``*`` and ``?`` stay within one path segment, while ``**`` and ``...`` are
+    the explicit recursive forms.
+    """
+    path_parts = _declared_path_parts(path)
+    scope_parts = _declared_path_parts(scope)
+    if path_parts is None or scope_parts is None:
+        return False
+    return _match_path_parts(path_parts, scope_parts)
+
+
+def _is_concrete_scope(parts: tuple[str, ...]) -> bool:
+    return not any(
+        part in _RECURSIVE_SCOPE_SEGMENTS or any(char in part for char in "*?[")
+        for part in parts
+    )
+
+
+def _recursive_prefix(parts: tuple[str, ...]) -> tuple[str, ...] | None:
+    if parts and parts[-1] in _RECURSIVE_SCOPE_SEGMENTS:
+        prefix = parts[:-1]
+        if _is_concrete_scope(prefix):
+            return prefix
+    return None
+
+
+def scopes_overlap(first: str, second: str) -> bool:
+    """Return whether two declared scopes have a provable common path."""
+    first_parts = _declared_path_parts(first)
+    second_parts = _declared_path_parts(second)
+    if first_parts is None or second_parts is None:
+        return False
+    if first_parts == second_parts:
+        return True
+    if _is_concrete_scope(first_parts):
+        return path_matches_scope("/".join(first_parts), second)
+    if _is_concrete_scope(second_parts):
+        return path_matches_scope("/".join(second_parts), first)
+
+    first_prefix = _recursive_prefix(first_parts)
+    second_prefix = _recursive_prefix(second_parts)
+    if first_prefix is not None and second_prefix is not None:
+        shorter = min(len(first_prefix), len(second_prefix))
+        return first_prefix[:shorter] == second_prefix[:shorter]
+    if first_prefix is not None:
+        return second_parts[: len(first_prefix)] == first_prefix
+    if second_prefix is not None:
+        return first_parts[: len(second_prefix)] == second_prefix
+
+    # Two non-identical glob expressions are not treated as overlapping unless
+    # one can be reduced to a concrete path above. This avoids speculative
+    # conflicts and, more importantly, prevents review coverage from passing on
+    # merely similar wildcard text.
+    return False
+
+
+def overlapping_scope_label(first: str, second: str) -> str:
+    """Return the narrower scope when possible for stable conflict reports."""
+    first_parts = _declared_path_parts(first)
+    second_parts = _declared_path_parts(second)
+    if first_parts is None or second_parts is None:
+        return f"{first} <-> {second}"
+    if _is_concrete_scope(first_parts) and path_matches_scope(first, second):
+        return first
+    if _is_concrete_scope(second_parts) and path_matches_scope(second, first):
+        return second
+    first_prefix = _recursive_prefix(first_parts)
+    second_prefix = _recursive_prefix(second_parts)
+    if first_prefix is not None and second_prefix is not None:
+        return first if len(first_prefix) >= len(second_prefix) else second
+    return first if first == second else f"{first} <-> {second}"
 
 
 def parse_involved_files(text: str) -> set[str]:

@@ -227,6 +227,8 @@ def print_orphans(result: dict[str, Any]) -> int:
     print(f"=== 孤儿变更检测 ({scope}) ===\n")
     print(f"  变更文件总数: {result['total_git_files']}")
     print(f"  已声明 change: {result['changes_with_files']}/{result['total_changes']}")
+    if result.get("eligible_changes"):
+        print(f"  本次可归属 change: {', '.join(result['eligible_changes'])}")
     print(f"  孤儿文件数: {len(result['orphan_files'])}")
 
     if result["matched_files"]:
@@ -234,6 +236,16 @@ def print_orphans(result: dict[str, Any]) -> int:
         for cid, files in sorted(result["matched_by_change"].items()):
             for f in files:
                 print(f"    {f}  →  {cid}")
+
+    if result.get("governance_files"):
+        print(f"\n  ~ Harness 治理产物 ({len(result['governance_files'])}):")
+        for path in result["governance_files"]:
+            print(f"    {path}")
+
+    if result.get("ambiguous_files"):
+        print(f"\n  ! 多 change 声明 ({len(result['ambiguous_files'])}):")
+        for path, owners in sorted(result["ambiguous_files"].items()):
+            print(f"    {path}  →  {', '.join(owners)}")
 
     if result.get("intentional_files"):
         print(f"\n  ~ Intentional 例外 ({len(result['intentional_files'])}):")
@@ -331,8 +343,13 @@ def main() -> None:
         print_graph(graph, changes, args.format)
 
     elif args.command == "conflicts":
+        if args.change and args.change not in changes:
+            print(f"change '{args.change}' not found", file=sys.stderr)
+            sys.exit(2)
         conflicts = detect_file_conflicts(changes, args.change)
         print_conflicts(conflicts)
+        if any(conflict["severity"] == "conflict" for conflict in conflicts):
+            sys.exit(1)
 
     elif args.command == "order":
         graph = build_dependency_graph(changes)
@@ -391,6 +408,9 @@ def main() -> None:
                     "orphan_files": result["orphan_files"],
                     "matched_files": result["matched_files"],
                     "matched_by_change": result["matched_by_change"],
+                    "governance_files": result.get("governance_files", []),
+                    "ambiguous_files": result.get("ambiguous_files", {}),
+                    "eligible_changes": result.get("eligible_changes", []),
                     "intentional_files": result.get("intentional_files", []),
                     "intentional_scopes": result.get("intentional_scopes", []),
                     "has_orphans": result["has_orphans"],

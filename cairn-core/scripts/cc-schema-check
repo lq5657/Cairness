@@ -914,8 +914,11 @@ def _enum_values(value: Any) -> set[str]:
 def validate_spec(path: Path, issues: list[Issue]) -> set[str]:
     text = read(path)
     meta = parse_meta(text)
-    if not validate_change_id(meta.get("change_id")):
+    change_id = meta.get("change_id")
+    if not validate_change_id(change_id):
         add(issues, "E_SCHEMA001", path, "invalid or missing change_id")
+    elif change_id != path.parent.name:
+        add(issues, "E_SCHEMA201", path, "change_id must match the change directory name")
     if meta.get("status") not in VALID_CHANGE_STATUS:
         add(issues, "E_SCHEMA002", path, "invalid or missing status")
     for key in ("depends_on", "parallel_safe", "branch", "created", "updated", "complexity"):
@@ -953,8 +956,11 @@ def validate_spec(path: Path, issues: list[Issue]) -> set[str]:
 def validate_tasks(path: Path, mapping_ids: set[str], issues: list[Issue]) -> None:
     text = read(path)
     meta = parse_meta(text)
-    if not validate_change_id(meta.get("change_id")):
+    change_id = meta.get("change_id")
+    if not validate_change_id(change_id):
         add(issues, "E_SCHEMA012", path, "invalid or missing change_id")
+    elif change_id != path.parent.name:
+        add(issues, "E_SCHEMA202", path, "change_id must match the change directory name")
     sections = task_sections(text)
     if not sections:
         add(issues, "E_SCHEMA013", path, "no task sections found")

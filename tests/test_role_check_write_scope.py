@@ -97,6 +97,14 @@ def test_is_allowed_expands_directory_and_ellipsis_task_scopes():
     assert mod.is_allowed("gen/python/model_pb2.py", ["gen/python/..."], "demo") is True
 
 
+def test_is_allowed_glob_does_not_cross_undeclared_directory_depth():
+    mod = _load_role_check()
+
+    assert mod.is_allowed("src/model.py", ["src/*.py"], "demo") is True
+    assert mod.is_allowed("src/deep/model.py", ["src/*.py"], "demo") is False
+    assert mod.is_allowed("src/deep/model.py", ["src/**/*.py"], "demo") is True
+
+
 def test_state_transition_manifests_declare_change_event_log():
     """Commands that invoke cc-state-transition must declare its event write."""
     import yaml

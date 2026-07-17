@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import hashlib
 import json
 import re
@@ -27,6 +26,7 @@ from change_docs import (
     parse_involved_files,
     parse_key_value,
     parse_workflow_commands,
+    path_matches_scope,
 )
 
 BASELINE_FILENAME = "role-baseline.json"
@@ -295,11 +295,7 @@ def expand(pattern: str, change_id: str | None) -> str:
 
 def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
     expanded = [expand(pattern, change_id) for pattern in patterns]
-    return any(
-        fnmatch.fnmatch(path, pattern.replace("...", "*"))
-        or (pattern.endswith("/") and path.startswith(pattern))
-        for pattern in expanded
-    )
+    return any(path_matches_scope(path, pattern) for pattern in expanded)
 
 
 def build_role_report(

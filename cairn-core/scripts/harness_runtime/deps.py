@@ -2,22 +2,41 @@
 
 from __future__ import annotations
 
-import fnmatch
 import re
 import subprocess
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from change_docs import (
     named_table_rows,
+    overlapping_scope_label,
+    path_matches_scope,
     parse_declared_paths,
     parse_file_table,
     parse_involved_files,
+    scopes_overlap,
 )
 
 from harness_runtime import require_yaml
+
+
+CHANGE_GOVERNANCE_FILENAMES = frozenset(
+    {
+        "events.jsonl",
+        "log.md",
+        "review.md",
+        "spec.md",
+        "tasks.md",
+        "test-spec.md",
+        "wave-plan.json",
+    }
+)
+# Verification baselines are deliberately absent: they are machine-local and
+# gitignored, so treating a tracked baseline as owned would reintroduce churn.
+GLOBAL_GOVERNANCE_SCOPES = frozenset({".cairness/changes/task-board.md"})
 
 
 @dataclass
@@ -97,7 +116,7 @@ def discover_changes(root: Path) -> dict[str, ChangeInfo]:
             continue
 
         change_id = spec.get("change_id", spec_file.parent.name)
-        if not change_id:
+        if not change_id or change_id != spec_file.parent.name:
             continue
 
         change = ChangeInfo(
@@ -189,43 +208,56 @@ def detect_file_conflicts(
 ) -> list[dict[str, Any]]:
     """Detect overlapping file declarations between changes."""
     conflicts: list[dict[str, Any]] = []
-    change_list = list(changes.values())
+    change_list = [change for change in changes.values() if change.status != "done"]
     if target_change:
-        change_list = [
-            change for change in change_list if change.change_id == target_change
-        ]
-        if not change_list:
+        target = changes.get(target_change)
+        if target is None or target.status == "done":
             return conflicts
+        pairs = [
+            (target, other)
+            for other in change_list
+            if other.change_id != target_change
+        ]
+    else:
+        pairs = [
+            (change, other)
+            for index, change in enumerate(change_list)
+            for other in change_list[index + 1 :]
+        ]
 
-    for index, change in enumerate(change_list):
-        for other in change_list[index + 1 :]:
-            if not change.files or not other.files:
-                continue
-            overlap = change.files & other.files
-            if not overlap:
-                continue
-            has_dependency = (
-                other.change_id in change.depends_on
-                or change.change_id in other.depends_on
-            )
-            severity = (
-                "warning"
-                if change.parallel_safe and other.parallel_safe and has_dependency
-                else "conflict"
-            )
-            conflicts.append(
-                {
-                    "change_a": change.change_id,
-                    "change_b": other.change_id,
-                    "overlapping_files": sorted(overlap),
-                    "severity": severity,
-                    "recommendation": (
-                        "merge into one change or split by sub-module"
-                        if severity == "conflict"
-                        else "dependency declared — sequential execution recommended"
-                    ),
-                }
-            )
+    for change, other in pairs:
+        if not change.files or not other.files:
+            continue
+        overlap = {
+            overlapping_scope_label(left, right)
+            for left in change.files
+            for right in other.files
+            if scopes_overlap(left, right)
+        }
+        if not overlap:
+            continue
+        has_dependency = (
+            other.change_id in change.depends_on
+            or change.change_id in other.depends_on
+        )
+        severity = (
+            "warning"
+            if change.parallel_safe and other.parallel_safe and has_dependency
+            else "conflict"
+        )
+        conflicts.append(
+            {
+                "change_a": change.change_id,
+                "change_b": other.change_id,
+                "overlapping_files": sorted(overlap),
+                "severity": severity,
+                "recommendation": (
+                    "merge into one change or split by sub-module"
+                    if severity == "conflict"
+                    else "dependency declared — sequential execution recommended"
+                ),
+            }
+        )
 
     return conflicts
 
@@ -278,20 +310,26 @@ def check_dependencies(
 
 def get_git_diff_files(root: Path, staged: bool = True) -> list[str]:
     """Return changed Git paths in the requested index/worktree scope."""
-    args = ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+    commands = [["diff", "--cached", "--name-only", "--diff-filter=ACMRD"]]
     if not staged:
-        args = ["diff", "--name-only", "--diff-filter=ACMR"]
+        commands = [
+            ["diff", "--name-only", "--diff-filter=ACMRD"],
+            ["ls-files", "--others", "--exclude-standard"],
+        ]
     try:
-        result = subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            cwd=str(root),
-            timeout=10,
-        )
-        if result.returncode != 0:
-            return []
-        return [path.strip() for path in result.stdout.splitlines() if path.strip()]
+        paths: set[str] = set()
+        for args in commands:
+            result = subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                cwd=str(root),
+                timeout=10,
+            )
+            if result.returncode != 0:
+                return []
+            paths.update(path.strip() for path in result.stdout.splitlines() if path.strip())
+        return sorted(paths)
     except (subprocess.TimeoutExpired, OSError):
         return []
 
@@ -312,18 +350,24 @@ def is_git_repo(root: Path) -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
-def file_matches_declared(git_file: str, declared_files: set[str]) -> bool:
+def file_matches_declared(git_file: str, declared_files: Iterable[str]) -> bool:
     """Return whether a Git path matches any declared change path."""
-    for declared in declared_files:
-        if git_file == declared:
-            return True
-        if git_file.endswith("/" + declared) or git_file.endswith(declared):
-            return True
-        if fnmatch.fnmatch(git_file, declared):
-            return True
-        if declared.endswith("/" + git_file) or declared.endswith(git_file):
-            return True
-    return False
+    return any(path_matches_scope(git_file, declared) for declared in declared_files)
+
+
+def change_governance_files(root: Path, change: ChangeInfo) -> set[str]:
+    """Return lifecycle-owned files for a valid discovered change directory."""
+    if change.dir_path is None:
+        return set()
+    changes_root = (root / ".cairness" / "changes").resolve()
+    try:
+        relative_dir = change.dir_path.resolve().relative_to(changes_root)
+    except (OSError, ValueError):
+        return set()
+    if not relative_dir.parts:
+        return set()
+    prefix = (Path(".cairness") / "changes" / relative_dir).as_posix()
+    return {f"{prefix}/{name}" for name in CHANGE_GOVERNANCE_FILENAMES}
 
 
 def detect_orphans(
@@ -339,11 +383,22 @@ def detect_orphans(
     intentional_scopes = parse_intentional_orphan_scopes(
         root / ".cairness" / "changes" / "task-board.md"
     )
-    all_declared = {
-        change_id: change.files
+    governance_by_change = {
+        change_id: change_governance_files(root, change)
         for change_id, change in changes.items()
+    }
+    eligible_changes = {
+        change_id: change
+        for change_id, change in changes.items()
+        if change.status != "done"
+        or f".cairness/changes/{change_id}/events.jsonl" in git_files
+    }
+    task_declared = {
+        change_id: change.files
+        for change_id, change in eligible_changes.items()
         if change.files
     }
+    all_declared = dict(task_declared)
 
     if not git_files:
         return {
@@ -352,20 +407,26 @@ def detect_orphans(
             "orphan_files": [],
             "matched_files": [],
             "matched_by_change": {},
+            "governance_files": [],
+            "ambiguous_files": {},
+            "eligible_changes": sorted(eligible_changes),
             "intentional_files": [],
             "intentional_scopes": sorted(intentional_scopes),
             "has_orphans": False,
             "total_changes": len(changes),
-            "changes_with_files": len(all_declared),
+            "changes_with_files": len(task_declared),
         }
 
-    if not all_declared and not intentional_scopes:
+    if not changes and not intentional_scopes:
         return {
             "staged": staged,
             "total_git_files": len(git_files),
             "orphan_files": [],
             "matched_files": [],
             "matched_by_change": {},
+            "governance_files": [],
+            "ambiguous_files": {},
+            "eligible_changes": [],
             "intentional_files": [],
             "intentional_scopes": [],
             "has_orphans": False,
@@ -376,19 +437,44 @@ def detect_orphans(
 
     orphan_files: list[str] = []
     matched_files: list[str] = []
+    governance_files: list[str] = []
     intentional_files: list[str] = []
     matched_by_change: dict[str, list[str]] = defaultdict(list)
+    ambiguous_files: dict[str, list[str]] = {}
     for git_file in git_files:
-        for change_id, declared in all_declared.items():
-            if file_matches_declared(git_file, declared):
-                matched_files.append(git_file)
+        governance_owner = next(
+            (
+                change_id
+                for change_id, scopes in governance_by_change.items()
+                if git_file in scopes
+            ),
+            None,
+        )
+        if governance_owner is not None:
+            matched_files.append(git_file)
+            governance_files.append(git_file)
+            matched_by_change[governance_owner].append(git_file)
+            continue
+        if file_matches_declared(git_file, GLOBAL_GOVERNANCE_SCOPES):
+            matched_files.append(git_file)
+            governance_files.append(git_file)
+            continue
+        owners = [
+            change_id
+            for change_id, declared in all_declared.items()
+            if file_matches_declared(git_file, declared)
+        ]
+        if owners:
+            matched_files.append(git_file)
+            for change_id in owners:
                 matched_by_change[change_id].append(git_file)
-                break
+            if len(owners) > 1:
+                ambiguous_files[git_file] = owners
+            continue
+        if file_matches_declared(git_file, intentional_scopes):
+            intentional_files.append(git_file)
         else:
-            if file_matches_declared(git_file, intentional_scopes):
-                intentional_files.append(git_file)
-            else:
-                orphan_files.append(git_file)
+            orphan_files.append(git_file)
 
     return {
         "staged": staged,
@@ -396,9 +482,12 @@ def detect_orphans(
         "orphan_files": orphan_files,
         "matched_files": matched_files,
         "matched_by_change": dict(matched_by_change),
+        "governance_files": governance_files,
+        "ambiguous_files": ambiguous_files,
+        "eligible_changes": sorted(eligible_changes),
         "intentional_files": intentional_files,
         "intentional_scopes": sorted(intentional_scopes),
         "has_orphans": bool(orphan_files),
         "total_changes": len(changes),
-        "changes_with_files": len(all_declared),
+        "changes_with_files": len(task_declared),
     }

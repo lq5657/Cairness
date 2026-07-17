@@ -114,6 +114,25 @@ def test_directory_and_ellipsis_scopes_cover_individual_reviewed_files(tmp_path)
     assert json.loads(proc.stdout)["issues"] == []
 
 
+def test_bare_basename_does_not_cover_nested_declared_file(tmp_path):
+    changes = tmp_path / "changes" / "C-test"
+    _write_change(
+        changes,
+        tasks="* **涉及文件**: `src/spec.md`\n",
+        review=_SCOPE_TABLE + "| spec.md | yes | reviewed | 0 | |\n",
+        log=None,
+    )
+
+    proc = _run(["--json", str(changes)])
+
+    assert proc.returncode == 1
+    report = json.loads(proc.stdout)
+    assert any(
+        issue["code"] == "E_SCOPE002" and "src/spec.md" in issue["message"]
+        for issue in report["issues"]
+    )
+
+
 def test_scope001_out_of_scope_flag_without_spec_review_flag(tmp_path):
     """out_of_scope_flagged row with no log.md spec_review_flag → E_SCOPE001."""
     changes = tmp_path / "changes" / "C-test"

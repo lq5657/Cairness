@@ -25,8 +25,8 @@ Cairness 是一套**机器可执行的 YAML 合同体系**——不是给 AI 一
 |------|------|
 | `cc-verify` | 聚合 Harness、adapter 和项目验证的统一门禁 |
 | `cc-adapter-check` | Claude Code/Codex adapter 离线回归基线；真实 `quick`/`release` 宿主 smoke 当前仅 Claude Code 显式 opt-in |
-| `cc-deps orphans` | 孤儿变更检测：git diff vs tasks.md 文件声明，找出未被任何 change 声明的文件修改 |
-| `cc-deps conflicts` | 跨 change 文件冲突检测：两个 change 不能声明同一文件 |
+| `cc-deps orphans` | 孤儿变更检测：以当前未归档 change 的 tasks 声明校验 staged/working 新增、修改、重命名和删除；有效 change 的标准生命周期产物由 Harness 精确归属，历史 done change 不会永久授权业务文件 |
+| `cc-deps conflicts` | 当前未归档 change 的路径冲突检测：统一支持精确文件、目录、glob 与 `...` 递归范围，目标 change 存在真实冲突时返回非零 |
 | `cc-deps check` | 依赖满足检查：目标 change 的 depends_on 是否全部完成 |
 | `cc-deps graph` | 依赖图可视化（ASCII / DOT / JSON） |
 | `cc-delta-check` | pre/post apply 基线对比，检测实现过程中引入的新失败 |
