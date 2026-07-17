@@ -1,5 +1,15 @@
 # 升级指南
 
+## 升级到 1.2.7
+
+补丁版本，合法 change 文档向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得修复。
+
+升级后，`cc-deps orphans` 会自动识别有效 change 目录中的 `spec.md`、`tasks.md`、`test-spec.md`、`log.md`、`review.md`、`events.jsonl` 和 `wave-plan.json`，不再要求把这些 Harness 生命周期产物写入业务任务范围或逐项登记 intentional 例外。未知治理文件仍会被检查。
+
+业务文件只接受当前未归档 change 的任务声明；历史 `done` change 不再永久授权它过去修改过的路径。归档提交通过本次 staged `events.jsonl` 继续获得同一 change 的业务归属。路径匹配现在锚定项目根，并统一支持目录、glob、`**` 和 `...`；裸文件名不会匹配任意子目录中的同名文件。
+
+`cc-deps conflicts --change` 现在会实际比较其他未归档 change，真实冲突返回退出码 1，不存在的 change 返回 2。working orphan 检查会包含未跟踪文件，删除文件也会进入 staged/working 检测。若 spec 或 tasks 的 `change_id` 与目录名不一致，schema check 将分别报告 `E_SCHEMA201` 或 `E_SCHEMA202`。
+
 ## 升级到 1.2.6
 
 补丁版本，向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得本版本修复。

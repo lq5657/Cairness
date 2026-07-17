@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.7 - 2026-07-17
+
+Change-ownership and path-scope integrity patch for No Spec, No Code gates.
+All changes are backward-compatible for valid change documents.
+
+- Made `cc-deps orphans` recognize standard lifecycle-owned change artifacts
+  without requiring them in business task declarations or task-board exception
+  rows, while keeping unknown state files subject to orphan detection.
+- Anchored exact declarations at the project root and unified segment-aware
+  directory, glob, `**`, and `...` matching across deps, role, and review-scope
+  checks, eliminating cross-directory basename matches.
+- Prevented archived changes from permanently authorizing later business-file
+  edits; an archived change is eligible only when its event log participates in
+  the staged lifecycle commit. Multi-change ownership is now reported explicitly.
+- Fixed `cc-deps conflicts --change` so it compares the target with other active
+  changes, understands directory and recursive scopes, and returns nonzero for
+  real conflicts while ignoring archived history.
+- Included untracked working files and staged/working deletions in orphan checks,
+  and added `E_SCHEMA201`/`E_SCHEMA202` for change ID/directory mismatches.
+- Added focused regressions plus a replay of the real selector-config governance
+  failure that originally exposed the four false-positive lifecycle artifacts.
+
 ## 1.2.6 - 2026-07-17
 
 Harness integrity patch for lifecycle event ownership and self-healing Loop

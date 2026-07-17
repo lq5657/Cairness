@@ -174,11 +174,11 @@ cc-cairn update       # 拉取最新版并更新元数据所选活动 adapter（
 `cc-cairn init` 生成的 `.github/workflows/cairness.yml` 使用固定版本 Action，从对应 release 下载 `cairness-<version>.tar.gz` 和 `SHA256SUMS`，校验后临时安装 `.claude/`。标准 GitHub-hosted runner 不需要预装 Cairness，也不会隐式跟随 `main` 或 `latest`。
 
 ```yaml
-- uses: lq5657/Cairness/.github/actions/cairness@v1.2.6
+- uses: lq5657/Cairness/.github/actions/cairness@v1.2.7
   with:
-    version: 1.2.6
-    archive-url: https://github.com/lq5657/Cairness/releases/download/v1.2.6/cairness-1.2.6.tar.gz
-    checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.2.6/SHA256SUMS
+    version: 1.2.7
+    archive-url: https://github.com/lq5657/Cairness/releases/download/v1.2.7/cairness-1.2.7.tar.gz
+    checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.2.7/SHA256SUMS
     mode: full
 ```
 
