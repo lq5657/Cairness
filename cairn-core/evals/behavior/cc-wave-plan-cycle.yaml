@@ -7,7 +7,8 @@ command:
   - -c
   - |
     set +e
-    CHANGE_DIR="$PWD/.cairness/changes/chg-cycle"
+    CHANGE_ID="chg-cycle-$$"
+    CHANGE_DIR="$PWD/.cairness/changes/$CHANGE_ID"
     trap 'rm -rf "$CHANGE_DIR" || true' EXIT
     mkdir -p "$CHANGE_DIR"
     cat > "$CHANGE_DIR/tasks.md" <<'TASKS'
@@ -18,7 +19,7 @@ command:
     * **依赖 / Wave**: depends_on=[T1]
     * **涉及文件**: b.go
     TASKS
-    "$CAIRNESS_FRAMEWORK_ROOT/scripts/cc-wave-plan" --change chg-cycle --json
+    "$CAIRNESS_FRAMEWORK_ROOT/scripts/cc-wave-plan" --change "$CHANGE_ID" --json
     code=$?
     exit $code
 expect_exit_code: 1

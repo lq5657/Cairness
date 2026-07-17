@@ -186,6 +186,45 @@ def test_parse_involved_files_simple_format():
     assert files == {"a.go", "b.go"}
 
 
+def test_parse_involved_files_splits_multiple_backtick_paths_on_one_line():
+    cd = _load_change_docs()
+    files = cd.parse_involved_files(
+        "* **涉及文件**: `worker/schema.py`, `worker/engine.py`, "
+        "`worker/test_engine.py`（新建）\n"
+    )
+    assert files == {
+        "worker/schema.py",
+        "worker/engine.py",
+        "worker/test_engine.py",
+    }
+
+
+def test_parse_involved_files_filters_non_path_placeholders_and_prose():
+    cd = _load_change_docs()
+    tasks = (
+        "* **涉及文件**: 无（纯验证）\n\n"
+        "* **涉及文件**: `go.mod`, 目录结构\n"
+    )
+    assert cd.parse_involved_files(tasks) == {"go.mod"}
+
+
+def test_parse_declared_paths_supports_plain_legacy_inline_list():
+    cd = _load_change_docs()
+    assert cd.parse_declared_paths("a.go, b.go；web/src/") == {
+        "a.go",
+        "b.go",
+        "web/src/",
+    }
+
+
+def test_parse_declared_paths_splits_spaced_slash_scope_separator():
+    cd = _load_change_docs()
+    assert cd.parse_declared_paths("gen/go/... / gen/python/...") == {
+        "gen/go/...",
+        "gen/python/...",
+    }
+
+
 def test_parse_involved_files_empty():
     """No **涉及文件** block → empty set."""
     cd = _load_change_docs()

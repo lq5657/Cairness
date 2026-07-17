@@ -56,6 +56,11 @@ def test_canonical_language_strips_backticks_and_inline_notes(harness_runtime):
     assert f("python; maybe later", KNOWN) == "python"
 
 
+def test_canonical_language_uses_first_declared_polyglot_profile(harness_runtime):
+    f = harness_runtime.canonical_language_name
+    assert f("Go（orchestrator） + Python（worker） + TypeScript", KNOWN) == "golang"
+
+
 def test_explicit_language_values_table_row(harness_runtime):
     text = "| 主语言 / language profile | golang | confirmed |\n"
     assert "golang" in harness_runtime.explicit_language_values(text)

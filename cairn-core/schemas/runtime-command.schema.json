@@ -161,6 +161,9 @@
         }
       }
     },
+    "loop_continuation": {
+      "$ref": "#/$defs/loopContinuation"
+    },
     "subagents": {
       "type": "object",
       "additionalProperties": false,
@@ -435,6 +438,48 @@
         "audit": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "loopContinuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "when",
+        "same_session",
+        "yield_between_commands",
+        "on_pass",
+        "stop_conditions"
+      ],
+      "properties": {
+        "when": {
+          "type": "string",
+          "minLength": 1
+        },
+        "same_session": {
+          "const": true
+        },
+        "yield_between_commands": {
+          "const": false
+        },
+        "on_pass": {
+          "$ref": "#/$defs/ccCommand"
+        },
+        "on_conditions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/snakeId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ccCommand"
+          }
+        },
+        "stop_conditions": {
+          "$ref": "#/$defs/nonEmptySnakeList"
+        },
+        "audit": {
+          "$ref": "#/$defs/snakeId"
         }
       }
     }

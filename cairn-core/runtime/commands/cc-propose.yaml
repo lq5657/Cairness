@@ -135,6 +135,17 @@ interaction_contract:
       - do_not_enter_apply_without_explicit_user_confirmation
       - next_action_must_be_choose_hard_gate_confirmation_option
 
+loop_continuation:
+  when: profile_is_loop_and_loop_config_exists
+  same_session: true
+  yield_between_commands: false
+  on_pass: cc-apply
+  stop_conditions:
+    - self_eval_not_approved
+    - command_status_blocked_or_partial
+    - circuit_breaker_triggered
+  audit: record_loop_continuation
+
 topic_rules:
   when_interaction_fatigue_detection_applies:
     - .claude/runtime/topic-rules/interaction-guidance.yaml

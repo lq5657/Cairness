@@ -393,6 +393,8 @@ Loop 模式下，agent 会：
 2. 运行 `cc-self-eval` 对照信任包络打分
 3. 通过则自动进入 `cc-apply` → `cc-review` → `cc-archive`
 4. 每个自动决策记入 `.cairness/loop-audit/`
+
+续跑发生在发起 `cc-propose` / `cc-apply` 的同一个 agent turn 内：阶段通过后 agent 必须直接加载下一命令 readset，不在命令之间等待人工回复。只有验证失败、命令返回 `blocked` / `partial`、超出 trust envelope 或命中 circuit breaker 时才暂停。`cc-cairn loop enable` 负责启用这项运行时合同；它本身不会在后台创建另一个 agent 进程。
 5. 超出信任包络或遇到熔断条件时，给你一条精准问题，不展示全套 gate
 
 ### 熔断器

@@ -91,6 +91,12 @@ def test_is_allowed_still_rejects_out_of_scope():
     assert mod.is_allowed("src/main.go", patterns, "demo") is False
 
 
+def test_is_allowed_expands_directory_and_ellipsis_task_scopes():
+    mod = _load_role_check()
+    assert mod.is_allowed("gen/go/model.pb.go", ["gen/go/"], "demo") is True
+    assert mod.is_allowed("gen/python/model_pb2.py", ["gen/python/..."], "demo") is True
+
+
 # --- defect 2: baseline self-reference --------------------------------------
 
 
@@ -208,3 +214,93 @@ def test_baseline_exclusion_does_not_mask_real_out_of_scope(tmp_path, monkeypatc
     assert ".cairness/changes/demo/baseline/role-baseline.json" not in paths, paths
 
 
+def test_recorded_baseline_ignores_preexisting_dirty_but_detects_new_write(
+    tmp_path, monkeypatch
+):
+    mod = _load_role_check()
+    root = _make_git_repo(tmp_path)
+    _minimal_manifest(root, [".cairness/changes/<change-id>/spec.md"])
+    (root / "legacy.txt").write_text("clean\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=str(root), check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=str(root), check=True)
+    (root / "legacy.txt").write_text("preexisting\n", encoding="utf-8")
+
+    code, _, _ = _run_main(
+        mod,
+        ["--record-baseline", "--change", "demo", "--project-root", str(root)],
+        monkeypatch,
+    )
+    assert code == 0
+    (root / "rogue.go").write_text("package rogue\n", encoding="utf-8")
+
+    _, out, _ = _run_main(
+        mod,
+        ["--command", "cc-apply", "--change", "demo", "--project-root", str(root), "--json"],
+        monkeypatch,
+    )
+    report = json.loads(out)
+    assert [issue["path"] for issue in report["issues"]] == ["rogue.go"]
+    assert "legacy.txt" not in report["dirty_paths"]
+
+
+def test_recorded_baseline_detects_content_change_to_already_dirty_path(
+    tmp_path, monkeypatch
+):
+    mod = _load_role_check()
+    root = _make_git_repo(tmp_path)
+    _minimal_manifest(root, [".cairness/changes/<change-id>/spec.md"])
+    (root / "legacy.txt").write_text("clean\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=str(root), check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=str(root), check=True)
+    (root / "legacy.txt").write_text("preexisting\n", encoding="utf-8")
+    mod.record_baseline(root, "demo")
+
+    (root / "legacy.txt").write_text("changed during command\n", encoding="utf-8")
+    report = mod.build_role_report("cc-apply", "demo", root)
+
+    assert [issue["path"] for issue in report["issues"]] == ["legacy.txt"]
+
+
+def test_missing_baseline_initializes_without_reporting_historical_dirty(tmp_path):
+    mod = _load_role_check()
+    root = _make_git_repo(tmp_path)
+    _minimal_manifest(root, [".cairness/changes/<change-id>/spec.md"])
+    subprocess.run(["git", "add", "-A"], cwd=str(root), check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=str(root), check=True)
+    (root / "historical.txt").write_text("already dirty\n", encoding="utf-8")
+
+    report = mod.build_role_report("cc-apply", "demo", root)
+
+    assert report["status"] == "passed"
+    assert report["issues"] == []
+    assert report["baseline_initialized"] is True
+
+
+def test_apply_resolves_task_declared_abstract_scope_before_role_check(tmp_path):
+    mod = _load_role_check()
+    root = _make_git_repo(tmp_path)
+    _minimal_manifest(
+        root,
+        [
+            "task_declared_code_files",
+            ".cairness/changes/<change-id>/tasks.md",
+        ],
+    )
+    change = root / ".cairness" / "changes" / "demo"
+    change.mkdir(parents=True)
+    (change / "tasks.md").write_text(
+        "* **涉及文件**: `declared.go`, `declared_test.go`\n",
+        encoding="utf-8",
+    )
+    (root / "declared.go").write_text("package demo\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=str(root), check=True)
+    subprocess.run(["git", "commit", "-qm", "init"], cwd=str(root), check=True)
+    mod.record_baseline(root, "demo")
+
+    (root / "declared.go").write_text("package demo\n// allowed\n", encoding="utf-8")
+    (root / "rogue.go").write_text("package rogue\n", encoding="utf-8")
+    report = mod.build_role_report("cc-apply", "demo", root)
+
+    assert report["status"] == "failed"
+    assert report["dirty_paths"] == ["declared.go", "rogue.go"]
+    assert [issue["path"] for issue in report["issues"]] == ["rogue.go"]

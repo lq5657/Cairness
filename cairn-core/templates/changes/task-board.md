@@ -22,3 +22,11 @@ updated_by: <cc-new-project|cc-propose|cc-apply|cc-review|cc-fix|cc-test|cc-arch
 | change_id / 候选项 | 阻塞原因 | 需要谁确认 | 恢复入口 | 记录位置 |
 |--------------------|----------|------------|----------|----------|
 |  |  |  |  |  |
+
+## 4. Intentional 例外
+
+仅登记不应归入任何 change tasks 的有意 Git 变更。`cc-deps orphans` 会读取“范围”列；支持精确路径、glob，以及 ``prefix/{a,b}`` 形式的单层或嵌套 brace 范围。
+
+| 日期 | 关联 change | 范围 | 原因 | 处置 |
+|------|-------------|------|------|------|
+|  |  |  |  |  |

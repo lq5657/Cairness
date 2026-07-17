@@ -137,6 +137,12 @@ def test_codex_framework_fixtures_do_not_ambiguate_project_language(
         encoding="utf-8",
     )
     (project / "greeting.py").write_text("VALUE = 'hello'\n", encoding="utf-8")
+    backup_fixture = project / ".claude.bak" / "fixtures" / "go-sample"
+    backup_fixture.mkdir(parents=True)
+    (backup_fixture / "go.mod").write_text("module backup.example\n", encoding="utf-8")
+    ts_backup = project / ".codex.bak" / "fixtures" / "ts-sample"
+    ts_backup.mkdir(parents=True)
+    (ts_backup / "package.json").write_text("{}\n", encoding="utf-8")
 
     resolution = resolve_language_profile(
         project,
@@ -147,6 +153,41 @@ def test_codex_framework_fixtures_do_not_ambiguate_project_language(
     assert resolution.profile_name == "python"
     assert resolution.matched_profiles == ("python",)
     assert all(".codex/" not in reason for reason in resolution.reasons)
+    assert all(".bak/" not in reason for reason in resolution.reasons)
+
+
+def test_custom_framework_backup_is_excluded_from_language_scan(tmp_path: Path):
+    from harness_runtime.project_scan import iter_project_files
+
+    project = tmp_path / "project"
+    project.mkdir()
+    active = project / ".agent-x"
+    active.mkdir()
+    backup = project / ".agent-x.bak" / "fixtures"
+    backup.mkdir(parents=True)
+    (backup / "go.mod").write_text("module backup.example\n", encoding="utf-8")
+    (project / "pyproject.toml").write_text("[project]\nname='real'\n", encoding="utf-8")
+
+    scanned = {
+        path.relative_to(project).as_posix()
+        for path in iter_project_files(project, additional_roots=(active,))
+    }
+
+    assert scanned == {"pyproject.toml"}
+
+
+def test_nested_dependency_trees_are_excluded_from_language_scan(tmp_path: Path):
+    from harness_runtime.project_scan import iter_project_files
+
+    project = tmp_path / "project"
+    nested_dependency = project / "web" / "node_modules" / "native-package"
+    nested_dependency.mkdir(parents=True)
+    (nested_dependency / "Makefile").write_text("all:\n\ttrue\n", encoding="utf-8")
+    (project / "go.mod").write_text("module real.example\n", encoding="utf-8")
+
+    scanned = {path.relative_to(project).as_posix() for path in iter_project_files(project)}
+
+    assert scanned == {"go.mod"}
 
 
 def test_installed_codex_full_verify_checks_codex_adapter(

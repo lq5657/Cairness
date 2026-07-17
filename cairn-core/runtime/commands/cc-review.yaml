@@ -112,6 +112,19 @@ interaction_contract:
       - do_not_mark_finding_accepted_or_recommend_archive_without_explicit_user_choice
       - next_action_must_be_choose_finding_disposition
 
+loop_continuation:
+  when: profile_is_loop_and_loop_config_exists
+  same_session: true
+  yield_between_commands: false
+  on_pass: cc-test
+  on_conditions:
+    auto_fixable_open_findings: cc-fix
+  stop_conditions:
+    - command_status_blocked_or_partial_without_auto_fixable_findings
+    - important_critical_or_security_finding
+    - circuit_breaker_triggered
+  audit: record_loop_continuation
+
 topic_rules:
   when_interaction_fatigue_detection_applies:
     - .claude/runtime/topic-rules/interaction-guidance.yaml
@@ -205,6 +218,7 @@ red_flags:
 
 steps:
   - read_change_artifacts
+  - record_role_baseline_before_first_command_write
   - build_review_lens_matrix
   - when_change_exceeds_triage_threshold_assess_review_risks
   - read_domain_language_when_review_lens_is_triggered
@@ -247,6 +261,7 @@ result_contract:
       - interaction_state
   next_actions:
     - run_cc_fix_or_cc_archive_or_choose_finding_disposition
+    - continue_loop_to_cc_test_or_cc_fix_without_yielding
 
 stop_conditions:
   - spec_status_not_review

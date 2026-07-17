@@ -71,6 +71,49 @@ def test_passes_when_reviewed_files_cover_declarations(tmp_path):
     assert report["issues"] == []
 
 
+def test_passes_when_inline_backtick_paths_are_reviewed_individually(tmp_path):
+    changes = tmp_path / "changes" / "C-test"
+    _write_change(
+        changes,
+        tasks=(
+            "* **涉及文件**: `a.go`, `pkg/b.go`, `tests/test_b.go`（新建）\n"
+        ),
+        review=(
+            _SCOPE_TABLE
+            + "| a.go | yes | reviewed | 0 | |\n"
+            + "| pkg/b.go | yes | reviewed | 0 | |\n"
+            + "| tests/test_b.go | yes | reviewed | 0 | |\n"
+        ),
+        log=None,
+    )
+
+    proc = _run(["--json", str(changes)])
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert json.loads(proc.stdout)["issues"] == []
+
+
+def test_directory_and_ellipsis_scopes_cover_individual_reviewed_files(tmp_path):
+    changes = tmp_path / "changes" / "C-test"
+    _write_change(
+        changes,
+        tasks=(
+            "* **涉及文件**: `gen/go/`, `gen/python/generated.py`\n"
+        ),
+        review=(
+            _SCOPE_TABLE
+            + "| gen/go/model.pb.go | yes | reviewed | 0 | |\n"
+            + "| gen/python/... | yes | skipped_generated | 0 | |\n"
+        ),
+        log=None,
+    )
+
+    proc = _run(["--json", str(changes)])
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert json.loads(proc.stdout)["issues"] == []
+
+
 def test_scope001_out_of_scope_flag_without_spec_review_flag(tmp_path):
     """out_of_scope_flagged row with no log.md spec_review_flag → E_SCOPE001."""
     changes = tmp_path / "changes" / "C-test"

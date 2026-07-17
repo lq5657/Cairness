@@ -52,6 +52,19 @@ def _write_change_with_files(root: Path, declared: str) -> None:
     (change_dir / "tasks.md").write_text(f"**涉及文件**:\n- {declared}\n", encoding="utf-8")
 
 
+def _write_intentional_scopes(root: Path, scope: str) -> None:
+    board = root / ".cairness" / "changes" / "task-board.md"
+    board.parent.mkdir(parents=True, exist_ok=True)
+    board.write_text(
+        "# Task Board\n\n"
+        "## 4. Intentional 例外\n\n"
+        "| 日期 | 关联 change | 范围 | 原因 | 处置 |\n"
+        "|------|-------------|------|------|------|\n"
+        f"| 2026-07-17 | C1 | {scope} | governance output | keep |\n",
+        encoding="utf-8",
+    )
+
+
 def _run_main(mod, argv, monkeypatch):
     out = io.StringIO()
     err = io.StringIO()
@@ -146,6 +159,35 @@ def test_detect_orphans_finds_undeclared_file(tmp_path):
     assert "rogue.go" in result["orphan_files"]
     assert "declared.go" not in result["orphan_files"]
     assert result.get("no_declared_source") is None
+
+
+def test_detect_orphans_consumes_intentional_task_board_brace_scopes(tmp_path):
+    mod = _load_cc_deps()
+    root = _make_git_repo(tmp_path)
+    changes = {"C1": mod.ChangeInfo("C1", files={"declared.go"})}
+    _write_intentional_scopes(root, "`.cairness/audits/a-1/{report.md,to-change.md}`; `rogue.go`")
+
+    result = mod.detect_orphans(root, staged=True, changes=changes)
+
+    assert result["orphan_files"] == []
+    assert result["intentional_files"] == ["rogue.go"]
+    assert result["intentional_scopes"] == [
+        ".cairness/audits/a-1/report.md",
+        ".cairness/audits/a-1/to-change.md",
+        "rogue.go",
+    ]
+
+
+def test_intentional_scope_does_not_hide_unmatched_orphan(tmp_path):
+    mod = _load_cc_deps()
+    root = _make_git_repo(tmp_path)
+    changes = {"C1": mod.ChangeInfo("C1", files={"declared.go"})}
+    _write_intentional_scopes(root, "`docs/*.md`")
+
+    result = mod.detect_orphans(root, staged=True, changes=changes)
+
+    assert result["intentional_files"] == []
+    assert result["orphan_files"] == ["rogue.go"]
 
 
 def test_detect_orphans_no_declared_source_passes(tmp_path):

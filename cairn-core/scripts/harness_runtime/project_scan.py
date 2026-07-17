@@ -12,9 +12,23 @@ EXCLUDED_TOP_LEVEL_DIRS = frozenset(
         ".agents",
         ".cairness",
         ".claude",
+        ".claude.bak",
         ".codex",
+        ".codex.bak",
         ".git",
         ".venv",
+        "build",
+        "dist",
+        "node_modules",
+        "target",
+        "vendor",
+    }
+)
+
+EXCLUDED_DIRECTORY_NAMES = frozenset(
+    {
+        ".venv",
+        "__pycache__",
         "build",
         "dist",
         "node_modules",
@@ -39,6 +53,10 @@ def scan_exclusions(
             continue
         if relative.parts:
             exclusions.add(resolved)
+            # Framework upgrades retain the previous runtime beside the active
+            # one as ``<prefix>.bak``.  Its bundled multi-language fixtures are
+            # framework assets, not project-language evidence.
+            exclusions.add(resolved.with_name(resolved.name + ".bak"))
     return tuple(sorted(exclusions, key=str))
 
 
@@ -63,7 +81,8 @@ def iter_project_files(
         directories[:] = sorted(
             name
             for name in directories
-            if not is_excluded(current_path / name, exclusions)
+            if name not in EXCLUDED_DIRECTORY_NAMES
+            and not is_excluded(current_path / name, exclusions)
         )
         for name in sorted(names):
             yield current_path / name

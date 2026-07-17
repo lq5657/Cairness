@@ -235,6 +235,11 @@ def print_orphans(result: dict[str, Any]) -> int:
             for f in files:
                 print(f"    {f}  →  {cid}")
 
+    if result.get("intentional_files"):
+        print(f"\n  ~ Intentional 例外 ({len(result['intentional_files'])}):")
+        for path in result["intentional_files"]:
+            print(f"    {path}  →  task-board.md")
+
     if result["orphan_files"]:
         print(f"\n  ✗ 孤儿文件 ({len(result['orphan_files'])}) — 未被任何 change 声明:")
         for f in result["orphan_files"]:
@@ -386,6 +391,8 @@ def main() -> None:
                     "orphan_files": result["orphan_files"],
                     "matched_files": result["matched_files"],
                     "matched_by_change": result["matched_by_change"],
+                    "intentional_files": result.get("intentional_files", []),
+                    "intentional_scopes": result.get("intentional_scopes", []),
                     "has_orphans": result["has_orphans"],
                     "total_changes": result["total_changes"],
                     "changes_with_files": result["changes_with_files"],

@@ -116,6 +116,17 @@ interaction_contract:
       - do_not_start_apply_until_hard_gate_current
       - next_action_must_be_resolve_hard_gate
 
+loop_continuation:
+  when: profile_is_loop_and_loop_config_exists
+  same_session: true
+  yield_between_commands: false
+  on_pass: cc-review
+  stop_conditions:
+    - command_status_blocked_or_partial
+    - verification_failed
+    - circuit_breaker_triggered
+  audit: record_loop_continuation
+
 topic_rules:
   when_interaction_fatigue_detection_applies:
     - .claude/runtime/topic-rules/interaction-guidance.yaml
@@ -205,6 +216,7 @@ red_flags:
 
 steps:
   - verify_hard_gate_current_or_present_resolution_choices
+  - record_role_baseline_before_first_command_write
   - mark_change_apply
   - generate_wave_plan_via_cc_wave_plan
   - present_wave_confirmation_gate_and_wait
@@ -247,6 +259,7 @@ result_contract:
   next_actions:
     - run_cc_review_or_fix_validation
     - resolve_hard_gate_before_apply
+    - continue_loop_to_cc_review_without_yielding
 
 stop_conditions:
   - missing_required_argument

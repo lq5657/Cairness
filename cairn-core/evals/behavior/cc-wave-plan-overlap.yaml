@@ -8,7 +8,8 @@ command:
   - -c
   - |
     set +e
-    CHANGE_DIR="$PWD/.cairness/changes/chg-overlap"
+    CHANGE_ID="chg-overlap-$$"
+    CHANGE_DIR="$PWD/.cairness/changes/$CHANGE_ID"
     trap 'rm -rf "$CHANGE_DIR" || true' EXIT
     mkdir -p "$CHANGE_DIR"
     cat > "$CHANGE_DIR/tasks.md" <<'TASKS'
@@ -17,7 +18,7 @@ command:
     #### Task 2: B
     * **涉及文件**: a.go
     TASKS
-    "$CAIRNESS_FRAMEWORK_ROOT/scripts/cc-wave-plan" --change chg-overlap --json
+    "$CAIRNESS_FRAMEWORK_ROOT/scripts/cc-wave-plan" --change "$CHANGE_ID" --json
     code=$?
     exit $code
 expect_exit_code: 1

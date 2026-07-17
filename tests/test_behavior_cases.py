@@ -7,6 +7,7 @@ grep would exit non-zero if the gate stopped failing).
 """
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +45,30 @@ def test_behavior_check_runs_all_cases_and_passes():
     assert report["status"] == "passed"
     stems = {Path(p).stem for p in report["checked_cases"]}
     assert REQUIRED_CASES <= stems, f"not all required cases were run: missing {REQUIRED_CASES - stems}"
+
+
+def test_parallel_behavior_checks_isolate_wave_fixtures():
+    """Concurrent full verifies must not share fixed wave change directories."""
+    command = [
+        sys.executable,
+        str(REPO_ROOT / ".claude" / "scripts" / "cc-behavior-check"),
+        "--json",
+    ]
+
+    def run_one(_: int) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        completed = list(pool.map(run_one, range(3)))
+
+    assert all(proc.returncode == 0 for proc in completed), [
+        proc.stdout + proc.stderr for proc in completed if proc.returncode != 0
+    ]
 
 
 def test_each_fixture_exercises_a_failing_gate():

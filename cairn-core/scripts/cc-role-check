@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
 import re
 import subprocess
@@ -20,7 +21,13 @@ from harness_runtime.issues import (
 )
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 
-from change_docs import parse_inline_list, parse_key_value, parse_workflow_commands
+from change_docs import (
+    parse_file_table,
+    parse_inline_list,
+    parse_involved_files,
+    parse_key_value,
+    parse_workflow_commands,
+)
 
 BASELINE_FILENAME = "role-baseline.json"
 
@@ -73,21 +80,40 @@ def baseline_path(project_root: Path, change_id: str) -> Path:
     return project_root / ".cairness" / "changes" / change_id / "baseline" / BASELINE_FILENAME
 
 
-def load_baseline(path: Path) -> list[str]:
+def load_baseline(path: Path) -> tuple[list[str], dict[str, str]] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return []
-    if not isinstance(data, dict) or "dirty_paths" not in data:
-        return []
-    return [str(p) for p in data["dirty_paths"]]
+        return None
+    if (
+        not isinstance(data, dict)
+        or not isinstance(data.get("dirty_paths"), list)
+        or not all(isinstance(item, str) for item in data["dirty_paths"])
+    ):
+        return None
+    paths = [str(p) for p in data["dirty_paths"]]
+    raw_states = data.get("path_states", {})
+    states = (
+        {str(key): str(value) for key, value in raw_states.items()}
+        if isinstance(raw_states, dict)
+        else {}
+    )
+    return paths, states
 
 
-def save_baseline(path: Path, dirty: list[str]) -> None:
+def save_baseline(path: Path, dirty: list[str], states: dict[str, str]) -> None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps({"dirty_paths": dirty, "saved_at": datetime.now().isoformat()}, indent=2),
+            json.dumps(
+                {
+                    "version": 2,
+                    "dirty_paths": dirty,
+                    "path_states": states,
+                    "saved_at": datetime.now().isoformat(),
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
     except OSError:
@@ -102,6 +128,36 @@ def reset_baseline(path: Path) -> bool:
         return True
     except OSError:
         return False
+
+
+def path_state(project_root: Path, relative: str) -> str:
+    """Return a stable fingerprint for one dirty worktree path."""
+    path = project_root / relative
+    try:
+        if path.is_symlink():
+            payload = f"symlink:{path.readlink()}".encode("utf-8", errors="surrogateescape")
+        elif path.is_file():
+            payload = b"file:" + path.read_bytes()
+        elif path.is_dir():
+            payload = b"directory"
+        else:
+            payload = b"missing"
+    except OSError as exc:
+        payload = f"error:{exc.__class__.__name__}".encode("ascii")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def dirty_snapshot(project_root: Path, *, exclude: str = "") -> tuple[list[str], dict[str, str]]:
+    paths = [path for path in dirty_paths(project_root) if path != exclude]
+    return paths, {path: path_state(project_root, path) for path in paths}
+
+
+def record_baseline(project_root: Path, change_id: str) -> tuple[Path, list[str]]:
+    path = baseline_path(project_root, change_id)
+    relative = path.relative_to(project_root).as_posix()
+    paths, states = dirty_snapshot(project_root, exclude=relative)
+    save_baseline(path, paths, states)
+    return path, paths
 
 
 def _load_manifest_writes(
@@ -239,7 +295,11 @@ def expand(pattern: str, change_id: str | None) -> str:
 
 def is_allowed(path: str, patterns: list[str], change_id: str | None) -> bool:
     expanded = [expand(pattern, change_id) for pattern in patterns]
-    return any(fnmatch.fnmatch(path, pattern) for pattern in expanded)
+    return any(
+        fnmatch.fnmatch(path, pattern.replace("...", "*"))
+        or (pattern.endswith("/") and path.startswith(pattern))
+        for pattern in expanded
+    )
 
 
 def build_role_report(
@@ -257,6 +317,13 @@ def build_role_report(
             status="failed",
             extra={"project_root": str(project_root.resolve()), "reason": f"{command} requires --change", "dirty_paths": []},
         )
+    if has_abstract and change_id:
+        tasks_path = project_root / ".cairness" / "changes" / change_id / "tasks.md"
+        if tasks_path.is_file():
+            task_text = tasks_path.read_text(encoding="utf-8")
+            task_files = parse_involved_files(task_text) | parse_file_table(task_text)
+            patterns.extend(sorted(task_files))
+            has_abstract = not bool(task_files)
     if has_abstract:
         return build_issue_report(
             "cc-role-check",
@@ -270,7 +337,9 @@ def build_role_report(
             },
         )
     paths = dirty_paths(project_root)
+    states = {path: path_state(project_root, path) for path in paths}
     previous_paths: list[str] = []
+    previous_states: dict[str, str] = {}
     if change_id:
         bp = baseline_path(project_root, change_id)
         baseline_rel = bp.relative_to(project_root).as_posix()
@@ -280,15 +349,35 @@ def build_role_report(
         # out-of-scope file added in the same run (the snapshot must only
         # record files the command under test actually wrote).
         paths = [p for p in paths if p != baseline_rel]
-        previous_paths = load_baseline(bp)
-    new_paths = [p for p in paths if p not in previous_paths]
+        states.pop(baseline_rel, None)
+        baseline = load_baseline(bp)
+        if baseline is None:
+            save_baseline(bp, paths, states)
+            return build_issue_report(
+                "cc-role-check",
+                [],
+                extra={
+                    "project_root": str(project_root.resolve()),
+                    "command": command,
+                    "change_id": change_id,
+                    "allowed": [expand(pattern, change_id) for pattern in patterns],
+                    "dirty_paths": [],
+                    "baseline_initialized": True,
+                    "baseline_dirty_paths": paths,
+                },
+            )
+        previous_paths, previous_states = baseline
+    new_paths = [
+        path
+        for path in paths
+        if path not in previous_paths
+        or (path in previous_states and states.get(path) != previous_states[path])
+    ]
     issues = [
         Issue("E_ROLE002", path, f"{command} may not write this path")
         for path in new_paths
         if not is_allowed(path, patterns, change_id)
     ]
-    if change_id:
-        save_baseline(baseline_path(project_root, change_id), paths)
     return build_issue_report(
         "cc-role-check",
         issues,
@@ -310,6 +399,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--root", help="Explicit Cairness project root; preferred alias for --project-root.")
     parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     parser.add_argument("--reset-baseline", action="store_true", help="Clear the role baseline for --change.")
+    parser.add_argument(
+        "--record-baseline",
+        action="store_true",
+        help="Capture the current dirty worktree before a command starts.",
+    )
     args = parser.parse_args(argv)
 
     if args.root and args.project_root:
@@ -331,6 +425,9 @@ def main(argv: list[str]) -> int:
             return 2
         project_root = context.project_root
 
+    if args.reset_baseline and args.record_baseline:
+        parser.error("--reset-baseline and --record-baseline are mutually exclusive")
+
     if args.reset_baseline:
         if not args.change:
             report = build_issue_report(
@@ -348,6 +445,27 @@ def main(argv: list[str]) -> int:
             return 0
         print(f"cc-role-check: failed to reset baseline for {args.change}", file=sys.stderr)
         return 1
+
+    if args.record_baseline:
+        if not args.change:
+            print("cc-role-check: --record-baseline requires --change", file=sys.stderr)
+            return 1
+        path, paths = record_baseline(project_root, args.change)
+        report = build_issue_report(
+            "cc-role-check",
+            [],
+            extra={
+                "project_root": str(project_root.resolve()),
+                "change_id": args.change,
+                "baseline": str(path),
+                "baseline_dirty_paths": paths,
+            },
+        )
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(f"cc-role-check: baseline recorded for {args.change} ({len(paths)} dirty paths)")
+        return 0
 
     if not args.command:
         report = build_issue_report(

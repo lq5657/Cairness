@@ -188,6 +188,53 @@ _INVOLVED_FILES_RE = re.compile(
 
 _FILE_TABLE_HEADER_RE = re.compile(r"\|\s*文件\s*\|.*操作\s*\|")
 
+_BACKTICK_PATH_RE = re.compile(r"`([^`]+)`")
+_PATH_ANNOTATION_RE = re.compile(r"\s*[（(][^）)]*[）)]\s*$")
+_NO_FILE_VALUES = {
+    "-",
+    "n/a",
+    "na",
+    "none",
+    "无",
+    "无文件",
+    "纯验证",
+}
+
+
+def _looks_like_path(value: str) -> bool:
+    """Reject prose accidentally captured from an inline file declaration."""
+    return bool(
+        "/" in value
+        or value.startswith(".")
+        or value.endswith("/")
+        or any(char in value for char in "*?[")
+        or re.search(r"\.[A-Za-z0-9_-]+$", value)
+    )
+
+
+def parse_declared_paths(value: str) -> set[str]:
+    """Parse one tasks.md file-declaration value into individual paths.
+
+    Backtick spans are authoritative when present, so an inline declaration
+    such as `` `a.py`, `b.py`（新建） `` produces two paths rather than one
+    comma-joined pseudo-path.  Plain legacy declarations remain supported.
+    """
+    backtick_paths = _BACKTICK_PATH_RE.findall(value)
+    candidates = (
+        backtick_paths
+        if backtick_paths
+        else re.split(r"\s*[,，、;；]\s*|\s+/\s+", value)
+    )
+    paths: set[str] = set()
+    for raw in candidates:
+        candidate = raw.strip().lstrip("-*+ ").strip().strip("`")
+        candidate = _PATH_ANNOTATION_RE.sub("", candidate).strip()
+        if not candidate or candidate.lower() in _NO_FILE_VALUES:
+            continue
+        if backtick_paths or _looks_like_path(candidate):
+            paths.add(candidate)
+    return paths
+
 
 def parse_involved_files(text: str) -> set[str]:
     """Extract file paths from ``**涉及文件**:`` blocks.
@@ -199,9 +246,7 @@ def parse_involved_files(text: str) -> set[str]:
     files: set[str] = set()
     for m in _INVOLVED_FILES_RE.finditer(text):
         for line in m.group(1).splitlines():
-            cell = line.strip().lstrip("-* ").strip().strip("`")
-            if cell and not cell.startswith("("):
-                files.add(cell)
+            files.update(parse_declared_paths(line))
     return {f for f in files if f and not f.isspace()}
 
 
@@ -222,9 +267,7 @@ def parse_file_table(text: str) -> set[str]:
             if line.startswith("|") and not line.startswith("|--"):
                 parts = [p.strip() for p in line.split("|")]
                 if len(parts) >= 2:
-                    fname = parts[1].strip().strip("`")
-                    if fname and not fname.startswith("-"):
-                        files.add(fname)
+                    files.update(parse_declared_paths(parts[1]))
             elif not line.startswith("|"):
                 in_table = False
     return {f for f in files if f and not f.isspace()}

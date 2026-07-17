@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from harness_runtime.project_scan import is_excluded, iter_project_files, scan_exclusions
+from harness_runtime.project_scan import iter_project_files
 from harness_runtime.runtime_layout import RuntimeLayout
 
 
@@ -392,13 +392,12 @@ def first_glob_match(
     *,
     excluded_roots: tuple[Path, ...] = (),
 ) -> Path | None:
-    exclusions = scan_exclusions(scan_root, excluded_roots)
-    for path in scan_root.glob(pattern):
-        if not path.is_file():
-            continue
-        if is_excluded(path, exclusions):
-            continue
-        return path
+    for path in iter_project_files(scan_root, additional_roots=excluded_roots):
+        relative = path.relative_to(scan_root)
+        if relative.match(pattern):
+            return path
+        if pattern.startswith("**/") and relative.match(pattern[3:]):
+            return path
     return None
 
 
@@ -442,6 +441,13 @@ def explicit_language_values(text: str) -> list[str]:
 def canonical_language_name(raw: str, known_profiles: set[str]) -> str:
     value = raw.strip().strip("`").strip()
     value = value.split("；", 1)[0].split(";", 1)[0].strip()
+    # Project context may describe a polyglot repository while still naming
+    # the primary profile first, e.g. ``Go（orchestrator） + Python（worker）``.
+    # Verification currently executes one active profile, so honor that
+    # explicit primary declaration instead of falling back to ambiguous marker
+    # detection. Repository detection itself remains ambiguity-preserving.
+    value = re.split(r"\s+[+＋]\s+", value, maxsplit=1)[0]
+    value = re.sub(r"\s*[（(].*$", "", value).strip()
     if value in PENDING_LANGUAGE_VALUES:
         return ""
     normalized = value.lower()

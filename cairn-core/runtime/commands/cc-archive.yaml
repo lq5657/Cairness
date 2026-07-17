@@ -117,6 +117,7 @@ interaction_contract:
       - next_action_must_be_choose_knowledge_compounding_option
 
 steps:
+  - record_role_baseline_before_first_command_write
   - classify_knowledge_candidate_as_none_new_or_update
   - classify_project_knowledge_vs_harness_refinement_candidate
   - if_knowledge_is_needed_select_destination

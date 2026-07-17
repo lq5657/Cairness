@@ -138,6 +138,17 @@ interaction_contract:
       - do_not_mark_fixed_or_accepted_without_explicit_basis
       - next_action_must_be_choose_finding_disposition
 
+loop_continuation:
+  when: profile_is_loop_and_loop_config_exists
+  same_session: true
+  yield_between_commands: false
+  on_pass: cc-review
+  stop_conditions:
+    - command_status_blocked_or_partial
+    - verification_failed
+    - circuit_breaker_triggered
+  audit: record_loop_continuation
+
 topic_rules:
   always:
     - .claude/runtime/topic-rules/verification.yaml
@@ -229,6 +240,7 @@ red_flags:
   - task_board_updated_by_not_cc_fix
 
 steps:
+  - record_role_baseline_before_first_command_write
   - load_open_findings
   - select_one_eligible_open_finding
   - load_only_targeted_change_context_needed_for_selected_finding
@@ -280,6 +292,7 @@ result_contract:
   next_actions:
     - rerun_cc_review_or_continue_fixes
     - answer_finding_clarification_or_choose_disposition
+    - continue_loop_to_cc_review_without_yielding
 
 stop_conditions:
   - missing_required_argument

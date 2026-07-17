@@ -64,9 +64,21 @@ runtime_protocol_reads:
 preconditions:
   - spec_status_is_apply_or_review
   - choose_mode_supplement_or_recovery
+  - loop_mode_defaults_to_supplement_after_passing_review
   - if_recovery_then_blocked_or_partial_record_exists
   - distinguish_apply_completed_evidence_from_test_supplement
   - read_validation_mapping_and_task_test_requirements
+
+loop_continuation:
+  when: profile_is_loop_and_loop_config_exists
+  same_session: true
+  yield_between_commands: false
+  on_pass: cc-archive
+  stop_conditions:
+    - command_status_blocked_or_partial
+    - fresh_evidence_failed
+    - circuit_breaker_triggered
+  audit: record_loop_continuation
 
 topic_rules:
   always:
@@ -110,6 +122,7 @@ red_flags:
   - log_missing_test_stage_entry
 
 steps:
+  - record_role_baseline_before_first_command_write
   - confirm_test_mode
   - choose_test_levels_and_explain_why
   - load_test_spec_template_before_writing
@@ -140,6 +153,7 @@ result_contract:
       - red_flags
   next_actions:
     - return_to_apply_or_review
+    - continue_loop_to_cc_archive_without_yielding
 
 stop_conditions:
   - missing_required_argument

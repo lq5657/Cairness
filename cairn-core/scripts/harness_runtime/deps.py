@@ -10,7 +10,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from change_docs import parse_file_table, parse_involved_files
+from change_docs import (
+    named_table_rows,
+    parse_declared_paths,
+    parse_file_table,
+    parse_involved_files,
+)
 
 from harness_runtime import require_yaml
 
@@ -45,6 +50,35 @@ def parse_task_files(tasks_path: Path) -> set[str]:
     """Extract declared file paths from a change task document."""
     content = tasks_path.read_text(encoding="utf-8")
     return parse_involved_files(content) | parse_file_table(content)
+
+
+def _expand_brace_scope(scope: str) -> set[str]:
+    """Expand a shell-like ``prefix{a,b}suffix`` scope without executing it."""
+    match = re.search(r"\{([^{}]+)\}", scope)
+    if match is None:
+        return {scope}
+    expanded: set[str] = set()
+    for item in match.group(1).split(","):
+        replacement = scope[: match.start()] + item.strip() + scope[match.end() :]
+        expanded.update(_expand_brace_scope(replacement))
+    return expanded
+
+
+def parse_intentional_orphan_scopes(task_board_path: Path) -> set[str]:
+    """Read executable orphan exceptions from the task-board section 4 table."""
+    try:
+        lines = task_board_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return set()
+    for index, line in enumerate(lines):
+        if re.match(r"^##\s+4\.\s+Intentional\s+例外\s*$", line.strip(), re.IGNORECASE):
+            scopes: set[str] = set()
+            for row in named_table_rows(lines, index + 1):
+                raw_scope = row.get("范围") or row.get("Scope") or row.get("scope") or ""
+                for declared in parse_declared_paths(raw_scope):
+                    scopes.update(_expand_brace_scope(declared))
+            return scopes
+    return set()
 
 
 def discover_changes(root: Path) -> dict[str, ChangeInfo]:
@@ -302,6 +336,9 @@ def detect_orphans(
         changes = discover_changes(root)
 
     git_files = get_git_diff_files(root, staged=staged)
+    intentional_scopes = parse_intentional_orphan_scopes(
+        root / ".cairness" / "changes" / "task-board.md"
+    )
     all_declared = {
         change_id: change.files
         for change_id, change in changes.items()
@@ -315,18 +352,22 @@ def detect_orphans(
             "orphan_files": [],
             "matched_files": [],
             "matched_by_change": {},
+            "intentional_files": [],
+            "intentional_scopes": sorted(intentional_scopes),
             "has_orphans": False,
             "total_changes": len(changes),
             "changes_with_files": len(all_declared),
         }
 
-    if not all_declared:
+    if not all_declared and not intentional_scopes:
         return {
             "staged": staged,
             "total_git_files": len(git_files),
             "orphan_files": [],
             "matched_files": [],
             "matched_by_change": {},
+            "intentional_files": [],
+            "intentional_scopes": [],
             "has_orphans": False,
             "total_changes": len(changes),
             "changes_with_files": 0,
@@ -335,6 +376,7 @@ def detect_orphans(
 
     orphan_files: list[str] = []
     matched_files: list[str] = []
+    intentional_files: list[str] = []
     matched_by_change: dict[str, list[str]] = defaultdict(list)
     for git_file in git_files:
         for change_id, declared in all_declared.items():
@@ -343,7 +385,10 @@ def detect_orphans(
                 matched_by_change[change_id].append(git_file)
                 break
         else:
-            orphan_files.append(git_file)
+            if file_matches_declared(git_file, intentional_scopes):
+                intentional_files.append(git_file)
+            else:
+                orphan_files.append(git_file)
 
     return {
         "staged": staged,
@@ -351,6 +396,8 @@ def detect_orphans(
         "orphan_files": orphan_files,
         "matched_files": matched_files,
         "matched_by_change": dict(matched_by_change),
+        "intentional_files": intentional_files,
+        "intentional_scopes": sorted(intentional_scopes),
         "has_orphans": bool(orphan_files),
         "total_changes": len(changes),
         "changes_with_files": len(all_declared),
