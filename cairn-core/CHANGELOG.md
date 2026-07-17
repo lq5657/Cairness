@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.2.5 - 2026-07-17
+
+Governance-isolation and loop-continuation patch for real-world repositories.
+All changes are backward-compatible.
+
+- Scoped `cc-role-check` reviews to content changes made after a per-change
+  baseline, preventing pre-existing dirty-worktree files from flooding reviews
+  with `E_ROLE002`; task declarations now also resolve directory and ellipsis
+  scopes correctly.
+- Fixed task-path extraction so multiple backtick paths remain separate, made
+  review scope checks understand directory overlap, and isolated concurrent
+  behavior replay fixtures with process-unique change IDs.
+- Hardened language-profile discovery by excluding framework backups and nested
+  dependency/build trees, and by selecting the first declared primary language
+  in compound language declarations.
+- Made `cc-deps orphans` consume the task board's `Intentional 例外` table,
+  including exact paths, globs, and brace-expanded scopes, so registered audit
+  and change-governance artifacts are no longer reported as mechanical orphans.
+- Added a schema-backed same-session loop continuation contract across
+  `cc-propose -> cc-apply -> cc-review -> cc-test -> cc-archive`, including the
+  `cc-review -> cc-fix -> cc-review` repair cycle and explicit stop conditions.
+- Added focused regressions for baseline isolation, task-path parsing, scope
+  matching, orphan exceptions, language resolution, concurrent behavior replay,
+  Codex adapter parity, and the loop lifecycle contract.
+
 ## 1.2.4 - 2026-07-16
 
 Codex adapter regression patch for commit-stamped framework installations. All

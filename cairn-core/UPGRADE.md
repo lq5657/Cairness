@@ -1,5 +1,17 @@
 # 升级指南
 
+## 升级到 1.2.5
+
+补丁版本，向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得本版本修复。
+
+升级后，`cc-role-check` 会按 change 记录实现阶段基线，只审查基线之后内容发生变化的文件，不再把仓库中原有的未提交文件全部写入 review。任务文件中的多个反引号路径会分别解析，目录与 `...` 范围可覆盖子文件；并行 behavior replay 也不再共享 change fixture。
+
+Harness 语言探测现在忽略 `.claude.bak`、`.codex.bak`、自定义框架备份以及任意深度的依赖和构建目录。复合主语言声明会选择第一个明确主语言，既有备份夹具无需删除。
+
+`cc-deps orphans` 现在读取 `task-board.md` 的 `## 4. Intentional 例外` 表，支持精确路径、glob 和花括号展开。需要保留但不属于实现任务的审计或治理产物，应登记在该表中；已有清单会在升级后自动生效。
+
+开启 loop profile 后，支持该契约的宿主 agent 应在同一会话、同一 turn 内自动续跑 `cc-propose -> cc-apply -> cc-review -> cc-test -> cc-archive`，review 失败时进入 `cc-fix` 后复审。仅在 blocked/partial、验证失败、信任包络升级或熔断条件触发时停止。`loop enable` 仍不会启动后台进程，也不会产生未授权的额外宿主调用。
+
 ## 升级到 1.2.4
 
 补丁版本，向后兼容，现有项目无需迁移。本版本修复从带 `COMMIT` 标记的正式安装运行 Codex adapter regression 时，`adapter-installation` fixture 可能误报 `E_ADAPTER007: Codex update did not run` 的问题。
