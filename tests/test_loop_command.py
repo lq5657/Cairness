@@ -18,16 +18,9 @@ def _run(args: list[str], cwd: Path) -> tuple[int, str, str]:
 
 
 def _make_project(tmp_path: Path) -> Path:
-    """Create a minimal project with harness.config.yaml."""
+    """Create an installed project whose profile-dependent readsets can run."""
     claude_dir = tmp_path / ".claude"
-    # Copy the real harness.config.yaml so profile= line exists
-    src_cfg = REPO / "cairn-core" / "harness.config.yaml"
-    claude_dir.mkdir(parents=True)
-    shutil.copy2(src_cfg, claude_dir / "harness.config.yaml")
-    # Copy templates dir so enable can copy loop-config template
-    templates_src = REPO / "cairn-core" / "templates"
-    shutil.copytree(templates_src, claude_dir / "templates")
-    # Create .cairness dir
+    shutil.copytree(REPO / "cairn-core", claude_dir)
     (tmp_path / ".cairness").mkdir()
     return tmp_path
 
@@ -68,6 +61,13 @@ def test_enable_creates_loop_config_and_sets_profile(tmp_path):
     active = [l.split(":", 1)[1].strip() for l in cfg_text.splitlines()
               if not l.strip().startswith("#") and l.strip().startswith("profile:")]
     assert active and active[0] == "loop"
+    readsets = sorted((project / ".claude" / "runtime" / "readsets").glob("cc-*.yaml"))
+    assert len(readsets) == 14
+    for path in readsets:
+        readset = path.read_text(encoding="utf-8")
+        assert ".claude/runtime/profiles/loop.yaml" in readset
+        assert ".claude/runtime/profiles/standard.yaml" not in readset
+    assert "readset and schema checks passed" in stdout
 
 
 def test_enable_preserves_existing_loop_config(tmp_path):
@@ -87,6 +87,42 @@ def test_enable_idempotent_when_already_loop(tmp_path):
     assert "already" in stdout.lower() or "loop" in stdout.lower()
 
 
+def test_enable_repairs_stale_loop_readsets(tmp_path):
+    project = _make_project(tmp_path)
+    assert _run(["loop", "enable"], project)[0] == 0
+    readset = project / ".claude" / "runtime" / "readsets" / "cc-apply.yaml"
+    readset.write_text("# stale\n", encoding="utf-8")
+
+    rc, _, stderr = _run(["loop", "enable"], project)
+
+    assert rc == 0, stderr
+    assert ".claude/runtime/profiles/loop.yaml" in readset.read_text(encoding="utf-8")
+
+
+def test_enable_rolls_back_profile_config_and_readsets_on_validation_failure(tmp_path):
+    project = _make_project(tmp_path)
+    harness_cfg = project / ".claude" / "harness.config.yaml"
+    readsets_dir = project / ".claude" / "runtime" / "readsets"
+    config_before = harness_cfg.read_bytes()
+    readsets_before = {
+        path.name: path.read_bytes()
+        for path in readsets_dir.glob("*.yaml")
+    }
+    (project / ".claude" / "scripts" / "cc-schema-check").unlink()
+
+    rc, _, stderr = _run(["loop", "enable"], project)
+
+    assert rc == 1
+    assert "E_LOOP001" in stderr
+    assert "rolled back" in stderr
+    assert harness_cfg.read_bytes() == config_before
+    assert {
+        path.name: path.read_bytes()
+        for path in readsets_dir.glob("*.yaml")
+    } == readsets_before
+    assert not (project / ".cairness" / "loop-config.yaml").exists()
+
+
 # ---------------------------------------------------------------------------
 # disable
 # ---------------------------------------------------------------------------
@@ -101,6 +137,9 @@ def test_disable_reverts_profile_to_standard(tmp_path):
     active = [l.split(":", 1)[1].strip() for l in cfg_text.splitlines()
               if not l.strip().startswith("#") and l.strip().startswith("profile:")]
     assert active and active[0] == "standard"
+    readset = (project / ".claude" / "runtime" / "readsets" / "cc-apply.yaml").read_text()
+    assert ".claude/runtime/profiles/standard.yaml" in readset
+    assert ".claude/runtime/profiles/loop.yaml" not in readset
 
 
 def test_disable_preserves_loop_config_yaml(tmp_path):

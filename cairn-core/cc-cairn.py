@@ -2649,6 +2649,7 @@ def _count_index_errors(project_root, index_text):
 HARNESS_CONFIG_REL = "harness.config.yaml"
 LOOP_CONFIG_REL = ".cairness/loop-config.yaml"
 LOOP_CONFIG_TEMPLATE_REL = "templates/loop-config.yaml"
+RUNTIME_READSETS_REL = "runtime/readsets"
 
 VALID_PROFILES = ("minimal", "standard", "strict", "loop")
 DEFAULT_PROFILE = "standard"  # profile restored by 'cc-cairn loop disable'
@@ -2664,31 +2665,13 @@ def _read_current_profile(harness_cfg: Path) -> str:
 
 
 def _set_profile(harness_cfg: Path, new_profile: str) -> None:
-    """Replace the active 'profile:' line in harness.config.yaml."""
+    """Atomically replace the active profile in harness.config.yaml."""
     if new_profile not in VALID_PROFILES:
         raise ValueError(
             f"Unknown profile '{new_profile}'. "
             f"Valid profiles: {', '.join(VALID_PROFILES)}"
         )
-    text = harness_cfg.read_text(encoding="utf-8")
-    lines = text.splitlines(keepends=True)
-    replaced = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("#"):
-            continue
-        if stripped.startswith("profile:"):
-            # Preserve leading whitespace (there is none for this top-level key)
-            indent = line[: len(line) - len(line.lstrip())]
-            lines[i] = f"{indent}profile: {new_profile}\n"
-            replaced = True
-            break
-    if not replaced:
-        raise ValueError(
-            f"No 'profile:' key found in {harness_cfg}. "
-            "The file may be corrupted — re-run 'cc-cairn init' to restore it."
-        )
-    harness_cfg.write_text("".join(lines), encoding="utf-8")
+    _apply_runtime_profile(harness_cfg.parent, new_profile)
 
 
 def _loop_config_summary(loop_cfg: Path) -> list[str]:
@@ -2704,6 +2687,108 @@ def _loop_config_summary(loop_cfg: Path) -> list[str]:
             if stripped.startswith(key):
                 lines_out.append(f"  {stripped}")
     return lines_out
+
+
+def _run_loop_profile_pipeline(project_root: Path, framework_root: Path) -> None:
+    """Regenerate and validate profile-dependent runtime artifacts."""
+    commands = (
+        (
+            "cc-readset --write",
+            framework_root / "scripts" / "cc-readset",
+            ["--write", "--root", str(project_root)],
+        ),
+        (
+            "cc-readset --check",
+            framework_root / "scripts" / "cc-readset",
+            ["--check", "--root", str(project_root)],
+        ),
+        (
+            "cc-schema-check",
+            framework_root / "scripts" / "cc-schema-check",
+            ["--root", str(project_root)],
+        ),
+    )
+    for label, script, arguments in commands:
+        if not script.is_file():
+            raise RuntimeError(
+                f"{label} is unavailable: {script}. Run 'cc-cairn update' to refresh the framework."
+            )
+        try:
+            completed = subprocess.run(
+                [sys.executable, str(script), *arguments],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RuntimeError(f"{label} could not run: {exc}") from exc
+        if completed.returncode != 0:
+            details = completed.stderr.strip() or completed.stdout.strip() or "no diagnostic output"
+            raise RuntimeError(f"{label} failed: {details}")
+
+
+def _transition_loop_profile(
+    project_root: Path,
+    framework_root: Path,
+    harness_cfg: Path,
+    loop_cfg: Path,
+    target_profile: str,
+) -> list[str]:
+    """Apply one loop profile transition and roll back every derived write on failure."""
+    readsets_dir = framework_root / RUNTIME_READSETS_REL
+    harness_snapshot = _file_state_snapshot(harness_cfg)
+    loop_snapshot = _file_state_snapshot(loop_cfg)
+    readsets_existed = readsets_dir.is_dir()
+    readset_snapshots = _directory_file_snapshots(readsets_dir)
+    messages: list[str] = []
+    try:
+        if target_profile == LOOP_PROFILE:
+            if loop_cfg.is_file():
+                messages.append(f"  {LOOP_CONFIG_REL} already exists — keeping as-is.")
+            else:
+                template = framework_root / LOOP_CONFIG_TEMPLATE_REL
+                if not template.is_file():
+                    display = template.relative_to(project_root).as_posix()
+                    raise RuntimeError(
+                        f"Template not found: {display}. Run 'cc-cairn update' to refresh the framework."
+                    )
+                loop_cfg.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(template, loop_cfg)
+                messages.extend(
+                    [
+                        f"  Created {LOOP_CONFIG_REL} from template.",
+                        f"  → Edit {LOOP_CONFIG_REL} to set your trust envelope before running loop.",
+                    ]
+                )
+
+        current_profile = _read_current_profile(harness_cfg)
+        if current_profile == target_profile:
+            messages.append(
+                f"  Profile is already '{target_profile}' — verifying derived runtime state."
+            )
+        else:
+            _set_profile(harness_cfg, target_profile)
+            display = harness_cfg.relative_to(project_root).as_posix()
+            messages.append(f"  {display}: profile set to '{target_profile}'.")
+
+        _run_loop_profile_pipeline(project_root, framework_root)
+        if _read_current_profile(harness_cfg) != target_profile:
+            raise RuntimeError(f"profile status verification failed for {target_profile}")
+        if target_profile == LOOP_PROFILE and not loop_cfg.is_file():
+            raise RuntimeError("loop config status verification failed after profile activation")
+    except (OSError, ValueError, RuntimeError):
+        _restore_file_state_snapshot(harness_cfg, harness_snapshot)
+        _restore_file_state_snapshot(loop_cfg, loop_snapshot)
+        _restore_directory_file_snapshots(
+            readsets_dir,
+            readset_snapshots,
+            existed=readsets_existed,
+        )
+        raise
+
+    messages.append("  Runtime readsets regenerated; readset and schema checks passed.")
+    return messages
 
 
 def cmd_loop(argv: list[str]) -> None:
@@ -2756,42 +2841,36 @@ def cmd_loop(argv: list[str]) -> None:
             print(f"loop mode    : disabled (profile={current_profile})")
 
     elif args.action == "enable":
-        # Step 1: ensure loop-config.yaml exists
-        if loop_cfg.is_file():
-            print(f"  {LOOP_CONFIG_REL} already exists — keeping as-is.")
-        else:
-            template = framework_root / LOOP_CONFIG_TEMPLATE_REL
-            template_display = template.relative_to(project_root).as_posix()
-            if not template.is_file():
-                sys.exit(
-                    f"Template not found: {template_display}\n"
-                    f"Your {framework_root.name}/ may be outdated — run "
-                    "'cc-cairn update' to refresh."
-                )
-            loop_cfg.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(template, loop_cfg)
-            print(f"  Created {LOOP_CONFIG_REL} from template.")
-            print(
-                f"  → Edit {LOOP_CONFIG_REL} to set your trust envelope before running loop."
+        try:
+            messages = _transition_loop_profile(
+                project_root,
+                framework_root,
+                harness_cfg,
+                loop_cfg,
+                LOOP_PROFILE,
             )
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"E_LOOP001 Loop enable failed and was rolled back: {exc}", file=sys.stderr)
+            raise SystemExit(1)
 
-        # Step 2: switch profile
-        if current_profile == LOOP_PROFILE:
-            print(f"  Profile is already '{LOOP_PROFILE}' — nothing changed.")
-        else:
-            _set_profile(harness_cfg, LOOP_PROFILE)
-            print(f"  {harness_cfg_display}: profile set to '{LOOP_PROFILE}'.")
-
+        print("\n".join(messages))
         print("\nLoop Engineering enabled.")
         print("Next: review .cairness/loop-config.yaml, then start Claude Code.")
 
     elif args.action == "disable":
-        if current_profile == DEFAULT_PROFILE:
-            print(f"  Profile is already '{DEFAULT_PROFILE}' — nothing changed.")
-        else:
-            _set_profile(harness_cfg, DEFAULT_PROFILE)
-            print(f"  {harness_cfg_display}: profile set to '{DEFAULT_PROFILE}'.")
+        try:
+            messages = _transition_loop_profile(
+                project_root,
+                framework_root,
+                harness_cfg,
+                loop_cfg,
+                DEFAULT_PROFILE,
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            print(f"E_LOOP001 Loop disable failed and was rolled back: {exc}", file=sys.stderr)
+            raise SystemExit(1)
 
+        print("\n".join(messages))
         print("\nLoop Engineering disabled (standard mode restored).")
         print(f"  {LOOP_CONFIG_REL} is preserved — re-enable with 'cc-cairn loop enable'.")
 

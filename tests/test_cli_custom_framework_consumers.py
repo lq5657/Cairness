@@ -45,17 +45,7 @@ def _run_cli(project: Path, *args: str) -> subprocess.CompletedProcess[str]:
 def test_loop_uses_metadata_selected_config_and_template(tmp_path: Path) -> None:
     project = tmp_path / "project"
     framework = project / ".managed"
-    framework.mkdir(parents=True)
-    shutil.copy2(
-        REPO_ROOT / "cairn-core" / "harness.config.yaml",
-        framework / "harness.config.yaml",
-    )
-    templates = framework / "templates"
-    templates.mkdir()
-    shutil.copy2(
-        REPO_ROOT / "cairn-core" / "templates" / "loop-config.yaml",
-        templates / "loop-config.yaml",
-    )
+    shutil.copytree(REPO_ROOT / "cairn-core", framework)
     _write_install_metadata(project)
 
     completed = _run_cli(project, "loop", "enable")
@@ -64,6 +54,8 @@ def test_loop_uses_metadata_selected_config_and_template(tmp_path: Path) -> None
     config = (framework / "harness.config.yaml").read_text(encoding="utf-8")
     assert "profile: loop" in config
     assert (project / ".cairness" / "loop-config.yaml").is_file()
+    readset = (framework / "runtime" / "readsets" / "cc-apply.yaml").read_text(encoding="utf-8")
+    assert ".claude/runtime/profiles/loop.yaml" in readset
 
 
 def test_add_knowledge_uses_metadata_selected_catalog(tmp_path: Path) -> None:
