@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.6 - 2026-07-17
+
+Harness integrity patch for lifecycle event ownership and self-healing Loop
+profile transitions. All changes are backward-compatible.
+
+- Declared the controlled `.cairness/changes/<change-id>/events.jsonl` write in
+  all lifecycle command manifests that invoke state transitions, and added
+  schema coverage so workflow, manifest, and role-check contracts stay aligned.
+- Made `cc-cairn loop enable` and `cc-cairn loop disable` regenerate the
+  profile-dependent runtime readsets with the official generator, then run
+  readset and schema validation automatically.
+- Made Loop transitions transactional: a generator or validation failure now
+  restores the prior profile, generated readsets, and any loop config created
+  by that invocation instead of leaving a stale or half-enabled installation.
+- Added regressions for stale readset repair, rollback, repeated transitions,
+  and metadata-selected custom framework roots.
+
 ## 1.2.5 - 2026-07-17
 
 Governance-isolation and loop-continuation patch for real-world repositories.

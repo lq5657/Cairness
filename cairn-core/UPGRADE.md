@@ -1,5 +1,13 @@
 # 升级指南
 
+## 升级到 1.2.6
+
+补丁版本，向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得本版本修复。
+
+升级后，调用 `cc-cairn loop enable` 或 `cc-cairn loop disable` 会自动重建与当前 profile 对应的 runtime readsets，并执行 readset 和 schema 校验；不再需要在切换 Loop 模式后手工运行 `cc-readset --write`。若生成或校验失败，命令会恢复切换前的 profile、readsets 和本次新建的 loop config。`loop enable` 仍要求用户在运行自主工作流前审阅 `.cairness/loop-config.yaml` 的信任包络。
+
+调用状态迁移的 lifecycle command 现在已显式声明 `.cairness/changes/<change-id>/events.jsonl` 受控写入。现有 change 无需修改；升级后的 manifest、workflow、schema 和 role-check 将一致处理该事件日志，不再将归档后的正常生命周期记录误报为越权写入。
+
 ## 升级到 1.2.5
 
 补丁版本，向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得本版本修复。
