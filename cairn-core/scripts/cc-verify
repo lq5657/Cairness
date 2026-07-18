@@ -66,7 +66,7 @@ from harness_runtime.verification_scheduling import (
     verification_mode,
 )
 from harness_runtime.verification_steps import blocked_step, failed_step, skipped_step
-from harness_runtime.test_policy import TestPolicyError, select_tests
+from harness_runtime.test_policy import TestPolicyError, routing_escape, select_tests
 
 
 def command_text(command: list[str]) -> str:
@@ -113,7 +113,17 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             args.changed_only = False
             args.reuse_cache = False
     change_dir = changes_root / args.change if args.change else None
-    changed_paths = git_changed_paths(project_root) if args.changed_only else []
+    test_policy_active = (
+        execution_mode in {"normal", "ci", "optimize"}
+        and not args.fixture
+        and not args.harness_only
+        and (project_root / "tests" / "test-policy.yaml").is_file()
+    )
+    changed_paths = (
+        git_changed_paths(project_root)
+        if args.changed_only or test_policy_active
+        else []
+    )
     changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
     harness_changed = has_harness_changes(changed_paths, project_root) if args.changed_only else False
     resolution = (
@@ -222,16 +232,12 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                 results.append(check_risk_triage(project_root, args.change))
 
     test_selection = None
-    repository_test_policy = (
-        execution_mode in {"normal", "ci", "optimize"}
-        and not args.fixture
-        and not args.harness_only
-        and (project_root / "tests" / "test-policy.yaml").is_file()
-    )
+    repository_test_policy = test_policy_active
     if repository_test_policy:
         try:
             selection = select_tests(project_root, changed_paths, execution_mode)
             test_selection = selection.as_dict()
+            test_selection["execution_mode"] = execution_mode
             if selection.mode == "none":
                 results.append(
                     skipped_step(
@@ -244,7 +250,25 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                 command = [sys.executable, "-m", "pytest", "-q"]
                 if selection.mode == "selected":
                     command.extend(str(path) for path in selection.tests)
-                results.append(run_step("pytest", "project:pytest", command, project_root))
+                pytest_result = run_step("pytest", "project:pytest", command, project_root)
+                if execution_mode in {"ci", "optimize"}:
+                    shadow = select_tests(project_root, changed_paths, "normal")
+                    escape = None
+                    if changed_paths:
+                        escape = routing_escape(
+                            shadow,
+                            status=str(pytest_result.get("status", "unknown")),
+                            stdout=str(pytest_result.get("stdout", "")),
+                            stderr=str(pytest_result.get("stderr", "")),
+                        )
+                        test_selection["shadow_normal_mode"] = shadow.mode
+                        test_selection["shadow_selected_test_count"] = len(shadow.tests)
+                        test_selection["shadow_fallback_full"] = shadow.fallback_full
+                        test_selection["shadow_unmatched_source_count"] = len(
+                            shadow.unmatched_sources
+                        )
+                    test_selection["routing_escape"] = escape
+                results.append(pytest_result)
         except TestPolicyError as exc:
             test_selection = {
                 "mode": "error",
@@ -252,6 +276,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                 "reasons": {},
                 "fallback_full": False,
                 "unmatched_sources": [],
+                "execution_mode": execution_mode,
                 "error": str(exc),
             }
             results.append(

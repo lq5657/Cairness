@@ -39,11 +39,20 @@ def _result_counts(report: Mapping[str, Any]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
-def _append_runtime_event(project_root: Path, event: Mapping[str, Any]) -> bool:
+def _append_runtime_event(
+    project_root: Path,
+    event: Mapping[str, Any],
+    *,
+    allow_framework_source: bool = False,
+) -> bool:
     if _tracking_disabled():
         return False
     root = Path(project_root).expanduser().resolve()
-    if (root / "cairn_install").is_file() and (root / "cairn-core").is_dir():
+    if (
+        (root / "cairn_install").is_file()
+        and (root / "cairn-core").is_dir()
+        and not allow_framework_source
+    ):
         return False
     path = root / RUNTIME_EVENTS_RELATIVE
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,7 +98,66 @@ def record_verification_run(
             value = execution.get(field)
             if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
                 event[field] = value
-    return _append_runtime_event(project_root, event)
+    selection = report.get("test_selection")
+    if isinstance(selection, Mapping):
+        routing: dict[str, Any] = {}
+        for field in ("mode", "execution_mode"):
+            value = selection.get(field)
+            if isinstance(value, str) and value:
+                routing[field] = value
+        tests = selection.get("tests")
+        if isinstance(tests, list):
+            routing["selected_test_count"] = len(
+                [item for item in tests if isinstance(item, str)]
+            )
+        total_tests = selection.get("total_tests")
+        if (
+            isinstance(total_tests, int)
+            and not isinstance(total_tests, bool)
+            and total_tests >= 0
+        ):
+            routing["total_test_count"] = total_tests
+        fallback_full = selection.get("fallback_full")
+        if isinstance(fallback_full, bool):
+            routing["fallback_full"] = fallback_full
+        unmatched = selection.get("unmatched_sources")
+        if isinstance(unmatched, list):
+            routing["unmatched_source_count"] = len(
+                [item for item in unmatched if isinstance(item, str)]
+            )
+        changed_files = report.get("changed_files")
+        if isinstance(changed_files, list):
+            routing["changed_file_count"] = len(
+                [item for item in changed_files if isinstance(item, str)]
+            )
+        for source, target in (
+            ("shadow_normal_mode", "shadow_normal_mode"),
+            ("shadow_selected_test_count", "shadow_selected_test_count"),
+            ("shadow_fallback_full", "shadow_fallback_full"),
+            ("shadow_unmatched_source_count", "shadow_unmatched_source_count"),
+        ):
+            value = selection.get(source)
+            if isinstance(value, str) and source.endswith("mode") and value:
+                routing[target] = value
+            elif (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and value >= 0
+            ):
+                routing[target] = value
+            elif isinstance(value, bool):
+                routing[target] = value
+        if "routing_escape" in selection:
+            routing_escape = selection.get("routing_escape")
+            if routing_escape is None or isinstance(routing_escape, bool):
+                routing["routing_escape"] = routing_escape
+        if routing:
+            event["test_routing"] = routing
+    return _append_runtime_event(
+        project_root,
+        event,
+        allow_framework_source=isinstance(event.get("test_routing"), Mapping),
+    )
 
 
 def record_upgrade_run(
@@ -280,6 +348,101 @@ def verification_metrics(
             round(sum(durations) / len(durations)) if durations else None
         ),
         "mode_counts": dict(sorted(mode_counts.items())),
+    }
+
+
+def test_routing_metrics(
+    runtime_events: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize sanitized test-selection evidence without inventing samples."""
+
+    samples = [
+        item.get("test_routing")
+        for item in runtime_events
+        if item.get("event_type") == "verification_run"
+        and isinstance(item.get("test_routing"), Mapping)
+    ]
+    samples = [item for item in samples if isinstance(item, Mapping)]
+    mode_counts = Counter(
+        item.get("mode") if isinstance(item.get("mode"), str) else "unknown"
+        for item in samples
+    )
+    execution_mode_counts = Counter(
+        item.get("execution_mode")
+        if isinstance(item.get("execution_mode"), str)
+        else "unknown"
+        for item in samples
+    )
+    routing_samples: list[dict[str, Any]] = []
+    escape_values: list[bool] = []
+    normal_runs = 0
+    shadow_runs = 0
+    for item in samples:
+        changed_count = item.get("changed_file_count")
+        normal_has_evidence = (
+            isinstance(changed_count, int)
+            and not isinstance(changed_count, bool)
+            and changed_count > 0
+        ) or (changed_count is None and item.get("mode") != "none")
+        if item.get("execution_mode") == "normal" and normal_has_evidence:
+            normal_runs += 1
+            routing_samples.append({
+                "selected": item.get("selected_test_count"),
+                "total": item.get("total_test_count"),
+                "fallback": item.get("fallback_full"),
+                "unmatched": item.get("unmatched_source_count"),
+            })
+        elif isinstance(item.get("shadow_normal_mode"), str):
+            shadow_runs += 1
+            routing_samples.append({
+                "selected": item.get("shadow_selected_test_count"),
+                "total": item.get("total_test_count"),
+                "fallback": item.get("shadow_fallback_full"),
+                "unmatched": item.get("shadow_unmatched_source_count"),
+            })
+        escape = item.get("routing_escape")
+        if isinstance(escape, bool):
+            escape_values.append(escape)
+    ratios: list[float] = []
+    fallback_values: list[bool] = []
+    unmatched_values: list[bool] = []
+    for item in routing_samples:
+        selected = item.get("selected")
+        total = item.get("total")
+        if (
+            isinstance(selected, (int, float))
+            and not isinstance(selected, bool)
+            and isinstance(total, (int, float))
+            and not isinstance(total, bool)
+            and total > 0
+        ):
+            ratios.append(round(float(selected) / float(total), 4))
+        fallback = item.get("fallback")
+        if isinstance(fallback, bool):
+            fallback_values.append(fallback)
+        unmatched = item.get("unmatched")
+        if isinstance(unmatched, (int, float)) and not isinstance(unmatched, bool):
+            unmatched_values.append(unmatched > 0)
+    return {
+        "total_runs": len(samples),
+        "mode_counts": dict(sorted(mode_counts.items())),
+        "execution_mode_counts": dict(sorted(execution_mode_counts.items())),
+        "normal_runs": normal_runs,
+        "shadow_runs": shadow_runs,
+        "selection_observations": len(routing_samples),
+        "selection_ratio": round(sum(ratios) / len(ratios), 4) if ratios else None,
+        "fallback_rate": (
+            round(sum(fallback_values) / len(fallback_values), 4)
+            if fallback_values
+            else None
+        ),
+        "unmatched_source_rate": (
+            round(sum(unmatched_values) / len(unmatched_values), 4)
+            if unmatched_values
+            else None
+        ),
+        "routing_escape_count": sum(escape_values) if escape_values else None,
+        "routing_escape_observations": len(escape_values),
     }
 
 

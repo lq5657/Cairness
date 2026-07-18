@@ -8,6 +8,7 @@ choose a small, conservative test set for normal development.
 from __future__ import annotations
 
 import fnmatch
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -16,6 +17,10 @@ from harness_runtime import require_yaml
 
 
 POLICY_RELATIVE = Path("tests/test-policy.yaml")
+_PYTEST_FAILURE_RE = re.compile(
+    r"(?:^|\s)(?:FAILED|ERROR)\s+([^\s:]+)(?:::[^\s]+)?",
+    re.MULTILINE,
+)
 
 
 class TestPolicyError(ValueError):
@@ -38,6 +43,7 @@ class TestSelection:
     reasons: Mapping[str, tuple[str, ...]]
     fallback_full: bool = False
     unmatched_sources: tuple[str, ...] = ()
+    total_tests: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -46,6 +52,7 @@ class TestSelection:
             "reasons": {key: list(value) for key, value in self.reasons.items()},
             "fallback_full": self.fallback_full,
             "unmatched_sources": list(self.unmatched_sources),
+            "total_tests": self.total_tests,
         }
 
 
@@ -295,13 +302,14 @@ def select_tests(
             "full",
             all_tests,
             {str(path): ("mode:" + mode,) for path in all_tests},
+            total_tests=len(all_tests),
         )
 
     changed_rel = sorted(
         {_relative(project_root, Path(path)) for path in changed_paths}
     )
     if not changed_rel:
-        return TestSelection("none", (), {}, False, ())
+        return TestSelection("none", (), {}, False, (), len(all_tests))
 
     selected: dict[str, set[str]] = {}
     unmatched: list[str] = []
@@ -316,6 +324,7 @@ def select_tests(
                 {str(path): ("global:" + relative,) for path in all_tests},
                 True,
                 (),
+                len(all_tests),
             )
         matched = False
         for sources, tests in policy.routing_rules:
@@ -353,6 +362,7 @@ def select_tests(
             {str(path): ("fallback:unknown-source",) for path in all_tests},
             True,
             tuple(unmatched),
+            len(all_tests),
         )
     selected_paths = tuple(Path(key) for key in sorted(selected) if key in discovered_rel)
     return TestSelection(
@@ -365,4 +375,37 @@ def select_tests(
         },
         False,
         (),
+        len(all_tests),
     )
+
+
+def failed_test_paths(stdout: str, stderr: str = "") -> tuple[str, ...]:
+    """Extract normalized pytest failure paths from a quiet test report."""
+
+    paths = {
+        match.group(1).replace("\\", "/")
+        for match in _PYTEST_FAILURE_RE.finditer(
+            f"{stdout}\n{stderr}"
+        )
+    }
+    return tuple(sorted(path for path in paths if path.startswith("tests/")))
+
+
+def routing_escape(
+    selection: TestSelection,
+    *,
+    status: str,
+    stdout: str,
+    stderr: str = "",
+) -> bool | None:
+    """Return whether a full run failed outside the normal selected set."""
+
+    if status == "passed":
+        return False
+    failures = failed_test_paths(stdout, stderr)
+    if not failures:
+        return None
+    selected = {path.as_posix() for path in selection.tests}
+    if selection.fallback_full or selection.mode == "full":
+        return False
+    return any(path not in selected for path in failures)

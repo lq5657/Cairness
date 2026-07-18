@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from harness_runtime.benchmark import BenchmarkError, compare
-from harness_runtime.observability import execution_metrics, verification_metrics
+from harness_runtime.observability import (
+    execution_metrics,
+    test_routing_metrics,
+    verification_metrics,
+)
 
 
 DEFAULT_MIN_SAMPLES = 5
@@ -15,9 +19,15 @@ def _sample_count(runtime_events: list[Mapping[str, Any]]) -> int:
     return sum(1 for item in runtime_events if item.get("event_type") in {"verification_run", "execution_run"})
 
 
-def _recommendations(runtime_events: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _recommendations(
+    runtime_events: list[Mapping[str, Any]],
+    *,
+    min_samples: int,
+    routing_enabled: bool,
+) -> list[dict[str, Any]]:
     verification = verification_metrics(runtime_events)
     execution = execution_metrics(runtime_events)
+    routing = test_routing_metrics(runtime_events)
     recommendations: list[dict[str, Any]] = []
     modes = verification.get("mode_counts", {})
     if modes.get("full", 0) and not modes.get("changed-only", 0):
@@ -28,7 +38,7 @@ def _recommendations(runtime_events: list[Mapping[str, Any]]) -> list[dict[str, 
         })
     cache_values = execution.get("metrics", {}).get("reused_verifications", {})
     runs = execution.get("total_runs", 0)
-    if runs >= DEFAULT_MIN_SAMPLES and cache_values.get("median") == 0:
+    if runs >= min_samples and cache_values.get("median") == 0:
         recommendations.append({
             "id": "enable_cache_canary",
             "reason": "最近执行没有复用 verification cache",
@@ -40,6 +50,28 @@ def _recommendations(runtime_events: list[Mapping[str, Any]]) -> list[dict[str, 
             "reason": "存在未通过的 verification 样本，不应先调整效率策略",
             "action": "review_quality_failures",
         })
+    if routing_enabled and routing["selection_observations"] == 0:
+        recommendations.append({
+            "id": "collect_test_routing_samples",
+            "reason": "没有可用于评估测试选择比例和回退率的路由样本",
+            "action": "run_normal_and_ci_verification",
+        })
+    elif (
+        routing_enabled
+        and routing["selection_observations"] >= min_samples
+        and routing["fallback_rate"] == 1.0
+    ):
+        recommendations.append({
+            "id": "reduce_test_routing_fallbacks",
+            "reason": "普通开发样本全部回退全量，当前路由规则没有节省测试范围",
+            "action": "review_test_policy_routes",
+        })
+    if routing_enabled and routing["routing_escape_count"]:
+        recommendations.append({
+            "id": "investigate_test_routing_escape",
+            "reason": "全量校准在 normal 选择范围外发现失败的路由逃逸样本",
+            "action": "block_policy_tuning_until_replayed",
+        })
     return recommendations
 
 
@@ -50,6 +82,7 @@ def build_optimization_report(
     candidate: Mapping[str, Any] | None = None,
     min_samples: int = DEFAULT_MIN_SAMPLES,
     thresholds: Mapping[str, Any] | None = None,
+    routing_enabled: bool = True,
 ) -> dict[str, Any]:
     """Build a report without mutating project policy or framework assets."""
 
@@ -63,7 +96,13 @@ def build_optimization_report(
         "min_samples": min_samples,
         "verification": verification_metrics(runtime_events),
         "execution": execution_metrics(runtime_events),
-        "recommendations": _recommendations(runtime_events),
+        "test_routing": test_routing_metrics(runtime_events),
+        "test_routing_enabled": routing_enabled,
+        "recommendations": _recommendations(
+            runtime_events,
+            min_samples=min_samples,
+            routing_enabled=routing_enabled,
+        ),
         "candidate": None,
         "policy_action": (
             "collect_more_samples"

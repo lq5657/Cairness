@@ -91,7 +91,7 @@ Claude Code 与 Codex 现在都是正式 adapter。`cc-cairn init --adapter code
 
 ### 本地运行时可观测性（默认本地、可关闭）
 
-`cc-verify` 与 `cc-cairn update` 会向 `.cairness/observability/runtime-events.jsonl` 追加脱敏运行摘要（状态、模式、耗时、子步骤计数），不记录 prompt、代码、路径、change ID 或 PII。该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，`cc-stats`/`cc-gate-stats`/Dashboard 在无样本时仍可用。
+`cc-verify` 与 `cc-cairn update` 会向 `.cairness/observability/runtime-events.jsonl` 追加脱敏运行摘要（状态、模式、耗时、子步骤计数）；启用测试策略时还会记录选择模式、测试数量、回退、未知源和可确定的 routing escape 计数，不记录测试路径、prompt、代码、change ID 或 PII。干净的 CI checkout 可设置 `CC_VERIFY_BASE_REF=<base-sha>`，使全量验证能够校准 normal 影子选择。该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，`cc-stats`/`cc-gate-stats`/Dashboard 在无样本时仍可用。
 
 ### model-behavior eval（P3-08 scaffolding，opt-in）
 

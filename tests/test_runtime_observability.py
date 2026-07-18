@@ -140,6 +140,47 @@ def test_runtime_event_writer_exempts_the_framework_source_tree(tmp_path: Path):
     assert not (tmp_path / ".cairness/observability").exists()
 
 
+def test_framework_source_tree_can_record_sanitized_test_routing(tmp_path: Path):
+    from harness_runtime.observability import record_verification_run
+
+    (tmp_path / "cairn_install").write_text("installer\n", encoding="utf-8")
+    (tmp_path / "cairn-core").mkdir()
+
+    assert record_verification_run(
+        tmp_path,
+        {
+            "status": "passed",
+            "mode": "changed-only",
+            "results": [],
+            "test_selection": {
+                "mode": "selected",
+                "execution_mode": "normal",
+                "tests": ["tests/test_one.py"],
+                "total_tests": 10,
+                "fallback_full": False,
+                "unmatched_sources": [],
+            },
+        },
+        duration_ms=1,
+    )
+    assert (tmp_path / ".cairness/observability/runtime-events.jsonl").is_file()
+
+
+def test_framework_source_tree_does_not_accept_unsanitized_event_bypass(
+    tmp_path: Path,
+) -> None:
+    from harness_runtime.observability import _append_runtime_event
+
+    (tmp_path / "cairn_install").write_text("installer\n", encoding="utf-8")
+    (tmp_path / "cairn-core").mkdir()
+
+    assert not _append_runtime_event(
+        tmp_path,
+        {"test_routing": {}, "source_path": "tests/private_test.py"},
+    )
+    assert not (tmp_path / ".cairness/observability").exists()
+
+
 def test_upgrade_event_writer_records_only_sanitized_update_result(tmp_path: Path):
     from harness_runtime.observability import (
         discover_runtime_events,
@@ -688,3 +729,111 @@ def test_gate_stats_readable_output_includes_verification_summary(
     assert "通过率: 100.0%" in completed.stdout
     assert "平均耗时: 17 ms" in completed.stdout
     assert "升级失败率: 100.0%" in completed.stdout
+
+
+def test_test_routing_metrics_are_recorded_without_test_paths(tmp_path: Path) -> None:
+    from harness_runtime.observability import record_verification_run
+
+    report = {
+        "status": "passed",
+        "mode": "changed-only",
+        "results": [{"status": "passed"}],
+        "test_selection": {
+            "mode": "selected",
+            "execution_mode": "normal",
+            "tests": ["tests/test_a.py", "tests/test_b.py"],
+            "total_tests": 120,
+            "fallback_full": False,
+            "unmatched_sources": [],
+            "reasons": {"tests/test_a.py": ["src/a.py"]},
+        },
+        "changed_files": ["src/a.py"],
+    }
+    assert record_verification_run(tmp_path, report, duration_ms=20)
+    event = json.loads(
+        (tmp_path / ".cairness/observability/runtime-events.jsonl").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert event["test_routing"] == {
+        "execution_mode": "normal",
+        "fallback_full": False,
+        "mode": "selected",
+        "selected_test_count": 2,
+        "total_test_count": 120,
+        "unmatched_source_count": 0,
+        "changed_file_count": 1,
+    }
+    assert "tests" not in event["test_routing"]
+    assert "reasons" not in event["test_routing"]
+
+
+def test_test_routing_metrics_keep_missing_escape_evidence_distinct() -> None:
+    from harness_runtime.observability import test_routing_metrics
+
+    events = [
+        {
+            "event_type": "verification_run",
+            "test_routing": {
+                "mode": "selected",
+                "execution_mode": "normal",
+                "selected_test_count": 2,
+                "total_test_count": 100,
+                "fallback_full": False,
+                "unmatched_source_count": 0,
+            },
+        },
+        {
+            "event_type": "verification_run",
+            "test_routing": {
+                "mode": "full",
+                "execution_mode": "ci",
+                "selected_test_count": 100,
+                "total_test_count": 100,
+                "fallback_full": False,
+                "unmatched_source_count": 0,
+                "shadow_normal_mode": "selected",
+                "shadow_selected_test_count": 2,
+                "shadow_fallback_full": False,
+                "shadow_unmatched_source_count": 0,
+                "routing_escape": True,
+            },
+        },
+    ]
+    assert test_routing_metrics(events) == {
+        "total_runs": 2,
+        "mode_counts": {"full": 1, "selected": 1},
+        "execution_mode_counts": {"ci": 1, "normal": 1},
+        "normal_runs": 1,
+        "shadow_runs": 1,
+        "selection_observations": 2,
+        "selection_ratio": 0.02,
+        "fallback_rate": 0.0,
+        "unmatched_source_rate": 0.0,
+        "routing_escape_count": 1,
+        "routing_escape_observations": 1,
+    }
+
+
+def test_test_routing_metrics_exclude_clean_normal_runs() -> None:
+    from harness_runtime.observability import test_routing_metrics
+
+    metrics = test_routing_metrics([
+        {
+            "event_type": "verification_run",
+            "test_routing": {
+                "mode": "none",
+                "execution_mode": "normal",
+                "selected_test_count": 0,
+                "total_test_count": 100,
+                "fallback_full": False,
+                "unmatched_source_count": 0,
+                "changed_file_count": 0,
+            },
+        }
+    ])
+
+    assert metrics["total_runs"] == 1
+    assert metrics["normal_runs"] == 0
+    assert metrics["selection_observations"] == 0
+    assert metrics["selection_ratio"] is None

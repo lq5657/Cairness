@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -22,10 +23,14 @@ def git_repo_root(project_root: Path) -> Path:
 
 def git_changed_paths(project_root: Path) -> list[Path]:
     repo_root = git_repo_root(project_root)
-    commands = [
+    commands: list[list[str]] = []
+    base_ref = os.environ.get("CC_VERIFY_BASE_REF", "").strip()
+    if base_ref:
+        commands.append(["git", "diff", "--name-only", f"{base_ref}...HEAD"])
+    commands.extend([
         ["git", "diff", "--name-only", "HEAD"],
         ["git", "ls-files", "--others", "--exclude-standard"],
-    ]
+    ])
     paths: set[Path] = set()
     for command in commands:
         completed = subprocess.run(

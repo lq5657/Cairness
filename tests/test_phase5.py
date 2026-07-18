@@ -112,6 +112,55 @@ def test_optimization_proposes_only_quality_first_candidate() -> None:
     assert report["candidate"]["status"] == "passed"
 
 
+def test_optimization_reports_test_routing_samples_without_mutating_policy() -> None:
+    events = _events(2)
+    events[0]["test_routing"] = {
+        "mode": "selected",
+        "execution_mode": "normal",
+        "selected_test_count": 4,
+        "total_test_count": 100,
+        "fallback_full": False,
+        "unmatched_source_count": 0,
+    }
+    report = build_optimization_report(events, min_samples=1)
+    assert report["test_routing"]["selection_ratio"] == 0.04
+    assert report["test_routing"]["normal_runs"] == 1
+    assert report["test_routing"]["selection_observations"] == 1
+    assert not any(
+        item["id"] == "investigate_test_routing_escape"
+        for item in report["recommendations"]
+    )
+
+
+def test_optimization_does_not_request_routing_samples_without_policy() -> None:
+    report = build_optimization_report(_events(2), min_samples=1, routing_enabled=False)
+    assert report["test_routing_enabled"] is False
+    assert not any(
+        item["id"] == "collect_test_routing_samples"
+        for item in report["recommendations"]
+    )
+
+
+def test_optimization_requests_evidence_after_unusable_routing_run() -> None:
+    events = _events(1)
+    events[0]["test_routing"] = {
+        "mode": "none",
+        "execution_mode": "normal",
+        "selected_test_count": 0,
+        "total_test_count": 100,
+        "fallback_full": False,
+        "unmatched_source_count": 0,
+        "changed_file_count": 0,
+    }
+
+    report = build_optimization_report(events, min_samples=1)
+
+    assert any(
+        item["id"] == "collect_test_routing_samples"
+        for item in report["recommendations"]
+    )
+
+
 def test_optimize_cli_policy_catalog_is_read_only(repo_root: Path) -> None:
     script = repo_root / "cairn-core/scripts/cc-optimize"
     completed = subprocess.run(

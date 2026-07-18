@@ -11,7 +11,9 @@ from harness_runtime.test_policy import (
     TestPolicyError,
     classify_test_path,
     discover_test_files,
+    failed_test_paths,
     load_test_policy,
+    routing_escape,
     select_tests,
     validate_test_policy,
 )
@@ -62,6 +64,7 @@ def test_routing_selects_explicit_tests_for_readme(repo_root: Path):
     assert selection.mode == "selected"
     assert {"test_platform_support.py", "test_release.py", "test_cairness_action.py"} <= names
     assert not selection.fallback_full
+    assert selection.as_dict()["total_tests"] == len(discover_test_files(repo_root))
 
 
 def test_routing_falls_back_to_full_for_unknown_framework_source(repo_root: Path):
@@ -69,6 +72,15 @@ def test_routing_falls_back_to_full_for_unknown_framework_source(repo_root: Path
     assert selection.mode == "full"
     assert selection.fallback_full
     assert "cairn-core/scripts/new-runtime-check" in selection.unmatched_sources
+
+
+def test_routing_escape_detects_failed_test_outside_normal_selection(repo_root: Path):
+    selection = select_tests(repo_root, [repo_root / "README.md"], "normal")
+    stdout = "FAILED tests/test_unrelated.py::test_failure - boom\n"
+    assert failed_test_paths(stdout) == ("tests/test_unrelated.py",)
+    assert routing_escape(selection, status="failed", stdout=stdout) is True
+    assert routing_escape(selection, status="passed", stdout="") is False
+    assert routing_escape(selection, status="failed", stdout="traceback") is None
 
 
 def test_routing_uses_source_stem_for_a_dedicated_test(repo_root: Path):
@@ -154,3 +166,91 @@ def test_cc_verify_normal_mode_runs_selected_pytest_files(repo_root: Path, monke
     }
     assert report["test_selection"]["mode"] == "selected"
     assert not any("unittest" in part for part in command)
+
+
+def test_cc_verify_ci_adds_shadow_selection_and_escape_evidence(repo_root: Path, monkeypatch):
+    verify = SourceFileLoader(
+        "_test_policy_cc_verify_ci",
+        str(repo_root / "cairn-core/scripts/cc-verify"),
+    ).load_module()
+    calls = []
+
+    def fake_run_step(name, kind, command, cwd, **kwargs):
+        calls.append((name, kind, command, cwd))
+        return {
+            "name": name,
+            "kind": kind,
+            "status": "passed",
+            "stdout": "",
+            "stderr": "",
+        }
+
+    monkeypatch.setattr(verify, "git_changed_paths", lambda root: [root / "README.md"])
+    monkeypatch.setattr(verify, "run_step", fake_run_step)
+    args = argparse.Namespace(
+        execution_mode="ci",
+        fixture=None,
+        changed_only=False,
+        reuse_cache=False,
+        change=None,
+        project_only=True,
+        harness_only=False,
+        command=None,
+        check_review_coverage=False,
+        check_finding_locations=False,
+        check_risk_triage=False,
+        check_wave_plan=False,
+    )
+    context = SimpleNamespace(project_root=repo_root, framework_root=repo_root / "cairn-core")
+
+    report = verify.build_report(args, context)
+
+    assert len(calls) == 1
+    assert calls[0][0:2] == ("pytest", "project:pytest")
+    assert report["test_selection"]["mode"] == "full"
+    assert report["test_selection"]["shadow_normal_mode"] == "selected"
+    assert report["test_selection"]["shadow_selected_test_count"] == 3
+    assert report["test_selection"]["shadow_fallback_full"] is False
+    assert report["test_selection"]["shadow_unmatched_source_count"] == 0
+    assert report["test_selection"]["routing_escape"] is False
+
+
+def test_cc_verify_ci_keeps_missing_change_evidence_unknown(repo_root: Path, monkeypatch):
+    verify = SourceFileLoader(
+        "_test_policy_cc_verify_ci_without_changes",
+        str(repo_root / "cairn-core/scripts/cc-verify"),
+    ).load_module()
+
+    monkeypatch.setattr(verify, "git_changed_paths", lambda root: [])
+    monkeypatch.setattr(
+        verify,
+        "run_step",
+        lambda name, kind, command, cwd, **kwargs: {
+            "name": name,
+            "kind": kind,
+            "status": "passed",
+            "stdout": "",
+            "stderr": "",
+        },
+    )
+    args = argparse.Namespace(
+        execution_mode="ci",
+        fixture=None,
+        changed_only=False,
+        reuse_cache=False,
+        change=None,
+        project_only=True,
+        harness_only=False,
+        command=None,
+        check_review_coverage=False,
+        check_finding_locations=False,
+        check_risk_triage=False,
+        check_wave_plan=False,
+    )
+    context = SimpleNamespace(project_root=repo_root, framework_root=repo_root / "cairn-core")
+
+    selection = verify.build_report(args, context)["test_selection"]
+
+    assert selection["routing_escape"] is None
+    assert "shadow_normal_mode" not in selection
+    assert "shadow_selected_test_count" not in selection

@@ -13,6 +13,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Create framework symlink
         run: ln -s cairn-core .claude
       - name: Create state skeleton
@@ -38,6 +40,8 @@ jobs:
         run: .claude/scripts/cc-verify --harness-only --verbose
       - name: Verify Repository Tests
         run: .claude/scripts/cc-verify --execution-mode ci --project-only --verbose
+        env:
+          CC_VERIFY_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
       - name: Validate Evals
         run: .claude/scripts/cc-eval .claude/evals
       - name: Verify Fixture

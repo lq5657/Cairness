@@ -58,6 +58,29 @@ def test_git_root_and_changed_paths_include_tracked_and_untracked(tmp_path):
     ]
 
 
+def test_changed_paths_include_committed_ci_range(tmp_path, monkeypatch):
+    git_service = importlib.import_module("harness_runtime.verification_git")
+    root = _repo(tmp_path)
+    base_ref = _git(root, "rev-parse", "HEAD").stdout.strip()
+    (root / "committed.txt").write_text("new\n", encoding="utf-8")
+    _git(root, "add", "committed.txt")
+    _git(root, "commit", "-qm", "add committed file")
+    monkeypatch.setenv("CC_VERIFY_BASE_REF", base_ref)
+
+    assert git_service.git_changed_paths(root) == [
+        (root / "committed.txt").resolve(),
+    ]
+
+
+def test_invalid_ci_base_does_not_hide_worktree_changes(tmp_path, monkeypatch):
+    git_service = importlib.import_module("harness_runtime.verification_git")
+    root = _repo(tmp_path)
+    (root / "tracked.txt").write_text("changed\n", encoding="utf-8")
+    monkeypatch.setenv("CC_VERIFY_BASE_REF", "missing-base-ref")
+
+    assert git_service.git_changed_paths(root) == [(root / "tracked.txt").resolve()]
+
+
 def test_changed_change_dirs_require_existing_change_and_ignore_task_board(tmp_path):
     git_service = importlib.import_module("harness_runtime.verification_git")
     changes = tmp_path / ".cairness" / "changes"

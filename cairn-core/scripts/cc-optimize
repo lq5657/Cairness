@@ -55,12 +55,16 @@ def main(argv: list[str]) -> int:
                 if context.config
                 else 5
             )
+            routing_enabled = (
+                context.project_root / "tests" / "test-policy.yaml"
+            ).is_file()
             report = build_optimization_report(
                 discover_runtime_events(context.project_root),
                 baseline=baseline,
                 candidate=candidate,
                 min_samples=args.min_samples if args.min_samples is not None else configured_min_samples,
                 thresholds=thresholds,
+                routing_enabled=routing_enabled,
             )
     except (HarnessContextError, BenchmarkError, ExecutionPolicyError, ValueError) as exc:
         print(f"E_OPT001 {exc}", file=sys.stderr)
