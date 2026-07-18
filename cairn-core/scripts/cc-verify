@@ -66,6 +66,7 @@ from harness_runtime.verification_scheduling import (
     verification_mode,
 )
 from harness_runtime.verification_steps import blocked_step, failed_step, skipped_step
+from harness_runtime.test_policy import TestPolicyError, select_tests
 
 
 def command_text(command: list[str]) -> str:
@@ -220,6 +221,48 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             elif plan.result_constructor == "check_risk_triage":
                 results.append(check_risk_triage(project_root, args.change))
 
+    test_selection = None
+    repository_test_policy = (
+        execution_mode in {"normal", "ci", "optimize"}
+        and not args.fixture
+        and not args.harness_only
+        and (project_root / "tests" / "test-policy.yaml").is_file()
+    )
+    if repository_test_policy:
+        try:
+            selection = select_tests(project_root, changed_paths, execution_mode)
+            test_selection = selection.as_dict()
+            if selection.mode == "none":
+                results.append(
+                    skipped_step(
+                        "pytest",
+                        "project:pytest",
+                        "no affected pytest tests selected by tests/test-policy.yaml",
+                    )
+                )
+            else:
+                command = [sys.executable, "-m", "pytest", "-q"]
+                if selection.mode == "selected":
+                    command.extend(str(path) for path in selection.tests)
+                results.append(run_step("pytest", "project:pytest", command, project_root))
+        except TestPolicyError as exc:
+            test_selection = {
+                "mode": "error",
+                "tests": [],
+                "reasons": {},
+                "fallback_full": False,
+                "unmatched_sources": [],
+                "error": str(exc),
+            }
+            results.append(
+                failed_step(
+                    "pytest-policy",
+                    "project:pytest",
+                    f"invalid tests/test-policy.yaml: {exc}",
+                    project_root,
+                )
+            )
+
     profile_changed = (
         resolution.profile is not None
         and has_profile_changes(changed_paths, project_root, resolution.profile)
@@ -232,7 +275,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         profile_status=resolution.status,
         has_profile_change=profile_changed,
     )
-    if run_project_checks:
+    if run_project_checks and not repository_test_policy:
         target_project_exists = target_project_root.exists()
         project_capabilities = []
         if (
@@ -283,6 +326,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         results=results,
         include_execution_metrics=True,
         execution_policy=execution_policy.as_dict() if execution_policy else None,
+        test_selection=test_selection,
     )
     return report
 

@@ -26,6 +26,15 @@ testpaths = ["tests"]
 # (e.g. `from harness_runtime import ...`), relying on the script dir being on
 # sys.path. conftest.py adds it; keep testpaths self-contained.
 pythonpath = ["."]
+markers = [
+  "unit: fast isolated tests",
+  "contract: schema and interface contract tests",
+  "integration: cross-module or subprocess integration tests",
+  "behavior: end-to-end behavior and workflow tests",
+  "release: release, upgrade, and packaging tests",
+  "slow: tests that are expected to take longer than the normal local budget",
+  "serial: tests that must not share a parallel worker or mutable fixture",
+]
 
 [tool.cairness]
 # Version of the shippable framework. Authoritative source is

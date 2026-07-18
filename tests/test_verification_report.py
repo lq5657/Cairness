@@ -57,3 +57,28 @@ def test_build_verification_report_preserves_public_schema_and_field_order():
         "status": "failed",
         "results": results,
     }
+
+
+def test_build_verification_report_includes_optional_test_selection():
+    selection = {
+        "mode": "selected",
+        "tests": ["tests/test_verification_report.py"],
+        "reasons": {"tests/test_verification_report.py": ["README.md"]},
+        "fallback_full": False,
+        "unmatched_sources": [],
+    }
+    report = build_verification_report(
+        generated_at="2026-07-12T09:08:07+00:00",
+        project_root=Path("/workspace/project"),
+        claude_root=Path("/workspace/project/.claude"),
+        change_id=None,
+        fixture=None,
+        command=None,
+        mode="changed-only",
+        language_profile="python",
+        language_profile_source="catalog",
+        changed_paths=[Path("README.md")],
+        results=[],
+        test_selection=selection,
+    )
+    assert report["test_selection"] == selection

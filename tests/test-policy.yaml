@@ -1,0 +1,286 @@
+version: 1
+
+# Existing tests remain at the repository root for now. New tests must live
+# under tests/<layer>/ so their primary layer is derived from the path.
+layers:
+  - unit
+  - contract
+  - integration
+  - behavior
+  - release
+
+legacy_files:
+  - tests/test_adapter_capabilities.py
+  - tests/test_adapter_check_cli.py
+  - tests/test_adapter_contract.py
+  - tests/test_adapter_host_smoke.py
+  - tests/test_adapter_installation.py
+  - tests/test_adapter_regression.py
+  - tests/test_adapter_verification_integration.py
+  - tests/test_baseline_gitignore.py
+  - tests/test_behavior_cases.py
+  - tests/test_cairness_action.py
+  - tests/test_cc_init_existing_project_contract.py
+  - tests/test_change_docs_parsing.py
+  - tests/test_change_findings.py
+  - tests/test_change_identity_schema.py
+  - tests/test_change_lint.py
+  - tests/test_cli_adapter_installation.py
+  - tests/test_cli_custom_framework_consumers.py
+  - tests/test_cli_doctor.py
+  - tests/test_cli_explain.py
+  - tests/test_cli_init.py
+  - tests/test_cli_release.py
+  - tests/test_cli_version.py
+  - tests/test_codex_adapter.py
+  - tests/test_codex_adapter_evidence_semantics.py
+  - tests/test_codex_onboarding_coexistence.py
+  - tests/test_codex_project_asset_safety.py
+  - tests/test_command_protocol_contract.py
+  - tests/test_dashboard.py
+  - tests/test_deps_orphans_contract.py
+  - tests/test_delta_check.py
+  - tests/test_doctor_command_entrypoints.py
+  - tests/test_doctor_onboarding_metadata.py
+  - tests/test_enums_schema_template.py
+  - tests/test_enums_single_source.py
+  - tests/test_event_021.py
+  - tests/test_event_check.py
+  - tests/test_event_check_baseline.py
+  - tests/test_event_write.py
+  - tests/test_harness_config.py
+  - tests/test_harness_config_consumers.py
+  - tests/test_harness_context.py
+  - tests/test_help_script.py
+  - tests/test_intent_router.py
+  - tests/test_issue_reporting_contract.py
+  - tests/test_issues_module.py
+  - tests/test_language_profile_parity.py
+  - tests/test_language_resolution.py
+  - tests/test_lint_runtime_manifest.py
+  - tests/test_lint_runtime_readsets.py
+  - tests/test_lint_topic_rules.py
+  - tests/test_loop_command.py
+  - tests/test_loop_gate_script.py
+  - tests/test_loop_lifecycle_contract.py
+  - tests/test_manifest_workflow_fields.py
+  - tests/test_model_behavior_eval.py
+  - tests/test_no_spec_hook.py
+  - tests/test_onboard_cli_contract.py
+  - tests/test_platform_support.py
+  - tests/test_pre_commit_hook.py
+  - tests/test_product_profiles.py
+  - tests/test_profile_schema.py
+  - tests/test_readset_derivation.py
+  - tests/test_release.py
+  - tests/test_require_yaml.py
+  - tests/test_role_check_manifest_writes.py
+  - tests/test_role_check_write_scope.py
+  - tests/test_runtime_core_logical_paths.py
+  - tests/test_runtime_fallback_audit.py
+  - tests/test_runtime_layout.py
+  - tests/test_runtime_neutral_paths.py
+  - tests/test_runtime_observability.py
+  - tests/test_schema_command_references.py
+  - tests/test_schema_contract_policies.py
+  - tests/test_schema_documents.py
+  - tests/test_schema_input_contract_issues.py
+  - tests/test_schema_interaction_contract_issues.py
+  - tests/test_schema_manifest.py
+  - tests/test_schema_metadata.py
+  - tests/test_schema_result_contract_issues.py
+  - tests/test_schema_role_registry.py
+  - tests/test_schema_runtime_core_validation.py
+  - tests/test_schema_subagent_contract_issues.py
+  - tests/test_schema_technology_catalog_issues.py
+  - tests/test_schema_validator.py
+  - tests/test_source_tree_isolation.py
+  - tests/test_spec_scope_check.py
+  - tests/test_state_transition.py
+  - tests/test_subagent_contract_form.py
+  - tests/test_subagent_evidence_check.py
+  - tests/test_topic_rule_schema.py
+  - tests/test_topic_trigger.py
+  - tests/test_upgrade_check_pollution.py
+  - tests/test_upgrade_safety.py
+  - tests/test_upgrade_version_metadata.py
+  - tests/test_verification_auxiliary_plan.py
+  - tests/test_verification_capabilities.py
+  - tests/test_verification_changes.py
+  - tests/test_verification_diagnostics.py
+  - tests/test_verification_git.py
+  - tests/test_verification_harness_plan.py
+  - tests/test_verification_project_plan.py
+  - tests/test_verification_report.py
+  - tests/test_verification_results.py
+  - tests/test_verification_review.py
+  - tests/test_verification_runner.py
+  - tests/test_verification_scheduling.py
+  - tests/test_verification_steps.py
+  - tests/test_verify_collects_issues.py
+  - tests/test_versioning.py
+  - tests/test_wave_baseline.py
+  - tests/test_wave_plan.py
+  - tests/test_wave_plan_script.py
+  - tests/test_workflow_gen.py
+  - tests/test_workflow_inputs_parity.py
+  - tests/test_legacy_audit.py
+  - tests/test_phase0_phase1.py
+  - tests/test_phase2_phase4.py
+  - tests/test_phase5.py
+  - tests/test_review_parse.py
+  - tests/test_test_policy.py
+
+# Rules are evaluated in order for the legacy flat files. They intentionally
+# classify existing files without requiring a large path migration.
+legacy_rules:
+  release:
+    - tests/test_cairness_action.py
+    - tests/test_cli_release.py
+    - tests/test_cli_version.py
+    - tests/test_release.py
+    - tests/test_upgrade_check_pollution.py
+    - tests/test_upgrade_safety.py
+    - tests/test_upgrade_version_metadata.py
+    - tests/test_versioning.py
+  behavior:
+    - tests/test_adapter_host_smoke.py
+    - tests/test_adapter_regression.py
+    - tests/test_adapter_verification_integration.py
+    - tests/test_behavior_cases.py
+    - tests/test_loop_gate_script.py
+    - tests/test_loop_lifecycle_contract.py
+    - tests/test_model_behavior_eval.py
+    - tests/test_phase0_phase1.py
+    - tests/test_phase2_phase4.py
+    - tests/test_phase5.py
+    - tests/test_source_tree_isolation.py
+    - tests/test_verification_*.py
+    - tests/test_verify_collects_issues.py
+  integration:
+    - tests/test_adapter_*.py
+    - tests/test_baseline_gitignore.py
+    - tests/test_cc_init_existing_project_contract.py
+    - tests/test_change_*.py
+    - tests/test_cli_*.py
+    - tests/test_codex_*.py
+    - tests/test_dashboard.py
+    - tests/test_deps_orphans_contract.py
+    - tests/test_delta_check.py
+    - tests/test_doctor_*.py
+    - tests/test_event_*.py
+    - tests/test_harness_context.py
+    - tests/test_help_script.py
+    - tests/test_loop_command.py
+    - tests/test_no_spec_hook.py
+    - tests/test_onboard_cli_contract.py
+    - tests/test_pre_commit_hook.py
+    - tests/test_role_check_*.py
+    - tests/test_spec_scope_check.py
+    - tests/test_state_transition.py
+    - tests/test_subagent_evidence_check.py
+  contract:
+    - tests/test_*_parity.py
+    - tests/test_*_schema.py
+    - tests/test_command_protocol_contract.py
+    - tests/test_enums_*.py
+    - tests/test_harness_config*.py
+    - tests/test_issue_reporting_contract.py
+    - tests/test_language_*.py
+    - tests/test_lint_*.py
+    - tests/test_manifest_*.py
+    - tests/test_platform_support.py
+    - tests/test_product_profiles.py
+    - tests/test_profile_schema.py
+    - tests/test_readset_*.py
+    - tests/test_runtime_*.py
+    - tests/test_schema_*.py
+    - tests/test_subagent_contract_form.py
+    - tests/test_topic_*.py
+    - tests/test_wave_*.py
+    - tests/test_workflow_*.py
+  unit:
+    - tests/test_change_findings.py
+    - tests/test_change_lint.py
+    - tests/test_intent_router.py
+    - tests/test_issues_module.py
+    - tests/test_require_yaml.py
+    - tests/test_schema_validator.py
+    - tests/test_legacy_audit.py
+    - tests/test_review_parse.py
+    - tests/test_test_policy.py
+attributes:
+  slow:
+    - tests/test_adapter_host_smoke.py
+    - tests/test_adapter_regression.py
+    - tests/test_cairness_action.py
+    - tests/test_cli_adapter_installation.py
+    - tests/test_codex_adapter.py
+    - tests/test_upgrade_safety.py
+  serial:
+    - tests/test_adapter_host_smoke.py
+    - tests/test_adapter_regression.py
+    - tests/test_behavior_cases.py
+    - tests/test_source_tree_isolation.py
+
+routing:
+  # These files change the test environment or the routing contract itself.
+  global_paths:
+    - pyproject.toml
+    - tests/conftest.py
+    - tests/test-policy.yaml
+    - cairn-core/scripts/harness_runtime/test_policy.py
+    - .github/**
+    - cairn-core/harness.config.yaml
+    - cairn-core/runtime/core.yaml
+    - cairn-core/schemas/**
+  rules:
+    - sources:
+        - README.md
+      tests:
+        - tests/test_platform_support.py
+        - tests/test_release.py
+        - tests/test_cairness_action.py
+    - sources:
+        - cairn-core/VERSION
+        - cairn-core/CHANGELOG.md
+        - cairn-core/UPGRADE.md
+      tests:
+        - tests/test_release.py
+        - tests/test_cli_release.py
+        - tests/test_upgrade_version_metadata.py
+        - tests/test_versioning.py
+    - sources:
+        - cairn-core/runtime/**
+        - cairn-core/templates/**
+      tests:
+        - tests/test_*_schema.py
+        - tests/test_schema_*.py
+        - tests/test_profile_schema.py
+        - tests/test_readset_*.py
+        - tests/test_workflow_*.py
+        - tests/test_topic_*.py
+        - tests/test_loop_*.py
+    - sources:
+        - cairn-core/scripts/cc-verify
+        - cairn-core/scripts/harness_runtime/verification_*.py
+      tests:
+        - tests/test_verification_*.py
+        - tests/test_verify_collects_issues.py
+        - tests/test_behavior_cases.py
+        - tests/test_phase2_phase4.py
+        - tests/test_phase5.py
+    - sources:
+        - cairn-core/scripts/cc-cairn.py
+      tests:
+        - tests/test_cli_*.py
+        - tests/test_loop_*.py
+        - tests/test_product_profiles.py
+        - tests/test_onboard_cli_contract.py
+    - sources:
+        - cairn_install
+        - cairn_uninstall
+      tests:
+        - tests/test_cli_*.py
+        - tests/test_adapter_installation.py
+        - tests/test_upgrade_safety.py

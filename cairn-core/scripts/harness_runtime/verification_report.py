@@ -23,6 +23,7 @@ def build_verification_report(
     results: list[dict[str, object]],
     include_execution_metrics: bool = False,
     execution_policy: Mapping[str, Any] | None = None,
+    test_selection: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     """Build the stable JSON payload emitted by ``cc-verify``."""
     report = {
@@ -43,6 +44,8 @@ def build_verification_report(
     }
     if execution_policy is not None:
         report["execution_policy"] = dict(execution_policy)
+    if test_selection is not None:
+        report["test_selection"] = dict(test_selection)
     if include_execution_metrics:
         scheduled = [item for item in results if item.get("status") != "skipped"]
         reused = sum(1 for item in scheduled if item.get("reused") is True)

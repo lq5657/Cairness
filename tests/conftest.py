@@ -21,6 +21,38 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 
+def pytest_collection_modifyitems(config, items):
+    """Apply the repository's primary and secondary test policy markers."""
+    from harness_runtime.test_policy import (
+        TestPolicyError,
+        classify_test_path,
+        load_test_policy,
+    )
+
+    try:
+        policy = load_test_policy(REPO_ROOT)
+    except TestPolicyError as exc:
+        raise pytest.UsageError(f"invalid tests/test-policy.yaml: {exc}") from exc
+    for item in items:
+        try:
+            classification = classify_test_path(
+                REPO_ROOT, Path(str(item.fspath)), policy=policy
+            )
+        except TestPolicyError as exc:
+            raise pytest.UsageError(f"test classification failed for {item.nodeid}: {exc}") from exc
+        declared_layers = {
+            marker.name for marker in item.iter_markers() if marker.name in policy.layers
+        }
+        if declared_layers and declared_layers != {classification.layer}:
+            raise pytest.UsageError(
+                f"test classification conflict for {item.nodeid}: "
+                f"policy={classification.layer}, declared={sorted(declared_layers)}"
+            )
+        item.add_marker(classification.layer)
+        for attribute in classification.attributes:
+            item.add_marker(attribute)
+
+
 def _load_script(name: str):
     """Load an extensionless script from cairn-core/scripts/ as a module.
 
