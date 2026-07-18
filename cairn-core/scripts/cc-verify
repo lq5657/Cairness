@@ -17,6 +17,7 @@ from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
 from harness_runtime.observability import record_verification_run
+from harness_runtime.execution_policy import ExecutionPolicyError, resolve_execution_policy
 from harness_runtime.verification_capabilities import (
     capability_display_name,
     capability_enabled,
@@ -84,6 +85,32 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
     except HarnessConfigError as exc:
         config = {}
         config_error = str(exc)
+    execution_mode = getattr(args, "execution_mode", None)
+    try:
+        # The CLI flag is intentionally explicit.  A configured default is
+        # available to other callers, but must not silently narrow legacy CI
+        # invocations that omit --execution-mode.
+        execution_policy = (
+            resolve_execution_policy(
+                execution_mode,
+                config.get("execution", {}) if isinstance(config, dict) else {},
+            )
+            if execution_mode
+            else None
+        )
+    except ExecutionPolicyError as exc:
+        execution_policy = None
+        config_error = f"invalid execution policy: {exc}"
+    # Explicit normal mode is the only mode that narrows a verification run.
+    # Leaving the flag absent preserves the historical full-verify behavior for
+    # existing CI integrations; CI and optimize modes explicitly force full.
+    if execution_policy is not None:
+        if execution_policy.mode == "normal":
+            args.changed_only = True
+            args.reuse_cache = True
+        elif execution_policy.mode in {"ci", "optimize"}:
+            args.changed_only = False
+            args.reuse_cache = False
     change_dir = changes_root / args.change if args.change else None
     changed_paths = git_changed_paths(project_root) if args.changed_only else []
     changed_dirs = changed_change_dirs(changed_paths, project_root) if args.changed_only else []
@@ -255,6 +282,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         changed_paths=changed_paths,
         results=results,
         include_execution_metrics=True,
+        execution_policy=execution_policy.as_dict() if execution_policy else None,
     )
     return report
 
@@ -307,6 +335,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--command", help="Run role/write-scope checks for a cc-* command.")
     parser.add_argument("--changed-only", action="store_true", help="Run the smallest deterministic check set for changed files.")
     parser.add_argument("--reuse-cache", action="store_true", help="Reuse passed deterministic Harness checks from the content-addressed cache.")
+    parser.add_argument(
+        "--execution-mode",
+        choices=("normal", "ci", "optimize"),
+        help="Select explicit execution policy: normal=changed-only/cache, ci=full, optimize=full plus scheduled benchmark policy.",
+    )
     parser.add_argument("--check-review-coverage", action="store_true", help="Validate file_review_scope completeness in review.md.")
     parser.add_argument("--check-finding-locations", action="store_true", help="Validate finding existing_code matches actual file content.")
     parser.add_argument("--check-risk-triage", action="store_true", help="Validate risk_triage table is populated when present in review.md.")

@@ -114,6 +114,7 @@ scripts:
   benchmark: core://scripts/cc-benchmark
   context-pack: core://scripts/cc-context-pack
   loop-step: core://scripts/cc-loop-step
+  optimize: core://scripts/cc-optimize
   help: core://scripts/cc-help
   adapter-check: core://scripts/cc-adapter-check
 

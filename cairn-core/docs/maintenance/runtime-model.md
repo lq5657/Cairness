@@ -150,6 +150,14 @@ Context Pack 位于 `.cairness/runtime/context-packs/`，是 Harness-owned 的
 豁免。benchmark 记录不要求写入项目状态目录，避免把模型 prompt 或业务源码
 带入遥测。
 
+Phase 5 的执行模式是显式的三层策略：`normal` 给本地开发使用
+`changed-only` + cache，`ci` 给合并和发布使用 full verify，`optimize` 给
+定时维护任务使用完整 verify，再由 `cc-optimize` 执行 benchmark。`cc-verify` 不带该参数时保留历史 full
+verify 行为，避免旧 CI 调用静默改变门禁范围。`cc-optimize` 是只读分析器：
+样本不足返回 `observe`，质量或 benchmark 不合格返回 `reject`，只有样本充分
+且质量优先比较通过时返回 `propose`。它不直接写入策略、readset 或业务代码，
+正式采纳必须创建可审计的版本化 change。
+
 `cc-verify --changed-only` 会根据 Git 变更选择较小的确定性检查集。Harness 资产变化仍会触发 runtime/readset/doctor/behavior/schema 检查；change 目录变化会只校验受影响 change。CI 和发布前仍应运行默认全量检查。
 
 `.claude/scripts/cc-upgrade-check` 会检查 `.claude/` 与 `.cairness/` 的升级边界、旧状态路径残留、版本文档同步，并可生成 JSON upgrade report。

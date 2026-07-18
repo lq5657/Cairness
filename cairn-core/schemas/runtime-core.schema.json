@@ -218,6 +218,9 @@
         "loop-step": {
           "type": "string"
         },
+        "optimize": {
+          "type": "string"
+        },
         "help": {
           "type": "string"
         },

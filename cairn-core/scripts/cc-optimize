@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Analyze local runtime evidence for a scheduled optimization run.
+
+This command is intentionally read-only.  It never edits Harness policy,
+readsets, source files, or project state beyond reading existing telemetry.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.benchmark import BenchmarkError
+from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.execution_policy import ExecutionPolicyError, policy_catalog
+from harness_runtime.observability import discover_runtime_events
+from harness_runtime.optimization import build_optimization_report
+
+
+def _load_json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot read JSON record {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"JSON record {path} must be an object")
+    return value
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Build a read-only Cairness optimization report.")
+    parser.add_argument("--root", help="Explicit Cairness project root")
+    parser.add_argument("--baseline", type=Path)
+    parser.add_argument("--candidate", type=Path)
+    parser.add_argument("--thresholds", type=Path)
+    parser.add_argument("--min-samples", type=int)
+    parser.add_argument("--policies", action="store_true", help="Print the execution policy catalog")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        if args.policies:
+            report = {"tool": "cc-optimize", "policies": policy_catalog()}
+        else:
+            context = load_harness_context(
+                explicit_root=Path(args.root) if args.root else None,
+                framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            )
+            baseline = _load_json(args.baseline) if args.baseline else None
+            candidate = _load_json(args.candidate) if args.candidate else None
+            thresholds = _load_json(args.thresholds) if args.thresholds else None
+            configured_min_samples = (
+                context.config.values.get("execution", {}).get("min_samples", 5)
+                if context.config
+                else 5
+            )
+            report = build_optimization_report(
+                discover_runtime_events(context.project_root),
+                baseline=baseline,
+                candidate=candidate,
+                min_samples=args.min_samples if args.min_samples is not None else configured_min_samples,
+                thresholds=thresholds,
+            )
+    except (HarnessContextError, BenchmarkError, ExecutionPolicyError, ValueError) as exc:
+        print(f"E_OPT001 {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif args.policies:
+        for policy in report["policies"]:
+            print(f"{policy['mode']}: {policy['description']}")
+    else:
+        print(f"cc-optimize: {report['status']} ({report['policy_action']})")
+        for item in report["recommendations"]:
+            print(f"- {item['id']}: {item['reason']}")
+    return 1 if report.get("status") == "reject" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

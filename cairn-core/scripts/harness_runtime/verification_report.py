@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Mapping, Any
 
 from harness_runtime.verification_scheduling import aggregate_status
 
@@ -21,6 +22,7 @@ def build_verification_report(
     changed_paths: list[Path],
     results: list[dict[str, object]],
     include_execution_metrics: bool = False,
+    execution_policy: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
     """Build the stable JSON payload emitted by ``cc-verify``."""
     report = {
@@ -39,6 +41,8 @@ def build_verification_report(
         "status": aggregate_status(results),
         "results": results,
     }
+    if execution_policy is not None:
+        report["execution_policy"] = dict(execution_policy)
     if include_execution_metrics:
         scheduled = [item for item in results if item.get("status") != "skipped"]
         reused = sum(1 for item in scheduled if item.get("reused") is True)

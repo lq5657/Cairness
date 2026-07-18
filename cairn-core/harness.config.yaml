@@ -87,6 +87,13 @@ budgets:
     enabled: true
     min_events_for_baseline: 5
 
+# Phase 5 execution policy.  The mode is explicit at invocation time so old
+# CI integrations keep their historical full-verify behavior.
+execution:
+  default_mode: normal
+  efficiency_gate: warn
+  min_samples: 5
+
 gate_effectiveness:
   degradation_window: 20
   degradation_threshold: 0.0
