@@ -20,9 +20,10 @@ def build_verification_report(
     language_profile_source: str | None,
     changed_paths: list[Path],
     results: list[dict[str, object]],
+    include_execution_metrics: bool = False,
 ) -> dict[str, object]:
     """Build the stable JSON payload emitted by ``cc-verify``."""
-    return {
+    report = {
         "schema_version": 1,
         "tool": "cc-verify",
         "generated_at": generated_at,
@@ -38,3 +39,13 @@ def build_verification_report(
         "status": aggregate_status(results),
         "results": results,
     }
+    if include_execution_metrics:
+        scheduled = [item for item in results if item.get("status") != "skipped"]
+        reused = sum(1 for item in scheduled if item.get("reused") is True)
+        report["execution_metrics"] = {
+            "verification_steps": len(scheduled),
+            "executed_verifications": len(scheduled) - reused,
+            "reused_verifications": reused,
+            "full_verify_runs": 1 if mode == "full" else 0,
+        }
+    return report

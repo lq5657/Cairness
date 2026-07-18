@@ -153,3 +153,40 @@ def test_run_step_normalizes_missing_executable(tmp_path):
     assert result["warnings"] == []
     assert result["diagnosis"]["cause"] == "Verification step failed."
     assert isinstance(result["duration_ms"], int)
+
+
+def test_run_step_reuses_only_cached_passed_result(tmp_path):
+    runner_service = importlib.import_module("harness_runtime.verification_runner")
+    cache_root = tmp_path / "cache"
+    key = "c" * 64
+    first_runner = RecordingRunner(
+        completed=subprocess.CompletedProcess(
+            args=["check"], returncode=0, stdout="ok\n", stderr=""
+        )
+    )
+    first = runner_service.run_step(
+        "cc-schema-check",
+        "harness",
+        ["check"],
+        tmp_path,
+        runner=first_runner,
+        cache_root=cache_root,
+        cache_key=key,
+        reuse_cache=True,
+    )
+    second_runner = RecordingRunner(error=FileNotFoundError("must not execute"))
+    second = runner_service.run_step(
+        "cc-schema-check",
+        "harness",
+        ["check"],
+        tmp_path,
+        runner=second_runner,
+        cache_root=cache_root,
+        cache_key=key,
+        reuse_cache=True,
+    )
+
+    assert first["reused"] is False
+    assert second["reused"] is True
+    assert second["duration_ms"] == 0
+    assert second_runner.calls == []

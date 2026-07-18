@@ -19,6 +19,7 @@ from harness_runtime.issues import (
     build_report as build_issue_report,
 )
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
+from harness_runtime.runtime_artifacts import owned_paths
 
 from change_docs import (
     parse_file_table,
@@ -369,6 +370,8 @@ def build_role_report(
         if path not in previous_paths
         or (path in previous_states and states.get(path) != previous_states[path])
     ]
+    runtime_owned = owned_paths(new_paths, for_role_check=True)
+    new_paths = [path for path in new_paths if path not in runtime_owned]
     issues = [
         Issue("E_ROLE002", path, f"{command} may not write this path")
         for path in new_paths
@@ -383,6 +386,9 @@ def build_role_report(
             "change_id": change_id or "",
             "allowed": [expand(pattern, change_id) for pattern in patterns],
             "dirty_paths": new_paths,
+            "runtime_owned_paths": {
+                path: rule.owner for path, rule in sorted(runtime_owned.items())
+            },
         },
     )
 

@@ -63,6 +63,8 @@ from harness_runtime.onboarding import (
 )
 from harness_runtime.observability import record_upgrade_run
 from harness_runtime.context_pack import CONTEXT_PACK_GITIGNORE_RULE
+from harness_runtime.loop_runtime import LOOP_SESSION_GITIGNORE_RULE
+from harness_runtime.verification_cache import VERIFICATION_CACHE_GITIGNORE_RULE
 from harness_runtime.product_profiles import (
     apply_product_profile,
     build_profile_plan,
@@ -106,6 +108,12 @@ GITIGNORE_ADDITIONS = """
 .cairness/observability/
 # Content-addressed task/review handoffs: reproducible local runtime artifacts.
 .cairness/runtime/context-packs/
+# Passed deterministic verification results; safe to delete and regenerate.
+.cairness/runtime/verification-cache/
+# Loop session state; durable audit events remain under loop-audit/.
+.cairness/runtime/loop-sessions/
+# Session audit records are local runtime evidence, not business changes.
+.cairness/loop-audit/
 """
 
 
@@ -1312,19 +1320,26 @@ def _prepare_observability(project_root: Path) -> bool:
 
 
 def _ensure_context_packs_gitignored(project_root: Path) -> None:
-    """Backfill the local Context Pack ignore rule for existing projects."""
+    """Backfill local runtime-artifact ignore rules for existing projects."""
     gitignore = project_root / ".gitignore"
     existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
-    if CONTEXT_PACK_GITIGNORE_RULE in existing.splitlines():
+    rules = (
+        CONTEXT_PACK_GITIGNORE_RULE,
+        VERIFICATION_CACHE_GITIGNORE_RULE,
+        LOOP_SESSION_GITIGNORE_RULE,
+    )
+    missing = [rule for rule in rules if rule not in existing.splitlines()]
+    if not missing:
         return
     if gitignore.exists():
         with gitignore.open("a", encoding="utf-8") as handle:
             if existing and not existing.endswith("\n"):
                 handle.write("\n")
-            handle.write(f"{CONTEXT_PACK_GITIGNORE_RULE}\n")
+            for rule in missing:
+                handle.write(f"{rule}\n")
     else:
-        gitignore.write_text(f"{CONTEXT_PACK_GITIGNORE_RULE}\n", encoding="utf-8")
-    print(f"  Updated .gitignore ({CONTEXT_PACK_GITIGNORE_RULE})")
+        gitignore.write_text("".join(f"{rule}\n" for rule in missing), encoding="utf-8")
+    print(f"  Updated .gitignore ({', '.join(missing)})")
 
 
 def _install_git_hooks(

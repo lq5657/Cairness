@@ -129,6 +129,22 @@ benchmark record 必须具有相同的 `suite` 和唯一、完整一致的 `case
 verify 次数降低 50%；task success 和 Important recall 允许的最大回退均为
 2%。阈值可通过 `--thresholds` JSON 覆盖，未知阈值名会被拒绝。
 
+`cc-verify --reuse-cache` 仅复用内容 fingerprint 一致且上次通过的静态
+Harness 检查。behavior replay、orphan/role/scope gate 和项目测试始终 fresh
+执行。报告中的 `execution_metrics.reused_verifications` 记录复用数量；任何
+源码、Harness、profile、readset 或命令输入变化都会产生新 cache key。
+
+Loop profile 使用 `cc-loop-step start|record|inspect` 将 manifest 中的
+`loop_continuation` 转成可执行 session 状态。planner 校验当前命令必须等于
+`expected_command`，只接受 manifest 声明的 condition route，并把 continuation
+写入 `.cairness/loop-audit/sessions/`。它只决定下一命令，不代替生命周期命令、
+state transition 或 hard gate。
+
+所有本地生成物由 `harness_runtime.runtime_artifacts` 统一登记 owner、lifecycle、
+orphan 和 role-check 行为。`.cairness/runtime/` 下只有登记的 Context Pack、
+verification cache 和 Loop session 子树合法；未知子树仍由 upgrade/orphan gate
+拒绝。
+
 Context Pack 位于 `.cairness/runtime/context-packs/`，是 Harness-owned 的
 临时运行时目录；未知的 `.cairness/runtime/` 文件仍然不能自动获得 orphan
 豁免。benchmark 记录不要求写入项目状态目录，避免把模型 prompt 或业务源码

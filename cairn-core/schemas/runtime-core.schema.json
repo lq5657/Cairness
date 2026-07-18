@@ -215,6 +215,9 @@
         "context-pack": {
           "type": "string"
         },
+        "loop-step": {
+          "type": "string"
+        },
         "help": {
           "type": "string"
         },

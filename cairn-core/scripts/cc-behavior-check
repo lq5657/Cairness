@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -91,14 +92,17 @@ def run_case(
         else token
         for token in case["command"]
     ]
-    completed = subprocess.run(
-        command,
-        cwd=str(project_root),
-        text=True,
-        capture_output=True,
-        check=False,
-        env=env,
-    )
+    with tempfile.TemporaryDirectory(prefix="cc-behavior-") as runtime_tmp:
+        env["TMPDIR"] = runtime_tmp
+        env["CC_BEHAVIOR_SESSION_ID"] = Path(runtime_tmp).name
+        completed = subprocess.run(
+            command,
+            cwd=str(project_root),
+            text=True,
+            capture_output=True,
+            check=False,
+            env=env,
+        )
     expected_exit = case["expect_exit_code"]
     if completed.returncode != expected_exit:
         issues.append(

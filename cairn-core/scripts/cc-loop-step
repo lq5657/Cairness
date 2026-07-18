@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Start, advance, or inspect a manifest-enforced Loop session."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.loop_runtime import LoopRuntimeError, inspect_session, record_step, start_session
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Manage a deterministic Cairness Loop session.")
+    sub = parser.add_subparsers(dest="action", required=True)
+    start = sub.add_parser("start")
+    start.add_argument("--change-id", required=True)
+    start.add_argument("--command", required=True)
+    start.add_argument("--session-id")
+    start.add_argument("--root", help="Explicit Cairness project root")
+    start.add_argument("--json", action="store_true")
+    record = sub.add_parser("record")
+    record.add_argument("--session-id", required=True)
+    record.add_argument("--command", required=True)
+    record.add_argument("--status", required=True, choices=("passed", "blocked", "partial"))
+    record.add_argument("--condition")
+    record.add_argument("--evidence")
+    record.add_argument("--root", help="Explicit Cairness project root")
+    record.add_argument("--json", action="store_true")
+    inspect = sub.add_parser("inspect")
+    inspect.add_argument("--session-id", required=True)
+    inspect.add_argument("--root", help="Explicit Cairness project root")
+    inspect.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+        if args.action == "start":
+            result = start_session(context, change_id=args.change_id, command=args.command, session_id=args.session_id)
+        elif args.action == "record":
+            result = record_step(
+                context,
+                session_id=args.session_id,
+                command=args.command,
+                status=args.status,
+                condition=args.condition,
+                evidence=args.evidence,
+            )
+        else:
+            result = inspect_session(context, args.session_id)
+    except (HarnessContextError, LoopRuntimeError) as exc:
+        print(f"E_LOOP001 {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(f"cc-loop-step: {args.action} {result.get('status', 'ok')}")
+        if args.action == "record":
+            print(f"next: {result.get('expected_command', '') or 'stop'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

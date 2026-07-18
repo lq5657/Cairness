@@ -43,6 +43,8 @@ def test_gitignore_additions_contains_baseline_rule():
     mod = _load_cc_cairn()
     assert ".cairness/changes/*/baseline/" in mod.GITIGNORE_ADDITIONS
     assert mod.CONTEXT_PACK_GITIGNORE_RULE in mod.GITIGNORE_ADDITIONS
+    assert mod.VERIFICATION_CACHE_GITIGNORE_RULE in mod.GITIGNORE_ADDITIONS
+    assert mod.LOOP_SESSION_GITIGNORE_RULE in mod.GITIGNORE_ADDITIONS
 
 
 def test_ensure_context_packs_gitignored_is_idempotent(tmp_path):
@@ -55,6 +57,8 @@ def test_ensure_context_packs_gitignored_is_idempotent(tmp_path):
 
     content = (root / ".gitignore").read_text(encoding="utf-8")
     assert content.count(mod.CONTEXT_PACK_GITIGNORE_RULE) == 1
+    assert content.count(mod.VERIFICATION_CACHE_GITIGNORE_RULE) == 1
+    assert content.count(mod.LOOP_SESSION_GITIGNORE_RULE) == 1
 
 
 def test_ensure_baseline_gitignored_appends_rule_when_missing(tmp_path):

@@ -113,6 +113,7 @@ scripts:
   gate-stats: core://scripts/cc-gate-stats
   benchmark: core://scripts/cc-benchmark
   context-pack: core://scripts/cc-context-pack
+  loop-step: core://scripts/cc-loop-step
   help: core://scripts/cc-help
   adapter-check: core://scripts/cc-adapter-check
 

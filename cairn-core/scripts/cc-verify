@@ -56,6 +56,7 @@ from harness_runtime.verification_review import (
 from harness_runtime.verification_report import build_verification_report
 from harness_runtime.verification_project_plan import project_step_plan
 from harness_runtime.verification_runner import run_step
+from harness_runtime.verification_cache import CACHEABLE_STEPS, CACHE_RELATIVE, build_cache_key
 from harness_runtime.verification_scheduling import (
     aggregate_status,
     capability_executables,
@@ -99,6 +100,37 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
     )
 
     results: list[dict[str, object]] = []
+    reuse_cache = bool(args.reuse_cache or os.environ.get("CC_VERIFY_REUSE_CACHE") == "1")
+    cache_root = project_root / CACHE_RELATIVE
+
+    def run_cached_step(plan, *, cwd: Path = project_root, profile: str | None = None):
+        eligible = reuse_cache and plan.name in CACHEABLE_STEPS
+        key = (
+            build_cache_key(
+                project_root=cwd,
+                framework_root=claude_root,
+                step_name=plan.name,
+                command=plan.command,
+                profile=profile or resolution.profile_name,
+                mode=verification_mode(
+                    harness_only=args.harness_only,
+                    project_only=args.project_only,
+                    changed_only=args.changed_only,
+                ),
+            )
+            if eligible
+            else None
+        )
+        return run_step(
+            plan.name,
+            "harness",
+            plan.command,
+            cwd,
+            collect_issues=plan.collect_issues,
+            cache_root=cache_root if eligible else None,
+            cache_key=key,
+            reuse_cache=eligible,
+        )
     if config_error:
         results.append(failed_step("harness-config", "harness", config_error, project_root))
     if args.change and change_dir and not change_dir.exists():
@@ -137,13 +169,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
                 results.append(skipped_step(plan.name, "harness", plan.reason))
                 continue
             results.append(
-                run_step(
-                    plan.name,
-                    "harness",
-                    plan.command,
-                    project_root,
-                    collect_issues=plan.collect_issues,
-                )
+                run_cached_step(plan)
             )
         for plan in auxiliary_step_plan(
             framework_root=claude_root,
@@ -158,13 +184,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         ):
             if plan.result_constructor == "run_step":
                 results.append(
-                    run_step(
-                        plan.name,
-                        plan.kind,
-                        plan.command,
-                        plan.cwd,
-                        collect_issues=plan.collect_issues,
-                    )
+                    run_step(plan.name, plan.kind, plan.command, plan.cwd, collect_issues=plan.collect_issues)
                 )
             elif plan.result_constructor == "check_review_coverage":
                 results.append(check_review_coverage(project_root, args.change))
@@ -234,6 +254,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         language_profile_source=resolution.source,
         changed_paths=changed_paths,
         results=results,
+        include_execution_metrics=True,
     )
     return report
 
@@ -285,6 +306,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--fixture", help="Run project verification checks from a fixture path relative to the project root.")
     parser.add_argument("--command", help="Run role/write-scope checks for a cc-* command.")
     parser.add_argument("--changed-only", action="store_true", help="Run the smallest deterministic check set for changed files.")
+    parser.add_argument("--reuse-cache", action="store_true", help="Reuse passed deterministic Harness checks from the content-addressed cache.")
     parser.add_argument("--check-review-coverage", action="store_true", help="Validate file_review_scope completeness in review.md.")
     parser.add_argument("--check-finding-locations", action="store_true", help="Validate finding existing_code matches actual file content.")
     parser.add_argument("--check-risk-triage", action="store_true", help="Validate risk_triage table is populated when present in review.md.")

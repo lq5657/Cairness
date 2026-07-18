@@ -71,6 +71,29 @@ def test_parallel_behavior_checks_isolate_wave_fixtures():
     ]
 
 
+def test_behavior_cases_receive_process_unique_runtime_directories(tmp_path):
+    """The runner must isolate TMPDIR even when a case itself does not use mktemp."""
+    from importlib.machinery import SourceFileLoader
+
+    module = SourceFileLoader(
+        "_behavior_isolation", str(REPO_ROOT / "cairn-core/scripts/cc-behavior-check")
+    ).load_module()
+    case_path = tmp_path / "case.yaml"
+    case = {
+        "id": "isolation",
+        "command": [
+            sys.executable,
+            "-c",
+            "import os; print(os.environ['TMPDIR']); print(os.environ['CC_BEHAVIOR_SESSION_ID'])",
+        ],
+        "expect_exit_code": 0,
+        "expect_output_contains": ["cc-behavior-"],
+    }
+    issues = []
+    module.run_case(case_path, case, REPO_ROOT, issues)
+    assert issues == []
+
+
 def test_each_fixture_exercises_a_failing_gate():
     """Each fixture's guarded command actually fails when the gate holds.
 

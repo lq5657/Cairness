@@ -78,6 +78,17 @@ def record_verification_run(
         "duration_ms": max(0, int(duration_ms)),
         "result_counts": _result_counts(report),
     }
+    execution = report.get("execution_metrics")
+    if isinstance(execution, Mapping):
+        for field in (
+            "verification_steps",
+            "executed_verifications",
+            "reused_verifications",
+            "full_verify_runs",
+        ):
+            value = execution.get(field)
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                event[field] = value
     return _append_runtime_event(project_root, event)
 
 

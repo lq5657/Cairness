@@ -64,3 +64,19 @@ def test_pollution_markers_each_fail(tmp_path, marker):
         target.mkdir()
     issues = [i for i in _upgrade_issues(project, claude) if i["code"] == "E_UPGRADE007"]
     assert any(marker in i["path"] for i in issues), (marker, issues)
+
+
+def test_declared_runtime_state_is_allowed_but_unknown_runtime_state_fails(tmp_path):
+    project, claude = _make_project(tmp_path)
+    for name in ("context-packs", "verification-cache", "loop-sessions"):
+        target = project / ".cairness/runtime" / name
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "state.json").write_text("{}\n", encoding="utf-8")
+    issues = [i for i in _upgrade_issues(project, claude) if i["code"] == "E_UPGRADE007"]
+    assert issues == []
+
+    unknown = project / ".cairness/runtime/unknown"
+    unknown.mkdir()
+    issues = [i for i in _upgrade_issues(project, claude) if i["code"] == "E_UPGRADE007"]
+    assert len(issues) == 1
+    assert "unknown runtime state" in issues[0]["message"]

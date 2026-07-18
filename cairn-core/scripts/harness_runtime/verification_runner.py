@@ -9,6 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from harness_runtime.verification_diagnostics import diagnosis_for
+from harness_runtime.verification_cache import load_cached, save_cached
 from harness_runtime.verification_results import (
     collect_issues_from_json,
     fingerprints,
@@ -27,8 +28,18 @@ def run_step(
     *,
     collect_issues: bool = False,
     runner: SubprocessRunner | None = None,
+    cache_root: Path | None = None,
+    cache_key: str | None = None,
+    reuse_cache: bool = False,
 ) -> dict[str, object]:
     """Run a verification subprocess and return its canonical step result."""
+    if reuse_cache and cache_root and cache_key:
+        cached = load_cached(cache_root, cache_key)
+        if cached is not None:
+            cached["reused"] = True
+            cached["cache_key"] = cache_key
+            cached["duration_ms"] = 0
+            return cached
     started = time.time()
     try:
         env = os.environ.copy()
@@ -53,6 +64,7 @@ def run_step(
             "status": status,
             "exit_code": completed.returncode,
             "duration_ms": duration_ms,
+            "reused": False,
             "stdout": completed.stdout,
             "stderr": completed.stderr,
             "fingerprints": (
@@ -65,6 +77,9 @@ def run_step(
         if collect_issues:
             result["issues"] = collect_issues_from_json(completed.stdout)
         result["diagnosis"] = diagnosis_for(name, status, completed.stderr)
+        if cache_root and cache_key and completed.returncode == 0:
+            save_cached(cache_root, cache_key, result)
+            result["cache_key"] = cache_key
         return result
     except FileNotFoundError as exc:
         duration_ms = int((time.time() - started) * 1000)
@@ -77,6 +92,7 @@ def run_step(
             "status": "failed",
             "exit_code": 127,
             "duration_ms": duration_ms,
+            "reused": False,
             "stdout": "",
             "stderr": message,
             "fingerprints": [message],
