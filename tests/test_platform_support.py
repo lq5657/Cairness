@@ -73,6 +73,7 @@ def test_ci_runs_all_formally_supported_native_platforms():
     assert "ubuntu-latest" in workflow
     assert "macos-latest" in workflow
     assert "matrix.os" in workflow
+    assert "cp cairn-core/templates/loop-config.yaml .cairness/loop-config.yaml" in workflow
 
 
 def test_readme_labels_native_windows_experimental():
