@@ -1,5 +1,30 @@
 # 升级指南
 
+## 升级到 1.2.8
+
+本版本增加质量优先的执行效率能力，并将 Loop 设为新安装的默认 profile。已有
+项目无需迁移；升级会保留项目已经显式选择的 profile，不会强制从
+`minimal`、`standard` 或 `strict` 切换到 Loop。
+
+新执行的 `cc-cairn init` 或 `cc-cairn onboard` 默认生成 Loop profile 和
+`.cairness/loop-config.yaml`。正式使用前应审阅 trust envelope；如需恢复逐
+gate 人工确认，可执行 `cc-cairn loop disable`。启用和关闭 Loop 都会自动
+重建并校验 profile-dependent readset，失败时回滚，不需要手工运行
+`cc-readset --write`。
+
+普通本地开发可以显式运行
+`cc-verify --execution-mode normal`，使用 changed-only 验证和安全缓存。
+CI/发布应使用 `--execution-mode ci`，继续执行 full verify。定时优化使用
+`--execution-mode optimize` 完成 full verify 后，再由只读的
+`cc-optimize` 分析本地脱敏事件或 baseline/candidate benchmark。
+`cc-verify` 不带 `--execution-mode` 时仍保留历史 full verify 行为。
+
+新增 `cc-context-pack`、`cc-benchmark`、`cc-loop-step` 和
+`cc-optimize` 均为向后兼容能力。验证缓存只复用 fingerprint 一致且上次通过
+的静态 Harness 检查；动态治理 gate、behavior replay 和项目测试仍会 fresh
+执行。效率改进只有在确定性失败、Critical escape、任务成功率和 Important
+recall 等质量门禁通过后才会被接受。
+
 ## 升级到 1.2.7
 
 补丁版本，合法 change 文档向后兼容，现有项目无需迁移。正常执行 `cc-cairn update` 即可获得修复。

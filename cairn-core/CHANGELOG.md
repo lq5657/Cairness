@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.2.8 - 2026-07-18
+
+Quality-first execution-efficiency release for faster local feedback and
+auditable autonomous delivery.
+
+- Added content-addressed task and review Context Packs so controllers, workers,
+  and reviewers can share bounded context without repeatedly transmitting full
+  histories and diffs.
+- Added quality-first benchmark records and comparisons. Deterministic failures,
+  Critical escapes, task success, and Important recall are evaluated before
+  token, wall-time, and full-verify improvements.
+- Added explicit `normal`, `ci`, and `optimize` execution policies. Normal local
+  development uses changed-only verification and a content-addressed static
+  verification cache; CI and optimization candidates retain full verification.
+- Added the read-only `cc-optimize` analyzer, which returns `observe`,
+  `propose`, or `reject` without modifying Harness policy, readsets, project
+  changes, or business code.
+- Added the machine-readable Loop session planner and unified runtime-artifact
+  registry, including expected-command ordering, condition routes, isolated
+  audit state, cache ownership, and narrow orphan/role-check exemptions.
+- Made `loop` the default profile for new `cc-cairn init` and onboarding
+  installations while preserving explicit profiles in existing projects.
+- Reorganized README around a five-minute quick start, the first Change, Loop
+  trust boundaries, execution modes, command reference, framework advantages,
+  adapter coexistence, and reproducible CI configuration.
+
 ## 1.2.7 - 2026-07-17
 
 Change-ownership and path-scope integrity patch for No Spec, No Code gates.
