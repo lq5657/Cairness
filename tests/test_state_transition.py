@@ -98,6 +98,28 @@ def test_core_advance_writes_spec_and_event(tmp_path):
     assert events[0]["result_status"] == "passed"
 
 
+def test_transition_forwards_execution_metrics_to_event(tmp_path):
+    change_dir = _change_dir(tmp_path, "review")
+    proc = _run(
+        [
+            *_ARCHIVE,
+            "--duration-ms", "120",
+            "--token-count", "900",
+            "--subagent-count", "2",
+            "--files-changed", "3",
+            "--verification-status", "passed",
+        ],
+        tmp_path,
+    )
+    assert proc.returncode == 0, proc.stderr
+    event = _events(change_dir)[0]
+    assert event["duration_ms"] == 120
+    assert event["token_count"] == 900
+    assert event["subagent_count"] == 2
+    assert event["files_changed"] == 3
+    assert event["verification_status"] == "passed"
+
+
 def test_precheck_mismatch_e_state001_no_writes(tmp_path):
     change_dir = _change_dir(tmp_path, "apply")  # spec says apply, --from says review
     proc = _run(_ARCHIVE, tmp_path)

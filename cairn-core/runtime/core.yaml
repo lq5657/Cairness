@@ -111,6 +111,8 @@ scripts:
   deps: core://scripts/cc-deps
   wave-plan: core://scripts/cc-wave-plan
   gate-stats: core://scripts/cc-gate-stats
+  benchmark: core://scripts/cc-benchmark
+  context-pack: core://scripts/cc-context-pack
   help: core://scripts/cc-help
   adapter-check: core://scripts/cc-adapter-check
 

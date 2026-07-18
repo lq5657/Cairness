@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Generate bounded task briefs and review diff packages."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.context_pack import ContextPackError, build_review_pack, build_task_pack
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Generate a content-addressed Cairness context pack.")
+    parser.add_argument("kind", choices=("task", "review"))
+    parser.add_argument("--change-id")
+    parser.add_argument("--task")
+    parser.add_argument("--base")
+    parser.add_argument("--head")
+    parser.add_argument("--include", action="append", default=[])
+    parser.add_argument("--root", help="Explicit Cairness project root")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        context = load_harness_context(
+            explicit_root=Path(args.root) if args.root else None,
+            framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+        )
+        if args.kind == "task":
+            if not args.change_id or not args.task:
+                parser.error("task packs require --change-id and --task")
+            result = build_task_pack(context.project_root, args.change_id, args.task, args.include)
+        else:
+            if not args.base or not args.head:
+                parser.error("review packs require --base and --head")
+            result = build_review_pack(context.project_root, args.base, args.head)
+    except (HarnessContextError, ContextPackError) as exc:
+        print(f"E_PACK001 {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(f"cc-context-pack: wrote {result['path']} ({result['fingerprint']})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Compare sanitized Cairness benchmark records.
+
+This command is intentionally separate from ``cc-eval``'s structural eval
+validator.  It consumes records produced by a host runner and applies the
+same quality-first comparison contract in local and CI environments.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.benchmark import BenchmarkError, compare, summarize
+
+
+def load_json(path: Path) -> dict:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkError(f"cannot read JSON record {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise BenchmarkError(f"JSON record {path} must be an object")
+    return value
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description="Compare baseline and candidate benchmark records.")
+    sub = parser.add_subparsers(dest="command", required=True)
+    summarize_parser = sub.add_parser("summarize", help="Summarize one record")
+    summarize_parser.add_argument("record", type=Path)
+    summarize_parser.add_argument("--json", action="store_true")
+    compare_parser = sub.add_parser("compare", help="Apply quality-first baseline/candidate gates")
+    compare_parser.add_argument("--baseline", required=True, type=Path)
+    compare_parser.add_argument("--candidate", required=True, type=Path)
+    compare_parser.add_argument("--thresholds", type=Path, help="Optional JSON object overriding thresholds")
+    compare_parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "summarize":
+            report = summarize(load_json(args.record))
+        else:
+            thresholds = load_json(args.thresholds) if args.thresholds else None
+            report = compare(load_json(args.baseline), load_json(args.candidate), thresholds)
+    except BenchmarkError as exc:
+        print(f"E_BENCH001 {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report.get("status") == "failed":
+        print(f"cc-benchmark: failed ({', '.join(report.get('quality_failures', []) + report.get('efficiency_failures', []))})", file=sys.stderr)
+    else:
+        print(f"cc-benchmark: {args.command} passed")
+    return 1 if report.get("status") == "failed" else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

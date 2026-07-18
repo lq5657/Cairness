@@ -140,6 +140,17 @@ def run_event_write(args: argparse.Namespace) -> tuple[bool, str]:
     cmd += ["--result-status", args.result_status]
     if args.actor:
         cmd += ["--actor", args.actor]
+    for option, attribute in (
+        ("--duration-ms", "duration_ms"),
+        ("--token-count", "token_count"),
+        ("--subagent-count", "subagent_count"),
+        ("--files-changed", "files_changed"),
+    ):
+        value = getattr(args, attribute, None)
+        if value is not None:
+            cmd += [option, str(value)]
+    if args.verification_status:
+        cmd += ["--verification-status", args.verification_status]
     if args.dry_run:
         cmd.append("--dry-run")
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -227,6 +238,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--summary", required=True, help="One-line transition summary.")
     parser.add_argument("--evidence", action="append", required=True, help="Evidence reference (repeatable, >=1).")
     parser.add_argument("--actor", default="claude-agent", help="Who/what performed the transition.")
+    parser.add_argument("--duration-ms", type=int, default=None, help="Optional non-negative execution duration metric.")
+    parser.add_argument("--token-count", type=int, default=None, help="Optional estimated token metric.")
+    parser.add_argument("--subagent-count", type=int, default=None, help="Optional subagent count metric.")
+    parser.add_argument("--files-changed", type=int, default=None, help="Optional changed-file count metric.")
+    parser.add_argument("--verification-status", choices=["passed", "failed", "partial", "not_run"], default=None, help="Optional verification metric.")
     parser.add_argument("--result-status", choices=["passed", "blocked", "partial"], default="passed", help="Command outcome (default: passed); blocked/partial requires --to unchanged.")
     root_group = parser.add_mutually_exclusive_group()
     root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
@@ -239,6 +255,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    for field in ("duration_ms", "token_count", "subagent_count", "files_changed"):
+        value = getattr(args, field)
+        if value is not None and value < 0:
+            parser.error(f"--{field.replace('_', '-')} must be non-negative")
 
     if args.project_root:
         args.project_root = str(Path(args.project_root).expanduser().resolve())

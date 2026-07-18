@@ -32,6 +32,7 @@ from harness_runtime.observability import (
     command_metrics,
     collection_summary,
     discover_runtime_events,
+    execution_metrics,
     upgrade_metrics,
     verification_metrics,
 )
@@ -255,6 +256,7 @@ def compute_stats(
         "collection": collection_summary(events, runtime_events),
         "commands": command_metrics(events),
         "verification": verification_metrics(runtime_events),
+        "execution": execution_metrics(runtime_events),
         "upgrade": upgrade_metrics(runtime_events),
     }
 
@@ -358,6 +360,15 @@ def print_readable(stats: dict[str, Any]) -> None:
         print(f"  平均耗时/事件:       {t['avg_duration_ms'] / 1000:.1f}s")
         print(f"  总调度子 agent:      {t['total_subagents']}")
         print(f"  总修改文件数:        {t['total_files_changed']}")
+
+    execution = stats.get("execution", {})
+    print("\n── 执行成本遥测 ──")
+    print(f"  execution runs:      {execution.get('total_runs', 0)}")
+    for name, metric in sorted(execution.get("metrics", {}).items()):
+        print(
+            f"  {name:<20} median={metric['median']} p95={metric['p95']} "
+            f"n={metric['count']}"
+        )
 
     f = stats["findings"]
     print("\n── Finding 统计 ──")

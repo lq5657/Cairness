@@ -62,6 +62,7 @@ from harness_runtime.onboarding import (
     write_install_metadata,
 )
 from harness_runtime.observability import record_upgrade_run
+from harness_runtime.context_pack import CONTEXT_PACK_GITIGNORE_RULE
 from harness_runtime.product_profiles import (
     apply_product_profile,
     build_profile_plan,
@@ -103,6 +104,8 @@ GITIGNORE_ADDITIONS = """
 .cairness/loop-audit/
 # Local runtime observability events: machine-specific telemetry, never commit.
 .cairness/observability/
+# Content-addressed task/review handoffs: reproducible local runtime artifacts.
+.cairness/runtime/context-packs/
 """
 
 
@@ -916,6 +919,7 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     # so run it only after the framework and record pair have committed.
     _ensure_baseline_gitignored(project_root)
     _prepare_observability(project_root)
+    _ensure_context_packs_gitignored(project_root)
 
 
 def cmd_init_cli(argv):
@@ -1307,6 +1311,22 @@ def _prepare_observability(project_root: Path) -> bool:
         return False
 
 
+def _ensure_context_packs_gitignored(project_root: Path) -> None:
+    """Backfill the local Context Pack ignore rule for existing projects."""
+    gitignore = project_root / ".gitignore"
+    existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
+    if CONTEXT_PACK_GITIGNORE_RULE in existing.splitlines():
+        return
+    if gitignore.exists():
+        with gitignore.open("a", encoding="utf-8") as handle:
+            if existing and not existing.endswith("\n"):
+                handle.write("\n")
+            handle.write(f"{CONTEXT_PACK_GITIGNORE_RULE}\n")
+    else:
+        gitignore.write_text(f"{CONTEXT_PACK_GITIGNORE_RULE}\n", encoding="utf-8")
+    print(f"  Updated .gitignore ({CONTEXT_PACK_GITIGNORE_RULE})")
+
+
 def _install_git_hooks(
     project_root: Path, framework_root: Path | None = None
 ) -> None:
@@ -1498,6 +1518,7 @@ def sync_project(data_dir, project_root):
     # Backfill the transient-baseline ignore rule after the installation
     # transaction has committed; this cleanup is not part of update identity.
     _ensure_baseline_gitignored(project_root)
+    _ensure_context_packs_gitignored(project_root)
     print(f"Project updated to v{new_ver}. Local additions were preserved; "
           f"previous {framework_prefix}/ backed up to {framework_dir.name}.bak.")
     return True

@@ -35,3 +35,9 @@ def test_runtime_core_uses_host_neutral_logical_paths():
     assert declarations
     assert all(item.startswith(("core://", "state://")) for item in declarations)
     assert not any(".claude" in item for item in declarations)
+
+
+def test_runtime_core_registers_phase0_phase1_tools():
+    core = yaml.safe_load(CORE.read_text(encoding="utf-8"))
+    assert core["scripts"]["benchmark"] == "core://scripts/cc-benchmark"
+    assert core["scripts"]["context-pack"] == "core://scripts/cc-context-pack"

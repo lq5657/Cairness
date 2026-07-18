@@ -42,6 +42,19 @@ def _tracked(root: Path, pattern: str) -> list[str]:
 def test_gitignore_additions_contains_baseline_rule():
     mod = _load_cc_cairn()
     assert ".cairness/changes/*/baseline/" in mod.GITIGNORE_ADDITIONS
+    assert mod.CONTEXT_PACK_GITIGNORE_RULE in mod.GITIGNORE_ADDITIONS
+
+
+def test_ensure_context_packs_gitignored_is_idempotent(tmp_path):
+    mod = _load_cc_cairn()
+    root = _make_git_repo(tmp_path)
+    (root / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
+
+    mod._ensure_context_packs_gitignored(root)
+    mod._ensure_context_packs_gitignored(root)
+
+    content = (root / ".gitignore").read_text(encoding="utf-8")
+    assert content.count(mod.CONTEXT_PACK_GITIGNORE_RULE) == 1
 
 
 def test_ensure_baseline_gitignored_appends_rule_when_missing(tmp_path):

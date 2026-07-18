@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 from collections import Counter
 from datetime import datetime, timezone
@@ -12,6 +13,17 @@ from typing import Any, Mapping
 
 RUNTIME_EVENTS_RELATIVE = Path(".cairness/observability/runtime-events.jsonl")
 _DO_NOT_TRACK_VALUES = {"1", "true", "yes"}
+EXECUTION_METRICS = (
+    "input_tokens",
+    "output_tokens",
+    "wall_time_ms",
+    "tool_time_ms",
+    "subagent_count",
+    "review_passes",
+    "full_verify_runs",
+    "reused_verifications",
+    "files_changed",
+)
 
 
 def _tracking_disabled() -> bool:
@@ -92,6 +104,49 @@ def record_upgrade_run(
             "duration_ms": max(0, int(duration_ms)),
         },
     )
+
+
+def record_execution_run(
+    project_root: Path,
+    *,
+    command: str,
+    status: str,
+    metrics: Mapping[str, Any],
+    suite: str | None = None,
+    case_id: str | None = None,
+    profile: str | None = None,
+    adapter: str | None = None,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Append a sanitized execution-cost event.
+
+    Only non-negative numeric metrics from ``EXECUTION_METRICS`` are kept.
+    Prompts, source text, change IDs and filesystem paths are intentionally
+    excluded so this event remains local and privacy-preserving.
+    """
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    event: dict[str, Any] = {
+        "schema_version": 1,
+        "event_type": "execution_run",
+        "occurred_at": timestamp.isoformat(),
+        "command": str(command),
+        "status": str(status),
+        "metrics": {},
+    }
+    for field in EXECUTION_METRICS:
+        value = metrics.get(field)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
+            continue
+        event["metrics"][field] = round(float(value), 4)
+    for key, value in (("suite", suite), ("case_id", case_id), ("profile", profile), ("adapter", adapter)):
+        if isinstance(value, str) and value:
+            event[key] = value
+    return _append_runtime_event(project_root, event)
 
 
 def discover_runtime_events(project_root: Path) -> list[dict[str, Any]]:
@@ -215,6 +270,37 @@ def verification_metrics(
         ),
         "mode_counts": dict(sorted(mode_counts.items())),
     }
+
+
+def execution_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Summarize sanitized execution-cost events without inventing samples."""
+    runs = [item for item in runtime_events if item.get("event_type") == "execution_run"]
+    values: dict[str, list[float]] = {}
+    for run in runs:
+        metrics = run.get("metrics")
+        if not isinstance(metrics, Mapping):
+            continue
+        for field in EXECUTION_METRICS:
+            value = metrics.get(field)
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                and value >= 0
+            ):
+                values.setdefault(field, []).append(float(value))
+    summary: dict[str, Any] = {"total_runs": len(runs), "metrics": {}}
+    for field, samples in sorted(values.items()):
+        ordered = sorted(samples)
+        median = ordered[len(ordered) // 2] if len(ordered) % 2 else (ordered[len(ordered) // 2 - 1] + ordered[len(ordered) // 2]) / 2
+        p95_index = min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * 0.95))))
+        summary["metrics"][field] = {
+            "count": len(samples),
+            "median": round(median, 4),
+            "p95": round(ordered[p95_index], 4),
+            "total": round(sum(samples), 4),
+        }
+    return summary
 
 
 def upgrade_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:

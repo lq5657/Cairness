@@ -209,6 +209,12 @@
         "gate-stats": {
           "type": "string"
         },
+        "benchmark": {
+          "type": "string"
+        },
+        "context-pack": {
+          "type": "string"
+        },
         "help": {
           "type": "string"
         },
