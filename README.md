@@ -1,16 +1,36 @@
 # Cairness
 
-AI 驱动的软件开发生命周期治理框架。本仓库包含一个面向多语言项目的 runtime-neutral Harness，并正式支持 Claude Code 与 Codex adapter。
+**让 AI 软件开发变得可执行、可验证、可审计，并在不牺牲质量的前提下持续提速。**
 
-## 依赖
+Cairness 是一套面向 Claude Code 与 Codex 的 AI 软件开发生命周期治理框架。它把需求澄清、变更提案、实现、审查、测试和归档组织成机器可执行的 YAML 合同，并用确定性脚本检查 AI 是否真的遵守了边界。
 
-- **Python 3.9+** — 框架安装和 CLI 的唯一运行时依赖
-- **Git** — 用于框架更新
-- **Claude Code 或 Codex** — 运行交互式 AI 工作流；确定性 CLI 和离线验证不要求宿主登录
+新安装默认启用 **Loop profile**：AI 可以在你预先定义的信任包络内，从 `cc-propose` 自主续行到 `cc-archive`；一旦超出范围、出现关键风险或验证失败，就停止并请求人工决策。
 
-## 安装
+## 30 秒了解 Cairness
 
-正式支持 Linux、macOS 和 WSL。原生 Windows 安装入口为实验性支持：安装器与 `cc-cairn.cmd` 可用，但 Bash Git hook、POSIX executable bit 和 extensionless runtime script 尚未在原生 Windows CI 中验证；建议 Windows 用户通过 WSL 使用完整治理能力。
+普通的 AI 编码流程通常依赖一份“请遵守这些步骤”的提示词或文档。Cairness 把这些约定变成可验证的运行时协议：
+
+| 常见问题 | Cairness 的做法 |
+|---|---|
+| AI 跳过需求和设计直接改代码 | `No Spec, No Code` + 生命周期状态机 + Hard Gate |
+| AI 声称“已完成”，但证据不足 | Fresh Evidence + schema/role/scope/readset/behavior 等确定性验证 |
+| 多 agent 并行互相覆盖文件 | scoped writes + 不相交写入范围 + wave/session 计划 |
+| 每轮都加载大量文档，Token 和时间失控 | Readset、Topic Rule、Knowledge Index、Context Pack 按需加载 |
+| 自动执行意味着失去控制 | Loop trust envelope + circuit breaker + 异步审计 |
+| 为了提速而降低质量门槛 | 质量优先 benchmark：质量门禁先于 Token、耗时和 verify 次数 |
+| 框架升级覆盖项目资产 | adapter 与 `.cairness/` 项目状态物理隔离 |
+
+Cairness 适合希望 AI 不只是“写得快”，还要**边界清楚、过程可追踪、结果能复验**的个人和团队。
+
+## 5 分钟上手
+
+### 1. 安装
+
+依赖：
+
+- Python 3.9+
+- Git
+- Claude Code 或 Codex（交互式 AI 工作流需要；离线验证和 CI 不要求宿主登录）
 
 ```bash
 git clone https://github.com/lq5657/Cairness.git
@@ -18,51 +38,307 @@ cd Cairness
 python3 cairn_install
 ```
 
-`cairn_install` 将框架核心安装到系统位置，并注册 `cc-cairn` 命令。重复执行可重装。
+安装器会注册 `cc-cairn`。重复执行可重装。
 
-卸载：
+### 2. 接入项目
+
+推荐用 onboarding 入口接入，并显式指定主语言：
 
 ```bash
-python3 cairn_uninstall
+cd /path/to/your-project
+cc-cairn onboard --language python --yes
 ```
 
-系统卸载只清理系统安装位置，不触碰项目中的 `.claude/`、`.codex/`、`.agents/` 和 `.cairness/`。
-
-| 平台 | 支持等级 | CI 证据 | 框架安装位置 | CLI 路径 |
-|------|---------|---------|-------------|---------|
-| Linux | 正式支持 | `ubuntu-latest` | `~/.local/share/cairness/` | `~/.local/bin/cc-cairn` |
-| macOS | 正式支持 | `macos-latest` | `~/Library/Application Support/cairness/` | `/usr/local/bin/cc-cairn` |
-| WSL | 正式支持（Linux 运行面） | `ubuntu-latest` | `~/.local/share/cairness/` | `~/.local/bin/cc-cairn` |
-| 原生 Windows | 实验性 | 无 | `%LOCALAPPDATA%\cairness\` | `%LOCALAPPDATA%\cairness\cc-cairn.cmd` |
-
-安装后如果 `cc-cairn` 命令不可用，请确认对应 bin 目录已在 `PATH` 中。
-
-## 项目初始化
+默认安装 Claude Code adapter。使用 Codex：
 
 ```bash
-cd your-project
+cc-cairn onboard --adapter codex --language python --yes
+```
+
+不确定会写入什么时，先预览：
+
+```bash
+cc-cairn onboard --dry-run --json
+```
+
+也可以直接初始化：
+
+```bash
 cc-cairn init
 cc-cairn init --adapter codex
 ```
 
-不传 `--adapter` 时默认安装 Claude Code adapter 到 `.claude/`。Codex adapter 安装到 `.codex/`，并把原生 Skill 安装到 `.agents/skills/cc-harness/`。两个 adapter 可在同一项目共存，共享 `.cairness/` 项目状态和 `.github/workflows/` CI 模板。
+Claude Code adapter 安装到 `.claude/`；Codex adapter 安装到 `.codex/` 和 `.agents/skills/cc-harness/`。二者可以共存，并共享 `.cairness/` 项目状态。
 
-新项目或已有项目也可以使用 onboarding 入口预览并确认接入计划：
-
-```bash
-cc-cairn onboard --dry-run --json
-cc-cairn onboard --language python --yes
-cc-cairn onboard --adapter codex --language python --yes
-```
-
-按 adapter 卸载项目运行时；共享 `.cairness/` 不会被删除。未修改的 Cairness Codex Skill 会随 Codex adapter 删除，用户修改过的 Skill 会保留：
+### 3. 诊断
 
 ```bash
-cc-cairn uninstall --adapter codex
-cc-cairn uninstall --adapter codex --yes
+cc-cairn doctor
+cc-cairn doctor --json
 ```
 
-场景化治理 profile 会映射到现有 runtime profile；变更默认只预览，显式 `--apply` 才写入：
+Doctor 会检查版本、有效配置、活动 adapter、宿主资产、CI、语言 profile、Loop 配置和项目状态。安全修复默认只展示计划，只有显式添加 `--apply` 才会写入：
+
+```bash
+cc-cairn doctor --fix
+cc-cairn doctor --fix --apply
+```
+
+### 4. 找到下一步
+
+```bash
+cc-help
+cc-start --intent change
+```
+
+`cc-help` 是命令速查入口；`cc-help --advanced` 显示完整底层命令。
+
+### 5. 创建第一个 Change
+
+在 Claude Code 或 Codex 会话中输入：
+
+```text
+cc-propose "修复登录接口超时后没有释放连接的问题"
+```
+
+默认 Loop profile 会在信任包络内推进：
+
+```text
+idea
+  → cc-discuss（可选）
+  → cc-propose
+  → cc-apply
+  → cc-review
+  → cc-fix（存在可修复 finding 时）
+  → cc-test
+  → cc-archive
+```
+
+每个阶段都会读取自己的最小 readset，遵守允许写入范围，并留下 spec、tasks、review、test、event 和 audit 证据。遇到超出信任包络、Critical/Security finding、验证失败、状态不一致或熔断条件时，Loop 会停止并给出需要人工回答的具体问题。
+
+## 默认 Loop 模式
+
+新安装中执行的 `cc-cairn init` 和 `cc-cairn onboard` 默认：
+
+- 将 runtime profile 设为 `loop`；
+- 生成 `.cairness/loop-config.yaml`；
+- 安装与 Loop profile 一致的 runtime readset；
+- 保持完整验证要求；
+- 将自动决策写入 Loop audit。
+
+先查看状态和信任包络摘要：
+
+```bash
+cc-cairn loop status
+```
+
+建议在正式使用前审阅 `.cairness/loop-config.yaml`，重点关注：
+
+```yaml
+trust_envelope:
+  max_scope: small
+  max_residual_risk: medium
+
+  allowed_change_types:
+    - refactor
+    - bugfix
+    - test
+    - doc
+    - feature_small
+
+  disallowed_change_types:
+    - schema_migration
+    - security_change
+    - api_breaking_change
+    - architecture_change
+
+  verification:
+    require_all_tests_pass: true
+    require_no_open_findings: true
+```
+
+Loop 改变的是**谁来确认 gate**，不是降低验证标准。它通过 `cc-loop-step start|record|inspect` 执行机器可读的 continuation graph，强制阶段顺序、条件路由和 blocked/partial 停止规则；续跑发生在当前宿主会话中，不会启动后台进程。
+
+需要逐 gate 人工确认时：
+
+```bash
+cc-cairn loop disable
+```
+
+该命令恢复 `standard` profile，保留 `loop-config.yaml`，并自动重建、校验 profile-dependent readset。重新启用也只需一步：
+
+```bash
+cc-cairn loop enable
+```
+
+启用或关闭失败时会回滚 profile、readset 以及本次新建的 Loop 配置，不需要手工执行 `cc-readset --write`。
+
+### Loop 的熔断边界
+
+以下情况不会自动放行：
+
+- change type 不被允许；
+- scope 或 residual risk 超出 trust envelope；
+- review 出现 Critical 或 Security finding；
+- verification 连续失败；
+- 生命周期状态不一致；
+- schema 或 Loop 配置无效；
+- 同一原因重复自评失败。
+
+所有自动放行、条件路由和升级决定都会进入 `.cairness/loop-audit/`，便于异步审计。人从“每一步都批准”转为“定义边界并审查结果”。
+
+## 三种执行模式
+
+Cairness 将本地开发、CI/发布和定时优化分成三种执行模式，避免把昂贵的全量分析塞进普通开发路径：
+
+| 模式 | 用途 | 验证策略 | Benchmark |
+|---|---|---|---|
+| `normal` | 本地普通开发 | changed-only + verification cache；动态治理 gate 和项目测试仍保持 fresh | 不运行 |
+| `ci` | 合并、发布、正式验收 | full verify，质量问题硬阻断 | 不要求 |
+| `optimize` | 定时效率分析或框架优化验证 | full verify | 随后由 `cc-optimize` 分析 |
+
+以下以 Claude Code adapter 为例；Codex 项目将 `.claude/scripts/` 替换为 `.codex/scripts/`。
+
+```bash
+# 普通开发：缩短反馈时间
+.claude/scripts/cc-verify --execution-mode normal
+
+# CI / 发布：完整质量门禁
+.claude/scripts/cc-verify --execution-mode ci
+
+# 优化候选验证：完整质量门禁
+.claude/scripts/cc-verify --execution-mode optimize
+
+# 只读分析本地脱敏事件
+.claude/scripts/cc-optimize --json
+
+# 比较显式的 baseline / candidate
+.claude/scripts/cc-optimize \
+  --baseline baseline.json \
+  --candidate candidate.json \
+  --json
+```
+
+兼容性说明：
+
+- `cc-verify` 不带 `--execution-mode` 时保持历史 full verify 行为，不会静默切换成 changed-only；
+- `normal` 必须显式选择，适合普通本地反馈；
+- `optimize` 本身执行 full verify，benchmark 和趋势判断由 `cc-optimize` 完成；
+- `cc-optimize` 只读，不会直接修改策略、readset、业务代码或项目 change。
+
+`cc-optimize` 的结论有三种：
+
+- `observe`：样本不足，继续收集；
+- `propose`：质量门禁通过且效率收益达到阈值，可以创建版本化 change；
+- `reject`：质量回退、Critical escape、确定性失败、数据不完整或效率阈值不满足。
+
+判断顺序始终是**质量优先、效率其次**。Token 更少或耗时更短，不能抵消任务成功率、Important recall 或确定性验证的回退。
+
+## 常用命令速查
+
+### 导航、安装与诊断
+
+| 命令 | 用途 |
+|---|---|
+| `cc-help` | 高频命令和用法 |
+| `cc-help --advanced` | 完整底层命令 |
+| `cc-start --intent change` | 根据意图解释推荐入口，不自动执行 |
+| `cc-cairn onboard` | 预览并接入新项目或已有项目 |
+| `cc-cairn doctor` | 检查安装、配置、adapter 与项目状态 |
+| `cc-cairn explain cc-apply` | 解释命令合同和宿主能力 |
+| `cc-cairn update` | 更新活动 adapter，不触碰 `.cairness/` |
+| `cc-dashboard --root .` | 查看本地只读治理 Dashboard |
+
+### Change 生命周期
+
+| 命令 | 用途 |
+|---|---|
+| `cc-new-project` | 定义新项目、目标和 MVP 路线图 |
+| `cc-preflight` | 项目接入前自检 |
+| `cc-init` | 初始化项目上下文 |
+| `cc-enrich-context` | 补充项目事实画像 |
+| `cc-explain-system` | 生成系统讲解材料 |
+| `cc-inspect-codebase` | 审查存量代码 |
+| `cc-promote-audit` | 把审查结果提升为正式 change |
+| `cc-discuss <话题>` | 在提案前澄清目标、约束和假设 |
+| `cc-propose <目标>` | 创建 spec、tasks 和正式 change |
+| `cc-apply` | 按已确认 spec 实现 |
+| `cc-review` | 对照 spec 和当前代码审查 |
+| `cc-fix` | 修复 review finding |
+| `cc-test` | 补充测试或恢复验证 |
+| `cc-archive` | 验证通过后归档 change |
+
+### 验证、效率与上下文
+
+| 命令 | 用途 |
+|---|---|
+| `cc-verify` | 聚合 Harness、adapter 和项目验证 |
+| `cc-stats` | 汇总治理与执行统计 |
+| `cc-context-pack task --change-id <id> --task T1` | 生成 content-addressed task brief |
+| `cc-context-pack review --base <sha> --head <sha>` | 生成 reviewer 一次读取的 diff package |
+| `cc-benchmark summarize <record.json>` | 汇总脱敏 benchmark 记录 |
+| `cc-benchmark compare --baseline <base> --candidate <candidate>` | 质量优先地比较优化效果 |
+| `cc-optimize --json` | 只读生成 observe/propose/reject 建议 |
+
+上表中的 `cc-*` 是宿主运行时命令名；直接从 shell 执行确定性脚本时，使用对应 adapter 的 `.claude/scripts/` 或 `.codex/scripts/` 路径。完整参数和维护命令以 `cc-help --advanced` 及 [运行时模型](cairn-core/docs/maintenance/runtime-model.md) 为准。
+
+## 为什么 Cairness 能兼顾质量与效率
+
+### 1. 机器可执行的合同，而不是散文约定
+
+14 个 `cc-*` 生命周期命令在 `runtime/commands/<command>.yaml` 中声明 inputs、writes、forbids、red_flags、stop_conditions、interaction contract 和验证出口。Schema 能检查合同是否完整，agent 和 CI 读取的是同一份真相源。
+
+### 2. 可复现的确定性验证矩阵
+
+`cc-verify` 聚合 schema、role、scope、orphan、readset、workflow、behavior、adapter、upgrade 和项目验证。AI 的结论必须有当前实现的新鲜证据支撑，而不是只依赖模型自评。
+
+### 3. 上下文按需加载
+
+每个命令只读取自己的 `always_reads`、`conditional_reads` 和 `optional_reads`。Topic Rule 先用路径和代码模式做零 Token 的确定性触发，再用语义判断补充；团队知识也只在关键词匹配时加载。
+
+### 4. Context Pack 减少重复传递
+
+任务 brief、change spec、必要上下文和 review diff 可以按内容 fingerprint 生成一次性 package，避免 controller、worker 和 reviewer 反复粘贴完整历史。
+
+### 5. 受控并行，而不是自由竞争
+
+并行 worker 必须拥有明确且互不重叠的写入范围，并按 summary、writes、evidence、risks、merge notes 合同交接。Loop session 和 wave plan 保证命令顺序与恢复边界。
+
+### 6. 快速路径与质量路径分离
+
+普通开发使用 changed-only 与安全缓存；CI、发布和优化候选仍执行 full verify。缓存只复用 fingerprint 一致且上次通过的静态 Harness 检查，动态 gate、behavior replay 和项目测试不会被旧结果替代。
+
+### 7. 效率优化必须通过质量门禁
+
+`cc-benchmark` 先检查 deterministic failure、Critical escape、task success 和 Important recall，再比较 input token、wall time 与 full verify 次数。缺少质量或效率证据时不会宣称优化成功。
+
+### 8. 框架资产与项目状态隔离
+
+`.claude/`、`.codex/` 和 `.agents/skills/` 是可升级的 adapter 资产；`.cairness/` 是项目的 context、changes、audits 和 knowledge 真相源。更新或卸载单个 adapter 不会删除共享项目状态。
+
+### 与常见 AI 开发框架的区别
+
+Cairness 吸收了业界几类工作流的优点，但把它们统一在可执行合同和确定性验证之下：
+
+| 思路来源 | 解决的问题 | Cairness 的补充 |
+|---|---|---|
+| Spec Kit 的 spec 驱动 | 先澄清需求，再实现 | 用 YAML schema、writes、forbids 和 stop conditions 让约定可机器校验 |
+| Open Spec 的变更生命周期 | proposal、review、implement、archive 的变更真相 | 增加 orphan/scope/readset/schema 和 fresh evidence 验证 |
+| Superpowers 的 Agent Skills | 把工程习惯封装成可复用技能 | 用 Topic Rule 按代码模式和语义自动触发，并把结果纳入生命周期审计 |
+| GSD 的多阶段与 Wave 并行 | 拆分任务、控制并行和执行顺序 | 增加 Context Pack、写入隔离、Loop session 和质量优先 benchmark |
+
+## Profile 与配置
+
+`harness.config.yaml` 的 runtime profile 控制治理强度：
+
+| Profile | 适用场景 | Topic Rules | Subagents | 验证深度 | 人工介入 |
+|---|---|---|---|---|---|
+| `minimal` | 原型、个人试验 | 仅核心 | 关闭 | harness-only | 每个关键点 |
+| `standard` | 团队开发、逐 gate 确认 | 核心 + 条件 | 启用 | 完整 | Tier-1 Gate |
+| `strict` | 合规、金融、安全敏感 | 全部或强化加载 | 启用 + 额外校验 | 双轮完整 | 全部关键点 |
+| `loop`（安装默认） | 信任包络内自主执行 | 核心 + 条件 | 启用 + 自动续行 | 完整 + Loop 审计 | 仅升级/熔断时 |
+
+面向使用场景的产品 profile 可以先预览，再显式落盘：
 
 ```bash
 cc-cairn profile show --json
@@ -70,485 +346,204 @@ cc-cairn profile set regulated --json
 cc-cairn profile set regulated --apply
 ```
 
-高频意图入口只负责解释下一步，不会自动执行命令：
+已有项目升级时会保留项目已显式选择的 profile，不会强行切换到 Loop。
 
-```bash
-cc-start --intent change --json
-cc-help                 # 高频入口
-cc-help --advanced      # 全部底层命令
-```
+## Claude Code 与 Codex
 
-只读 Dashboard 默认绑定 localhost，数据来自 change、review、生命周期事件，以及本地自动记录的 verification/update 运行摘要，并显示采集完整度、命令结果状态覆盖率、命令阻塞率、验证通过率和升级失败率：
+| 能力 | Claude Code | Codex |
+|---|---|---|
+| Adapter 目录 | `.claude/` | `.codex/` |
+| 项目 Skill | Claude adapter 自带 | `.agents/skills/cc-harness/` |
+| 项目状态 | `.cairness/` | `.cairness/` |
+| 离线合同/fixture 回归 | 支持 | 支持 |
+| Pre-write / file interception | 宿主 hook | emulated |
+| Compaction session resume | 按能力合同验证 | optional |
 
-```bash
-cc-dashboard --root .
-cc-dashboard --root . --json
-```
+Codex 的 project trust 和 hook-definition trust 必须由宿主侧启用；Doctor 会报告这些前置条件，但不会为了检查信任状态而调用模型宿主。
 
-自动运行摘要只写入本地 `.cairness/observability/runtime-events.jsonl`，不记录 prompt、代码、路径、change ID 或 PII；该目录由 `cc-cairn init/update` 加入 `.gitignore`。设置 `DO_NOT_TRACK=1` 可完全关闭写入，统计与 Dashboard 在没有摘要时仍可使用。
+两个 adapter 可以安装在同一项目中。`.cairness/install.yaml` 记录活动 adapter，Doctor、Explain 和 Update 默认作用于该 adapter，也可通过 `--adapter` 显式选择。
 
-新写入的 lifecycle event 使用标准命令结果 `passed|blocked|partial`。只有 verification、upgrade 和 lifecycle 三类样本均存在，且所有 lifecycle event 都带命令结果时，采集完整度才会显示 `complete`；历史事件缺少结果字段时保持 `partial`，阻塞率只按明确记录结果的样本计算。
+## CI 与发布
 
-## 环境诊断
+`cc-cairn init` 会生成固定版本的 `.github/workflows/cairness.yml`。GitHub-hosted runner 从对应 release 下载归档与 checksum，校验版本后临时安装，因此：
 
-使用正式 Doctor 入口检查安装版本、项目版本、有效配置、元数据所选活动 adapter、对应宿主资产与 capability contract、CI、语言 profile、生成视图和项目状态：
-
-```bash
-cc-cairn doctor
-cc-cairn doctor --json
-cc-cairn doctor --adapter codex --json
-```
-
-共存项目默认诊断活动 adapter，也可用 `--adapter` 只读诊断另一个已安装 adapter；`cc-cairn explain cc-apply --adapter codex --json` 使用相同选择规则。Codex Doctor 会把 project trust 与 hook-definition trust 报告为必需但离线不可验证的前置条件，不会为检查信任状态而调用宿主。
-
-每个问题都包含稳定 code、cause、修复建议和文档引用。安全修复默认只展示计划；明确添加 `--apply` 后才会执行：
-
-```bash
-cc-cairn doctor --fix          # dry-run，展示计划
-cc-cairn doctor --fix --apply  # 仅执行安全、确定的修复
-```
-
-当前自动修复范围限于缺失的 Cairness 项目状态目录；不会修改业务代码、接受风险或改变治理策略。修复过程中发生错误时，本次已经创建的目录会回滚。
-
-## Adapter 回归基线
-
-离线 adapter 基线不调用模型，并已接入 `cc-verify --harness-only`。Claude Code 基线覆盖 14 个命令合同、五项宿主资产、Skill、PreToolUse binding、subagent、fresh-context wave、legacy upgrade、behavior eval、full verify 和 capability evidence：
-
-```bash
-.claude/scripts/cc-adapter-check --adapter claude-code
-.claude/scripts/cc-adapter-check --adapter claude-code --json
-```
-
-Codex 基线覆盖 14 个命令、六项原生宿主资产、Skill、模拟 PreToolUse、安装/更新/共存/卸载生命周期、propose/apply/review/archive 主干 lifecycle contract fixture、full verify 和 capability evidence。该 fixture 校验安装后命令合同与状态边界；它不是 Codex 模型宿主行为观察。
-
-```bash
-.codex/scripts/cc-adapter-check --adapter codex --root .
-.codex/scripts/cc-adapter-check --adapter codex --root . --json
-```
-
-Codex 的 `pre_write_hook` 与 `file_write_interception` 为 `emulated`，`compaction_session_resume` 为 `optional`；其他已声明能力为 `required`。这些等级由 contract、fixture 和离线行为证据支撑，不等同于真实模型宿主观测。项目 `.codex` 配置和 hook 仍需用户在 Codex 中信任项目及对应 hook definition 后才会加载。
-
-真实 Claude Code 宿主 smoke 是显式 opt-in 的付费检查，目前不适用于 Codex adapter。默认 `quick` profile 在一次性项目中只加载 `project` settings，并执行一次低 effort 的 `claude -p`，合并验证 transport、Skill、14 个命令和 PreToolUse hook；调用方显式提供累计费用告警阈值和 Claude Code 单次调用 cap，并以 60 秒 timeout 限制运行时间：
-
-```bash
-.claude/scripts/cc-adapter-check \
-  --adapter claude-code \
-  --host-smoke \
-  --host-smoke-profile quick \
-  --host-model fable \
-  --max-budget-usd 0.35 \
-  --per-call-budget-usd 0.35 \
-  --host-timeout-seconds 60 \
-  --setting-sources project \
-  --json
-```
-
-完整 `release` profile 保留 subagent、session resume 和跨进程 fresh-context wave 等八阶段验收。fresh-context wave 1 要求 foreground Agent 按 `cc-apply` summary contract 写入磁盘交接文件，wave 2 由全新顶层进程读取；runner 只验证交接文件，不代写。该 profile 只在 Claude Code 大版本升级或正式发布前显式执行，并要求调用方提供累计费用告警阈值与单次调用 cap：
-
-```bash
-.claude/scripts/cc-adapter-check \
-  --adapter claude-code \
-  --host-smoke \
-  --host-smoke-profile release \
-  --max-budget-usd <warning-threshold> \
-  --per-call-budget-usd <provider-call-cap> \
-  --json
-```
-
-普通 CI 只运行离线基线，不要求 Claude Code 登录，也不会产生模型费用。宿主报告包含 `coverage: quick|release`，严格区分 `contract`、`fixture` 和 `host-observed`；quick 不会把 subagent、resume 或 fresh-context wave 冒充为实时观察。成功后清理临时项目，失败、超时或不稳定时保留路径用于诊断；`unstable` 与 `failed` 都返回非零退出码。
-
-quick 只加载项目 settings；若当前认证依赖用户 settings 的 `env`，runner 仅继承受限的 Anthropic/Claude/provider 环境变量到最小子进程环境。用户插件、用户 hooks 和 ambient CI/数据库/部署凭据不会载入；已知认证值会从宿主结果中脱敏，报告只显示继承的变量名，不显示值。
-
-`--per-call-budget-usd` 作为 Claude Code 的 `--max-budget-usd` 传入每个独立调用；宿主仍可能在单个在途请求结算时报告略高于该值的实际费用。Cairness 使用 `--max-budget-usd` 作为整场 smoke 的累计费用告警阈值，只记录每阶段与整场的实际费用、阈值状态和超出金额，不因预算状态改变能力结论或停止后续阶段。调用是否因单次 cap 退出由 Claude Code 控制，这两个参数都不能替代账户侧账单限额。
-
-## 框架升级
-
-```bash
-cc-cairn update       # 拉取最新版并更新元数据所选活动 adapter（不触碰共享 .cairness/ 状态）
-```
-
-共存项目一次只更新 `.cairness/install.yaml` 标记为活动的 adapter；切换活动 adapter 可通过重新执行对应 `cc-cairn init --adapter ...` 完成。
-
-## GitHub Actions
-
-`cc-cairn init` 生成的 `.github/workflows/cairness.yml` 使用固定版本 Action，从对应 release 下载 `cairness-<version>.tar.gz` 和 `SHA256SUMS`，校验后临时安装 `.claude/`。标准 GitHub-hosted runner 不需要预装 Cairness，也不会隐式跟随 `main` 或 `latest`。
+- CI 不需要预装 Cairness；
+- 不会隐式跟随 `main` 或 `latest`；
+- 下载失败、checksum 不一致或内部 VERSION 不匹配会硬失败；
+- 验证问题会输出为 GitHub annotation 和 Job Summary。
 
 ```yaml
-- uses: lq5657/Cairness/.github/actions/cairness@v1.2.7
+- uses: lq5657/Cairness/.github/actions/cairness@v<version>
   with:
-    version: 1.2.7
-    archive-url: https://github.com/lq5657/Cairness/releases/download/v1.2.7/cairness-1.2.7.tar.gz
-    checksums-url: https://github.com/lq5657/Cairness/releases/download/v1.2.7/SHA256SUMS
+    version: <version>
+    archive-url: https://github.com/lq5657/Cairness/releases/download/v<version>/cairness-<version>.tar.gz
+    checksums-url: https://github.com/lq5657/Cairness/releases/download/v<version>/SHA256SUMS
     mode: full
 ```
 
-`mode` 可设为 `full`、`harness-only` 或 `project-only`。下载、checksum 或内部 VERSION 不一致会硬失败；验证问题以 GitHub annotation 和 Job Summary 输出。
+示例中的 `<version>` 是占位符。生产 CI 应替换为实际发布版本，并同时固定 Action、归档和 checksum 地址。
 
-## 知识管理
+`mode` 支持：
 
-`.cairness/knowledge/index.md` 维护「关键词 → 知识文件」三元组索引（`**关键词** : 一句话说明 → 路径`）。LLM 通过语义匹配关键词来决定加载哪些知识文件，因此 index.md 必须保持格式合法、关键词唯一、路径存在。
+- `full`：Harness + adapter + 项目验证；
+- `harness-only`：只验证框架合同和运行时；
+- `project-only`：只验证项目侧要求。
 
-### 注册新知识
+普通 CI 使用离线 adapter 基线，不要求 Claude Code/Codex 登录，也不会产生模型费用。真实 Claude Code host smoke 是发布前显式启用的付费检查，详见 [完整特色与验证能力](cairn-core/docs/FEATURES.md)。
 
-把新知识文件落到 `.cairness/knowledge/<category>/` 后，使用 CLI 注册到 index：
+## 知识库
+
+`.cairness/knowledge/index.md` 维护“关键词 → 描述 → 知识文件”索引。Agent 在 propose、apply、review、fix 和 discuss 阶段按语义匹配，只加载相关业务规则、历史坑点、技术约定、数据资产和非功能约束。
+
+注册知识文件时使用 CLI，不要自由编辑 index：
 
 ```bash
-# 默认 dry-run，预览将要写入的条目
+# 预览
 cc-cairn add-knowledge .cairness/knowledge/domain-rules/foo.md
 
-# 加 --apply 落盘（自动从知识文件提取关键词/描述草稿）
-cc-cairn add-knowledge --apply .cairness/knowledge/domain-rules/foo.md
-
-# 自定义关键词或描述（仅单文件模式可用）
-cc-cairn add-knowledge --apply --keyword "Foo Rule" --desc "When foo, do bar" \
+# 写入并自动校验
+cc-cairn add-knowledge --apply \
   .cairness/knowledge/domain-rules/foo.md
 
-# 一次注册多个文件
+# 自定义关键词和描述
 cc-cairn add-knowledge --apply \
-  .cairness/knowledge/domain-rules/foo.md \
+  --keyword "Foo Rule" \
+  --desc "When foo, do bar" \
+  .cairness/knowledge/domain-rules/foo.md
+
+# 删除或重命名索引项
+cc-cairn add-knowledge --remove --apply \
   .cairness/knowledge/pitfalls/null-deref.md
 
-# 删除已注册条目
-cc-cairn add-knowledge --remove --apply .cairness/knowledge/pitfalls/null-deref.md
-
-# 重命名已注册条目（关键词/描述保留，路径替换）
 cc-cairn add-knowledge --rename --apply \
   .cairness/knowledge/domain-rules/foo.md \
   .cairness/knowledge/decision-records/foo.md
 ```
 
-CLI 在写入时会做：
-- 路径校验：必须位于 `.cairness/knowledge/<known-category>/` 下，`refinement-candidates/` 不参与索引；
-- 关键词唯一性校验：同名关键词冲突会失败并提示用 `--keyword` 覆盖；
-- 写后自检：自动调用 `cc-index-check`，若新增 error 自动回滚。
+CLI 会检查目录分类、路径存在性和关键词唯一性；写后自动运行 index check，新增 error 时回滚。
 
-> **不要 free-form 编辑 index.md**。Harness 在 `cc-archive` 等命令中已声明 `freeform_edit_of_knowledge_index_md` 为禁止行为，必须走 CLI。
-
-### 校验 index 格式
+## Dashboard、统计与隐私
 
 ```bash
-.claude/scripts/cc-index-check          # 检查并以人类可读格式输出
-.claude/scripts/cc-index-check --json   # JSON 输出（便于脚本消费）
-.claude/scripts/cc-index-check --strict # 严格模式：warn 也算失败
-```
-
-`cc-archive` 已把 `cc-index-check` 纳入 `auto_validation`，归档时自动校验。
-
-## 核心原则
-
-- `No Spec, No Code`：没有 spec，禁止进入实现。
-- `Spec is Truth`：review / done 阶段，spec 与代码必须一致。
-- 变更即记录：改代码时必须同步更新 change 文档。
-- Fresh Evidence：没有当前实现的新鲜验证证据，不得声称完成、通过、已修复或可归档。
-
-`No Spec, No Code` 还通过宿主 hook 在 agent loop 内做**非阻塞提示**：Claude Code 使用 `.claude/hooks/no-spec-no-code.py`；Codex 使用 `.codex/hooks.json` 绑定 `.codex/hooks/no-spec-no-code.py`，因宿主停止语义限制按 `emulated` 能力报告。框架仓库自身维护时该钩子自豁免。Codex Skill 位于 `.agents/skills/cc-harness/`。
-
-## 为什么选择 Cairness
-
-Cairness 融合了 AI 编码生态中四个优秀框架的核心思想——**Spec Kit** 的 spec 驱动、**Open Spec** 的变更生命周期、**Superpowers** 的 Agent Skills 编排、**GSD** 的多阶段工作流——并将其统一为一套**机器可执行的 YAML 合同体系**。你不再需要在"结构性"和"灵活性"之间做选择。
-
-| 如果你用过 | 你会发现 | Cairness 的提升 |
-|-----------|---------|----------------|
-| **Spec Kit** | `/speckit.specify → plan → tasks → implement` 的 spec 驱动流程 | 用 YAML 合约替代散文约定——命令的输入、输出、写边界由 schema 机器校验，禁止项与停止条件在 agent loop 内显式声明、由事后脚本兜底，而非仅靠 LLM 自行理解 |
-| **Open Spec** | `proposal → review → implement → archive` 的变更生命周期，specs/ 为真相源、changes/ 为补丁 | 增加确定性验证矩阵——孤儿检测、基线对比、schema 校验、预算监控——而非仅靠 LLM 自审 |
-| **Superpowers** | 14 个 Agent Skills（brainstorming → TDD → review → verification）的工程化工作流 | 34 个声明式 Topic Rules + 1 个检测模式目录，**按代码模式自动触发**——不用手动调用 skill，检测到数据库迁移、API 变更、并发代码时自动加载对应规约 |
-| **GSD** | `discuss → plan → execute → review` 多阶段流程、Wave 并行执行、原子 Git 提交 | Readset 上下文预算控制 + 团队知识关键词匹配自动加载——每命令只加载必需的上下文，相关知识自动注入而非手动查找 |
-
-### 核心特色
-
-**结构化生命周期 + Hard Gate**
-14 个 `cc-*` 命令覆盖 `propose → apply → review → done` 四阶段流转。标准模式下 `cc-propose` 的 Hard Gate 要求用户显式确认后才进入实现。它的约束力来自三层组合：命令合同在 agent loop 内声明 `forbids` / `stop_conditions`、`No Spec, No Code` 宿主钩子做非阻塞提示、`cc-verify` 等脚本做事后确定性校验——而不是宿主层的硬拦截。
-
-**确定性验证矩阵**
-一组脚本构成可复现的 CI 真相源：`cc-verify --harness-only` 一次运行全部 Harness 子检查（当前 14 项，含 lint、schema、readset/workflow 一致性、事件与升级完整性），另有孤儿变更检测（`cc-deps orphans`）、实现前后基线对比（`cc-delta-check`）、跨 change 文件冲突检测、token/时间预算监控。不是散文式 checklist，是机器可运行的校验。
-
-**Readset 上下文预算控制**
-每个命令在 `readsets/<command>.yaml` 中精确声明要读的文件——`always_reads`（启动加载）、`conditional_reads`（触发加载）、`optional_reads`（按需参考）。Readsets 由命令 YAML 自动生成并通过校验脚本检测一致性，防止上下文膨胀。
-
-**团队知识关键词匹配自动加载**
-`knowledge/index.md` 维护关键词→知识文件映射。LLM 在 propose/apply/review 时语义匹配当前 change，自动加载相关业务规则、历史坑点、技术方案、数据资产、非功能约束、外部依赖引用。团队记忆不会腐烂——因为 AI 在执行时主动加载。
-
-**框架/项目双层隔离**
-`.claude/`（框架）和 `.cairness/`（项目状态）物理分离。`cc-cairn update` 一键升级框架，不触碰项目数据。升级无恐惧。
-
-**权力清单式约束**
-每个命令不写"应该做什么"，而是声明 `forbids`（禁止项）、`red_flags`（红线）、`anti_rationalizations`（理性化借口清单）、`stop_conditions`（停止条件）。把常见偷懒路径预先枚举并标记为禁止——LLM 看到后无法用"我以为……"当理由。
-
-→ [完整特色列表](docs/FEATURES.md)
-
-## 运行时命令
-
-命令速查: `.claude/scripts/cc-help`（列出所有 cc-* 命令及功能用法，数据源为 manifest）。
-
-已迁移到运行时的 `cc-*` 命令：
-
-- `cc-new-project` — 定义新项目与 MVP 路线图
-- `cc-preflight` — 接入前自检
-- `cc-init` — 初始化项目上下文
-- `cc-enrich-context` — 补充项目事实画像
-- `cc-explain-system` — 输出系统讲解材料
-- `cc-inspect-codebase` — 审查存量代码
-- `cc-promote-audit` — 把审查结果转成 change
-- `cc-discuss [--mode assumptions] <话题>` — 讨论并澄清模糊想法，支持交互式引导（默认）和假设先行模式（`--mode assumptions`，适合有经验用户，AI 先研究再呈现结构化假设供批量确认）
-- `cc-propose` — 创建正式 change 提案
-- `cc-apply` — 开始或继续实现
-- `cc-review` — 审查 change
-- `cc-fix` — 修复 review finding
-- `cc-test` — 补充测试或恢复验证
-- `cc-archive` — 归档 change
-
-完整生命周期：`idea → cc-discuss (可选) → cc-new-project / cc-propose → cc-apply → cc-review ⇄ cc-fix → cc-archive (done)`
-
-旧版 command 和 checkpoint 文档保留在 `docs/maintenance/legacy/` 作为维护参考，日常 `cc-*` 命令使用 runtime-first 路径。
-
-## 配置
-
-通过 `harness.config.yaml` 中的 `profile` 字段选择严格程度：
-
-| Profile | 适用场景 | Topic Rules | Subagents | 验证深度 | 人工确认 |
-|---------|---------|-------------|-----------|---------|---------|
-| `minimal` | 原型、个人项目 | 仅核心 | 关闭 | harness-only | 全部 |
-| `standard` | 团队项目、生产代码（默认） | 核心 + 条件 | 启用 | 完整 | Tier-1 Gate |
-| `strict` | 合规、金融、安全敏感 | 全部始终加载 | 启用 + 额外校验 | 双轮完整 | 全部 |
-| `loop` | 自主循环执行、CI/CD 集成 | 核心 + 条件 | 启用 | 完整 | 仅熔断时升级 |
-
-## Loop Engineering（自主循环执行）
-
-Loop Engineering 是一种让 AI agent 在人类划定的边界内**自主运转完整变更生命周期**的工程模式——从 `cc-propose` 到 `cc-archive`，无需在每个确认点等待人工响应。人类从"每个 gate 都要批准"（human-in-the-loop）退出，转为"异步审阅 audit 日志"（human-on-the-loop）。
-
-### 工作原理
-
-标准模式下框架有三个 Tier-1 阻塞 gate：`cc-propose` 的 Hard Gate、`cc-review` 的 finding 处置、`cc-archive` 的归档确认。Loop 模式用三项机制替代这些阻塞点：
-
-1. **信任包络（Trust Envelope）** — 人在循环开始前用 `.cairness/loop-config.yaml` 一次性声明允许的变更类型、范围上限、风险上限
-2. **自评门（cc-self-eval）** — 替代人工 Hard Gate，对照信任包络运行结构化 checklist，全部通过则自动放行
-3. **异步审计日志（Loop Audit）** — 所有自动决策写入 `.cairness/loop-audit/YYYY-MM-DD.md`，供人在任意时刻异步审查
-
-### 快速开始
-
-**第一步：开启 loop 模式（一条命令完成）**
-
-```bash
-cc-cairn loop enable    # 开启 loop 模式
-cc-cairn loop disable   # 关闭 loop 模式（仅恢复 standard profile，保留 loop-config.yaml）
-```
-
-`enable` 会自动：
-- 将 `.claude/templates/loop-config.yaml` 复制为 `.cairness/loop-config.yaml`（已存在则保留）
-- 将 `.claude/harness.config.yaml` 的 `profile` 切换为 `loop`
-- 用官方生成器重建 14 个 profile-dependent runtime readset
-- 执行 `cc-readset --check` 与 `cc-schema-check`；任一步失败则回滚 profile、readset 和本次新建的 loop config
-
-`disable` 同样会重建并验证 standard profile 的 readset，因此启用或关闭 loop 后都不需要手工执行生成器或额外修复 stale 状态。
-
-**第二步：按需编辑信任包络**
-
-```bash
-# 查看当前状态和信任包络摘要
-cc-cairn loop status
-
-# 编辑信任包络配置（关键字段见下文）
-vim .cairness/loop-config.yaml
-```
-
-`.cairness/loop-config.yaml` 示例：
-
-```yaml
-version: 1
-
-trust_envelope:
-  max_scope: small            # 允许的最大变更规模 (micro/small/medium/large/xlarge)
-  max_residual_risk: medium   # 允许的最大残余风险 (low/medium/high)
-
-  allowed_change_types:       # agent 可自动放行的变更类型
-    - refactor
-    - bugfix
-    - test
-    - doc
-    - feature_small
-
-  disallowed_change_types:    # 永远升级给人类，不走自动流程
-    - schema_migration
-    - security_change
-    - api_breaking_change
-    - architecture_change
-
-  accepted_finding_patterns:  # review 时 minor finding 自动 accept 的模式
-    - style_convention
-    - naming_preference
-    - comment_clarity
-
-  verification:
-    require_all_tests_pass: true
-    require_no_open_findings: true
-
-  knowledge:
-    default_action: no_knowledge_compounding  # 归档时知识沉淀的默认行为
-```
-
-**第三步：启动 Claude Code，发起变更**
-
-```bash
-cc-propose "修复登录接口的超时处理"
-```
-
-Loop 模式下，agent 会：
-1. 写好 spec 和 tasks
-2. 运行 `cc-self-eval` 对照信任包络打分
-3. 通过则自动进入 `cc-apply` → `cc-review` → `cc-archive`
-4. 每个自动决策记入 `.cairness/loop-audit/`
-
-续跑发生在发起 `cc-propose` / `cc-apply` 的同一个 agent turn 内：阶段通过后 agent 必须直接加载下一命令 readset，不在命令之间等待人工回复。只有验证失败、命令返回 `blocked` / `partial`、超出 trust envelope 或命中 circuit breaker 时才暂停。`cc-cairn loop enable` 负责启用这项运行时合同；它本身不会在后台创建另一个 agent 进程。
-5. 超出信任包络或遇到熔断条件时，给你一条精准问题，不展示全套 gate
-
-### 熔断器
-
-以下条件会立即停止循环，等待人工介入：
-
-| 条件 | 说明 |
-|------|------|
-| `change_type_disallowed` | 变更类型在 `disallowed_change_types` 中 |
-| `scope_exceeds_envelope` | 变更规模超过 `max_scope` |
-| `residual_risk_exceeds_envelope` | 残余风险超过 `max_residual_risk` |
-| `critical_finding_in_review` | 审查出 critical 级别 finding |
-| `security_finding_in_review` | 审查出安全相关 finding |
-| `verification_failed_twice_consecutively` | 验证连续失败 2 次 |
-| `state_inconsistency_detected` | 状态机检测到 E_STATE001 不一致 |
-| `self_eval_failed_three_times_same_reason` | 同一原因连续自评失败 3 次 |
-
-### 异步审计日志
-
-所有 loop 自动决策写入 `.cairness/loop-audit/YYYY-MM-DD.md`：
-
-```markdown
-## 2026-07-07
-
-### change-012 (bugfix: fix login timeout)
-- [11:34] cc-propose hard_gate: AUTO-APPROVED
-  - change_type: bugfix ✓ | scope: small ✓ | risks: none ✓ | validation_map: complete ✓
-- [11:52] cc-review: no acceptance-candidate findings
-- [12:01] cc-archive: AUTO-APPROVED
-  - verification: 38/38 green ✓ | open_findings: 0 ✓
-
-### change-013 (feature: add rate limiting)
-- [14:22] cc-propose hard_gate: ESCALATED
-  - reason: scope_exceeds_envelope (medium > small)
-  - question: "此变更规模评估为 medium，超出当前信任包络（small），请确认是否调整包络或拆分变更"
-```
-
-### cc-self-eval 直接使用
-
-```bash
-# 检查变更是否在信任包络内
-.claude/scripts/cc-self-eval --command cc-propose --change-id <id>
-
-# 详细输出（打印每项 checklist 结果）
-.claude/scripts/cc-self-eval --command cc-propose --change-id <id> --verbose
-```
-
-返回码：`0` = APPROVED，`1` = ESCALATE（含原因），`2` = 配置错误。
-
-### Loop 与 Standard 模式对比
-
-| 行为 | standard | loop |
-|------|----------|------|
-| cc-propose Hard Gate | ⏸ 等用户确认 | 🤖 cc-self-eval 自评，通过即放行 |
-| cc-review finding accept | ⏸ 等用户选择 | 🤖 minor 自动处置，important/critical 升级 |
-| cc-archive 归档确认 | ⏸ 等用户确认 | 🤖 验证绿/无发现时自动归档 |
-| 人工介入点 | 每个 gate | 仅熔断条件触发 |
-| 决策记录 | spec/review 文件 | 同上 + loop-audit 异步日志 |
-| 信任包络 | 不需要 | 必须配置 `.cairness/loop-config.yaml` |
-
-> **注意：** Loop 模式不降低验证要求。验证脚本（cc-verify、cc-schema-check 等）仍全量运行。区别只在于谁来判断 gate 条件：standard 是人，loop 是 cc-self-eval 对照信任包络打分。
-
-## 常用校验
-
-从仓库根目录运行：
-
-```bash
-.claude/scripts/cc-verify --harness-only --verbose
-.claude/scripts/cc-verify --changed-only --verbose
-.claude/scripts/cc-eval .claude/evals
-.claude/scripts/cc-verify --fixture .claude/fixtures/go-http-user-service --verbose
+.claude/scripts/cc-dashboard --root .
+.claude/scripts/cc-dashboard --root . --json
 .claude/scripts/cc-stats
 .claude/scripts/cc-stats --root-causes
-.claude/scripts/cc-deps graph
-.claude/scripts/cc-deps orphans
-.claude/scripts/cc-gate-stats --degraded
-.claude/scripts/cc-knowledge-check
-.claude/scripts/cc-index-check
-.claude/scripts/cc-budget-check
 ```
+
+Dashboard 默认只绑定 localhost，展示 change、review、生命周期、verification 和 update 摘要。自动观测数据写入本地 `.cairness/observability/runtime-events.jsonl`，不记录 prompt、代码内容、业务路径、change ID 或 PII。
+
+以上命令以 Claude Code adapter 为例；Codex 项目将 `.claude/scripts/` 替换为 `.codex/scripts/`。
+
+完全关闭本地运行摘要：
+
+```bash
+DO_NOT_TRACK=1 .claude/scripts/cc-verify --execution-mode normal
+```
+
+关闭后不影响生命周期和验证，只会减少统计与优化分析可用的样本。
+
+## 平台与语言支持
+
+### 平台
+
+Cairness 正式支持 Linux、macOS 和 WSL；原生 Windows 为实验性支持。
+
+| 平台 | 支持等级 | 系统安装位置 | CLI 路径 |
+|---|---|---|---|
+| Linux | 正式支持 | `~/.local/share/cairness/` | `~/.local/bin/cc-cairn` |
+| macOS | 正式支持 | `~/Library/Application Support/cairness/` | `/usr/local/bin/cc-cairn` |
+| WSL | 正式支持（Linux 运行面） | `~/.local/share/cairness/` | `~/.local/bin/cc-cairn` |
+| 原生 Windows | 实验性 | `%LOCALAPPDATA%\cairness\` | `%LOCALAPPDATA%\cairness\cc-cairn.cmd` |
+
+原生 Windows 的安装器和 `cc-cairn.cmd` 可用，但 Bash Git hook、POSIX executable bit 与 extensionless runtime script 尚未在原生 Windows CI 中完整验证；建议通过 WSL 使用完整治理能力。
+
+### 语言
+
+| 语言 | Runtime Profile | Technology Catalog |
+|---|---|---|
+| Go | `golang.yaml` | `golang.yaml` |
+| Python | `python.yaml` | `python.yaml` |
+| TypeScript | `typescript.yaml` | `typescript.yaml` |
+| Java | `java.yaml` | `java.yaml` |
+| C++ | `cpp.yaml` | `cpp.yaml` |
+
+每种语言都有对应的并发、性能和技术专题规则，按检测到的路径、代码模式或 change 语义触发。自动探测无法唯一确定语言时，使用 `--language golang|python|typescript|java|cpp` 显式选择。
+
+## 更新与卸载
+
+```bash
+# 更新当前活动 adapter
+cc-cairn update
+
+# 卸载指定项目 adapter；共享 .cairness 不删除
+cc-cairn uninstall --adapter codex --yes
+
+# 卸载系统安装；不触碰任何项目
+python3 cairn_uninstall
+```
+
+用户修改过的 Codex Skill 会在卸载时保留；未修改的受管 Skill 可以随 adapter 删除。
+
+## 设计原则
+
+- **No Spec, No Code**：没有可审查的 spec，不进入实现。
+- **Spec is Truth**：review、test 和 done 阶段，spec 与实现必须一致。
+- **Fresh Evidence**：没有针对当前实现的新鲜证据，不声称完成、通过、已修复或可归档。
+- **Least Context Necessary**：只加载当前命令和当前任务需要的上下文。
+- **Quality Before Efficiency**：性能收益不能覆盖质量回退。
+- **Human-on-the-loop**：人定义自主边界、审查证据并处理升级，不必机械批准每个安全步骤。
+- **Runtime State Isolation**：框架 adapter 可升级，项目状态保持稳定且可追踪。
+
+`No Spec, No Code` 还通过宿主 hook 提供即时提示，并由 `cc-verify`、scope/orphan gate 和生命周期检查做确定性兜底。宿主提示本身不被夸大为唯一的安全边界。
 
 ## 仓库结构
 
-本仓库自身也是 Cairness 框架的开发和分发源。`cairn-core/` 是框架源码，`cc-cairn init` 按 installation manifest 将其安装到目标项目的 `.claude/` 或 `.codex/`。
-
-### Agent 运行时
-
-高频 `cc-*` 命令使用轻量运行时表面：
+本仓库既是 Cairness 源码，也是发行源：
 
 ```text
-cairn-core/skills/cc-harness/SKILL.md
-cairn-core/runtime/core.yaml
-cairn-core/runtime/protocol.yaml
-cairn-core/runtime/commands/<command>.yaml
-cairn-core/runtime/readsets/<command>.yaml
-cairn-core/runtime/topic-rules/<rule>.yaml
-cairn-core/runtime/languages/<language>.yaml
-cairn-core/runtime/technology/<language>.yaml
-cairn-core/runtime/profiles/<profile>.yaml
+cairn-core/
+├── runtime/
+│   ├── commands/       # 14 个生命周期命令合同
+│   ├── readsets/       # 按 profile 生成的最小读取集
+│   ├── topic-rules/    # 条件触发的工程治理规则
+│   ├── languages/      # 语言 profile
+│   ├── technology/     # 技术目录
+│   └── profiles/       # minimal / standard / strict / loop
+├── scripts/            # 确定性 CLI 与验证真相源
+├── schemas/            # 机器可校验的数据合同
+├── workflows/          # 生命周期状态机
+├── evals/              # 协议和行为回归
+├── fixtures/           # 隔离测试夹具
+├── skills/             # 宿主 Skill
+└── docs/               # 接入、维护与设计文档
 ```
 
-治理规则已迁移到 runtime YAML 中（34 个声明式专题规则 + 1 个检测模式目录），通过 readset 条件按需触发。`memory-policy.md` 保留长期记忆策略。
-
-### 脚本与 CI 真相源
-
-确定性校验和 CI 使用：
+安装到项目后：
 
 ```text
-cairn-core/workflows/cc-workflow.yaml
-cairn-core/harness.config.yaml
-cairn-core/schemas/*.json
-cairn-core/scripts/*
-cairn-core/evals/*
-cairn-core/fixtures/*
+.claude/                # Claude Code adapter，可升级
+.codex/                 # Codex adapter，可升级
+.agents/skills/         # Codex 项目 Skill
+.cairness/
+├── context/            # 项目事实与领域语言
+├── changes/            # spec/tasks/log/review/test/events
+├── audits/             # 存量代码审计
+├── knowledge/          # 团队知识
+├── loop-audit/         # Loop 决策与 session
+└── runtime/            # 受控的临时运行时产物
 ```
 
-### 项目状态
+## 深入阅读
 
-AI 和用户生成的项目状态位于：
+- [完整特色列表](cairn-core/docs/FEATURES.md)
+- [运行时模型](cairn-core/docs/maintenance/runtime-model.md)
+- [接入前检查清单](cairn-core/docs/adoption/integration-preflight-checklist.md)
+- [试点项目检查清单](cairn-core/docs/adoption/pilot-checklist.md)
+- [常见接入问题](cairn-core/docs/maintenance/common-integration-pitfalls.md)
+- [Subagent 边界模型](cairn-core/docs/maintenance/subagent-model.md)
+- [Wave-based Apply 设计](cairn-core/docs/maintenance/wave-based-apply-design.md)
+- [升级说明](cairn-core/UPGRADE.md)
+- [变更记录](cairn-core/CHANGELOG.md)
 
-```text
-.cairness/context/*
-.cairness/changes/*
-.cairness/audits/*
-.cairness/knowledge/*
-```
-
-`.claude/` 是可升级的框架资产。`.cairness/` 是项目状态目录，框架升级不触碰此目录。
-
-`.cairness/context/domain-language.md` 是 spec、tasks、review、test 和系统讲解共享的领域词汇表。仅在需要时按业务上下文拆分，不按编程语言拆分。
-
-### 人类文档
-
-维护和接入文档位于：
-
-```text
-cairn-core/docs/examples/*
-cairn-core/docs/adoption/*
-cairn-core/docs/maintenance/*
-cairn-core/docs/templates/*
-```
-
-## 语言支持
-
-| 语言 | Runtime Profile | Technology Catalog | 状态 |
-|------|-----------------|--------------------|------|
-| Go | `.claude/runtime/languages/golang.yaml` | `.claude/runtime/technology/golang.yaml` | 可用 |
-| Python | `.claude/runtime/languages/python.yaml` | `.claude/runtime/technology/python.yaml` | 可用 |
-| TypeScript | `.claude/runtime/languages/typescript.yaml` | `.claude/runtime/technology/typescript.yaml` | 可用 |
-| Java | `.claude/runtime/languages/java.yaml` | `.claude/runtime/technology/java.yaml` | 可用 |
-| C++ | `.claude/runtime/languages/cpp.yaml` | `.claude/runtime/technology/cpp.yaml` | 可用 |
-
-每种语言在 `.claude/runtime/topic-rules/` 下有对应的并发和性能专题规则（如 `go-concurrency.yaml`、`python-performance.yaml` 等），在实现阶段按检测到的模式条件触发。
+Cairness 的目标不是让 AI 执行更多步骤，而是让它在正确的边界内少走弯路：普通开发得到更短反馈，CI 和发布保留完整质量门禁，定时优化则用可比较证据判断是否真的节省了 Token 和时间。
