@@ -1,5 +1,23 @@
 # 升级指南
 
+## 升级到 1.2.9
+
+本版本增加受影响测试路由和本地校准能力，现有项目无需迁移。只有项目根目录存在
+`tests/test-policy.yaml` 且显式使用 `cc-verify --execution-mode normal|ci|optimize`
+时才会启用测试策略；未配置策略的项目以及不带 `--execution-mode` 的既有调用仍
+保持原有验证行为。
+
+`normal` 会根据 Git 变更选择受影响的 pytest 文件，无法确认影响面的源码变更会
+安全回退全量；`ci` 和 `optimize` 始终执行全量 pytest。干净的 CI checkout 可设置
+`CC_VERIFY_BASE_REF=<base-sha>`，用全量结果校准 normal 影子选择是否遗漏失败测试。
+证据不足时 routing escape 保持 `null`，不会被计为通过。
+
+路由摘要仅写入已被 Git 忽略的
+`.cairness/observability/runtime-events.jsonl`，不保存测试路径、源码、prompt、
+change ID 或 PII；设置 `DO_NOT_TRACK=1` 可关闭写入。`cc-optimize --json` 只读取
+这些脱敏样本并给出收集、回退或 escape 建议，不会自动修改
+`tests/test-policy.yaml`。任何策略调整仍需经过 full verify 和版本化 change。
+
 ## 升级到 1.2.8
 
 本版本增加质量优先的执行效率能力，并将 Loop 设为新安装的默认 profile。已有

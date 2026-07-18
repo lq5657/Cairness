@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.9 - 2026-07-19
+
+Affected-test routing and local calibration release for faster framework
+development without weakening CI or release gates.
+
+- Added a repository test policy that classifies every pytest file into unit,
+  contract, integration, behavior, or release layers and rejects unclassified
+  additions during collection.
+- Added conservative changed-source routing for explicit `normal` verification:
+  known changes select affected pytest files, while global or unknown source
+  changes fail closed to the complete suite. `ci` and `optimize` remain full.
+- Added local, sanitized routing observations for selection ratio, fallback
+  rate, unmatched-source rate, and determinable routing escapes. Empty or
+  unparseable evidence remains unknown instead of being counted as safe.
+- Added CI shadow calibration with `CC_VERIFY_BASE_REF`, allowing clean GitHub
+  checkouts to compare the normal selection against full pytest results without
+  committing or uploading the local observation stream.
+- Extended read-only `cc-optimize` recommendations to request routing samples,
+  identify ineffective all-full fallbacks, and stop policy tuning when a
+  routing escape is observed.
+- Initialized the default Loop configuration in framework CI and documented
+  test routing, privacy controls, calibration, and policy-change boundaries.
+
 ## 1.2.8 - 2026-07-18
 
 Quality-first execution-efficiency release for faster local feedback and
