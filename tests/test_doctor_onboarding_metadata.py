@@ -18,7 +18,14 @@ def run_doctor(project_root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def complete_project_state(project_root: Path) -> None:
-    for relative in ("context", "changes", "audits", "knowledge", "discussions"):
+    for relative in (
+        "context",
+        "changes",
+        "audits",
+        "knowledge",
+        "discussions",
+        "loop-audit",
+    ):
         (project_root / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
 
 

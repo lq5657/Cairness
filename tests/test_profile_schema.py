@@ -1,4 +1,4 @@
-"""A4: project profiles (minimal/standard/strict) are schema-validated.
+"""A4: project profiles (minimal/standard/strict/loop) are schema-validated.
 
 Previously the three profile files under runtime/profiles/ were read by
 readsets.resolve_active_profile_path but never validated against
@@ -34,7 +34,7 @@ def _profile_issues(report: dict) -> list[dict]:
 
 
 def test_profiles_pass_on_clean_repo():
-    """All three profiles validate against profile.schema on a clean repo."""
+    """All four profiles validate against profile.schema on a clean repo."""
     report = _run_json()
     assert report["status"] == "passed", [i for i in report["issues"] if "profile" in i["message"].lower()]
     assert _profile_issues(report) == []
@@ -79,7 +79,7 @@ def test_invalid_default_profile_is_caught(harness_project):
     """core.yaml profiles.default not in {minimal,standard,strict,loop} → E_SCHEMA194."""
     target = harness_project / ".claude" / "runtime" / "core.yaml"
     original = target.read_text(encoding="utf-8")
-    corrupt = original.replace("  default: standard", "  default: bogus-mode")
+    corrupt = original.replace("  default: loop", "  default: bogus-mode")
     if corrupt == original:
         import pytest
         pytest.skip("core.yaml profiles.default literal not found; test env changed")

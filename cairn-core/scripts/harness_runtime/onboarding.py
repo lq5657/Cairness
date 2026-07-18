@@ -187,7 +187,7 @@ def build_plan(
     project_or_inspection: Mapping[str, Any] | Path | str,
     *,
     adapter: str = "claude-code",
-    product_profile: str = "standard",
+    product_profile: str = "loop",
     profile: str | None = None,
     language_profile: str | None = None,
 ) -> dict[str, Any]:

@@ -112,6 +112,7 @@ def test_doctor_and_explain_json_surface_capability_contract(harness_project: Pa
         ".cairness/audits",
         ".cairness/knowledge",
         ".cairness/discussions",
+        ".cairness/loop-audit",
     ):
         (harness_project / relative).mkdir(parents=True, exist_ok=True)
     doctor = subprocess.run(

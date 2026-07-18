@@ -6,7 +6,7 @@ generated_from:
 - core://runtime/protocol.yaml
 - core://runtime/commands/cc-discuss.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - core://runtime/protocol.yaml
@@ -16,7 +16,7 @@ always_reads:
 - .cairness/context/dev-map.md
 - .cairness/knowledge/index.md
 - .claude/runtime/roles.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 optional_reads:
 - .cairness/context/project-context.md
 - .cairness/context/domain-language.md

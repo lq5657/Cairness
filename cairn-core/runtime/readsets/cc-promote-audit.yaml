@@ -6,7 +6,7 @@ generated_from:
 - core://runtime/protocol.yaml
 - core://runtime/commands/cc-promote-audit.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - core://runtime/protocol.yaml
@@ -14,7 +14,7 @@ always_reads:
 - .claude/runtime/result-contracts/standard-command.yaml
 - .cairness/audits/<audit-id>/report.md
 - .cairness/changes/task-board.md
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 optional_reads:
 - .claude/runtime/commands/cc-propose.yaml
 conditional_reads:

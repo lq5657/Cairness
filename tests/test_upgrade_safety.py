@@ -329,6 +329,9 @@ def test_cmd_init_end_to_end(tmp_path, monkeypatch):
         assert (tmp_path / d).is_dir()
     # Knowledge index template copied.
     assert (tmp_path / ".cairness" / "knowledge" / "index.md").exists()
+    # Default Loop profile is installed with a ready-to-edit trust envelope.
+    assert "profile: loop" in (tmp_path / ".claude" / "harness.config.yaml").read_text()
+    assert (tmp_path / ".cairness" / "loop-config.yaml").is_file()
     # CI templates now ship under templates/ci/ and land in .github/workflows/.
     assert (tmp_path / ".github" / "workflows").is_dir()
     assert (tmp_path / ".github" / "workflows" / "cairness.yml").is_file()
@@ -352,12 +355,18 @@ def test_cmd_init_preserves_local_additions_on_reinit(tmp_path, monkeypatch):
     hook = tmp_path / ".claude" / "hooks" / "my-hook.sh"
     hook.parent.mkdir(parents=True, exist_ok=True)
     hook.write_text("user custom")
+    config = tmp_path / ".claude" / "harness.config.yaml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("profile: loop", "profile: strict"),
+        encoding="utf-8",
+    )
 
     # Re-init with overwrite confirmed.
     monkeypatch.setattr("builtins.input", lambda *a, **k: "y")
     mod.cmd_init()
 
     assert hook.exists() and hook.read_text() == "user custom"
+    assert "profile: strict" in config.read_text(encoding="utf-8")
     assert (tmp_path / ".claude.bak").exists()
 
 
@@ -462,4 +471,3 @@ def test_upgrade_reports_dropped_files(tmp_path, capsys):
 
     assert "stale framework file(s) removed" in out
     assert "runtime/readsets/cc-help.yaml" in out
-

@@ -6,7 +6,7 @@ generated_from:
 - core://runtime/protocol.yaml
 - core://runtime/commands/cc-review.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - core://runtime/protocol.yaml
@@ -19,7 +19,7 @@ always_reads:
 - .claude/runtime/roles.yaml
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/coding-style.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 optional_reads:
 - .cairness/changes/<change-id>/review.md
 - .cairness/changes/<change-id>/test-spec.md

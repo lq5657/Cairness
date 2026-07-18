@@ -45,7 +45,7 @@ def test_explain_uses_runtime_manifest_and_generated_readset():
 
     assert report["tool"] == "cc-cairn explain"
     assert report["command"] == "cc-apply"
-    assert report["profile"]["id"] == "standard"
+    assert report["profile"]["id"] == "loop"
     assert report["profile"]["source"] == "framework_config"
     assert report["manifest"]["resolved"] == manifest
     assert report["reads"]["always"] == readset["always_reads"]

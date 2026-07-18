@@ -301,7 +301,7 @@ def resolve_active_profile_path(
     """Resolve the active profile file path from harness.config.yaml."""
     path = project_path(project_root, HARNESS_CONFIG_PATH, framework_root)
     if path is None:
-        return ".claude/runtime/profiles/standard.yaml"
+        return ".claude/runtime/profiles/loop.yaml"
     from harness_runtime.config import HarnessConfigError, load_harness_config
     try:
         harness_config = load_harness_config(path).values
@@ -315,9 +315,9 @@ def resolve_active_profile_path(
     if not isinstance(profile_name, str) or not profile_name:
         c = _core_or_empty(core)
         profiles_cfg = c.get("profiles") if isinstance(c.get("profiles"), dict) else {}
-        profile_name = profiles_cfg.get("default", "standard")
+        profile_name = profiles_cfg.get("default", "loop")
     if not isinstance(profile_name, str):
-        profile_name = "standard"
+        profile_name = "loop"
     profiles_dir = ".claude/runtime/profiles"
     return f"{profiles_dir}/{profile_name}.yaml"
 

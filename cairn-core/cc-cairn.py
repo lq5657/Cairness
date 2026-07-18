@@ -124,7 +124,7 @@ CAIRNESS_HOOK_MARKER = "# cairness-managed-hook: pre-commit/v1"
 
 # Files the release ships but whose local version must survive an upgrade
 # (these are user-local state, not framework assets).
-PRESERVE_ON_UPGRADE = {"settings.local.json"}
+PRESERVE_ON_UPGRADE = {"settings.local.json", "harness.config.yaml"}
 
 # Framework version-metadata files that legitimately change on every upgrade.
 # They are not user customizations, so excluded from the upgrade merge report
@@ -785,6 +785,26 @@ def _finish_project_init(
         (project_root / d).mkdir(parents=True, exist_ok=True)
         print(f"  {d}/")
 
+    # A loop-profile installation must be runnable immediately. Preserve an
+    # existing trust envelope, but seed the bundled conservative template when
+    # project state does not have one yet.
+    harness_config = framework_dir / "harness.config.yaml"
+    loop_config = project_root / LOOP_CONFIG_REL
+    if harness_config.is_file() and not loop_config.is_file():
+        configured_profile = re.search(
+            r"(?m)^profile:\s*([^\s#]+)",
+            harness_config.read_text(encoding="utf-8"),
+        )
+        loop_template = framework_dir / LOOP_CONFIG_TEMPLATE_REL
+        if (
+            configured_profile
+            and configured_profile.group(1) == LOOP_PROFILE
+            and loop_template.is_file()
+        ):
+            loop_config.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(loop_template, loop_config)
+            print(f"  {LOOP_CONFIG_REL} (from template)")
+
     knowledge_root = project_root / ".cairness" / "knowledge"
     for sub in _knowledge_init_subdirs(project_root):
         (knowledge_root / sub).mkdir(parents=True, exist_ok=True)
@@ -887,6 +907,8 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     knowledge_snapshot = _file_snapshot(knowledge_path)
     state_root = project_root / ".cairness"
     state_directories = _existing_directories(state_root)
+    loop_config_path = project_root / LOOP_CONFIG_REL
+    loop_config_snapshot = _file_snapshot(loop_config_path)
     ci_path = project_root / ".github" / "workflows"
     ci_existed = ci_path.is_dir()
     ci_snapshots = _directory_file_snapshots(ci_path)
@@ -918,6 +940,7 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
         )
         _restore_file_snapshot(gitignore_path, gitignore_snapshot)
         _restore_file_snapshot(knowledge_path, knowledge_snapshot)
+        _restore_file_snapshot(loop_config_path, loop_config_snapshot)
         _restore_directory_file_snapshots(
             ci_path, ci_snapshots, existed=ci_existed
         )
@@ -957,9 +980,9 @@ def cmd_onboard(argv):
     )
     parser.add_argument(
         "--profile",
-        default="standard",
+        default="loop",
         choices=("minimal", "standard", "strict", "loop"),
-        help="runtime governance profile (default: standard)",
+        help="runtime governance profile (default: loop)",
     )
     parser.add_argument("--language", dest="language", choices=("golang", "python", "java", "cpp", "typescript"), help="override language detection")
     parser.add_argument("--dry-run", action="store_true", help="inspect and print the plan without changing files")

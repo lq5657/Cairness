@@ -155,7 +155,7 @@ topic_rules:
 
 profiles:
   dir: core://runtime/profiles
-  default: standard
+  default: loop
   active_resolution: harness_config_profile_field
 
 default_runtime_rules:

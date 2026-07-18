@@ -20,8 +20,11 @@ def run_doctor(project_root: Path, *args: str) -> subprocess.CompletedProcess[st
     )
 
 
-def test_doctor_json_summarizes_product_readiness():
-    completed = run_doctor(REPO_ROOT, "--json")
+def test_doctor_json_summarizes_product_readiness(harness_project: Path):
+    for relative in ("context", "audits", "knowledge", "discussions", "loop-audit"):
+        (harness_project / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
+
+    completed = run_doctor(harness_project, "--json")
 
     assert completed.returncode == 0, completed.stderr
     report = json.loads(completed.stdout)
@@ -37,7 +40,7 @@ def test_doctor_json_summarizes_product_readiness():
         "project_state",
         "onboarding",
     }
-    expected_version = (REPO_ROOT / "cairn-core" / "VERSION").read_text().strip()
+    expected_version = (harness_project / ".claude" / "VERSION").read_text().strip()
     assert report["summary"]["versions"]["project"] == expected_version
     assert report["summary"]["config"]["status"] == "valid"
     assert report["summary"]["adapter"]["name"] == "claude-code"
@@ -235,7 +238,7 @@ def test_doctor_failure_includes_actionable_issue_guidance(harness_project: Path
 def test_doctor_uses_metadata_selected_framework_root(harness_project: Path):
     framework = harness_project / ".managed"
     (harness_project / ".claude").rename(framework)
-    for relative in ("context", "audits", "knowledge", "discussions"):
+    for relative in ("context", "audits", "knowledge", "discussions", "loop-audit"):
         (harness_project / ".cairness" / relative).mkdir(parents=True, exist_ok=True)
     (harness_project / ".cairness" / "install.yaml").write_text(
         "version: 1\nadapter: claude-code\nframework_prefix: .managed\n",

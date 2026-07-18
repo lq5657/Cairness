@@ -264,7 +264,7 @@
         },
         "default": {
           "type": "string",
-          "enum": ["minimal", "standard", "strict"]
+          "enum": ["minimal", "standard", "strict", "loop"]
         },
         "active_resolution": {
           "type": "string",

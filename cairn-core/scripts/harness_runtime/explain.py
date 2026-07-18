@@ -176,7 +176,7 @@ def build_effective_contract(
     readset_path, readset = _asset(context, declared_readset)
 
     config = context.config
-    profile_id = str(config.values.get("profile", "standard")) if config is not None else "standard"
+    profile_id = str(config.values.get("profile", "loop")) if config is not None else "loop"
     profiles = core.get("profiles") if isinstance(core.get("profiles"), dict) else {}
     profiles_dir = str(profiles.get("dir", ".claude/runtime/profiles")).rstrip("/")
     declared_profile = f"{profiles_dir}/{profile_id}.yaml"

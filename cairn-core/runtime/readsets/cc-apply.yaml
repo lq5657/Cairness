@@ -6,7 +6,7 @@ generated_from:
 - core://runtime/protocol.yaml
 - core://runtime/commands/cc-apply.yaml
 - .claude/runtime/result-contracts/standard-command.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 always_reads:
 - .claude/runtime/core.yaml
 - core://runtime/protocol.yaml
@@ -21,7 +21,7 @@ always_reads:
 - .claude/runtime/roles.yaml
 - .claude/runtime/topic-rules/verification.yaml
 - .claude/runtime/topic-rules/coding-style.yaml
-- .claude/runtime/profiles/standard.yaml
+- .claude/runtime/profiles/loop.yaml
 optional_reads: []
 conditional_reads:
   when_creating_test_spec_artifact:

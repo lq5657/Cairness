@@ -40,7 +40,7 @@ def test_readset_profile_resolution_reports_invalid_config(repo_root: Path):
     finally:
         config.write_text(original, encoding="utf-8")
 
-    assert path.endswith("standard.yaml")
+    assert path.endswith("loop.yaml")
     assert any(issue.code == "E_CONFIG001" for issue in issues)
 
 

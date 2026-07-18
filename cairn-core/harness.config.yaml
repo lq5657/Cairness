@@ -3,10 +3,9 @@
 
 schema_version: 1
 
-profile: standard
-# Loop Engineering profile: set to "loop" to enable autonomous execution
-# Requires: .cairness/loop-config.yaml (see .claude/templates/loop-config.yaml)
-# profile: loop
+profile: loop
+# Loop Engineering is the default installation profile.
+# The installer copies .cairness/loop-config.yaml from the bundled template.
 
 paths:
   framework_root: ".claude"

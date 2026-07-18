@@ -13,6 +13,12 @@ def prepare_initialized_project(project_root: Path) -> None:
     (project_root / "README.md").write_text("# Fixture\n", encoding="utf-8")
     for relative in (".cairness/context", ".cairness/knowledge"):
         (project_root / relative).mkdir(parents=True, exist_ok=True)
+    if not (project_root / ".cairness/loop-config.yaml").is_file():
+        for framework in project_root.iterdir():
+            template = framework / "templates/loop-config.yaml"
+            if template.is_file():
+                shutil.copy2(template, project_root / ".cairness/loop-config.yaml")
+                break
 
 
 def test_context_discovers_project_from_subdirectory(harness_project: Path):
@@ -26,7 +32,7 @@ def test_context_discovers_project_from_subdirectory(harness_project: Path):
     assert context.project_root == harness_project.resolve()
     assert context.framework_root == (harness_project / ".claude").resolve()
     assert context.state_root == (harness_project / ".cairness").resolve()
-    assert context.config.values["profile"] == "standard"
+    assert context.config.values["profile"] == "loop"
     assert context.adapter.name == "claude-code"
     assert context.layout.framework_prefix == ".claude"
 

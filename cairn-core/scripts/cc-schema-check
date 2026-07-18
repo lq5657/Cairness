@@ -123,7 +123,7 @@ PROFILE_SCHEMA = "profile.schema.json"
 # validate_runtime_commands to check inputs.* names against input_contracts.
 # Reset per run; populated only when validate_agent_command_protocol runs first.
 _PROTOCOL_CACHE: dict[str, Any] | None = None
-VALID_PROFILE_IDS = {"minimal", "standard", "strict"}
+VALID_PROFILE_IDS = {"minimal", "standard", "strict", "loop"}
 
 from harness_runtime.enums import enum_set, load_enums as _load_enums
 _FINDING_STATUS = enum_set(_load_enums(), "finding_status", "core")

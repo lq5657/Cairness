@@ -16,7 +16,7 @@ def test_complete_framework_config_is_valid(repo_root: Path):
 
     config = load_harness_config(repo_root / "cairn-core" / "harness.config.yaml")
 
-    assert config.values["profile"] == "standard"
+    assert config.values["profile"] == "loop"
     assert config.source("profile") == "framework_config"
 
 

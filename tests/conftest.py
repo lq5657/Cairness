@@ -55,6 +55,10 @@ def harness_project(tmp_path: Path) -> Path:
     """Return an isolated project containing a complete installed Harness."""
     shutil.copytree(REPO_ROOT / "cairn-core", tmp_path / ".claude")
     (tmp_path / ".cairness" / "changes").mkdir(parents=True)
+    shutil.copy2(
+        tmp_path / ".claude" / "templates" / "loop-config.yaml",
+        tmp_path / ".cairness" / "loop-config.yaml",
+    )
     return tmp_path
 
 

@@ -29,12 +29,12 @@ def _make_project(tmp_path: Path) -> Path:
 # status
 # ---------------------------------------------------------------------------
 
-def test_status_shows_standard_profile_by_default(tmp_path):
+def test_status_shows_loop_profile_by_default(tmp_path):
     project = _make_project(tmp_path)
     rc, stdout, _ = _run(["loop", "status"], project)
     assert rc == 0
-    assert "standard" in stdout
-    assert "disabled" in stdout
+    assert "loop" in stdout
+    assert "ENABLED" in stdout
 
 
 def test_status_shows_loop_config_not_found_initially(tmp_path):
@@ -42,6 +42,7 @@ def test_status_shows_loop_config_not_found_initially(tmp_path):
     rc, stdout, _ = _run(["loop", "status"], project)
     assert rc == 0
     assert "not found" in stdout
+    assert "warning" in stdout.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +154,7 @@ def test_disable_preserves_loop_config_yaml(tmp_path):
 
 def test_disable_idempotent_when_already_standard(tmp_path):
     project = _make_project(tmp_path)
+    assert _run(["loop", "disable"], project)[0] == 0
     rc, stdout, _ = _run(["loop", "disable"], project)
     assert rc == 0
     assert "already" in stdout.lower() or "standard" in stdout.lower()
