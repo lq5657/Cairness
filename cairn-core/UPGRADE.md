@@ -1,5 +1,21 @@
 # 升级指南
 
+## 升级到 1.3.1
+
+本版本修复 Codex adapter 的 Skill 发现范围和命令路径选择问题，现有项目无需
+手工迁移。对已有 Codex 项目执行 `cc-cairn update`，升级过程会把旧的
+`.codex/skills/cc-harness` 移出活动框架目录并保留在 `.codex.bak` 中（如该
+备份目录已存在则按升级工具的备份规则处理）。
+
+升级后 Codex 项目只使用项目级 `.agents/skills/cc-harness/SKILL.md`；运行时
+物理命令应从 `.codex/scripts/<command>` 调用，不应从 `.claude/scripts/*`
+调用。`cc-doctor-check`、`cc-lint` 会按当前 adapter 检查，发现重复活动 Skill
+时报告 `E_DOCTOR105`。Claude adapter 项目仍使用原有 `.claude/` 布局，不受
+Codex 专属排除规则影响。
+
+升级不会删除或重置 `.cairness/` 项目状态、change 文档或事件日志；完成升级后
+可按项目当前生命周期继续执行相应命令。
+
 ## 升级到 1.3.0
 
 本版本向后兼容，现有项目无需迁移。执行 `cc-cairn update` 即可获得更新后的

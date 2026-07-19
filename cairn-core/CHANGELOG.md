@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.1 - 2026-07-19
+
+Codex adapter skill-discovery isolation and command-routing correctness patch.
+Existing Claude Code projects and lifecycle command contracts remain
+backward-compatible.
+
+- Scoped Codex framework installation to Codex-owned runtime assets, excluding
+  Claude-only skills, `CLAUDE.md`, and `settings.json` from `.codex/`.
+- Kept the project-level Codex skill at `.agents/skills/cc-harness/SKILL.md`
+  and removed stale `.codex/skills/cc-harness` restoration during upgrades.
+- Made `cc-doctor-check` and `cc-lint` adapter-aware and added `E_DOCTOR105`
+  for duplicate active Skill discovery.
+- Added realistic Codex install, upgrade, doctor, and lint regressions that
+  validate the selected adapter and physical command paths, and removed tests
+  that only asserted documentation or script strings.
+
 ## 1.3.0 - 2026-07-19
 
 Read-only adapter routing and observable verification release. Existing
