@@ -215,3 +215,29 @@ def test_run_step_reuses_only_cached_passed_result(tmp_path):
     assert second["reused"] is True
     assert second["duration_ms"] == 0
     assert second_runner.calls == []
+
+
+def test_cache_write_failure_does_not_fail_verification(tmp_path, monkeypatch):
+    runner_service = importlib.import_module("harness_runtime.verification_runner")
+    monkeypatch.setattr(
+        runner_service,
+        "save_cached",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("read only")),
+    )
+    runner = RecordingRunner(
+        completed=subprocess.CompletedProcess(
+            args=["check"], returncode=0, stdout="ok\n", stderr=""
+        )
+    )
+    result = runner_service.run_step(
+        "cc-schema-check",
+        "harness",
+        ["check"],
+        tmp_path,
+        runner=runner,
+        cache_root=tmp_path / "cache",
+        cache_key="d" * 64,
+        reuse_cache=True,
+    )
+    assert result["status"] == "passed"
+    assert result["cache_write_failed"] is True

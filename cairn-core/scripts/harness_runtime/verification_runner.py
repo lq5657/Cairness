@@ -102,8 +102,14 @@ def run_step(
             result["issues"] = collect_issues_from_json(completed.stdout)
         result["diagnosis"] = diagnosis_for(name, status, completed.stderr)
         if cache_root and cache_key and completed.returncode == 0:
-            save_cached(cache_root, cache_key, result)
-            result["cache_key"] = cache_key
+            try:
+                save_cached(cache_root, cache_key, result)
+            except OSError:
+                # Cache is an optional acceleration layer. A read-only or
+                # quota-limited runtime must still return the real gate result.
+                result["cache_write_failed"] = True
+            else:
+                result["cache_key"] = cache_key
         _progress(f"finish {name}: {status} ({duration_ms}ms)")
         return result
     except subprocess.TimeoutExpired as exc:
