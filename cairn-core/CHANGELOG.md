@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.2 - 2026-07-19
+
+Lifecycle execution and runtime efficiency observability release. Existing
+quality gates remain unchanged; local iteration is faster while CI, review,
+test, and archive boundaries continue to use full verification.
+
+- Added a shared lifecycle execution matrix for Claude and Codex adapters:
+  local `apply`/`fix` use explicit `normal`, while `test`/`review`/`archive`
+  use explicit `ci` full verification.
+- Extended verification telemetry with execution-mode source, skipped steps,
+  cache eligibility, cache hits/misses, and bypass reasons.
+- Made verification cache writes best effort so read-only or quota-limited
+  cache directories cannot turn a passing quality check into a process crash.
+- Added sanitized Loop step, wave-plan, and Context Pack cost events, with
+  fingerprint-based Context Pack reuse.
+- Added `cc-benchmark collect` for creating baseline/candidate records from
+  local runtime events without fabricating missing quality evidence.
+- Added regression coverage for the lifecycle matrix, cache degradation path,
+  runtime cost events, and benchmark collection.
+
 ## 1.3.1 - 2026-07-19
 
 Codex adapter skill-discovery isolation and command-routing correctness patch.

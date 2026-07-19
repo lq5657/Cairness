@@ -1,5 +1,23 @@
 # 升级指南
 
+## 升级到 1.3.2
+
+本版本向后兼容，现有项目无需迁移。执行 `cc-cairn update` 即可获得新的运行时
+脚本、profile 和遥测能力。
+
+生命周期 profile 现在明确区分局部反馈与最终门禁：`apply`、`fix` 的局部验证
+使用 `cc-verify --execution-mode normal`；`test`、`review`、`archive` 使用
+`cc-verify --execution-mode ci`，继续执行完整验证。未显式指定执行模式的旧调用
+仍保持历史 full verify 行为。
+
+验证缓存仍只复用 fingerprint 一致且上次通过的静态 Harness 步骤。缓存目录不可
+写时，验证会保留真实门禁结果并跳过缓存写入，不会因为优化层失败而中断质量检查。
+
+新增的 Loop、wave、Context Pack 指标写入本地脱敏 runtime event；Context Pack
+会复用相同 fingerprint 的已有产物。`cc-benchmark collect` 可以从这些事件生成
+baseline/candidate 记录，但缺失 task success、Important recall 等质量证据时不会
+伪造数据，比较仍会停留在 observe 或失败状态。
+
 ## 升级到 1.3.1
 
 本版本修复 Codex adapter 的 Skill 发现范围和命令路径选择问题，现有项目无需
