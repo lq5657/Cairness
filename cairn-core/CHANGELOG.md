@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0 - 2026-07-19
+
+Read-only adapter routing and observable verification release. Existing
+lifecycle command contracts remain backward-compatible.
+
+- Registered `cc-start`, `cc-help`, `cc-dashboard`, `cc-stats`, `cc-optimize`,
+  `cc-benchmark`, and `cc-legacy-audit` as shared read-only runtime
+  entrypoints, keeping them outside `migrated_commands` and lifecycle readsets.
+- Aligned Claude Code and Codex skills and adapter regression checks with the
+  shared read-only entrypoint registry.
+- Added bounded verification subprocess execution with per-step progress on
+  stderr, a 900-second default timeout, CLI/environment overrides, and
+  structured timeout evidence while preserving JSON stdout consumers.
+- Improved adapter failure diagnostics so verification progress lines do not
+  hide the underlying failure output.
+- Added schema and regression coverage for the new registry and timeout
+  behavior.
+
 ## 1.2.9 - 2026-07-19
 
 Affected-test routing and local calibration release for faster framework

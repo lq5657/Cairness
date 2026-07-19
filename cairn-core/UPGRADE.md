@@ -1,5 +1,22 @@
 # 升级指南
 
+## 升级到 1.3.0
+
+本版本向后兼容，现有项目无需迁移。执行 `cc-cairn update` 即可获得更新后的
+框架文件。
+
+运行时新增统一的只读高层入口注册区：`cc-start`、`cc-help`、
+`cc-dashboard`、`cc-stats`、`cc-optimize`、`cc-benchmark` 和
+`cc-legacy-audit`。这些入口不属于生命周期 `migrated_commands`，不读取
+change readset，也不会自动执行生命周期命令。Claude Code 与 Codex adapter
+均直接调用对应脚本；其中 `cc-start` 只根据当前状态推荐下一步。
+
+`cc-verify` 现在为每个验证子进程提供可见进度和超时保护。默认单步上限为
+900 秒，可通过 `--step-timeout-seconds` 或
+`CC_VERIFY_STEP_TIMEOUT_SECONDS` 覆盖。超时会以 `status: failed`、退出码
+124 和 `timed_out: true` 写入 JSON，stdout 的最终 JSON 格式保持兼容，进度写入
+stderr。
+
 ## 升级到 1.2.9
 
 本版本增加受影响测试路由和本地校准能力，现有项目无需迁移。只有项目根目录存在
