@@ -29,8 +29,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
         print(f"Intent: {report['intent']}")
-        print(f"Route: {report['command']}")
+        route = report["command"]
+        if report.get("command_args"):
+            route = " ".join([route, *report["command_args"]])
+        print(f"Route: {route}")
         print(f"Reason: {report['reason']}")
+        print(f"Next action: {report['next_action']}")
         print("Cancelled." if args.cancel else "No command executed; review the route and invoke it explicitly.")
     return 0
 
