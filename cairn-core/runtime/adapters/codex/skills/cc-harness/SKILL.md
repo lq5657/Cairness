@@ -9,6 +9,15 @@ When the user invokes a literal `cc-*` command, preserve that spelling and read
 `.codex/runtime/readsets/<command>.yaml`. Load only `always_reads` initially;
 load conditional reads only when their trigger is satisfied.
 
+All Codex adapter command execution must use `.codex/scripts/<command>`.
+Never execute the Claude adapter equivalent under `.claude/scripts/`, even when
+both adapters coexist in the project. For example, `cc-start --intent status`
+must be run as `.codex/scripts/cc-start --intent status`.
+
+If a shared runtime manifest contains a `.claude/...` declaration, treat it as
+a logical compatibility alias resolved by the runtime, not as a physical shell
+path. Rewrite script invocations to the active Codex path before executing.
+
 `cc-start` is an adapter-level, read-only router registered as
 `.codex/scripts/cc-start`; it is not a migrated lifecycle command and has no
 command readset. Invoke it directly (prefer `cc-start` when the stage is

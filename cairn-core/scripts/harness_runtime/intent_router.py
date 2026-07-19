@@ -7,6 +7,7 @@ from typing import Any
 
 from harness_runtime.change_findings import parse_findings
 from harness_runtime.deps import discover_changes
+from harness_runtime.onboarding import read_install_metadata
 
 
 INTENTS = ("new-project", "change", "review", "fix", "archive", "status")
@@ -48,8 +49,25 @@ def _state(root: Path) -> dict[str, Any]:
         except (OSError, UnicodeError):
             continue
         open_findings[change_id] = sum(finding.status == "open" for finding in findings)
+    # The active adapter is persisted in install.yaml.  Falling back to the
+    # conventional prefixes keeps this router compatible with legacy installs
+    # that predate adapter metadata while still supporting Codex-only projects.
+    metadata = read_install_metadata(root, strict=False)
+    framework_prefix = metadata.get("framework_prefix")
+    candidates = (
+        (framework_prefix,) if isinstance(framework_prefix, str) else ()
+    ) + (".codex", ".claude")
+    framework_root = next(
+        (root / prefix for prefix in candidates if (root / prefix / "VERSION").is_file()),
+        None,
+    )
     return {
-        "framework_installed": (root / ".claude" / "VERSION").is_file(),
+        "framework_installed": framework_root is not None,
+        "framework_prefix": (
+            framework_root.relative_to(root).as_posix()
+            if framework_root is not None
+            else ""
+        ),
         "active_changes": active_changes,
         "change_statuses": change_statuses,
         "open_findings": open_findings,

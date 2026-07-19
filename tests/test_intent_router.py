@@ -161,6 +161,25 @@ def test_status_intent_recommends_from_current_stage(tmp_path):
     assert result["status"] == "ready"
 
 
+def test_router_detects_codex_framework_from_active_metadata(tmp_path):
+    (tmp_path / ".codex").mkdir()
+    (tmp_path / ".codex" / "VERSION").write_text("1.3.0\n", encoding="utf-8")
+    state = tmp_path / ".cairness"
+    state.mkdir()
+    (state / "install.yaml").write_text(
+        "version: 1\nadapter: codex\nframework_prefix: .codex\n",
+        encoding="utf-8",
+    )
+
+    from harness_runtime.intent_router import route_intent
+
+    result = route_intent(tmp_path, "status")
+
+    assert result["state"]["framework_installed"] is True
+    assert result["state"]["framework_prefix"] == ".codex"
+    assert result["preconditions"] == []
+
+
 def test_cc_start_without_intent_defaults_to_status(tmp_path):
     _install_framework(tmp_path)
 

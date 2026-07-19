@@ -99,6 +99,52 @@ def test_context_loads_metadata_selected_codex_adapter(tmp_path: Path):
     assert context.adapter.capabilities["structured_result"] == "required"
 
 
+def test_installed_codex_cc_start_accepts_status(tmp_path: Path):
+    project = tmp_path / "project"
+    framework = project / ".codex"
+    project.mkdir()
+    shutil.copytree(CORE, framework)
+    (project / ".cairness" / "context").mkdir(parents=True)
+    (project / ".cairness" / "install.yaml").write_text(
+        "version: 1\nadapter: codex\nframework_prefix: .codex\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [str(framework / "scripts" / "cc-start"), "--intent", "status", "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    payload = json.loads(result.stdout)
+    assert payload["intent"] == "status"
+    assert payload["state"]["framework_prefix"] == ".codex"
+    assert payload["preconditions"] == []
+
+
+def test_codex_instructions_pin_command_prefix():
+    instructions = (
+        CORE / "runtime" / "adapters" / "codex" / "CAIRNESS.md"
+    ).read_text(encoding="utf-8")
+    skill = (
+        CORE
+        / "runtime"
+        / "adapters"
+        / "codex"
+        / "skills"
+        / "cc-harness"
+        / "SKILL.md"
+    ).read_text(encoding="utf-8")
+
+    assert ".codex/scripts/cc-start --intent status" in instructions
+    assert ".codex/scripts/cc-start --intent status" in skill
+    assert "Never substitute a `.claude/scripts/*` path" in instructions
+    assert "logical compatibility path" in instructions
+    assert "logical compatibility alias" in skill
+
+
 def test_context_framework_hint_selects_registered_adapter_in_coexisting_install(
     tmp_path: Path, monkeypatch
 ):
