@@ -21,6 +21,7 @@ jobs:
         run: |
           mkdir -p .cairness/context .cairness/changes .cairness/audits .cairness/knowledge .cairness/discussions
           cp cairn-core/templates/loop-config.yaml .cairness/loop-config.yaml
+          cp cairn-core/templates/knowledge/index.md .cairness/knowledge/index.md
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
