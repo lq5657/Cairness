@@ -25,7 +25,7 @@ def _recommendations(
     min_samples: int,
     routing_enabled: bool,
 ) -> list[dict[str, Any]]:
-    verification = verification_metrics(runtime_events)
+    verification = verification_metrics(runtime_events, extended=True)
     execution = execution_metrics(runtime_events)
     routing = test_routing_metrics(runtime_events)
     recommendations: list[dict[str, Any]] = []
@@ -94,7 +94,7 @@ def build_optimization_report(
         "status": "observe",
         "sample_count": sample_count,
         "min_samples": min_samples,
-        "verification": verification_metrics(runtime_events),
+        "verification": verification_metrics(runtime_events, extended=True),
         "execution": execution_metrics(runtime_events),
         "test_routing": test_routing_metrics(runtime_events),
         "test_routing_enabled": routing_enabled,

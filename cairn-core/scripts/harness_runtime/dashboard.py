@@ -94,6 +94,7 @@ def build_dashboard(project_root: Path) -> dict[str, Any]:
         "observability": collection_summary(events, runtime_events),
         "commands": command_metrics(events),
         "verification": verification_metrics(runtime_events),
+        "verification_efficiency": verification_metrics(runtime_events, extended=True),
         "upgrade": upgrade_metrics(runtime_events),
         "diagnostics": diagnostics,
     }

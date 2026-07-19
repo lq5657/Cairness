@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import re
 import secrets
+from time import monotonic
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from harness_runtime import require_yaml
 from harness_runtime.context import HarnessContext
+from harness_runtime.observability import record_loop_step
 
 SESSION_ROOT = Path(".cairness/runtime/loop-sessions")
 LOOP_SESSION_GITIGNORE_RULE = ".cairness/runtime/loop-sessions/"
@@ -185,6 +187,7 @@ def record_step(
     evidence: str | None = None,
 ) -> dict[str, Any]:
     _require_loop_enabled(context)
+    started = monotonic()
     path, state = _load_state(context, session_id)
     if state["status"] != "active":
         raise LoopRuntimeError(f"loop session is already {state['status']}: {session_id}")
@@ -248,6 +251,16 @@ def record_step(
         session_id,
         {"event": "step_recorded", "at": step["at"], **step, "session_id": session_id},
     )
+    try:
+        record_loop_step(
+            context.project_root,
+            status=status,
+            duration_ms=int((monotonic() - started) * 1000),
+            step_count=len(state.get("steps", [])),
+            continuation=step.get("next_command", step.get("stop_reason", "")),
+        )
+    except Exception:
+        pass
     return state
 
 

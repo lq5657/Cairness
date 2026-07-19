@@ -5,9 +5,12 @@ from __future__ import annotations
 import hashlib
 import re
 import subprocess
+from time import monotonic
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from harness_runtime.observability import record_context_pack
 
 CONTEXT_PACK_ROOT = Path(".cairness/runtime/context-packs")
 CONTEXT_PACK_GITIGNORE_RULE = ".cairness/runtime/context-packs/"
@@ -102,6 +105,7 @@ def _git_output(project_root: Path, args: list[str]) -> str:
 
 def build_task_pack(project_root: Path, change_id: str, task_id: str, include: list[str] | None = None) -> dict[str, Any]:
     """Build a task brief from the change contract and bounded project context."""
+    started = monotonic()
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", change_id):
         raise ContextPackError(f"invalid change id: {change_id!r}")
     changes_root = (project_root / ".cairness" / "changes").resolve()
@@ -169,9 +173,11 @@ def build_task_pack(project_root: Path, change_id: str, task_id: str, include: l
         raise ContextPackError(
             f"task context pack exceeds {TASK_PACK_MAX_BYTES} bytes; narrow --include inputs"
         )
-    output.write_text(encoded, encoding="utf-8")
+    reused = output.is_file()
+    if not reused:
+        output.write_text(encoded, encoding="utf-8")
     _ensure_gitignored(project_root)
-    return {
+    result = {
         "kind": "task",
         "change_id": change_id,
         "task_id": f"T{_normalize_task(task_id)}",
@@ -179,11 +185,27 @@ def build_task_pack(project_root: Path, change_id: str, task_id: str, include: l
         "path": _relative_path(project_root, output),
         "source_paths": [name for name, _ in sources],
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "reused": reused,
     }
+    try:
+        record_context_pack(
+            project_root,
+            kind="task",
+            status="passed",
+            reused=reused,
+            source_count=len(sources),
+            source_bytes=sum(len(content.encode("utf-8")) for _, content in sources),
+            output_bytes=len(encoded.encode("utf-8")),
+            duration_ms=int((monotonic() - started) * 1000),
+        )
+    except Exception:
+        pass
+    return result
 
 
 def build_review_pack(project_root: Path, base: str, head: str) -> dict[str, Any]:
     """Build a whole-range review package without copying it into a prompt."""
+    started = monotonic()
     commits = _git_output(project_root, ["log", "--oneline", f"{base}..{head}"])
     stat = _git_output(project_root, ["diff", "--stat", f"{base}..{head}"])
     diff = _git_output(project_root, ["diff", "-U10", f"{base}..{head}"])
@@ -200,9 +222,11 @@ def build_review_pack(project_root: Path, base: str, head: str) -> dict[str, Any
         raise ContextPackError(
             f"review package exceeds {REVIEW_PACK_MAX_BYTES} bytes; review the range in smaller task packages"
         )
-    output.write_text(encoded, encoding="utf-8")
+    reused = output.is_file()
+    if not reused:
+        output.write_text(encoded, encoding="utf-8")
     _ensure_gitignored(project_root)
-    return {
+    result = {
         "kind": "review",
         "base": base,
         "head": head,
@@ -210,4 +234,19 @@ def build_review_pack(project_root: Path, base: str, head: str) -> dict[str, Any
         "path": _relative_path(project_root, output),
         "source_paths": [f"git:{base}..{head}"],
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "reused": reused,
     }
+    try:
+        record_context_pack(
+            project_root,
+            kind="review",
+            status="passed",
+            reused=reused,
+            source_count=len(parts),
+            source_bytes=sum(len(content.encode("utf-8")) for _, content in parts),
+            output_bytes=len(encoded.encode("utf-8")),
+            duration_ms=int((monotonic() - started) * 1000),
+        )
+    except Exception:
+        pass
+    return result

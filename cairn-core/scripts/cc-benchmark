@@ -13,7 +13,9 @@ import json
 import sys
 from pathlib import Path
 
-from harness_runtime.benchmark import BenchmarkError, compare, summarize
+from harness_runtime.benchmark import BenchmarkError, collect_runtime_events, compare, summarize
+from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.observability import discover_runtime_events
 
 
 def load_json(path: Path) -> dict:
@@ -37,13 +39,30 @@ def main(argv: list[str]) -> int:
     compare_parser.add_argument("--candidate", required=True, type=Path)
     compare_parser.add_argument("--thresholds", type=Path, help="Optional JSON object overriding thresholds")
     compare_parser.add_argument("--json", action="store_true")
+    collect_parser = sub.add_parser("collect", help="Collect a sanitized record from local runtime events")
+    collect_parser.add_argument("--suite", required=True)
+    collect_parser.add_argument("--label", required=True)
+    collect_parser.add_argument("--command", dest="event_command", help="Optional event command filter")
+    collect_parser.add_argument("--root", type=Path, help="Cairness project root")
+    collect_parser.add_argument("--output", type=Path, help="Write the record to this file")
+    collect_parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "summarize":
             report = summarize(load_json(args.record))
-        else:
+        elif args.command == "compare":
             thresholds = load_json(args.thresholds) if args.thresholds else None
             report = compare(load_json(args.baseline), load_json(args.candidate), thresholds)
+        else:
+            context = load_harness_context(explicit_root=args.root) if args.root else load_harness_context()
+            report = collect_runtime_events(
+                discover_runtime_events(context.project_root),
+                suite=args.suite,
+                label=args.label,
+                command=args.event_command,
+            )
+            if args.output:
+                args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except BenchmarkError as exc:
         print(f"E_BENCH001 {exc}", file=sys.stderr)
         return 2
@@ -51,6 +70,8 @@ def main(argv: list[str]) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     elif report.get("status") == "failed":
         print(f"cc-benchmark: failed ({', '.join(report.get('quality_failures', []) + report.get('efficiency_failures', []))})", file=sys.stderr)
+    elif args.command == "collect":
+        print(f"cc-benchmark: collected {len(report.get('samples', []))} samples")
     else:
         print(f"cc-benchmark: {args.command} passed")
     return 1 if report.get("status") == "failed" else 0

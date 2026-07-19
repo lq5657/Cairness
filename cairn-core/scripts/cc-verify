@@ -159,7 +159,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             if eligible
             else None
         )
-        return run_step(
+        result = run_step(
             plan.name,
             "harness",
             plan.command,
@@ -170,6 +170,16 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
             reuse_cache=eligible,
             timeout_seconds=getattr(args, "step_timeout_seconds", None),
         )
+        result["cache_eligible"] = plan.name in CACHEABLE_STEPS
+        result["cache_enabled"] = reuse_cache
+        if result["cache_eligible"] and reuse_cache:
+            result["cache_hit"] = result.get("reused") is True
+            result["cache_miss"] = result.get("reused") is not True
+        elif result["cache_eligible"]:
+            result["cache_bypass_reason"] = "disabled"
+        else:
+            result["cache_bypass_reason"] = "step_not_cacheable"
+        return result
     if config_error:
         results.append(failed_step("harness-config", "harness", config_error, project_root))
     if args.change and change_dir and not change_dir.exists():
@@ -374,6 +384,7 @@ def build_report(args: argparse.Namespace, context: HarnessContext | None = None
         include_execution_metrics=True,
         execution_policy=execution_policy.as_dict() if execution_policy else None,
         test_selection=test_selection,
+        execution_mode_source=("explicit" if execution_mode else "legacy_default"),
     )
     return report
 

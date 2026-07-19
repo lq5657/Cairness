@@ -43,6 +43,47 @@ class BenchmarkError(ValueError):
     """Raised when a benchmark record cannot be compared safely."""
 
 
+def collect_runtime_events(
+    events: list[Mapping[str, Any]],
+    *,
+    suite: str,
+    label: str,
+    command: str | None = None,
+) -> dict[str, Any]:
+    """Build a benchmark record from local sanitized runtime events.
+
+    Collection never fabricates quality evidence.  A host may attach a
+    ``quality`` object to an execution event; otherwise the resulting record
+    is intentionally incomplete and compare() will keep it in observe/fail.
+    """
+    if not suite or not label:
+        raise BenchmarkError("suite and label must be non-empty")
+    selected = [
+        event for event in events
+        if event.get("event_type") in {"execution_run", "verification_run"}
+        and (command is None or event.get("command") == command)
+    ]
+    samples: list[dict[str, Any]] = []
+    for index, event in enumerate(selected, start=1):
+        sample: dict[str, Any] = {
+            "case_id": f"event-{index:04d}",
+        }
+        metrics = event.get("metrics") if isinstance(event.get("metrics"), Mapping) else event
+        for field in NUMERIC_METRICS:
+            value = metrics.get(field) if isinstance(metrics, Mapping) else None
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0:
+                sample[field] = value
+        if event.get("event_type") == "verification_run":
+            sample.setdefault("wall_time_ms", event.get("duration_ms", 0))
+            sample.setdefault("full_verify_runs", 1 if event.get("mode") == "full" else 0)
+            sample.setdefault("reused_verifications", event.get("reused_verifications", 0))
+        quality = event.get("quality")
+        if isinstance(quality, Mapping):
+            sample["quality"] = dict(quality)
+        samples.append(sample)
+    return {"suite": suite, "label": label, "samples": samples}
+
+
 def _number(value: Any, field: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
         raise BenchmarkError(f"{field} must be a non-negative number")

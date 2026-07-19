@@ -15,11 +15,13 @@ import argparse
 import json
 import re
 import sys
+from time import monotonic
 from contextvars import ContextVar
 from pathlib import Path
 
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue
+from harness_runtime.observability import record_wave_plan
 from harness_runtime.wave_plan import TaskNode, plan_waves
 
 from change_docs import parse_involved_files
@@ -127,9 +129,22 @@ def main(argv: list[str]) -> int:
         return 2
 
     token = _ACTIVE_PROJECT_ROOT.set(context.project_root)
+    started = monotonic()
     try:
         if args.check:
             issues = check_consistency(args.change, args.max_parallel)
+            plan = generate(args.change, args.max_parallel)
+            waves = plan.get("waves", []) if isinstance(plan, dict) else []
+            record_wave_plan(
+                context.project_root,
+                status="failed" if issues else "passed",
+                wave_count=len(waves),
+                task_count=sum(len(wave.get("tasks", [])) for wave in waves if isinstance(wave, dict)),
+                max_parallelism=max((int(wave.get("parallelism", 0)) for wave in waves if isinstance(wave, dict)), default=0),
+                parallel_wave_count=sum(1 for wave in waves if isinstance(wave, dict) and int(wave.get("parallelism", 0)) > 1),
+                serial_wave_count=sum(1 for wave in waves if isinstance(wave, dict) and int(wave.get("parallelism", 0)) <= 1),
+                duration_ms=int((monotonic() - started) * 1000),
+            )
             if issues:
                 print(json.dumps([{"code": i.code, "path": i.path, "message": i.message} for i in issues], ensure_ascii=False, indent=2))
                 return 1
@@ -137,6 +152,17 @@ def main(argv: list[str]) -> int:
             return 0
 
         plan = generate(args.change, args.max_parallel)
+        waves = plan.get("waves", []) if isinstance(plan, dict) else []
+        record_wave_plan(
+            context.project_root,
+            status="passed" if plan.get("valid") else "failed",
+            wave_count=len(waves),
+            task_count=sum(len(wave.get("tasks", [])) for wave in waves if isinstance(wave, dict)),
+            max_parallelism=max((int(wave.get("parallelism", 0)) for wave in waves if isinstance(wave, dict)), default=0),
+            parallel_wave_count=sum(1 for wave in waves if isinstance(wave, dict) and int(wave.get("parallelism", 0)) > 1),
+            serial_wave_count=sum(1 for wave in waves if isinstance(wave, dict) and int(wave.get("parallelism", 0)) <= 1),
+            duration_ms=int((monotonic() - started) * 1000),
+        )
         if args.json:
             print(json.dumps({"project_root": str(context.project_root), **plan}, ensure_ascii=False, indent=2))
         else:

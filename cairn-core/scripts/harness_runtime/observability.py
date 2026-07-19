@@ -23,7 +23,35 @@ EXECUTION_METRICS = (
     "full_verify_runs",
     "reused_verifications",
     "files_changed",
+    "cache_eligible",
+    "cache_hits",
+    "cache_misses",
+    "skipped_verifications",
+    "step_count",
+    "parallelism",
+    "wave_count",
+    "parallel_wave_count",
+    "serial_wave_count",
+    "context_pack_reuses",
+    "context_pack_builds",
 )
+
+
+def _non_negative_int(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _copy_sanitized_mapping(value: Any, allowed: tuple[str, ...]) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {}
+    output: dict[str, Any] = {}
+    for key in allowed:
+        item = value.get(key)
+        if isinstance(item, bool) or isinstance(item, (int, float, str)):
+            output[key] = item
+    return output
 
 
 def _tracking_disabled() -> bool:
@@ -98,6 +126,19 @@ def record_verification_run(
             value = execution.get(field)
             if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
                 event[field] = value
+        cache = _copy_sanitized_mapping(
+            execution.get("cache"),
+            ("enabled", "eligible", "hits", "misses", "bypassed", "bypass_reason"),
+        )
+        if cache:
+            event["cache"] = cache
+        skipped = _non_negative_int(execution.get("skipped_verifications"))
+        if skipped is not None:
+            event["skipped_verifications"] = skipped
+        for key in ("execution_mode_source", "verification_mode_source"):
+            value = execution.get(key)
+            if isinstance(value, str) and value:
+                event[key] = value
     selection = report.get("test_selection")
     if isinstance(selection, Mapping):
         routing: dict[str, Any] = {}
@@ -157,6 +198,94 @@ def record_verification_run(
         project_root,
         event,
         allow_framework_source=isinstance(event.get("test_routing"), Mapping),
+    )
+
+
+def record_wave_plan(
+    project_root: Path,
+    *,
+    status: str,
+    wave_count: int,
+    task_count: int,
+    max_parallelism: int,
+    parallel_wave_count: int,
+    serial_wave_count: int,
+    duration_ms: int = 0,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Record aggregate wave scheduling cost without task names or paths."""
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    return record_execution_run(
+        project_root,
+        command="cc-wave-plan",
+        status=status,
+        suite="wave",
+        metrics={
+            "wall_time_ms": max(0, duration_ms),
+            "step_count": max(0, task_count),
+            "parallelism": max(0, max_parallelism),
+            "wave_count": max(0, wave_count),
+            "parallel_wave_count": max(0, parallel_wave_count),
+            "serial_wave_count": max(0, serial_wave_count),
+        },
+        occurred_at=timestamp,
+    )
+
+
+def record_context_pack(
+    project_root: Path,
+    *,
+    kind: str,
+    status: str,
+    reused: bool,
+    source_count: int,
+    source_bytes: int,
+    output_bytes: int,
+    duration_ms: int,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Record bounded context-pack build/reuse metadata."""
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    return record_execution_run(
+        project_root,
+        command="cc-context-pack",
+        status=status,
+        suite="context-pack",
+        case_id=kind,
+        metrics={
+            "wall_time_ms": max(0, duration_ms),
+            "context_pack_reuses": 1 if reused else 0,
+            "context_pack_builds": 0 if reused else 1,
+            "files_changed": max(0, source_count),
+            "input_tokens": max(0, source_bytes),
+            "output_tokens": max(0, output_bytes),
+        },
+        occurred_at=timestamp,
+    )
+
+
+def record_loop_step(
+    project_root: Path,
+    *,
+    status: str,
+    duration_ms: int,
+    step_count: int,
+    continuation: str,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Record Loop step latency and continuation outcome."""
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    return record_execution_run(
+        project_root,
+        command="cc-loop-step",
+        status=status,
+        suite="loop",
+        case_id=continuation or "stop",
+        metrics={
+            "wall_time_ms": max(0, duration_ms),
+            "step_count": max(0, step_count),
+        },
+        occurred_at=timestamp,
     )
 
 
@@ -310,6 +439,8 @@ def command_metrics(lifecycle_events: list[Mapping[str, Any]]) -> dict[str, Any]
 
 def verification_metrics(
     runtime_events: list[Mapping[str, Any]],
+    *,
+    extended: bool = False,
 ) -> dict[str, Any]:
     """Summarize automatic verification events without inventing missing samples."""
 
@@ -328,6 +459,31 @@ def verification_metrics(
         else "unknown"
         for item in runs
     )
+    execution_mode_source_counts = Counter(
+        item.get("execution_mode_source")
+        if isinstance(item.get("execution_mode_source"), str)
+        else "legacy"
+        for item in runs
+    )
+    cache = {
+        "enabled_runs": 0,
+        "eligible_steps": 0,
+        "hits": 0,
+        "misses": 0,
+        "bypassed_runs": 0,
+    }
+    for item in runs:
+        details = item.get("cache")
+        if not isinstance(details, Mapping):
+            continue
+        if details.get("enabled") is True:
+            cache["enabled_runs"] += 1
+        for source, target in (("eligible", "eligible_steps"), ("hits", "hits"), ("misses", "misses")):
+            value = details.get(source)
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                cache[target] += value
+        if details.get("bypassed") is True:
+            cache["bypassed_runs"] += 1
     durations = [
         item["duration_ms"]
         for item in runs
@@ -336,7 +492,7 @@ def verification_metrics(
         and item["duration_ms"] >= 0
     ]
     total_runs = len(runs)
-    return {
+    result = {
         "total_runs": total_runs,
         "status_counts": dict(sorted(status_counts.items())),
         "pass_rate": (
@@ -349,6 +505,10 @@ def verification_metrics(
         ),
         "mode_counts": dict(sorted(mode_counts.items())),
     }
+    if extended:
+        result["execution_mode_source_counts"] = dict(sorted(execution_mode_source_counts.items()))
+        result["cache"] = cache
+    return result
 
 
 def test_routing_metrics(

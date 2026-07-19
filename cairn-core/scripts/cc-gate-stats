@@ -467,7 +467,7 @@ def main() -> None:
     degraded = find_degraded(gates, gate_config)
     collection = collection_summary(events, runtime_events)
     commands = command_metrics(events)
-    verification = verification_metrics(runtime_events)
+    verification = verification_metrics(runtime_events, extended=True)
     upgrade = upgrade_metrics(runtime_events)
 
     if args.json:
@@ -506,7 +506,8 @@ def main() -> None:
             "config": gate_config,
             "collection": collection,
             "commands": commands,
-            "verification": verification,
+            "verification": verification_metrics(runtime_events),
+            "verification_efficiency": verification,
             "upgrade": upgrade,
         }
         if args.gates:

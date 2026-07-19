@@ -256,6 +256,7 @@ def compute_stats(
         "collection": collection_summary(events, runtime_events),
         "commands": command_metrics(events),
         "verification": verification_metrics(runtime_events),
+        "verification_efficiency": verification_metrics(runtime_events, extended=True),
         "execution": execution_metrics(runtime_events),
         "upgrade": upgrade_metrics(runtime_events),
     }

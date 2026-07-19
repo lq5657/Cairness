@@ -21,15 +21,15 @@ validation:
     propose:
       - cc-verify --harness-only
     apply:
-      - cc-verify
+      - cc-verify --execution-mode normal
     fix:
-      - cc-verify
+      - cc-verify --execution-mode normal
     test:
-      - cc-verify
+      - cc-verify --execution-mode ci
     review:
-      - cc-verify --harness-only
+      - cc-verify --execution-mode ci
     archive:
-      - cc-verify
+      - cc-verify --execution-mode ci
 
 interaction:
   skip_technology_confirmations: false

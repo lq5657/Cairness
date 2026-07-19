@@ -14,6 +14,26 @@ from typing import Any, Mapping
 MODES = ("normal", "ci", "optimize")
 DEFAULT_MODE = "normal"
 
+# Shared by both adapters.  The matrix is data, so adapter command renderers
+# can consume the same lifecycle contract without drifting between Claude and
+# Codex physical paths.
+LIFECYCLE_EXECUTION_MATRIX: dict[str, str] = {
+    "new-project": "normal",
+    "propose": "normal",
+    "apply": "normal",
+    "fix": "normal",
+    "test": "ci",
+    "review": "ci",
+    "archive": "ci",
+    "ci": "ci",
+    "release": "ci",
+}
+
+
+def lifecycle_execution_mode(stage: str) -> str:
+    """Return the explicit verification mode for a lifecycle stage."""
+    return LIFECYCLE_EXECUTION_MATRIX.get(stage, "ci")
+
 
 class ExecutionPolicyError(ValueError):
     """Raised when an execution mode or override is invalid."""

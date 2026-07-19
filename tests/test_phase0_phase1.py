@@ -15,7 +15,15 @@ from harness_runtime.context_pack import (
     extract_task,
 )
 from harness_runtime.deps import GLOBAL_GOVERNANCE_SCOPES, file_matches_declared
-from harness_runtime.observability import execution_metrics, record_execution_run
+from harness_runtime.observability import (
+    execution_metrics,
+    record_context_pack,
+    record_execution_run,
+    record_loop_step,
+    record_wave_plan,
+    verification_metrics,
+)
+from harness_runtime.benchmark import collect_runtime_events
 
 
 def _record(label: str, *, tokens: int, wall: int, verifies: int, success: bool = True) -> dict:
@@ -125,6 +133,56 @@ def test_execution_observability_is_sanitized_and_summarized(tmp_path: Path) -> 
     assert "secret" not in execution_metrics(
         [{"event_type": "execution_run", "metrics": {"secret": 1}}]
     )["metrics"]
+
+
+def test_runtime_cost_events_and_collection_are_sanitized(tmp_path: Path) -> None:
+    assert record_wave_plan(
+        tmp_path,
+        status="passed",
+        wave_count=2,
+        task_count=3,
+        max_parallelism=2,
+        parallel_wave_count=1,
+        serial_wave_count=1,
+        duration_ms=11,
+    )
+    assert record_context_pack(
+        tmp_path,
+        kind="task",
+        status="passed",
+        reused=True,
+        source_count=2,
+        source_bytes=20,
+        output_bytes=30,
+        duration_ms=4,
+    )
+    assert record_loop_step(
+        tmp_path,
+        status="passed",
+        duration_ms=5,
+        step_count=1,
+        continuation="cc-review",
+    )
+    events = [json.loads(line) for line in (tmp_path / ".cairness/observability/runtime-events.jsonl").read_text().splitlines()]
+    assert len(events) == 3
+    assert all("path" not in event and "change_id" not in event for event in events)
+    record = collect_runtime_events(events, suite="local", label="candidate")
+    assert len(record["samples"]) == 3
+    assert "quality" not in record["samples"][0]
+
+
+def test_verification_metrics_extended_reports_cache_state() -> None:
+    events = [{
+        "event_type": "verification_run",
+        "status": "passed",
+        "mode": "changed-only",
+        "duration_ms": 10,
+        "execution_mode_source": "explicit",
+        "cache": {"enabled": True, "eligible": 2, "hits": 1, "misses": 1},
+    }]
+    report = verification_metrics(events, extended=True)
+    assert report["cache"] == {"enabled_runs": 1, "eligible_steps": 2, "hits": 1, "misses": 1, "bypassed_runs": 0}
+    assert report["execution_mode_source_counts"] == {"explicit": 1}
 
 
 def test_benchmark_cli_enforces_quality_gate(tmp_path: Path) -> None:
