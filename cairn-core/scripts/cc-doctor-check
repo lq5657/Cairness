@@ -231,7 +231,9 @@ def check_ci_fixture_paths(project_root: Path, issues: list[Issue]) -> None:
             issues.append(Issue("E_DOCTOR010", str(workflow_path), f"fixture {fixture} does not resolve to a declared language profile"))
 
 
-_MIGRATED_SECTION_RE = re.compile(r"^## 已迁移命令\s*$", re.M)
+_MIGRATED_SECTION_RE = re.compile(
+    r"^(?:## 已迁移命令|The migrated commands are:)\s*$", re.M
+)
 _BULLET_RE = re.compile(r"^-\s+`?(cc-[a-z0-9-]+)`?\s*$")
 
 
@@ -259,33 +261,51 @@ def _parse_migrated_command_list(text: str) -> set[str] | None:
 
 
 def check_command_entrypoints(context: HarnessContext, issues: list[Issue]) -> None:
-    """CLAUDE.md '已迁移命令' 列表必须 == core.yaml migrated_commands SSOT.
+    """Active adapter command inventory must match core.yaml migrated_commands.
 
-    The migrated-command list in CLAUDE.md is the human-facing entry doc; it
-    has no other machine check against core.yaml:migrated_commands. A drift
-    here is otherwise invisible until an agent reads stale docs.
+    Claude keeps the inventory in CLAUDE.md. Codex keeps it in the installed
+    .agents/skills/cc-harness skill; checking CLAUDE.md in a Codex framework
+    would both require a foreign host asset and recreate the duplicate-skill
+    boundary that this adapter check is meant to protect.
     """
     project_root = context.project_root
     claude_root = context.framework_root
     core, _, _ = load_runtime_protocol(project_root, claude_root)
     migrated = set(core.get("migrated_commands") or []) if isinstance(core, dict) else set()
-    claude_md = claude_root / "CLAUDE.md"
-    if not claude_md.is_file():
-        issues.append(Issue("E_DOCTOR013", str(claude_md), "CLAUDE.md missing; migrated command entry list cannot be verified"))
+    if context.adapter.name == "codex":
+        entry_doc = project_root / ".agents" / "skills" / "cc-harness" / "SKILL.md"
+        label = "Codex cc-harness Skill"
+    else:
+        entry_doc = claude_root / "CLAUDE.md"
+        label = "CLAUDE.md"
+    if not entry_doc.is_file():
+        issues.append(
+            Issue(
+                "E_DOCTOR013",
+                str(entry_doc),
+                f"{label} missing; migrated command entry list cannot be verified",
+            )
+        )
         return
-    listed = _parse_migrated_command_list(read(claude_md))
+    listed = _parse_migrated_command_list(read(entry_doc))
     if listed is None:
-        issues.append(Issue("E_DOCTOR013", str(claude_md), "CLAUDE.md missing '## 已迁移命令' section"))
+        issues.append(
+            Issue(
+                "E_DOCTOR013",
+                str(entry_doc),
+                f"{label} missing '## 已迁移命令' section",
+            )
+        )
         return
     missing = sorted(migrated - listed)
     extra = sorted(listed - migrated)
     if missing or extra:
         parts = []
         if missing:
-            parts.append(f"missing from CLAUDE.md: {missing}")
+            parts.append(f"missing from {label}: {missing}")
         if extra:
-            parts.append(f"extra in CLAUDE.md: {extra}")
-        issues.append(Issue("E_DOCTOR013", str(claude_md), "; ".join(parts)))
+            parts.append(f"extra in {label}: {extra}")
+        issues.append(Issue("E_DOCTOR013", str(entry_doc), "; ".join(parts)))
 
 
 def check_loop_mode_readiness(project_root: Path, claude_root: Path, issues: list[Issue]) -> None:

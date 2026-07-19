@@ -70,6 +70,23 @@ def test_loads_non_claude_installation_contract(tmp_path: Path):
         ("instructions", "generate"),
         ("commands", "copy-tree"),
     ]
+    assert contract.framework_copy_excludes == ()
+
+
+def test_loads_adapter_framework_copy_exclusions(tmp_path: Path):
+    from harness_runtime.adapter_installation import load_adapter_installation
+
+    manifest = _non_claude_manifest()
+    manifest["framework"]["exclude_from_copy"] = ["skills/legacy", "HOST.md"]
+
+    contract = load_adapter_installation(
+        _write_manifest(tmp_path, manifest), SCHEMA
+    )
+
+    assert contract.framework_copy_excludes == (
+        Path("skills/legacy"),
+        Path("HOST.md"),
+    )
 
 
 @pytest.mark.parametrize(

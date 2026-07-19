@@ -23,6 +23,11 @@
         "root_convention": {
           "type": "string",
           "enum": ["project-relative", "user-relative"]
+        },
+        "exclude_from_copy": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/relativePath"},
+          "uniqueItems": true
         }
       }
     },

@@ -176,7 +176,36 @@ def _rel_file_set(root: Path) -> set[str]:
     return out
 
 
-def _modified_framework_files(backup: Path, src: Path) -> list[str]:
+def _is_excluded_relative(rel: str, excluded_relative_roots: tuple[str, ...]) -> bool:
+    return any(
+        rel == root or rel.startswith(root + "/")
+        for root in excluded_relative_roots
+    )
+
+
+def _copy_ignore(src_root: Path, excluded_relative_roots: tuple[str, ...]):
+    """Combine normal ship filtering with adapter-specific host filtering."""
+    def ignore(src_dir: str, names: list[str]) -> set[str]:
+        ignored = set(SHIP_IGNORE(src_dir, names) or ())
+        current = Path(src_dir).resolve()
+        base = Path(src_root).resolve()
+        for name in names:
+            try:
+                relative = (current / name).relative_to(base).as_posix()
+            except ValueError:
+                continue
+            if _is_excluded_relative(relative, excluded_relative_roots):
+                ignored.add(name)
+        return ignored
+
+    return ignore
+
+
+def _modified_framework_files(
+    backup: Path,
+    src: Path,
+    excluded_relative_roots: tuple[str, ...] = (),
+) -> list[str]:
     """User-customized framework files that the fresh swap overwrites.
 
     rel paths present in both ``backup`` (user's old version) and ``src`` (new
@@ -188,7 +217,12 @@ def _modified_framework_files(backup: Path, src: Path) -> list[str]:
     src_files = _rel_file_set(src)
     modified: list[str] = []
     for rel in sorted(_rel_file_set(backup)):
-        if rel in PRESERVE_ON_UPGRADE or rel in UPGRADE_META_FILES or rel not in src_files:
+        if (
+            rel in PRESERVE_ON_UPGRADE
+            or rel in UPGRADE_META_FILES
+            or rel not in src_files
+            or _is_excluded_relative(rel, excluded_relative_roots)
+        ):
             continue
         if (backup / rel).read_bytes() != (src / rel).read_bytes():
             modified.append(rel)
@@ -201,6 +235,7 @@ def _replace_framework_dir(
     *,
     label: str,
     force: bool = False,
+    excluded_relative_roots: tuple[str, ...] = (),
 ) -> Path | None:
     """Safely replace ``dst`` with a fresh copy of ``src``.
 
@@ -254,7 +289,12 @@ def _replace_framework_dir(
     tmp = Path(tempfile.mkdtemp(prefix=dst.name + ".tmp-", dir=str(parent)))
     try:
         # tmp is an empty dir created by mkdtemp; copy into it.
-        shutil.copytree(src, tmp, dirs_exist_ok=True, ignore=SHIP_IGNORE)
+        shutil.copytree(
+            src,
+            tmp,
+            dirs_exist_ok=True,
+            ignore=_copy_ignore(src, excluded_relative_roots),
+        )
         os.rename(tmp, dst)
     except Exception:
         if tmp.exists():
@@ -269,9 +309,16 @@ def _replace_framework_dir(
     # artifacts (e.g. a removed runtime/readsets/cc-help.yaml). Dropped files
     # stay recoverable in the backup.
     if backup is not None and backup.exists():
-        src_files = _rel_file_set(src)
+        src_files = {
+            rel
+            for rel in _rel_file_set(src)
+            if not _is_excluded_relative(rel, excluded_relative_roots)
+        }
         dropped: list[str] = []
         for rel in sorted(_rel_file_set(backup)):
+            if _is_excluded_relative(rel, excluded_relative_roots):
+                dropped.append(rel)
+                continue
             if rel in PRESERVE_ON_UPGRADE or rel not in src_files:
                 if rel not in src_files and _is_framework_owned(rel):
                     dropped.append(rel)
@@ -290,7 +337,9 @@ def _replace_framework_dir(
     # swap overwrote. Report-only — overwrite semantics are unchanged; the
     # user's versions remain in the backup for re-application.
     if backup is not None and backup.exists():
-        modified = _modified_framework_files(backup, src)
+        modified = _modified_framework_files(
+            backup, src, excluded_relative_roots
+        )
         if modified:
             print(f"  {len(modified)} framework file(s) you customized were overwritten by the new version:")
             for rel in modified:
@@ -329,6 +378,10 @@ def _adapter_installation_plan(data_dir: Path, project_root: Path, adapter: str)
             + ", ".join(unsupported)
         )
     return plan
+
+
+def _framework_copy_excludes(plan) -> tuple[str, ...]:
+    return tuple(path.as_posix() for path in plan.framework_copy_excludes)
 
 
 def _framework_root_from_prefix(project_root: Path, framework_prefix: str) -> Path:
@@ -646,7 +699,11 @@ def _restore_project_assets(
             shutil.copy2(source, target)
 
 
-def _upgrade_file_changes(src: Path, dst: Path) -> dict[str, list[str]]:
+def _upgrade_file_changes(
+    src: Path,
+    dst: Path,
+    excluded_relative_roots: tuple[str, ...] = (),
+) -> dict[str, list[str]]:
     """Describe upgrade effects before the framework swap mutates ``dst``."""
     if not dst.exists():
         return {
@@ -654,18 +711,31 @@ def _upgrade_file_changes(src: Path, dst: Path) -> dict[str, list[str]]:
             "dropped_stale_files": [],
             "preserved_files": [],
         }
-    src_files = _rel_file_set(src)
+    src_files = {
+        rel
+        for rel in _rel_file_set(src)
+        if not _is_excluded_relative(rel, excluded_relative_roots)
+    }
     old_files = _rel_file_set(dst)
     return {
-        "overwritten_modified_files": _modified_framework_files(dst, src),
+        "overwritten_modified_files": _modified_framework_files(
+            dst, src, excluded_relative_roots
+        ),
         "dropped_stale_files": sorted(
-            rel for rel in old_files - src_files if _is_framework_owned(rel)
+            rel
+            for rel in old_files
+            if _is_excluded_relative(rel, excluded_relative_roots)
+            or (rel not in src_files and _is_framework_owned(rel))
         ),
         "preserved_files": sorted(
             rel
             for rel in old_files
             if rel in PRESERVE_ON_UPGRADE
-            or (rel not in src_files and not _is_framework_owned(rel))
+            or (
+                not _is_excluded_relative(rel, excluded_relative_roots)
+                and rel not in src_files
+                and not _is_framework_owned(rel)
+            )
         ),
     }
 
@@ -887,7 +957,10 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     version_path = framework_dir / "VERSION"
     if version_path.is_file():
         from_version = version_path.read_text(encoding="utf-8").strip()
-    changes = _upgrade_file_changes(data_dir, framework_dir)
+    framework_copy_excludes = _framework_copy_excludes(plan)
+    changes = _upgrade_file_changes(
+        data_dir, framework_dir, framework_copy_excludes
+    )
     print(f"Installing Cairness framework to {framework_dir} ...")
     install_path = project_root / INSTALL_METADATA_RELATIVE
     report_path = project_root / UPGRADE_REPORT_RELATIVE
@@ -914,7 +987,11 @@ def cmd_init(*, adapter="claude-code", assume_yes=False, force_foreign=False):
     ci_snapshots = _directory_file_snapshots(ci_path)
     project_assets = _preflight_project_assets(plan, framework_dir)
     backup = _replace_framework_dir(
-        data_dir, framework_dir, label="framework", force=force
+        data_dir,
+        framework_dir,
+        label="framework",
+        force=force,
+        excluded_relative_roots=framework_copy_excludes,
     )
     try:
         operations = _execute_adapter_operations(plan, framework_dir)
@@ -1488,7 +1565,10 @@ def sync_project(data_dir, project_root):
         )
         return False
 
-    changes = _upgrade_file_changes(data_dir, framework_dir)
+    framework_copy_excludes = _framework_copy_excludes(plan)
+    changes = _upgrade_file_changes(
+        data_dir, framework_dir, framework_copy_excludes
+    )
     print(f"Updating project {framework_prefix}/: v{project_ver} → v{new_ver}")
     metadata_path = project_root / ".cairness" / "install.yaml"
     report_path = project_root / UPGRADE_REPORT_RELATIVE
@@ -1510,6 +1590,7 @@ def sync_project(data_dir, project_root):
             data_dir,
             framework_dir,
             label=f"project {framework_prefix}/",
+            excluded_relative_roots=framework_copy_excludes,
         )
         swapped = True
     except UpgradeSafetyError as exc:

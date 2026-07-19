@@ -67,6 +67,11 @@ ISSUE_GUIDANCE = {
         "Restore the adapter-owned host asset or reinstall the active adapter, then rerun Doctor.",
         "runtime/adapters/",
     ),
+    "E_DOCTOR105": (
+        "The Codex discovery scope contains duplicate skills with the same id.",
+        "Remove the stale .codex/skills/cc-harness copy, then run cc-cairn update for the Codex adapter.",
+        ".codex/skills/cc-harness",
+    ),
 }
 
 
@@ -266,6 +271,28 @@ def _codex_pretooluse_binding(
     return result, "hooks.json must declare PreToolUse matcher Edit|Write"
 
 
+def _skill_id(path: Path) -> str:
+    """Read a Markdown skill's frontmatter id without treating body text as metadata."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    if not text.startswith("---\n"):
+        return ""
+    end = text.find("\n---", 4)
+    if end < 0:
+        return ""
+    try:
+        frontmatter = require_yaml().safe_load(text[4:end])
+    except Exception:
+        return ""
+    return (
+        str(frontmatter.get("name", ""))
+        if isinstance(frontmatter, dict)
+        else ""
+    )
+
+
 def _host_asset_summary(
     project_root: Path,
     framework_root: Path,
@@ -285,6 +312,7 @@ def _host_asset_summary(
             "capabilities_schema_path": "schemas/adapter-capabilities.schema.json",
             "path": str(manifest_path),
             "assets": [],
+            "duplicate_skills": [],
             "pretooluse_binding": {
                 "status": "invalid",
                 "matcher": "",
@@ -367,6 +395,29 @@ def _host_asset_summary(
             if asset["name"] in {"settings", "hooks"}:
                 asset["status"] = "invalid"
 
+    duplicate_skills: list[dict[str, str]] = []
+    if adapter == "codex":
+        framework_skill = framework_root / "skills" / "cc-harness" / "SKILL.md"
+        project_skill = (
+            project_root / ".agents" / "skills" / "cc-harness" / "SKILL.md"
+        )
+        framework_id = _skill_id(framework_skill)
+        project_id = _skill_id(project_skill)
+        if framework_id == project_id == "cc-harness":
+            duplicate_skills.append(
+                {
+                    "id": "cc-harness",
+                    "paths": f"{framework_skill}; {project_skill}",
+                }
+            )
+            issues.append(
+                _issue(
+                    "E_DOCTOR105",
+                    framework_skill,
+                    "duplicate Codex skill id cc-harness discovered under .agents and .codex",
+                )
+            )
+
     return {
         "status": "invalid" if issues else "valid",
         "adapter": installation.adapter,
@@ -375,6 +426,7 @@ def _host_asset_summary(
         "capabilities_schema_path": installation.capabilities_schema_path.as_posix(),
         "path": str(manifest_path),
         "assets": assets,
+        "duplicate_skills": duplicate_skills,
         "pretooluse_binding": binding,
     }, issues
 

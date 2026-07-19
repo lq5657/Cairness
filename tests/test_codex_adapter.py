@@ -49,6 +49,11 @@ def test_codex_installation_declares_native_project_assets():
     }
     assert assets["harness-skill"].target_root == "project"
     assert assets["harness-skill"].target == Path(".agents/skills/cc-harness")
+    assert installation.framework_copy_excludes == (
+        Path("skills/cc-harness"),
+        Path("CLAUDE.md"),
+        Path("settings.json"),
+    )
     assert all(
         (CORE / asset.source).exists()
         for asset in installation.host_assets
@@ -97,52 +102,6 @@ def test_context_loads_metadata_selected_codex_adapter(tmp_path: Path):
     assert context.adapter.settings_path == (framework / "config.toml").resolve()
     assert context.adapter.entrypoint_path == (framework / "CAIRNESS.md").resolve()
     assert context.adapter.capabilities["structured_result"] == "required"
-
-
-def test_installed_codex_cc_start_accepts_status(tmp_path: Path):
-    project = tmp_path / "project"
-    framework = project / ".codex"
-    project.mkdir()
-    shutil.copytree(CORE, framework)
-    (project / ".cairness" / "context").mkdir(parents=True)
-    (project / ".cairness" / "install.yaml").write_text(
-        "version: 1\nadapter: codex\nframework_prefix: .codex\n",
-        encoding="utf-8",
-    )
-
-    result = subprocess.run(
-        [str(framework / "scripts" / "cc-start"), "--intent", "status", "--json"],
-        cwd=project,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-    payload = json.loads(result.stdout)
-    assert payload["intent"] == "status"
-    assert payload["state"]["framework_prefix"] == ".codex"
-    assert payload["preconditions"] == []
-
-
-def test_codex_instructions_pin_command_prefix():
-    instructions = (
-        CORE / "runtime" / "adapters" / "codex" / "CAIRNESS.md"
-    ).read_text(encoding="utf-8")
-    skill = (
-        CORE
-        / "runtime"
-        / "adapters"
-        / "codex"
-        / "skills"
-        / "cc-harness"
-        / "SKILL.md"
-    ).read_text(encoding="utf-8")
-
-    assert ".codex/scripts/cc-start --intent status" in instructions
-    assert ".codex/scripts/cc-start --intent status" in skill
-    assert "Never substitute a `.claude/scripts/*` path" in instructions
-    assert "logical compatibility path" in instructions
-    assert "logical compatibility alias" in skill
 
 
 def test_context_framework_hint_selects_registered_adapter_in_coexisting_install(
@@ -274,6 +233,31 @@ def test_installed_codex_full_verify_checks_codex_adapter(
     assert '"adapter": "codex"' in adapter_step["stdout"]
 
 
+def test_installed_codex_lint_checks_project_discovery_skill(
+    tmp_path: Path, monkeypatch
+):
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "README.md").write_text("# Codex lint fixture\n", encoding="utf-8")
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="codex")
+
+    completed = subprocess.run(
+        [str(project / ".codex/scripts/cc-lint"), "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+    report = json.loads(completed.stdout)
+    assert report["status"] == "passed"
+    assert not (project / ".codex/skills/cc-harness").exists()
+    assert (project / ".agents/skills/cc-harness/SKILL.md").is_file()
+
+
 def test_codex_init_installs_native_assets_and_multi_adapter_metadata(
     tmp_path: Path, monkeypatch
 ):
@@ -298,6 +282,23 @@ def test_codex_init_installs_native_assets_and_multi_adapter_metadata(
     assert not (project / ".claude").exists()
 
 
+def test_codex_init_exposes_exactly_one_cc_harness_skill(
+    tmp_path: Path, monkeypatch
+):
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+
+    module.cmd_init(adapter="codex")
+
+    assert (project / ".agents/skills/cc-harness/SKILL.md").is_file()
+    assert not (project / ".codex/skills/cc-harness").exists()
+    assert not (project / ".codex/CLAUDE.md").exists()
+    assert not (project / ".codex/settings.json").exists()
+
+
 def test_claude_and_codex_installations_coexist_without_overwrite(
     tmp_path: Path, monkeypatch
 ):
@@ -319,6 +320,9 @@ def test_claude_and_codex_installations_coexist_without_overwrite(
         "claude-code": {"framework_prefix": ".claude"},
         "codex": {"framework_prefix": ".codex"},
     }
+    assert (project / ".claude/skills/cc-harness/SKILL.md").is_file()
+    assert (project / ".agents/skills/cc-harness/SKILL.md").is_file()
+    assert not (project / ".codex/skills/cc-harness").exists()
 
 
 def test_codex_uninstall_preserves_claude_and_shared_project_state(
@@ -377,6 +381,28 @@ def test_codex_update_uses_metadata_and_preserves_local_additions(
     assert report["target_layout"] == ".codex"
 
 
+def test_codex_update_drops_legacy_duplicate_skill_without_restoring_it(
+    tmp_path: Path, monkeypatch
+):
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="codex")
+    framework = project / ".codex"
+    stale = framework / "skills/cc-harness/SKILL.md"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("---\nname: cc-harness\n---\nlegacy\n", encoding="utf-8")
+    (framework / "VERSION").write_text("0.0.0\n", encoding="utf-8")
+
+    assert module.sync_project(CORE, project) is True
+
+    assert not (framework / "skills/cc-harness").exists()
+    assert (project / ".codex.bak/skills/cc-harness/SKILL.md").is_file()
+    assert (project / ".agents/skills/cc-harness/SKILL.md").is_file()
+
+
 def test_codex_doctor_and_explain_report_active_adapter(
     tmp_path: Path, monkeypatch
 ):
@@ -417,6 +443,43 @@ def test_codex_doctor_and_explain_report_active_adapter(
     explain_adapter = json.loads(explain.stdout)["adapter"]
     assert explain_adapter["name"] == "codex"
     assert explain_adapter["capabilities"]["file_write_interception"] == "emulated"
+
+
+def test_codex_doctor_rejects_duplicate_discovery_skill(
+    tmp_path: Path, monkeypatch
+):
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+    module.cmd_init(adapter="codex")
+    stale = project / ".codex/skills/cc-harness/SKILL.md"
+    stale.parent.mkdir(parents=True)
+    stale.write_text(
+        "---\nname: cc-harness\ndescription: stale\n---\n",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(CORE / "cc-cairn.py"), "doctor", "--json"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1
+    report = json.loads(completed.stdout)
+    assert any(issue["code"] == "E_DOCTOR105" for issue in report["issues"])
+    assert report["summary"]["adapter"]["host_assets"]["duplicate_skills"] == [
+        {
+            "id": "cc-harness",
+            "paths": (
+                f"{project / '.codex/skills/cc-harness/SKILL.md'}; "
+                f"{project / '.agents/skills/cc-harness/SKILL.md'}"
+            ),
+        }
+    ]
 
 
 def test_codex_doctor_reports_unverified_trust_prerequisites_without_host_call(

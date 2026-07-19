@@ -53,6 +53,7 @@ class AdapterInstallation:
     capabilities_path: Path
     capabilities_schema_path: Path
     host_assets: tuple[HostAsset, ...]
+    framework_copy_excludes: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,6 +79,7 @@ class AdapterInstallationPlan:
     project_root: Path
     framework_root: Path
     operations: tuple[AdapterInstallOperation, ...]
+    framework_copy_excludes: tuple[Path, ...] = ()
 
 
 def _resolve_within(root: Path, relative: Path, label: str) -> Path:
@@ -184,6 +186,7 @@ def build_adapter_installation_plan(
         project_root=resolved_project,
         framework_root=framework_root,
         operations=tuple(operations),
+        framework_copy_excludes=installation.framework_copy_excludes,
     )
 
 
@@ -255,4 +258,8 @@ def load_adapter_installation(
             paths["capabilities_schema"], "capabilities schema path"
         ),
         host_assets=host_assets,
+        framework_copy_excludes=tuple(
+            _safe_relative_path(value, "framework exclude from copy")
+            for value in framework.get("exclude_from_copy", [])
+        ),
     )

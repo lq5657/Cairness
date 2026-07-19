@@ -670,8 +670,14 @@ def lint_topic_rule_shape(root: Path, errors: list[str]) -> None:
             errors.extend(f"{path}: {message}" for message in validate_topic_rule_markdown(topic_key, text))
 
 
-def lint_governance_assets(root: Path, errors: list[str]) -> None:
-    project_root = root.parent
+def lint_governance_assets(
+    root: Path,
+    errors: list[str],
+    *,
+    project_root: Path | None = None,
+    adapter_name: str | None = None,
+) -> None:
+    project_root = project_root or root.parent
     _, protocol, _ = load_runtime_protocol(project_root, root)
     required = [
         root / "templates" / "context" / "project-summary.md",
@@ -689,9 +695,18 @@ def lint_governance_assets(root: Path, errors: list[str]) -> None:
         root / "schemas" / "runtime-readset.schema.json",
         root / "schemas" / "technology-decision-catalog.schema.json",
         root / "schemas" / "topic-rule.schema.json",
-        root / "skills" / "cc-harness" / "SKILL.md",
         root / "evals" / "rubrics" / "default.yaml",
     ]
+    if adapter_name == "codex":
+        required.append(
+            (project_root or root.parent)
+            / ".agents"
+            / "skills"
+            / "cc-harness"
+            / "SKILL.md"
+        )
+    else:
+        required.append(root / "skills" / "cc-harness" / "SKILL.md")
     required.extend(
         project_path(root, declared)
         for declared in protocol_language_assets(project_root, protocol, framework_root=root)
@@ -811,7 +826,12 @@ def main(argv: list[str]) -> int:
             lint_workflow_definition(item, errors)
             lint_runtime(item, errors)
             lint_topic_rule_shape(item, errors)
-            lint_governance_assets(item, errors)
+            lint_governance_assets(
+                item,
+                errors,
+                project_root=context.project_root,
+                adapter_name=context.adapter.name,
+            )
             lint_harness_config(item, errors)
             lint_docs_layout(item.parent, errors, item)
 

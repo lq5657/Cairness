@@ -322,6 +322,14 @@ def _codex_installation_lifecycle(
                     io.StringIO()
                 ):
                     module.cmd_init(adapter="codex")
+                    if not (
+                        project / ".agents" / "skills" / "cc-harness" / "SKILL.md"
+                    ).is_file():
+                        raise RuntimeError("Codex project skill was not installed")
+                    if (project / ".codex" / "skills" / "cc-harness").exists():
+                        raise RuntimeError(
+                            "Codex framework contains a duplicate cc-harness skill"
+                        )
                     (project / ".codex" / "VERSION").write_text(
                         "0.0.0\n", encoding="utf-8"
                     )
@@ -332,16 +340,31 @@ def _codex_installation_lifecycle(
                     (project / ".codex" / "COMMIT").unlink(missing_ok=True)
                     if module.sync_project(root, project) is not True:
                         raise RuntimeError("Codex update did not run")
-                    module.cmd_init(adapter="claude-code")
+                    if (project / ".codex" / "skills" / "cc-harness").exists():
+                        raise RuntimeError(
+                            "Codex update restored a duplicate cc-harness skill"
+                        )
+                    has_claude_sources = all(
+                        (root / relative).is_file()
+                        for relative in ("settings.json", "CLAUDE.md")
+                    )
+                    if has_claude_sources:
+                        module.cmd_init(adapter="claude-code")
                     metadata = module.read_install_metadata(project, strict=True)
-                    if set(metadata.get("adapters", {})) != {"claude-code", "codex"}:
+                    expected_adapters = {"codex"}
+                    if has_claude_sources:
+                        expected_adapters.add("claude-code")
+                    if set(metadata.get("adapters", {})) != expected_adapters:
                         raise RuntimeError("adapter coexistence metadata is incomplete")
                     module.cmd_uninstall(["--adapter", "codex", "--yes"])
             finally:
                 os.chdir(previous)
             valid = (
                 not (project / ".codex").exists()
-                and (project / ".claude" / "settings.json").is_file()
+                and (
+                    not has_claude_sources
+                    or (project / ".claude" / "settings.json").is_file()
+                )
                 and not (project / ".agents" / "skills" / "cc-harness").exists()
                 and (project / ".cairness").is_dir()
             )

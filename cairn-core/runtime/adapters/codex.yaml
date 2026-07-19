@@ -3,6 +3,13 @@ adapter: codex
 framework:
   prefix: .codex
   root_convention: project-relative
+  # The core tree contains Claude-host assets for the legacy adapter. They
+  # must not be copied into Codex's discovery scope, where they would create
+  # a second cc-harness skill with conflicting command paths.
+  exclude_from_copy:
+    - skills/cc-harness
+    - CLAUDE.md
+    - settings.json
 paths:
   settings: config.toml
   entrypoint: CAIRNESS.md
