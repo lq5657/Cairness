@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from harness_runtime.execution_policy import ExecutionPolicyError, resolve_execution_policy
+from harness_runtime.execution_policy import (
+    ExecutionPolicyError,
+    lifecycle_execution_mode,
+    resolve_execution_policy,
+)
 from harness_runtime.optimization import build_optimization_report
 
 
@@ -74,6 +78,14 @@ def test_execution_modes_are_explicit_and_compatible() -> None:
 
     with pytest.raises(ExecutionPolicyError):
         resolve_execution_policy("unknown")
+
+
+def test_lifecycle_matrix_is_shared_and_keeps_quality_gates_full() -> None:
+    assert lifecycle_execution_mode("apply") == "normal"
+    assert lifecycle_execution_mode("fix") == "normal"
+    for stage in ("test", "review", "archive", "ci", "release"):
+        assert lifecycle_execution_mode(stage) == "ci"
+    assert lifecycle_execution_mode("unknown-stage") == "ci"
 
 
 def test_optimization_waits_for_samples() -> None:
