@@ -14,6 +14,11 @@ load conditional reads only when their trigger is satisfied.
 command readset. Invoke it directly (prefer `cc-start` when the stage is
 unknown), then follow its reported `next_action` explicitly.
 
+The other runtime `readonly_entrypoints` are also direct, read-only script
+invocations: `cc-help`, `cc-dashboard`, `cc-stats`, `cc-optimize`,
+`cc-benchmark`, and `cc-legacy-audit`. They are not lifecycle commands and do
+not fall back to migrated command readsets or legacy lifecycle checkpoints.
+
 The migrated commands are:
 
 - `cc-new-project`

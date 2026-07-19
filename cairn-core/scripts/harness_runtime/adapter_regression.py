@@ -224,7 +224,9 @@ def _codex_pretooluse_binding(
 def _skill_command_parity(root: Path) -> tuple[list[str], list[dict[str, str]]]:
     core_path = root / "runtime" / "core.yaml"
     skill_path = root / "skills" / "cc-harness" / "SKILL.md"
-    migrated = tuple(_load_yaml(core_path).get("migrated_commands", []))
+    core = _load_yaml(core_path)
+    migrated = tuple(core.get("migrated_commands", []))
+    readonly = tuple(sorted((core.get("readonly_entrypoints") or {}).keys()))
     text = skill_path.read_text(encoding="utf-8")
     match = re.search(r"^## 已迁移命令\s*$([\s\S]*?)(?=^## )", text, re.MULTILINE)
     skill_commands = tuple(re.findall(r"^- `(?P<command>cc-[a-z0-9-]+)`\s*$", match.group(1) if match else "", re.MULTILINE))
@@ -233,7 +235,19 @@ def _skill_command_parity(root: Path) -> tuple[list[str], list[dict[str, str]]]:
         missing = sorted(set(migrated) - set(skill_commands))
         extra = sorted(set(skill_commands) - set(migrated))
         issues.append(_issue("E_ADAPTER004", skill_path, f"Skill command parity mismatch; missing={missing}, extra={extra}"))
-    return [f"Skill exposes {len(skill_commands)} migrated commands"], issues
+    missing_readonly = [command for command in readonly if f"`{command}`" not in text]
+    if missing_readonly:
+        issues.append(
+            _issue(
+                "E_ADAPTER004",
+                skill_path,
+                f"Skill is missing readonly entrypoints: {missing_readonly}",
+            )
+        )
+    return [
+        f"Skill exposes {len(skill_commands)} migrated commands",
+        f"Skill documents {len(readonly) - len(missing_readonly)} readonly entrypoints",
+    ], issues
 
 
 def _codex_skill_command_parity(
@@ -249,11 +263,14 @@ def _codex_skill_command_parity(
         / "cc-harness"
         / "SKILL.md"
     )
-    migrated = tuple(_load_yaml(core_path).get("migrated_commands", []))
+    core = _load_yaml(core_path)
+    migrated = tuple(core.get("migrated_commands", []))
+    readonly = tuple(sorted((core.get("readonly_entrypoints") or {}).keys()))
+    text = skill_path.read_text(encoding="utf-8")
     skill_commands = tuple(
         re.findall(
             r"^- `(?P<command>cc-[a-z0-9-]+)`\s*$",
-            skill_path.read_text(encoding="utf-8"),
+            text,
             re.MULTILINE,
         )
     )
@@ -266,7 +283,19 @@ def _codex_skill_command_parity(
                 "Codex Skill command inventory differs from runtime/core.yaml",
             )
         )
-    return [f"Codex Skill exposes {len(skill_commands)} migrated commands"], issues
+    missing_readonly = [command for command in readonly if f"`{command}`" not in text]
+    if missing_readonly:
+        issues.append(
+            _issue(
+                "E_ADAPTER004",
+                skill_path,
+                f"Codex Skill is missing readonly entrypoints: {missing_readonly}",
+            )
+        )
+    return [
+        f"Codex Skill exposes {len(skill_commands)} migrated commands",
+        f"Codex Skill documents {len(readonly) - len(missing_readonly)} readonly entrypoints",
+    ], issues
 
 
 def _codex_installation_lifecycle(
@@ -490,8 +519,13 @@ def _run_command_check(
     if completed.returncode != 0 or payload_status != "passed":
         if not issues:
             code = "E_ADAPTER008" if check_id == "behavior-eval" else "E_ADAPTER009"
+            diagnostic_stderr = "\n".join(
+                line
+                for line in completed.stderr.splitlines()
+                if not line.startswith("cc-verify: ")
+            ).strip()
             detail = (
-                completed.stderr.strip()
+                diagnostic_stderr
                 or completed.stdout.strip()
                 or "subcheck did not return status=passed"
             )

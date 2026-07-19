@@ -117,7 +117,39 @@ scripts:
   optimize: core://scripts/cc-optimize
   help: core://scripts/cc-help
   start: core://scripts/cc-start
+  dashboard: core://scripts/cc-dashboard
+  legacy-audit: core://scripts/cc-legacy-audit
   adapter-check: core://scripts/cc-adapter-check
+
+readonly_entrypoints:
+  cc-start:
+    script: core://scripts/cc-start
+    kind: intent-router
+    mutates_state: false
+  cc-help:
+    script: core://scripts/cc-help
+    kind: command-help
+    mutates_state: false
+  cc-dashboard:
+    script: core://scripts/cc-dashboard
+    kind: governance-dashboard
+    mutates_state: false
+  cc-stats:
+    script: core://scripts/cc-stats
+    kind: telemetry-report
+    mutates_state: false
+  cc-optimize:
+    script: core://scripts/cc-optimize
+    kind: optimization-report
+    mutates_state: false
+  cc-benchmark:
+    script: core://scripts/cc-benchmark
+    kind: benchmark-report
+    mutates_state: false
+  cc-legacy-audit:
+    script: core://scripts/cc-legacy-audit
+    kind: compatibility-audit
+    mutates_state: false
 
 topic_rules:
   verification: core://runtime/topic-rules/verification.yaml

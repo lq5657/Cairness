@@ -30,6 +30,19 @@
 - `cc-promote-audit`
 - `cc-discuss`
 
+## 只读高层入口
+
+以下入口由 runtime `readonly_entrypoints` 注册，不属于生命周期
+`migrated_commands`，没有 change readset，也不会执行生命周期命令：
+
+- `cc-start`
+- `cc-help`
+- `cc-dashboard`
+- `cc-stats`
+- `cc-optimize`
+- `cc-benchmark`
+- `cc-legacy-audit`
+
 ## 核心原则
 
 - `No Spec, No Code`：没有 `.cairness/changes/<change-id>/spec.md`，禁止进入实现。

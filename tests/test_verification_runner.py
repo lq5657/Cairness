@@ -155,6 +155,31 @@ def test_run_step_normalizes_missing_executable(tmp_path):
     assert isinstance(result["duration_ms"], int)
 
 
+def test_run_step_reports_progress_and_timeout(tmp_path, monkeypatch, capsys):
+    runner_service = importlib.import_module("harness_runtime.verification_runner")
+
+    def timeout_runner(command, **kwargs):
+        assert kwargs["timeout"] == 0.5
+        raise subprocess.TimeoutExpired(command, 0.5, output="partial\n")
+
+    result = runner_service.run_step(
+        "slow-check",
+        "harness",
+        ["slow-check"],
+        tmp_path,
+        runner=timeout_runner,
+        timeout_seconds=0.5,
+    )
+
+    assert result["status"] == "failed"
+    assert result["exit_code"] == 124
+    assert result["timed_out"] is True
+    assert result["timeout_seconds"] == 0.5
+    assert result["stdout"] == "partial\n"
+    assert "timed out" in result["stderr"]
+    assert "start slow-check" in capsys.readouterr().err
+
+
 def test_run_step_reuses_only_cached_passed_result(tmp_path):
     runner_service = importlib.import_module("harness_runtime.verification_runner")
     cache_root = tmp_path / "cache"

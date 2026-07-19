@@ -227,8 +227,46 @@
         "start": {
           "type": "string"
         },
+        "dashboard": {
+          "type": "string"
+        },
+        "legacy-audit": {
+          "type": "string"
+        },
         "adapter-check": {
           "type": "string"
+        }
+      }
+    },
+    "readonly_entrypoints": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/ccCommand"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["script", "kind", "mutates_state"],
+        "properties": {
+          "script": {
+            "type": "string",
+            "pattern": "^core://scripts/cc-[a-z0-9-]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "intent-router",
+              "command-help",
+              "governance-dashboard",
+              "telemetry-report",
+              "optimization-report",
+              "benchmark-report",
+              "compatibility-audit"
+            ]
+          },
+          "mutates_state": {
+            "const": false
+          }
         }
       }
     },

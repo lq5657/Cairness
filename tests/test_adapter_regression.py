@@ -292,6 +292,34 @@ def test_standalone_regression_fails_closed_on_invalid_subcheck_json(stdout: str
     assert behavior["issues"][0]["code"] == "E_ADAPTER008"
 
 
+def test_standalone_regression_filters_cc_verify_progress_from_failure_detail():
+    from harness_runtime.adapter_regression import run_adapter_regression
+
+    def executor(command: list[str], cwd: Path, env: dict[str, str]) -> CompletedProcess:
+        if "cc-verify" in command[1]:
+            return CompletedProcess(
+                command,
+                1,
+                stdout='{"status":"failed","issues":[]}',
+                stderr=(
+                    "cc-verify: start slow-check (timeout=900s)\n"
+                    "cc-verify: finish slow-check: failed (900000ms)\n"
+                    "real verification failure\n"
+                ),
+            )
+        return CompletedProcess(command, 0, stdout='{"status":"passed","issues":[]}', stderr="")
+
+    report = run_adapter_regression(
+        CORE,
+        "claude-code",
+        project_root=REPO,
+        executor=executor,
+    )
+
+    full_verify = next(check for check in report["checks"] if check["id"] == "full-verify")
+    assert full_verify["issues"][0]["message"] == "real verification failure"
+
+
 def test_required_capability_cannot_depend_only_on_skipped_evidence(
     harness_project: Path,
 ):
