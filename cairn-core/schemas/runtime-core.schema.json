@@ -224,6 +224,9 @@
         "help": {
           "type": "string"
         },
+        "start": {
+          "type": "string"
+        },
         "adapter-check": {
           "type": "string"
         }

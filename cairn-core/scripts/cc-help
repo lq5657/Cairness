@@ -128,6 +128,7 @@ def render_progressive(catalog: dict[str, dict[str, Any]], *, advanced: bool = F
         "",
         "先选择意图，再查看确定性路由；不会自动执行目标命令。",
         "",
+        "- `cc-start` / `cc-start --intent status` — 查看当前阶段并推荐下一命令",
         "- `cc-start --intent new-project` — 新项目定义",
         "- `cc-start --intent change` — 进入 change 提案",
         "- `cc-start --intent review` — 检查现有 change",

@@ -13,7 +13,12 @@ from harness_runtime.intent_router import INTENTS, route_intent
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cc-start")
-    parser.add_argument("--intent", choices=INTENTS, required=True)
+    parser.add_argument(
+        "--intent",
+        choices=INTENTS,
+        default="status",
+        help="desired action; omit it or use status to inspect the current stage",
+    )
     parser.add_argument("--root", default=".")
     parser.add_argument("--cancel", action="store_true", help="cancel the route without executing it")
     parser.add_argument("--json", action="store_true")

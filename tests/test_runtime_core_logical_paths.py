@@ -42,3 +42,4 @@ def test_runtime_core_registers_phase0_phase1_tools():
     assert core["scripts"]["benchmark"] == "core://scripts/cc-benchmark"
     assert core["scripts"]["context-pack"] == "core://scripts/cc-context-pack"
     assert core["scripts"]["loop-step"] == "core://scripts/cc-loop-step"
+    assert core["scripts"]["start"] == "core://scripts/cc-start"

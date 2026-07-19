@@ -9,6 +9,11 @@ When the user invokes a literal `cc-*` command, preserve that spelling and read
 `.codex/runtime/readsets/<command>.yaml`. Load only `always_reads` initially;
 load conditional reads only when their trigger is satisfied.
 
+`cc-start` is an adapter-level, read-only router registered as
+`.codex/scripts/cc-start`; it is not a migrated lifecycle command and has no
+command readset. Invoke it directly (prefer `cc-start` when the stage is
+unknown), then follow its reported `next_action` explicitly.
+
 The migrated commands are:
 
 - `cc-new-project`
