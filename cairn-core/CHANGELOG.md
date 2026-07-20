@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.3 - 2026-07-20
+
+Codex adapter command-routing clarification release.
+
+- Fixed the Codex adapter guidance so lifecycle `migrated_commands` such as
+  `cc-apply` are invoked as agent workflows instead of being mistaken for
+  `.codex/scripts/<command>` shell entrypoints.
+- Clarified the separate handling of `migrated_commands`, deterministic
+  `scripts`, and read-only `readonly_entrypoints` for Codex and fallback
+  documentation.
+- Added adapter regression coverage for the command boundary and installed
+  Codex Skill instructions.
+
 ## 1.3.2 - 2026-07-19
 
 Lifecycle execution and runtime efficiency observability release. Existing

@@ -1,5 +1,15 @@
 # 升级指南
 
+## 升级到 1.3.3
+
+本版本修复 Codex adapter 的命令入口说明。生命周期命令（如
+`cc-apply <change-id>`）由 agent 按 runtime contract 直接执行，不对应
+`.codex/scripts/cc-apply`；只有确定性脚本和只读入口才通过
+`.codex/scripts/<command>` 调用。
+
+现有 Codex 项目安装包含旧版 Skill 时，先将系统框架更新到 1.3.3，再在项目中
+执行 `cc-cairn update`。该更新不修改 `.cairness/` 项目状态或 change 文档。
+
 ## 升级到 1.3.2
 
 本版本向后兼容，现有项目无需迁移。执行 `cc-cairn update` 即可获得新的运行时
