@@ -2,8 +2,9 @@
 
 > Adapter boundary: this file is the Claude Code fallback entrypoint. When it
 > is present under a `.codex/` framework root, Codex must follow `CAIRNESS.md`
-> and `.agents/skills/cc-harness/SKILL.md` instead. Codex commands use
-> `.codex/scripts/*`; the `.claude/scripts/*` paths below are Claude-only.
+> and `.agents/skills/cc-harness/SKILL.md` instead. Codex deterministic
+> scripts use `.codex/scripts/*`; Codex lifecycle commands are agent workflows.
+> The `.claude/scripts/*` paths below are Claude-only.
 
 本文件只是 bootstrap / fallback，不是 Claude Code 的主入口。
 主入口是 `.claude/skills/cc-harness/SKILL.md`。

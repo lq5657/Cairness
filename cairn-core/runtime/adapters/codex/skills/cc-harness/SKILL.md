@@ -5,18 +5,32 @@ description: Execute Cairness cc-* governance workflows in Codex using the runti
 
 # Cairness Harness
 
-When the user invokes a literal `cc-*` command, preserve that spelling and read
-`.codex/runtime/readsets/<command>.yaml`. Load only `always_reads` initially;
-load conditional reads only when their trigger is satisfied.
+When the user invokes a literal `cc-*` command, preserve that spelling and
+classify it against `.codex/runtime/core.yaml` first:
 
-All Codex adapter command execution must use `.codex/scripts/<command>`.
+- `migrated_commands`: agent workflows; read only
+  `.codex/runtime/readsets/<command>.yaml` initially, loading conditional reads
+  only when their trigger is satisfied.
+- `readonly_entrypoints`: direct read-only scripts; invoke the declared
+  `.codex/scripts/<command>` entrypoint and do not load a lifecycle readset.
+- Other entries under `scripts`: deterministic tools invoked through their
+  declared physical `.codex/scripts/...` path when a runtime contract requests
+  them.
+
+The `migrated_commands` are agent workflows, not shell scripts. Invoke those
+commands literally (for example, `cc-apply <change-id>`); do not look for a
+`.codex/scripts/cc-apply` file. Only deterministic runtime scripts and
+`readonly_entrypoints` have physical `.codex/scripts/<command>` entrypoints.
+
 Never execute the Claude adapter equivalent under `.claude/scripts/`, even when
-both adapters coexist in the project. For example, `cc-start --intent status`
-must be run as `.codex/scripts/cc-start --intent status`.
+both adapters coexist in the project. For example, the read-only stage probe
+`cc-start --intent status` must be run as `.codex/scripts/cc-start --intent
+status`.
 
 If a shared runtime manifest contains a `.claude/...` declaration, treat it as
 a logical compatibility alias resolved by the runtime, not as a physical shell
-path. Rewrite script invocations to the active Codex path before executing.
+path. Rewrite deterministic script invocations to the active Codex path before
+executing.
 
 `cc-start` is an adapter-level, read-only router registered as
 `.codex/scripts/cc-start`; it is not a migrated lifecycle command and has no

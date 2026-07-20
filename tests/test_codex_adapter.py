@@ -282,6 +282,32 @@ def test_codex_init_installs_native_assets_and_multi_adapter_metadata(
     assert not (project / ".claude").exists()
 
 
+def test_codex_lifecycle_commands_are_not_script_entrypoints(
+    tmp_path: Path, monkeypatch
+):
+    """Keep agent lifecycle commands separate from deterministic scripts."""
+    module = _cc_cairn()
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr(module, "get_data_dir", lambda: CORE)
+    monkeypatch.chdir(project)
+
+    module.cmd_init(adapter="codex")
+
+    core = yaml.safe_load((project / ".codex/runtime/core.yaml").read_text())
+    assert "cc-apply" in core["migrated_commands"]
+    assert "cc-apply" not in core["scripts"].values()
+    assert (project / ".codex/scripts/cc-start").is_file()
+    assert not (project / ".codex/scripts/cc-apply").exists()
+
+    skill = (project / ".agents/skills/cc-harness/SKILL.md").read_text()
+    assert "classify it against `.codex/runtime/core.yaml` first" in skill
+    assert "`readonly_entrypoints`: direct read-only scripts" in skill
+    assert "migrated_commands` are agent workflows, not shell scripts" in skill
+    assert "do not look for a" in skill
+    assert ".codex/scripts/cc-apply" in skill
+
+
 def test_codex_init_exposes_exactly_one_cc_harness_skill(
     tmp_path: Path, monkeypatch
 ):
