@@ -34,6 +34,12 @@ trust_envelope:
     - architecture_change
     - release_change
 
+  # Graduated autonomy for otherwise valid overages. These require a current
+  # human hard-gate approval in the change before Loop can continue.
+  autonomy:
+    scope_overage: supervised  # supervised | staged | blocked
+    risk_overage: staged       # staged | blocked
+
   # Auto-accept patterns for review findings
   # Findings matching these patterns can be auto-accepted if severity is minor
   accepted_finding_patterns:

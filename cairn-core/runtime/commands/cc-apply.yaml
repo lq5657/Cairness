@@ -91,12 +91,13 @@ interaction_contract:
   mode: interactive_required
   loop_mode_override:
     when: profile_is_loop_and_loop_config_exists
-    hard_gate_behavior: auto_pass_when_self_eval_approved_in_propose
-    wave_confirmation_behavior: auto_confirm_when_within_trust_envelope
+    hard_gate_behavior: auto_pass_only_for_self_eval_autonomous_or_authorized
+    wave_confirmation_behavior: auto_confirm_autonomous; supervised_once; staged_per_wave
     audit: write_wave_decision_to_loop_audit_file
     escalate_when:
       - hard_gate_missing_or_stale_after_self_eval
       - wave_has_disallowed_change_type
+      - self_eval_approval_required_or_blocked
   hard_gate:
     when: hard_gate_missing_stale_or_does_not_cover_current_revisions
     presentation:

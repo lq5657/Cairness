@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # cc-self-eval: Self-evaluation gate for Loop Engineering mode
-# Usage: cc-self-eval --command <command> --change-id <id> [--verbose]
+# Usage: cc-self-eval --command <command> --change-id <id> [--decision] [--verbose]
 #
-# Returns:
-#   0 + "APPROVED" - all checks pass, agent can proceed
-#   1 + "ESCALATE: <reason>" - checks failed, escalate to human with targeted question
+# Returns (the default first line preserves the historical APPROVED/ESCALATE
+# output; --decision adds the machine-readable decision line):
+#   0 + "APPROVED" [and DECISION: autonomous|supervised|staged]
+#   1 + "ESCALATE: <reason>" [and DECISION: *_approval_required|blocked]
 #   2 + error message - configuration or runtime error
 
 set -euo pipefail
@@ -18,8 +19,11 @@ PROJECT_ROOT="${CAIRNESS_PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 COMMAND=""
 CHANGE_ID=""
 VERBOSE=false
+DECISION_OUTPUT=false
 LOOP_CONFIG="$PROJECT_ROOT/.cairness/loop-config.yaml"
 SPEC_FILE=""
+SCOPE_OVERAGE_MODE="supervised"
+RISK_OVERAGE_MODE="staged"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -36,6 +40,10 @@ while [[ $# -gt 0 ]]; do
       VERBOSE=true
       shift
       ;;
+    --decision)
+      DECISION_OUTPUT=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       exit 2
@@ -45,7 +53,7 @@ done
 
 if [[ -z "$COMMAND" || -z "$CHANGE_ID" ]]; then
   echo "Error: --command and --change-id are required" >&2
-  echo "Usage: cc-self-eval --command <command> --change-id <id> [--verbose]" >&2
+  echo "Usage: cc-self-eval --command <command> --change-id <id> [--decision] [--verbose]" >&2
   exit 2
 fi
 
@@ -86,6 +94,38 @@ extract_yaml_array() {
   awk "/[[:space:]]*${field}:/,/^[^[:space:]-]/ { if (/^[[:space:]]+-[[:space:]]/) { sub(/^[[:space:]]+-[[:space:]]+/, \"\"); print } }" "$file"
 }
 
+# Extract a hard-gate field from the markdown confirmation section. Restricting
+# the search to HARD-GATE prevents a similarly named note in a log/risk section
+# from being mistaken for a user authorization. The templates use a full-width
+# colon in prose fields.
+extract_gate_field() {
+  local file="$1"
+  local field="$2"
+  awk -v field="$field" '
+    /HARD-GATE/ { in_gate = 1 }
+    in_gate && $0 ~ field ".*(:|：)" { line = $0 }
+    END { if (line != "") print line }
+  ' "$file" \
+    | sed -E 's/.*(:|：)[[:space:]]*//' \
+    | sed -E 's/[`*_]//g' | xargs
+}
+
+has_human_gate_approval() {
+  local status required required_lower status_lower field value
+  required="$(extract_gate_field "$SPEC_FILE" "human_review_required")"
+  status="$(extract_gate_field "$SPEC_FILE" "human_review_status")"
+  required_lower="$(printf '%s' "$required" | tr '[:upper:]' '[:lower:]')"
+  status_lower="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+  [[ "$required_lower" == "true" && "$status_lower" == "approved" ]] || return 1
+
+  for field in confirmed_at confirmed_by confirmed_spec_revision \
+    confirmed_tasks_revision confirmed_scope resolved_risk_decisions \
+    accepted_residual_risks; do
+    value="$(extract_gate_field "$SPEC_FILE" "$field")"
+    [[ -n "$value" ]] || return 1
+  done
+}
+
 # Check if value is in array
 in_array() {
   local needle="$1"
@@ -99,10 +139,37 @@ in_array() {
   return 1
 }
 
+# Optional policy knobs keep existing loop configs valid while allowing a
+# graduated response to bounded scope/risk overages. `blocked` restores the
+# original binary behavior for teams that require it.
+SCOPE_OVERAGE_MODE="$(extract_yaml_field "$LOOP_CONFIG" "scope_overage" || echo "supervised")"
+RISK_OVERAGE_MODE="$(extract_yaml_field "$LOOP_CONFIG" "risk_overage" || echo "staged")"
+for mode in "$SCOPE_OVERAGE_MODE" "$RISK_OVERAGE_MODE"; do
+  case "$mode" in
+    supervised|staged|blocked) ;;
+    *)
+      echo "Error: invalid Loop autonomy mode: $mode (expected supervised, staged, or blocked)" >&2
+      exit 2
+      ;;
+  esac
+done
+# Risk overage intentionally has no "supervised" mode: a high residual risk
+# must either be explicitly staged or remain fail-closed. Keep this check here
+# as a defense-in-depth guard when an older config bypasses schema validation.
+case "$RISK_OVERAGE_MODE" in
+  staged|blocked) ;;
+  *)
+    echo "Error: invalid risk_overage mode: $RISK_OVERAGE_MODE (expected staged or blocked)" >&2
+    exit 2
+    ;;
+esac
+
 # Self-evaluation checklist
 SCORE=0
 MAX_SCORE=6
 FAILURES=()
+SCOPE_EXCEEDED=false
+CRITICAL_RISK_EXCEEDED=false
 
 log_verbose "Starting self-evaluation for $COMMAND / $CHANGE_ID"
 
@@ -157,6 +224,7 @@ else
     ((SCORE += 1))
     log_verbose "  ✓ Change size $CHANGE_SIZE ≤ $MAX_SCOPE"
   else
+    SCOPE_EXCEEDED=true
     FAILURES+=("scope_exceeds_envelope: $CHANGE_SIZE > $MAX_SCOPE")
   fi
 fi
@@ -218,6 +286,7 @@ fi
 
 if [[ $MAX_RISK_RANK -lt 4 && $CRITICAL_RISK_COUNT -gt 0 ]]; then
   EXCEEDS_RISK=true
+  CRITICAL_RISK_EXCEEDED=true
   FAILURES+=("residual_risk_exceeds_envelope: critical risk > $MAX_RISK")
 fi
 
@@ -256,17 +325,65 @@ THRESHOLD=0.7  # from loop profile
 
 if [[ ${#FAILURES[@]} -eq 0 ]]; then
   echo "APPROVED"
+  [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: autonomous"
   exit 0
-else
-  # Report first failure as the primary escalation reason
-  REASON="${FAILURES[0]}"
-  echo "ESCALATE: $REASON"
-
-  if [[ "$VERBOSE" == "true" ]]; then
-    echo "All failures:" >&2
-    printf '  - %s\n' "${FAILURES[@]}" >&2
-    echo "Score: $SCORE/$MAX_SCORE (confidence: $CONFIDENCE)" >&2
-  fi
-
-  exit 1
 fi
+
+# Scope/risk overages can continue only after the current hard gate records a
+# human approval. Unrelated blockers remain non-bypassable. This preserves the
+# old fail-closed behavior when no approval exists while allowing a bounded,
+# auditable supervised Loop transaction.
+ONLY_BOUNDARY_FAILURES=true
+for failure in "${FAILURES[@]}"; do
+  case "$failure" in
+    scope_exceeds_envelope:*|residual_risk_exceeds_envelope:*) ;;
+    *) ONLY_BOUNDARY_FAILURES=false ;;
+  esac
+done
+
+if [[ "$ONLY_BOUNDARY_FAILURES" == "true" && "$CRITICAL_RISK_EXCEEDED" == "false" ]]; then
+  # Risk overage takes precedence over scope overage. A config that marks
+  # risk overage blocked can never be bypassed by a scope approval.
+  if [[ "$EXCEEDS_RISK" == "true" && "$RISK_OVERAGE_MODE" == "staged" ]]; then
+    if has_human_gate_approval; then
+      echo "APPROVED"
+      [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: staged"
+      exit 0
+    else
+      echo "ESCALATE: ${FAILURES[0]}"
+      [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: staged_approval_required"
+      exit 1
+    fi
+  elif [[ "$EXCEEDS_RISK" == "false" && "$SCOPE_EXCEEDED" == "true" && "$SCOPE_OVERAGE_MODE" == "supervised" ]]; then
+    if has_human_gate_approval; then
+      echo "APPROVED"
+      [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: supervised"
+      exit 0
+    fi
+    echo "ESCALATE: ${FAILURES[0]}"
+    [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: supervised_approval_required"
+    exit 1
+  elif [[ "$EXCEEDS_RISK" == "false" && "$SCOPE_EXCEEDED" == "true" && "$SCOPE_OVERAGE_MODE" == "staged" ]]; then
+    if has_human_gate_approval; then
+      echo "APPROVED"
+      [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: staged"
+      exit 0
+    fi
+    echo "ESCALATE: ${FAILURES[0]}"
+    [[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: staged_approval_required"
+    exit 1
+  fi
+fi
+
+# Report first failure as a non-bypassable escalation.
+REASON="${FAILURES[0]}"
+echo "ESCALATE: $REASON"
+[[ "$DECISION_OUTPUT" == "true" ]] && echo "DECISION: blocked"
+
+if [[ "$VERBOSE" == "true" ]]; then
+  echo "All failures:" >&2
+  printf '  - %s\n' "${FAILURES[@]}" >&2
+  echo "Score: $SCORE/$MAX_SCORE (confidence: $CONFIDENCE)" >&2
+fi
+
+exit 1

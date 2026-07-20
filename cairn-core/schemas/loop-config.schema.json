@@ -39,6 +39,20 @@
             "type": "string"
           }
         },
+        "autonomy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scope_overage": {
+              "type": "string",
+              "enum": ["supervised", "staged", "blocked"]
+            },
+            "risk_overage": {
+              "type": "string",
+              "enum": ["staged", "blocked"]
+            }
+          }
+        },
         "accepted_finding_patterns": {
           "type": "array",
           "items": {

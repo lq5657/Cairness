@@ -3,7 +3,9 @@ description: >-
   Loop Engineering 模式 — 适合自主循环执行与 CI/CD 集成。
   将 Tier-1 阻塞 gate 替换为 cc-self-eval 自评门 + 异步审计日志。
   human-on-the-loop：人在循环边界声明信任包络，异步审阅审计日志，
-  仅在熔断条件触发时介入。需要 .cairness/loop-config.yaml。
+  在包络内自主执行；范围超限进入一次性 supervised 授权，
+  非关键风险超限进入 staged 授权；关键风险、禁止类型和验证缺口仍熔断。
+  需要 .cairness/loop-config.yaml。
 
 topic_rules:
   always:
@@ -49,6 +51,8 @@ loop_mode:
     hard_gate_confirm:
       mode: self_eval
       handler: .claude/scripts/cc-self-eval
+      # Hosts should pass --decision when they need the graded route. Without
+      # it the script keeps the historical one-line APPROVED/ESCALATE output.
       escalate_on_fail: true
       audit: true
     finding_accepted:
@@ -64,8 +68,8 @@ loop_mode:
 
   circuit_breakers:
     - change_type_disallowed_by_trust_envelope
-    - scope_exceeds_trust_envelope
-    - residual_risk_exceeds_trust_envelope
+    - scope_overage_without_authorization
+    - risk_overage_without_authorization
     - critical_finding_in_review
     - security_finding_in_review
     - verification_failed_twice_consecutively

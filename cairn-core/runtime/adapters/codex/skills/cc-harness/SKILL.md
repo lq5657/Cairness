@@ -78,6 +78,22 @@ turn. Start the machine-readable planner with `.codex/scripts/cc-loop-step
 start --change-id <change-id> --command <command> --json`. Before the first write of each stage, run
 `.codex/scripts/cc-role-check --record-baseline --change <change-id>`.
 
+For the trust-envelope gate, invoke the physical adapter script with
+`.codex/scripts/cc-self-eval --command <command> --change-id <change-id>
+--decision`. The default one-line `APPROVED`/`ESCALATE` output is retained for
+legacy hosts; it is not sufficient to choose a graded route. Interpret
+`DECISION: autonomous` as in-envelope continuation, `supervised` as a single
+user-authorized continuation over a frozen wave plan, and `staged` as a
+user-confirmed wave-by-wave continuation. `*_approval_required` pauses for one
+targeted authorization question, records the normal HARD-GATE choice, then
+reruns self-eval. `blocked` always stops.
+
+The authorization is valid only for the current spec/tasks revisions, scope,
+risk decisions, and wave-plan fingerprint. Any change to those artifacts,
+dependencies, or validation invalidates it and requires a new self-evaluation;
+task splitting, automatic wave confirmation, or editing gate fields cannot
+bypass the gate.
+
 After each state transition, record the outcome with `.codex/scripts/cc-loop-step
 record --session-id <session-id> --command <command> --status
 passed|blocked|partial --json`. Continue only when the planner returns an active

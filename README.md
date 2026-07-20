@@ -117,7 +117,7 @@ idea
   → cc-archive
 ```
 
-每个阶段都会读取自己的最小 readset，遵守允许写入范围，并留下 spec、tasks、review、test、event 和 audit 证据。遇到超出信任包络、Critical/Security finding、验证失败、状态不一致或熔断条件时，Loop 会停止并给出需要人工回答的具体问题。
+每个阶段都会读取自己的最小 readset，遵守允许写入范围，并留下 spec、tasks、review、test、event 和 audit 证据。包络内变更自动执行；范围超限可在 HARD-GATE 完成一次 supervised 授权后继续，非关键风险超限进入 staged（按 wave 边界确认）。关键风险、禁止类型、验证缺口、状态不一致或熔断条件仍会停止并给出需要人工回答的具体问题。
 
 ## 默认 Loop 模式
 
@@ -155,12 +155,18 @@ trust_envelope:
     - api_breaking_change
     - architecture_change
 
+  autonomy:
+    scope_overage: supervised  # supervised | staged | blocked
+    risk_overage: staged       # staged | blocked
+
   verification:
     require_all_tests_pass: true
     require_no_open_findings: true
 ```
 
 Loop 改变的是**谁来确认 gate**，不是降低验证标准。它通过 `cc-loop-step start|record|inspect` 执行机器可读的 continuation graph，强制阶段顺序、条件路由和 blocked/partial 停止规则；续跑发生在当前宿主会话中，不会启动后台进程。
+
+`cc-self-eval --decision` 会返回分级路由：`autonomous`（包络内自动执行）、`supervised`（一次 HARD-GATE 授权后按冻结 wave plan 执行）和 `staged`（按 wave 边界确认）。`*_approval_required` 只暂停并询问一次，用户完成正常 HARD-GATE 后必须重新自评；`blocked` 不得通过拆 task 或编辑确认字段绕过。默认不带 `--decision` 的脚本输出仍保持旧版单行契约。
 
 需要逐 gate 人工确认时：
 
@@ -181,7 +187,7 @@ cc-cairn loop enable
 以下情况不会自动放行：
 
 - change type 不被允许；
-- scope 或 residual risk 超出 trust envelope；
+- scope 或 residual risk 超出 trust envelope 且没有对应的 supervised/staged 授权；
 - review 出现 Critical 或 Security finding；
 - verification 连续失败；
 - 生命周期状态不一致；

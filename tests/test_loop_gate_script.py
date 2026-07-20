@@ -25,6 +25,9 @@ trust_envelope:
     - refactor
   disallowed_change_types:
     - schema_migration
+  autonomy:
+    scope_overage: supervised
+    risk_overage: staged
 """
 
 SPEC_CLEAN = """\
@@ -56,6 +59,10 @@ SPEC_HIGH_RISK   = SPEC_CLEAN.replace(
     "## Risks\n\nNo risks.",
     "## Risks\n\n- desc: data loss\n  severity: high",
 )
+SPEC_CRITICAL_RISK = SPEC_CLEAN.replace(
+    "## Risks\n\nNo risks.",
+    "## Risks\n\n- desc: credential exposure\n  severity: critical",
+)
 
 
 def _setup(tmp: Path, spec: str, cfg: str = LOOP_CFG) -> tuple[Path, str]:
@@ -84,6 +91,36 @@ def _run(root: Path, cid: str, verbose: bool = False) -> tuple[int, str, str]:
     }
     r = subprocess.run(args, capture_output=True, text=True, cwd=str(root), env=env)
     return r.returncode, r.stdout.strip(), r.stderr.strip()
+
+
+def _run_decision(root: Path, cid: str) -> tuple[int, str, str]:
+    args = [
+        "bash", str(GATE), "--command", "cc-propose", "--change-id", cid,
+        "--decision",
+    ]
+    env = {
+        **os.environ,
+        "CAIRNESS_PROJECT_ROOT": str(root),
+        "CC_DEPS_CMD": str(root / ".claude" / "scripts" / "cc-deps"),
+    }
+    r = subprocess.run(args, capture_output=True, text=True, cwd=str(root), env=env)
+    return r.returncode, r.stdout.strip(), r.stderr.strip()
+
+
+HUMAN_APPROVED = """
+
+#### 15. 确认记录（HARD-GATE）
+
+* **confirmed_at**：2026-07-20 10:00
+* **confirmed_by**：human@example.com
+* **confirmed_spec_revision**：spec-rev-1
+* **confirmed_tasks_revision**：tasks-rev-1
+* **confirmed_scope**：medium
+* **resolved_risk_decisions**：accepted with staged validation
+* **accepted_residual_risks**：temporary test-environment limitation
+* **human_review_required**：true
+* **human_review_status**：approved
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +200,91 @@ def test_deps_exit2_treated_as_skip_not_fail(tmp_path):
     (root / ".claude" / "scripts" / "cc-deps").write_text("#!/bin/sh\nexit 2\n")
     rc, out, _ = _run(root, cid)
     assert rc == 0 and out == "APPROVED"
+
+
+def test_decision_mode_reports_autonomous_without_changing_default_contract(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_CLEAN)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 0
+    assert out.splitlines() == ["APPROVED", "DECISION: autonomous"]
+
+
+def test_legacy_loop_config_without_autonomy_uses_safe_defaults(tmp_path):
+    legacy_cfg = LOOP_CFG.replace(
+        "  autonomy:\n    scope_overage: supervised\n    risk_overage: staged\n", ""
+    )
+    root, cid = _setup(tmp_path, SPEC_SCOPE_OVER, legacy_cfg)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines()[1] == "DECISION: supervised_approval_required"
+
+
+def test_scope_overage_requires_supervised_approval(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_SCOPE_OVER)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines() == [
+        "ESCALATE: scope_exceeds_envelope: medium > small",
+        "DECISION: supervised_approval_required",
+    ]
+
+
+def test_scope_overage_approved_hard_gate_is_supervised(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_SCOPE_OVER + HUMAN_APPROVED)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 0
+    assert out.splitlines() == ["APPROVED", "DECISION: supervised"]
+
+
+def test_scope_overage_can_be_configured_as_staged(tmp_path):
+    cfg = LOOP_CFG.replace("scope_overage: supervised", "scope_overage: staged")
+    root, cid = _setup(tmp_path, SPEC_SCOPE_OVER + HUMAN_APPROVED, cfg)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 0
+    assert out.splitlines() == ["APPROVED", "DECISION: staged"]
+
+
+def test_risk_overage_requires_staged_approval(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_HIGH_RISK)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines()[1] == "DECISION: staged_approval_required"
+
+
+def test_risk_overage_approved_hard_gate_is_staged(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_HIGH_RISK + HUMAN_APPROVED)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 0
+    assert out.splitlines() == ["APPROVED", "DECISION: staged"]
+
+
+def test_disallowed_type_cannot_be_authorized_by_hard_gate(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_DISALLOWED + HUMAN_APPROVED)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines()[1] == "DECISION: blocked"
+
+
+def test_critical_risk_cannot_be_authorized_by_hard_gate(tmp_path):
+    root, cid = _setup(tmp_path, SPEC_CRITICAL_RISK + HUMAN_APPROVED)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines()[1] == "DECISION: blocked"
+
+
+def test_blocked_risk_mode_cannot_be_bypassed_by_scope_approval(tmp_path):
+    cfg = LOOP_CFG.replace("risk_overage: staged", "risk_overage: blocked")
+    root, cid = _setup(tmp_path, SPEC_HIGH_RISK + HUMAN_APPROVED, cfg)
+    rc, out, _ = _run_decision(root, cid)
+    assert rc == 1
+    assert out.splitlines()[1] == "DECISION: blocked"
+
+
+def test_invalid_risk_overage_mode_is_a_config_error(tmp_path):
+    cfg = LOOP_CFG.replace("risk_overage: staged", "risk_overage: supervised")
+    root, cid = _setup(tmp_path, SPEC_CLEAN, cfg)
+    rc, _, err = _run_decision(root, cid)
+    assert rc == 2 and "risk_overage" in err
 
 
 def test_deps_exit1_treated_as_conflict(tmp_path):

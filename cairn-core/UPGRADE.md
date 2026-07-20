@@ -223,7 +223,8 @@ cairn-core/scripts/cc-upgrade-check \
 
 - `profile: loop` — 自主循环执行 profile，将 Tier-1 gate 替换为 cc-self-eval 自评门 + 异步审计日志
 - `cc-cairn loop enable/disable/status` — 一条命令开关 loop 模式
-- `cc-self-eval` 脚本 — 结构化 6 项 checklist，对照信任包络打分（`APPROVED` / `ESCALATE:<reason>`）
+- `cc-self-eval` 脚本 — 结构化 6 项 checklist，对照信任包络分级决策；默认保留历史单行 `APPROVED` / `ESCALATE:<reason>` 输出，传入 `--decision` 时追加 `DECISION: autonomous|supervised|staged|*_approval_required|blocked`
+- Loop autonomy 配置 — scope 超限可选择 `supervised`/`staged`/`blocked`，非关键风险超限可选择 `staged`/`blocked`；授权只对当前 HARD-GATE 和 wave plan 版本有效
 - `loop-config.schema.json` — 信任包络配置的 JSON Schema 校验
 - `templates/loop-config.yaml` — 信任包络模板
 
