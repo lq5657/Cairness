@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.4 - 2026-07-23
+
+阶段化运行时效率与质量遥测闭环 release。现有生命周期命令和质量门禁保持向后兼容。
+
+- 为默认 `cc-verify` 事件补齐 `phase=test`、`activity=verify`、
+  `run_kind=primary`、`logical_run_id`、`attempt=1` 和 `terminal=true`，并支持
+  通过 `CC_LOGICAL_RUN_ID`、`CC_RUN_ATTEMPT`、`CC_RUN_KIND`、`CC_RUN_TERMINAL`、
+  `CC_RUN_PHASE` 和 `CC_RUN_ACTIVITY` 关联跨进程运行。
+- 让 benchmark 只消费终态 verification 样本，排除 preflight、retry、shadow
+  和 probe 等探测或恢复活动，避免把框架内部开销混入质量样本。
+- 在 runtime event、Loop phase run 和 benchmark record 中传播 cohort 与
+  adapter，使 baseline/candidate 能按变更规模、变更类型、执行模式和框架
+  adapter 做同口径比较。
+- 归一化 Codex/Claude adapter 的 input、output、cached 和 retry token usage；
+  usage 不可取得时记录 `coverage=unavailable`，不再用估算值冒充真实消耗。
+- 扩展 phase timing 与 verification metrics，提供 token coverage/source、
+  elapsed/active/wait/tool/verification 等效率和质量分析字段，并增强 Claude
+  host smoke 的真实 usage 采集。
+- 更新 runtime model、契约测试和 adapter 回归覆盖，保证新增指标缺失时仍能
+  兼容旧事件与旧项目。
+
 ## 1.3.3 - 2026-07-20
 
 Codex adapter command-routing clarification release.

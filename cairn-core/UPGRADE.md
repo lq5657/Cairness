@@ -1,5 +1,26 @@
 # 升级指南
 
+## 升级到 1.3.4
+
+本版本向后兼容，现有项目无需手工迁移。执行 `cc-cairn update` 即可获得新的
+运行时脚本、profile 和遥测能力；更新不会重置 `.cairness/` 状态、change 文档
+或已有事件日志。
+
+运行时现在默认写入本地脱敏事件，并为 verification 自动补齐 `phase`、`activity`、
+`run_kind`、`logical_run_id`、`attempt` 和 `terminal`。benchmark 只比较终态
+verification，自动排除 preflight、retry、shadow 和 probe 样本。已有自定义事件
+缺少这些字段时仍可被读取，但相应的 cohort、质量门禁或 token 覆盖率会保持为空。
+
+如 retry orchestrator 跨进程或跨 worker 启动同一次逻辑运行，请传播
+`CC_LOGICAL_RUN_ID`、`CC_RUN_ATTEMPT`、`CC_RUN_KIND`、`CC_RUN_TERMINAL`、
+`CC_RUN_PHASE` 和 `CC_RUN_ACTIVITY`，以便把重试与终态样本分开统计。adapter 可以
+通过 `CC_ADAPTER_USAGE_JSON` 或 `cc-verify --usage '<json>'` 提供真实 usage；
+不提供时系统记录 `coverage=unavailable`，不会阻断验证或伪造 token 数。
+
+没有强制数据迁移步骤。升级后可运行 `cc-stats` 检查 phase/cohort 指标，并使用
+`cc-benchmark collect` 生成 baseline/candidate 样本；只有同 phase、同执行模式和
+同规模的终态样本才会进入质量对比。
+
 ## 升级到 1.3.3
 
 本版本修复 Codex adapter 的命令入口说明。生命周期命令（如
