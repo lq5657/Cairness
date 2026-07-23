@@ -1,5 +1,21 @@
 # 升级指南
 
+## 升级到 1.3.5
+
+本版本引入安全的 Wave 并行执行和 Task 图治理。
+
+### 迁移要求
+
+- 新建或修改的 `tasks.md` 应在 frontmatter 中声明 `task_graph.version: 1`，为每个 Task 提供 `id`、`depends_on`、`parallel_safe` 和 `files`。
+- `cc-wave-plan` 会校验 Task 图与 Markdown `涉及文件` 是否一致，并拒绝重复 Task ID、自然语言依赖、缺失字段、未知依赖和正文/图不一致（`E_WAVE006`）。正文中的 `Wave N` 只用于解释，不参与调度。
+- 旧文档在迁移期间可以使用完整的 inline `depends_on=[...]` 与 `parallel_safe=true|false` 声明；只有“Wave 1/串行/依赖 Task 1”等自然语言的文档需要补充机器格式，否则无法进入 `cc-apply`。
+
+### 执行行为
+
+- 同一 Wave 内，依赖已满足、`parallel_safe: true` 且写集合互斥的 Task 会由 adapter 并行派发；不同 Wave 和 `parallel_safe: false` Task 仍保持串行。
+- `cc-apply` 在派发前建立 expected-task ledger，所有 worker 必须进入 `completed`、`failed`、`timed_out` 或 `cancelled`，并完成 orphan cleanup 后才能推进下一 Wave。
+- Wave 摘要现在必须包含 planned/actual parallelism、Task 终态和 cleanup 状态；不完整的 join 证据不会写入遥测。
+
 ## 升级到 1.3.4
 
 本版本向后兼容，现有项目无需手工迁移。执行 `cc-cairn update` 即可获得新的

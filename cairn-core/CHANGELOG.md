@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.5 - 2026-07-24
+
+Wave 并行执行治理 release。
+
+- `tasks.md` 支持 frontmatter `task_graph` 作为 Task 依赖、并行安全和写范围的机器真相源；缺失或歧义声明 fail-closed。
+- 同一 Wave 内对依赖已满足、写集合互斥且 `parallel_safe: true` 的 Task 进行有界并行派发；`parallel_safe: false` 保持串行隔离。
+- 新增 expected-task ledger、join/cleanup 闸门和超时/孤儿 worker 终态治理，禁止未收口的 Wave 推进。
+- 记录 planned/actual parallelism、Task 终态、cleanup 结果和 join coverage，支持评估真实并行收益。
+- 旧 tasks 文档可暂时使用完整的 inline `depends_on`/`parallel_safe` 声明；仅含自然语言 Wave/依赖的文档需迁移，否则 `cc-wave-plan` 返回 `E_WAVE006`。
+
 ## 1.3.4 - 2026-07-23
 
 阶段化运行时效率与质量遥测闭环 release。现有生命周期命令和质量门禁保持向后兼容。
