@@ -728,7 +728,7 @@ def write_wave_tasks(project_root: Path, change_id: str) -> None:
     change = project_root / ".cairness" / "changes" / change_id
     change.mkdir(parents=True, exist_ok=True)
     (change / "tasks.md").write_text(
-        "#### Task 1: Context\n* **涉及文件**: context.go\n",
+        "#### Task 1: Context\n* **依赖 / Wave**: depends_on=[], parallel_safe=true\n* **涉及文件**: context.go\n",
         encoding="utf-8",
     )
 

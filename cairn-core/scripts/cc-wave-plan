@@ -20,9 +20,11 @@ from contextvars import ContextVar
 from pathlib import Path
 
 from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime import require_yaml
 from harness_runtime.issues import Issue
 from harness_runtime.observability import record_wave_execution, record_wave_plan
 from harness_runtime.wave_plan import TaskNode, plan_waves
+from harness_runtime.wave_execution import validate_execution_summary
 
 from change_docs import parse_involved_files
 
@@ -43,34 +45,127 @@ def change_dir(change_id: str) -> Path:
     return project_root() / ".cairness" / "changes" / change_id
 
 
-def parse_tasks(tasks_path: Path) -> list[TaskNode]:
-    """解析 tasks.md:每个 #### Task N 段取 depends_on/parallel_safe/涉及文件。"""
-    content = tasks_path.read_text(encoding="utf-8")
+def _frontmatter(content: str) -> dict:
+    if not content.startswith("---\n"):
+        return {}
+    end = content.find("\n---", 4)
+    if end == -1:
+        return {}
+    try:
+        loaded = require_yaml().safe_load(content[4:end])
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _task_sections(content: str) -> dict[str, str]:
+    sections: dict[str, str] = {}
+    matches = list(re.finditer(r"^#### Task (\d+):\s*(.*?)$", content, re.MULTILINE))
+    for index, match in enumerate(matches):
+        task_id = f"T{match.group(1)}"
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(content)
+        sections[task_id] = content[match.end():end]
+    return sections
+
+
+def _parse_graph_tasks(graph: object, sections: dict[str, str]) -> tuple[list[TaskNode], list[dict]]:
+    issues: list[dict] = []
+    if not isinstance(graph, dict) or graph.get("version") != 1:
+        return [], [{"code": "E_WAVE006", "reason": "task_graph.version must be 1"}]
+    raw_tasks = graph.get("tasks")
+    if not isinstance(raw_tasks, list) or not raw_tasks:
+        return [], [{"code": "E_WAVE006", "reason": "task_graph.tasks must be a non-empty list"}]
+
     nodes: list[TaskNode] = []
-    for m in re.finditer(r"^#### Task (\d+):\s*(.*?)$", content, re.MULTILINE):
-        tid = f"T{m.group(1)}"
-        start = m.end()
-        nxt = content.find("\n#### Task ", start)
-        section = content[start:nxt] if nxt != -1 else content[start:]
-        depends_on = _parse_depends_on(section)
-        parallel_safe = _parse_parallel_safe(section)
-        files = _parse_section_files(section)
-        nodes.append(TaskNode(id=tid, depends_on=depends_on, files=files, parallel_safe=parallel_safe))
+    seen: set[str] = set()
+    for raw in raw_tasks:
+        if not isinstance(raw, dict):
+            issues.append({"code": "E_WAVE006", "reason": "each task_graph task must be an object"})
+            continue
+        task_id = raw.get("id")
+        if not isinstance(task_id, str) or not re.fullmatch(r"T\d+", task_id):
+            issues.append({"code": "E_WAVE006", "reason": f"invalid task id: {task_id!r}"})
+            continue
+        if task_id in seen:
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "duplicate task id"})
+            continue
+        seen.add(task_id)
+        depends_on = raw.get("depends_on")
+        files = raw.get("files")
+        parallel_safe = raw.get("parallel_safe")
+        if not isinstance(depends_on, list) or any(not isinstance(item, str) for item in depends_on):
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "depends_on must be a list of task ids"})
+            continue
+        if not isinstance(parallel_safe, bool):
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "parallel_safe must be boolean"})
+            continue
+        if not isinstance(files, list) or any(not isinstance(item, str) or not item.strip() for item in files):
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "files must be a list of paths"})
+            continue
+        section = sections.get(task_id)
+        if section is None:
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "task_graph task has no matching Markdown heading"})
+            continue
+        body_files = _parse_section_files(section)
+        if set(files) != body_files:
+            issues.append({
+                "code": "E_WAVE006",
+                "tasks": [task_id],
+                "reason": f"task_graph files do not match Markdown declaration: graph={sorted(set(files))}, body={sorted(body_files)}",
+            })
+            continue
+        nodes.append(TaskNode(id=task_id, depends_on=list(depends_on), files=set(files), parallel_safe=parallel_safe))
+
+    missing = sorted(set(sections) - seen)
+    if missing:
+        issues.append({"code": "E_WAVE006", "tasks": missing, "reason": "Markdown task has no task_graph entry"})
+    return nodes, issues
+
+
+def parse_tasks_with_issues(tasks_path: Path) -> tuple[list[TaskNode], list[dict], str]:
+    """Parse the canonical task graph and reject ambiguous task declarations.
+
+    The frontmatter ``task_graph`` is authoritative. During migration, an
+    inline ``依赖 / Wave`` line is accepted only when every field is present
+    and machine-readable; prose or partial metadata becomes an error instead
+    of silently defaulting to parallel execution.
+    """
+    content = tasks_path.read_text(encoding="utf-8")
+    heading_ids = [f"T{value}" for value in re.findall(r"^#### Task (\d+):", content, re.MULTILINE)]
+    duplicate_headings = sorted(task_id for task_id in set(heading_ids) if heading_ids.count(task_id) > 1)
+    if duplicate_headings:
+        return [], [{"code": "E_WAVE006", "tasks": duplicate_headings, "reason": "duplicate Markdown task ids"}], "invalid"
+    sections = _task_sections(content)
+    graph = _frontmatter(content).get("task_graph")
+    if graph is not None:
+        nodes, issues = _parse_graph_tasks(graph, sections)
+        return nodes, issues, "frontmatter"
+
+    nodes: list[TaskNode] = []
+    issues: list[dict] = []
+    has_wave_metadata = any(
+        "依赖 / Wave" in section or "depends_on" in section or "parallel_safe" in section
+        for section in sections.values()
+    )
+    for task_id, section in sections.items():
+        depends_match = re.search(r"依赖\s*/\s*Wave[^\n]*depends_on\s*=\s*\[([^\]]*)\]", section)
+        safe_match = re.search(r"依赖\s*/\s*Wave[^\n]*parallel_safe\s*[:=]\s*(true|false)\b", section, re.IGNORECASE)
+        if has_wave_metadata and (depends_match is None or safe_match is None):
+            issues.append({"code": "E_WAVE006", "tasks": [task_id], "reason": "依赖 / Wave must declare machine-readable depends_on and parallel_safe"})
+            continue
+        depends_on = [item.strip() for item in depends_match.group(1).split(",") if item.strip()] if depends_match else []
+        parallel_safe = safe_match.group(1).lower() == "true" if safe_match else True
+        nodes.append(TaskNode(id=task_id, depends_on=depends_on, files=_parse_section_files(section), parallel_safe=parallel_safe))
+    mode = "legacy" if not has_wave_metadata else "inline"
+    if mode == "legacy" and nodes:
+        issues.append({"code": "E_WAVE006", "reason": "tasks.md has no machine-readable task_graph or inline Wave metadata"})
+    return nodes, issues, mode
+
+
+def parse_tasks(tasks_path: Path) -> list[TaskNode]:
+    """Compatibility wrapper for callers that only inspect parsed nodes."""
+    nodes, _issues, _mode = parse_tasks_with_issues(tasks_path)
     return nodes
-
-
-def _parse_depends_on(section: str) -> list[str]:
-    m = re.search(r"依赖\s*/\s*Wave[^\n]*depends_on=\[([^\]]*)\]", section)
-    if not m:
-        return []
-    return [t.strip() for t in m.group(1).split(",") if t.strip()]
-
-
-def _parse_parallel_safe(section: str) -> bool:
-    m = re.search(r"依赖\s*/\s*Wave[^\n]*parallel_safe:\s*(true|false)", section)
-    if not m:
-        return True
-    return m.group(1) == "true"
 
 
 def _parse_section_files(section: str) -> set[str]:
@@ -82,8 +177,23 @@ def generate(change_id: str, max_parallel: int) -> dict:
     tasks_path = change_dir(change_id) / "tasks.md"
     if not tasks_path.exists():
         return {"valid": False, "waves": [], "issues": [{"code": E_WAVE003, "reason": "tasks.md not found"}]}
-    tasks = parse_tasks(tasks_path)
+    tasks, metadata_issues, metadata_mode = parse_tasks_with_issues(tasks_path)
+    hard_issues = [issue for issue in metadata_issues if str(issue.get("code", "")).startswith("E_")]
+    if hard_issues:
+        return {
+            "valid": False,
+            "waves": [],
+            "issues": hard_issues,
+            "metadata_mode": metadata_mode,
+            "change_id": change_id,
+            "generator": "cc-wave-plan",
+            "source": str(tasks_path),
+        }
     plan = plan_waves(tasks, max_parallel)
+    warnings = [issue for issue in metadata_issues if str(issue.get("code", "")).startswith("W_")]
+    if warnings:
+        plan["warnings"] = warnings
+    plan["metadata_mode"] = metadata_mode
     plan["change_id"] = change_id
     plan["generator"] = "cc-wave-plan"
     plan["source"] = str(tasks_path)
@@ -100,6 +210,17 @@ def write_plan_json(change_id: str, plan: dict) -> Path:
 def check_consistency(change_id: str, max_parallel: int) -> list[Issue]:
     """E_WAVE003:已存 wave-plan.json 与当前声明派生是否一致。"""
     plan = generate(change_id, max_parallel)
+    plan_issues = [
+        Issue(
+            code=str(item.get("code", E_WAVE003)),
+            path=str(plan.get("source", change_dir(change_id) / "tasks.md")),
+            message=str(item.get("reason", item)),
+        )
+        for item in plan.get("issues", [])
+        if isinstance(item, dict)
+    ]
+    if not plan.get("valid"):
+        return plan_issues or [Issue(E_WAVE003, str(change_dir(change_id) / "tasks.md"), "wave plan is invalid")]
     existing = change_dir(change_id) / "wave-plan.json"
     if not existing.exists():
         return []
@@ -114,11 +235,14 @@ def record_execution_summary(project_root: Path, summary: object, *, status: str
     """Persist sanitized actual wave execution summaries supplied by an executor."""
     items = summary if isinstance(summary, list) else [summary]
     recorded = 0
-    for item in items:
+    invalid: list[str] = []
+    for index, item in enumerate(items):
         if not isinstance(item, dict):
+            invalid.append(f"item {index}: execution summary must be an object")
             continue
-        required = ("wave_id", "started_at", "ended_at")
-        if not all(isinstance(item.get(field), str) and item.get(field) for field in required):
+        errors = validate_execution_summary(item)
+        if errors:
+            invalid.append(f"item {index}: {'; '.join(errors)}")
             continue
         record_wave_execution(
             project_root,
@@ -131,8 +255,12 @@ def record_execution_summary(project_root: Path, summary: object, *, status: str
             ended_at=item["ended_at"],
             wait_ms=int(item.get("wait_ms", 0)),
             task_wait_ms=int(item.get("task_wait_ms", 0)),
+            cleanup_status=str(item.get("cleanup_status")) if item.get("cleanup_status") is not None else None,
+            task_statuses=item.get("task_statuses") if isinstance(item.get("task_statuses"), dict) else None,
         )
         recorded += 1
+    if invalid:
+        raise ValueError("invalid execution summary: " + " | ".join(invalid))
     return recorded
 
 
@@ -187,7 +315,10 @@ def main(argv: list[str]) -> int:
         plan = generate(args.change, args.max_parallel)
         waves = plan.get("waves", []) if isinstance(plan, dict) else []
         if execution_summary is not None:
-            record_execution_summary(context.project_root, execution_summary, status="passed" if plan.get("valid") else "failed")
+            try:
+                record_execution_summary(context.project_root, execution_summary, status="passed" if plan.get("valid") else "failed")
+            except ValueError as exc:
+                parser.error(str(exc))
         record_wave_plan(
             context.project_root,
             status="passed" if plan.get("valid") else "failed",

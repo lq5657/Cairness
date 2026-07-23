@@ -129,7 +129,7 @@ def test_verify_aggregates_wave_plan_stale_issue():
     try:
         # tasks.md declaring one task writing a.go
         (change_dir / "tasks.md").write_text(
-            "#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8"
+            "#### Task 1: A\n* **依赖 / Wave**: depends_on=[], parallel_safe=true\n* **涉及文件**: a.go\n", encoding="utf-8"
         )
         # generate a fresh plan, then mutate tasks.md so the plan goes stale
         from importlib.machinery import SourceFileLoader
@@ -139,7 +139,7 @@ def test_verify_aggregates_wave_plan_stale_issue():
         plan = cc_wave_plan.generate(change_id, 10)
         cc_wave_plan.write_plan_json(change_id, plan)
         (change_dir / "tasks.md").write_text(
-            "#### Task 1: A\n* **涉及文件**: b.go\n", encoding="utf-8"
+            "#### Task 1: A\n* **依赖 / Wave**: depends_on=[], parallel_safe=true\n* **涉及文件**: b.go\n", encoding="utf-8"
         )
 
         report = _verify_json(["--harness-only", "--check-wave-plan", "--change", change_id])

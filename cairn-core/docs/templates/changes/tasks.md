@@ -2,6 +2,14 @@
 change_id: kebab-case-id
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
+task_graph:
+  version: 1
+  tasks:
+    - id: T1
+      depends_on: []
+      parallel_safe: true
+      files:
+        - internal/service/user_service.go
 ---
 
 ### 任务拆分 — 需求名称
@@ -12,7 +20,7 @@ updated: YYYY-MM-DD
 **每个任务** = 可独立提交的原子变更（3-5 个文件）
 **每个任务必须精确到**：文件路径 + 函数签名
 **执行约束：**
-- 任一时刻只允许一个 task 处于 `in_progress`
+- 任一时刻只允许一个 Wave 处于 `in_progress`；同一 Wave 内写集合不重叠的 task 应并行执行
 - 只有通过验证 gate 的 task 才能标记为 `done`
 - 未完成的 task 必须显式标记为 `blocked` / `partial` / `aborted`，不能留空
 - `验证步骤` 是 `cc-apply` 判断 task 是否完成的直接依据
@@ -20,7 +28,7 @@ updated: YYYY-MM-DD
 - `验证步骤` 必须能回溯到 `spec.md` 中至少一条“需求-验证映射”编号
 - `测试要求` 必须说明本 task 负责将哪些映射项关闭为 `apply-covered`
 - 若存在 `cc-test` 后续工作，只能是更高等级或环境型补强，不能把当前 task 承接的最低验证留给 `cc-test`
-- 应显式说明 task 之间的依赖关系；若 change 中存在可并行部分，必须写明 `wave` / 顺序边界，避免执行时越级跳步
+- 依赖和并发属性必须写入 frontmatter `task_graph`；正文中的 Wave 只解释原因，不作为调度真相源
 
 若涉及数据库变更，建议拆分顺序：
 1. migration / schema 准备
@@ -98,7 +106,7 @@ Task 3 可与 Task 2 并行（写范围不重叠）
 * **验证步骤** : （明确命令、测试名、接口行为或日志证据，确保 task 完成后可立刻验证；必须与验收标准一一对应，并标注映射编号，如 `V1 / V2`）
 * **渐进可验证要求** : 本 task 完成后代码库必须处于可验证中间态；写明应通过的构建/测试/文档检查。若使用 stub，stub 必须能编译、返回明确错误，并标注后续实现 task。
 * **测试要求** : （如：先 Red 再 Green / 至少补 1 条回归用例 / 仅当映射等级允许时才可仅 build + 手工验证；若不做 TDD，需写退化原因，并说明哪些映射项在本 task 关闭为 `apply-covered`；更高等级补强若留给 `cc-test`，需明确不是当前最低验证）
-* **依赖 / Wave** : （如：`wave-1` / 依赖 `Task 1` / 可与 `Task 3` 并行；若无并发规划可写 `顺序执行`）
+* **依赖 / Wave** : 以 frontmatter `task_graph` 为准；说明依赖或可并行原因，不要在正文维护第二套调度数据
 * **回退方式** : （说明此 task 失败时如何安全撤回、停留或局部回滚）
 * **完成后状态** : `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
 * **Baseline / Delta（按需）** : `baseline/pre-apply.json -> baseline/post-task-<n>.json`；若 `cc-delta-check` 发现 `new-failure`，本 task 不得标记为 `done`

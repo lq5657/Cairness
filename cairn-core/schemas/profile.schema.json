@@ -84,6 +84,8 @@
       "properties": {
         "enabled": {"type": "boolean"},
         "max_parallel": {"type": "integer", "minimum": 1},
+        "join_timeout_ms": {"type": "integer", "minimum": 1},
+        "cleanup_timeout_ms": {"type": "integer", "minimum": 1},
         "double_confirmation": {"type": "boolean"}
       }
     },

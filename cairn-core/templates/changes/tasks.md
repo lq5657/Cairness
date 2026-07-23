@@ -2,6 +2,14 @@
 change_id: kebab-case-id
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
+task_graph:
+  version: 1
+  tasks:
+    - id: T1
+      depends_on: []
+      parallel_safe: true
+      files:
+        - path/to/file
 ---
 
 ### 任务拆分 — 需求名称
@@ -37,13 +45,14 @@ updated: YYYY-MM-DD
 * **目标**:
 * **不包含范围**:
 * **涉及文件**:
+  - `path/to/file`
 * **上下游 Context**:
 * **关键签名**:
 * **验收标准**:
 * **验证步骤**:
 * **渐进可验证要求**:
 * **测试要求**:
-* **依赖 / Wave**:
+* **依赖 / Wave**: 以 frontmatter `task_graph` 为准；正文仅解释依赖和并行原因
 * **回退方式**:
 * **完成后状态**: `todo` / `in_progress` / `blocked` / `partial` / `aborted` / `done`
 * **Baseline / Delta**:

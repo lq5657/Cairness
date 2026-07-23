@@ -64,6 +64,18 @@ def test_parallel_safe_false_solo_wave():
     assert all(w["parallelism"] == 1 for w in plan["waves"])
 
 
+def test_serial_tasks_may_share_a_file_without_same_wave_conflict():
+    tasks = [
+        _node("T1", files=["shared.go"], parallel_safe=False),
+        _node("T2", files=["shared.go"], parallel_safe=False),
+    ]
+
+    plan = plan_waves(tasks, max_parallel=10)
+
+    assert plan["valid"] is True
+    assert [wave["tasks"] for wave in plan["waves"]] == [["T1"], ["T2"]]
+
+
 def test_max_parallel_one_serializes():
     """max_parallel=1(minimal 退化):每波 1 task,按 T1<T2 顺序。"""
     tasks = [_node("T1"), _node("T2"), _node("T3")]

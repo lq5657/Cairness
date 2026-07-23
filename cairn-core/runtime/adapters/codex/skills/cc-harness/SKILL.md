@@ -70,6 +70,23 @@ the structured result as `--result-status passed|blocked|partial`. A passed
 result uses the manifest's `state.change_to`; blocked or partial results use
 `--to unchanged` so the event is measurable without advancing lifecycle state.
 
+## Wave execution
+
+For `cc-apply`, treat `tasks.md` frontmatter `task_graph` as the scheduling
+truth source and run `.codex/scripts/cc-wave-plan --check --change <change-id>`
+before dispatch. Within one Wave, dispatch all dependency-ready tasks marked
+`parallel_safe: true` concurrently when their verified write sets are
+disjoint. Submit every worker before waiting for results; do not serialize
+these tasks merely because they belong to one change. Keep `parallel_safe:
+false` tasks and tasks from different Waves serial.
+
+Create an expected-task ledger before dispatch and join every worker to one of
+`completed`, `failed`, `timed_out`, or `cancelled`. Record timeout/cancellation
+cleanup and refuse to advance the next Wave while any worker remains active or
+unaccounted for. After join, report `planned_parallelism`, measured
+`actual_parallelism`, `task_statuses`, and `cleanup_status` through
+`.codex/scripts/cc-wave-plan --execution-summary '<json>'`.
+
 ## Loop lifecycle continuation
 
 When the effective profile is `loop` and `.cairness/loop-config.yaml` exists,

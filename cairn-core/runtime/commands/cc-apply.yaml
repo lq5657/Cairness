@@ -84,6 +84,7 @@ preconditions:
   - save_pre_apply_baseline_before_first_code_edit
   - wave_plan_generated_and_valid_or_resolution_presented
   - only_one_wave_may_be_in_progress
+  - task_graph_is_machine_readable_and_matches_markdown_tasks
   - run_deterministic_topic_rule_detection
   - run_cc_deps_check_before_first_task
 
@@ -215,6 +216,8 @@ red_flags:
   - wave_contains_tasks_with_overlapping_write_sets
   - blocked_task_in_wave_committed_anyway
   - wave_plan_not_disjoint_verified
+  - wave_has_unjoined_or_orphan_subagents
+  - actual_parallelism_not_recorded
 
 steps:
   - run_branch_check_before_first_write
@@ -224,7 +227,12 @@ steps:
   - generate_wave_plan_via_cc_wave_plan
   - present_wave_confirmation_gate_and_wait
   - capture_pre_wave_baseline
+  - initialize_expected_wave_task_ledger
   - dispatch_wave_task_workers_in_parallel
+  - join_all_expected_wave_task_workers
+  - cleanup_timed_out_cancelled_or_orphan_workers
+  - verify_all_wave_tasks_are_terminal
+  - record_planned_and_actual_wave_parallelism
   - merge_subagent_results
   - run_per_task_validation_and_delta
   - commit_passing_tasks_one_task_one_commit
@@ -278,3 +286,6 @@ stop_conditions:
   - wave_plan_invalid_or_cycles_or_overlapping_writes
   - wave_confirmation_not_granted
   - unresolved_blocked_tasks_blocking_next_wave
+  - task_graph_missing_ambiguous_or_body_mismatch
+  - wave_join_incomplete
+  - wave_cleanup_failed

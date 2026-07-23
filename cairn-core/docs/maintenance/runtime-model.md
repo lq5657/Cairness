@@ -322,8 +322,10 @@ Loop session 另外在 `.cairness/loop-audit/phases/` 记录 phase
 按 `environment/policy_block/test_failure/transient/unknown` 归类。cohort 指标按
 phase、verification mode、execution mode、cache hit/miss、framework version、
 change size/type 分组计算 p50/p95；benchmark 在样本携带 cohort 时拒绝跨 cohort
-比较。wave plan 仍表示计划并行度，实际执行器可通过 `cc-wave-plan
---execution-summary` 写入每个 wave 的开始/结束时间、实际并发数和等待时间。
+比较。wave plan 仍表示计划并行度；实际执行器必须先完成 expected-task
+ledger 的 join/cleanup，再通过 `cc-wave-plan --execution-summary` 写入每个
+wave 的开始/结束时间、计划/实际并发数、等待时间、每个 task 的终态和 cleanup
+结果。缺少完整 join/cleanup 证据的摘要会被拒绝。
 
 ## 下一步
 

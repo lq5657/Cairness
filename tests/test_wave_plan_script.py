@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "cairn-core" / "scripts"
+INLINE_WAVE = "* **依赖 / Wave**: depends_on=[], parallel_safe=true\n"
 
 
 @pytest.fixture
@@ -17,7 +18,7 @@ def test_generate_wave_plan(tmp_path, monkeypatch, cc_wave_plan):
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
     (change_dir / "tasks.md").write_text(
-        "#### Task 1: A\n* **涉及文件**: a.go\n\n#### Task 2: B\n* **涉及文件**: b.go\n",
+        f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n\n#### Task 2: B\n{INLINE_WAVE}* **涉及文件**: b.go\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
@@ -83,13 +84,13 @@ def test_check_consistency_stale(tmp_path, monkeypatch, cc_wave_plan):
     """声明改后 wave-plan.json 过期 → E_WAVE003。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n", encoding="utf-8")
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
 
     plan = cc_wave_plan.generate("chg-1", 10)
     cc_wave_plan.write_plan_json("chg-1", plan)
 
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: b.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: b.go\n", encoding="utf-8")
     issues = cc_wave_plan.check_consistency("chg-1", 10)
     assert len(issues) == 1
     assert issues[0].code == "E_WAVE003"
@@ -99,7 +100,7 @@ def test_check_consistency_fresh(tmp_path, monkeypatch, cc_wave_plan):
     """声明未改 → 一致。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n", encoding="utf-8")
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
 
     plan = cc_wave_plan.generate("chg-1", 10)
@@ -126,12 +127,12 @@ def test_check_cli_stale(tmp_path, monkeypatch, cc_wave_plan, capsys):
     """--check 子命令端到端:声明改后 → 退出码 1 + stdout 含 E_WAVE003。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n", encoding="utf-8")
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
 
     plan = cc_wave_plan.generate("chg-1", 10)
     cc_wave_plan.write_plan_json("chg-1", plan)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: b.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: b.go\n", encoding="utf-8")
 
     rc = cc_wave_plan.main(["--check", "--change", "chg-1"])
     assert rc == 1
@@ -143,7 +144,7 @@ def test_check_cli_consistent(tmp_path, monkeypatch, cc_wave_plan, capsys):
     """--check 子命令端到端:声明未改 → 退出码 0 + stdout "wave-plan consistent"。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n", encoding="utf-8")
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
 
     plan = cc_wave_plan.generate("chg-1", 10)
@@ -159,10 +160,131 @@ def test_check_cli_no_existing_plan(tmp_path, monkeypatch, cc_wave_plan, capsys)
     """--check 子命令端到端:无已存 wave-plan.json → 退出码 0 (check_consistency 早退 [])。"""
     change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
     change_dir.mkdir(parents=True)
-    (change_dir / "tasks.md").write_text("#### Task 1: A\n* **涉及文件**: a.go\n", encoding="utf-8")
+    (change_dir / "tasks.md").write_text(f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n", encoding="utf-8")
     monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
 
     rc = cc_wave_plan.main(["--check", "--change", "chg-1"])
     assert rc == 0
     out = capsys.readouterr().out
     assert "wave-plan consistent" in out
+
+
+def _canonical_tasks(*, graph_files="a.go", body_files="a.go", parallel_safe="true") -> str:
+    return f"""---
+change_id: chg-1
+task_graph:
+  version: 1
+  tasks:
+    - id: T1
+      depends_on: []
+      parallel_safe: {parallel_safe}
+      files: [{graph_files}]
+---
+
+#### Task 1: A
+* **涉及文件**: `{body_files}`
+* **依赖 / Wave**: 以 task_graph 为准
+"""
+
+
+def test_frontmatter_task_graph_is_authoritative(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(_canonical_tasks(), encoding="utf-8")
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is True
+    assert plan["metadata_mode"] == "frontmatter"
+    assert plan["waves"][0]["tasks"] == ["T1"]
+
+
+def test_frontmatter_and_markdown_file_mismatch_fails_closed(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        _canonical_tasks(graph_files="a.go", body_files="b.go"), encoding="utf-8"
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is False
+    assert plan["issues"][0]["code"] == "E_WAVE006"
+    assert "do not match" in plan["issues"][0]["reason"]
+
+
+def test_ambiguous_inline_wave_metadata_fails_closed(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        "#### Task 1: A\n* **涉及文件**: a.go\n* **依赖 / Wave**: Wave 1, 串行\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is False
+    assert plan["issues"][0]["code"] == "E_WAVE006"
+
+
+def test_missing_machine_wave_metadata_fails_closed(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        "#### Task 1: A\n* **涉及文件**: a.go\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is False
+    assert plan["issues"][0]["code"] == "E_WAVE006"
+
+
+def test_duplicate_markdown_task_ids_fail_closed(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        f"#### Task 1: A\n{INLINE_WAVE}* **涉及文件**: a.go\n\n"
+        f"#### Task 1: Duplicate\n{INLINE_WAVE}* **涉及文件**: b.go\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is False
+    assert "duplicate Markdown" in plan["issues"][0]["reason"]
+
+
+def test_inline_equals_parallel_safe_false_is_serial(tmp_path, monkeypatch, cc_wave_plan):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        "#### Task 1: A\n* **涉及文件**: a.go\n* **依赖 / Wave**: depends_on=[], parallel_safe=false\n\n"
+        "#### Task 2: B\n* **涉及文件**: b.go\n* **依赖 / Wave**: depends_on=[], parallel_safe=true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    plan = cc_wave_plan.generate("chg-1", 10)
+
+    assert plan["valid"] is True
+    assert [wave["parallelism"] for wave in plan["waves"]] == [1, 1]
+
+
+def test_check_cli_rejects_invalid_plan_without_existing_json(tmp_path, monkeypatch, cc_wave_plan, capsys):
+    change_dir = tmp_path / ".cairness" / "changes" / "chg-1"
+    change_dir.mkdir(parents=True)
+    (change_dir / "tasks.md").write_text(
+        "#### Task 1: A\n* **涉及文件**: a.go\n* **依赖 / Wave**: Wave 1, 串行\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cc_wave_plan, "project_root", lambda: tmp_path)
+
+    assert cc_wave_plan.main(["--check", "--change", "chg-1"]) == 1
+    assert "E_WAVE006" in capsys.readouterr().out

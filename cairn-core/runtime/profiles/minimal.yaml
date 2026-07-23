@@ -37,3 +37,5 @@ interaction:
 wave_execution:
   enabled: false
   max_parallel: 1
+  join_timeout_ms: 1800000
+  cleanup_timeout_ms: 30000

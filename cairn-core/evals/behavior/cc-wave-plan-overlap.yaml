@@ -13,6 +13,20 @@ command:
     trap 'rm -rf "$CHANGE_DIR" || true' EXIT
     mkdir -p "$CHANGE_DIR"
     cat > "$CHANGE_DIR/tasks.md" <<'TASKS'
+    ---
+    change_id: chg-overlap
+    task_graph:
+      version: 1
+      tasks:
+        - id: T1
+          depends_on: []
+          parallel_safe: true
+          files: [a.go]
+        - id: T2
+          depends_on: []
+          parallel_safe: true
+          files: [a.go]
+    ---
     #### Task 1: A
     * **涉及文件**: a.go
     #### Task 2: B

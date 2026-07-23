@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 
@@ -15,13 +16,31 @@ class TaskNode:
     parallel_safe: bool = True
 
 
+def _task_ids(tasks: list[TaskNode]) -> list[str]:
+    return [task.id for task in tasks]
+
+
 def plan_waves(tasks: list[TaskNode], max_parallel: int) -> dict:
     """分层 Kahn 派生 wave 编排。
 
     max_parallel: 每波 task 数上限(minimal=1,standard/strict=波内并行度)。
     返回 {valid, waves:[{wave,tasks,write_sets,parallelism,rationale}], issues:[{code,...}]}。
     """
+    if max_parallel < 1:
+        return {
+            "valid": False,
+            "waves": [],
+            "issues": [{"code": "E_WAVE007", "reason": "max_parallel must be >= 1"}],
+        }
+
     by_id = {t.id: t for t in tasks}
+    duplicate_ids = sorted(task_id for task_id, count in Counter(_task_ids(tasks)).items() if count > 1)
+    if duplicate_ids:
+        return {
+            "valid": False,
+            "waves": [],
+            "issues": [{"code": "E_WAVE006", "tasks": duplicate_ids, "reason": "duplicate task ids"}],
+        }
 
     cycle = _detect_cycle(tasks, by_id)
     if cycle:
@@ -114,8 +133,14 @@ def _detect_layer_overlap(layers, by_id) -> dict | None:
     for layer in layers:
         seen: dict[str, str] = {}
         for tid in layer:
+            # parallel_safe=false tasks are deliberately isolated into their
+            # own Waves, so overlapping writes there are an ordering concern,
+            # not a same-Wave conflict. Only candidate parallel tasks need the
+            # disjoint-write gate.
+            if not by_id[tid].parallel_safe:
+                continue
             for f in by_id[tid].files:
-                if f in seen:
+                if f in seen and by_id[seen[f]].parallel_safe:
                     return {
                         "code": "E_WAVE002",
                         "tasks": [seen[f], tid],

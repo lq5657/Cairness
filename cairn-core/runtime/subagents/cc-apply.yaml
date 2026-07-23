@@ -68,6 +68,10 @@ agents:
         allow_freeform: false
 merge_requirements:
   - main_flow_keeps_one_wave_in_progress
+  - main_flow_creates_expected_task_ledger_before_dispatch
   - main_flow_records_baseline_delta_and_task_evidence
   - subagents_may_parallelize_only_disjoint_tasks_within_one_wave
   - wave_write_sets_must_be_disjoint_verified_by_cc_wave_plan
+  - all_expected_subagents_must_reach_terminal_state_before_wave_close
+  - timed_out_or_cancelled_subagents_require_recorded_cleanup
+  - main_flow_records_planned_and_actual_parallelism

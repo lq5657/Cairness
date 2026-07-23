@@ -491,6 +491,8 @@ def record_wave_execution(
     ended_at: str,
     wait_ms: int = 0,
     task_wait_ms: int = 0,
+    cleanup_status: str | None = None,
+    task_statuses: Mapping[str, str] | None = None,
     occurred_at: datetime | None = None,
 ) -> bool:
     """Record actual wave execution, separate from the derived wave plan."""
@@ -515,6 +517,13 @@ def record_wave_execution(
         },
         "timing": {"elapsed_ms": elapsed_ms, "wait_ms": max(0, int(wait_ms))},
     }
+    if cleanup_status is not None:
+        event["wave"]["cleanup_status"] = str(cleanup_status)
+    if task_statuses is not None:
+        event["wave"]["task_statuses"] = {
+            str(task_id): str(task_status)
+            for task_id, task_status in task_statuses.items()
+        }
     return _append_runtime_event(project_root, event)
 
 
@@ -1104,6 +1113,8 @@ def wave_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
     actual: list[float] = []
     elapsed: list[float] = []
     waits: list[float] = []
+    joined_waves = 0
+    cleanup_failures = 0
     for item in runs:
         wave = item["wave"]
         for source, target in (("planned_parallelism", planned), ("actual_parallelism", actual), ("wait_ms", waits)):
@@ -1115,6 +1126,15 @@ def wave_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
         value = _optional_non_negative_number(value)
         if value is not None:
             elapsed.append(float(value))
+        task_statuses = wave.get("task_statuses")
+        if isinstance(task_statuses, Mapping) and task_statuses and all(
+            str(status) in {"completed", "failed", "timed_out", "cancelled"}
+            for status in task_statuses.values()
+        ):
+            joined_waves += 1
+        cleanup_status = str(wave.get("cleanup_status", ""))
+        if cleanup_status.startswith("failed") or cleanup_status == "required":
+            cleanup_failures += 1
 
     def summary(values: list[float]) -> dict[str, Any]:
         if not values:
@@ -1131,6 +1151,9 @@ def wave_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
         "elapsed_ms": summary(elapsed),
         "wait_ms": summary(waits),
         "parallel_speedup_observations": sum(1 for plan, observed in zip(planned, actual) if plan > 1 and observed > 1),
+        "joined_waves": joined_waves,
+        "join_coverage_rate": round(joined_waves / len(runs), 4) if runs else None,
+        "cleanup_failures": cleanup_failures,
     }
 
 
