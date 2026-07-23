@@ -304,10 +304,17 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 阶段事件的 `timing` 分层记录 `elapsed_ms`、`active_ms`、`tool_ms`、
 `verification_ms`、`wait_ms` 和 `blocked_ms`；缺失层级保持缺失，不以 0 代替。
-宿主适配器若能提供用量，应在 `usage` 中写入 input/output/cache/reasoning/total
-tokens 以及 `source`、`coverage`；宿主无法提供时省略字段，不额外发起模型调用，
-也不把字节数估算成 token。Context Pack 的字节量使用 `source_bytes`/
+宿主适配器若能提供用量，应通过 `CC_ADAPTER_USAGE_JSON` 或 `cc-verify --usage`
+传入宿主响应；运行时会归一化 Codex/Claude 常见 input/output/cache/reasoning/total
+tokens 字段并写入 `source`、`coverage`。宿主无法提供时记录
+`coverage=unavailable`，不额外发起模型调用，也不把字节数估算成 token。
+Context Pack 的字节量使用 `source_bytes`/
 `output_bytes` 单独统计。
+
+`cc-verify` 默认生成 `logical_run_id`、`attempt=1`、`run_kind=primary`、
+`terminal=true`、`phase=test` 和 `activity=verify`。Loop、重试器或宿主可通过
+`CC_LOGICAL_RUN_ID`、`CC_RUN_ATTEMPT`、`CC_RUN_KIND`、`CC_RUN_TERMINAL`、
+`CC_RUN_PHASE`、`CC_RUN_ACTIVITY` 传播并覆盖同一 logical run 的上下文。
 
 Loop session 另外在 `.cairness/loop-audit/phases/` 记录 phase
 `started/paused/resumed/ended` 边界，并在结束时自动生成 `phase_run`；旧的

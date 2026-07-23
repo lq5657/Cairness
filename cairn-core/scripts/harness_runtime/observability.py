@@ -97,6 +97,73 @@ def _sanitize_usage(value: Any) -> dict[str, int | float | str]:
     return usage
 
 
+def normalize_adapter_usage(
+    value: Any,
+    *,
+    source: str,
+) -> dict[str, int | float | str]:
+    """Normalize common Codex/Claude usage payloads into the v2 contract."""
+
+    payload = value
+    if isinstance(payload, Mapping):
+        for key in ("usage", "token_usage"):
+            nested = payload.get(key)
+            if isinstance(nested, Mapping):
+                payload = nested
+                break
+        else:
+            for key in ("response", "result"):
+                nested = payload.get(key)
+                if isinstance(nested, Mapping):
+                    usage = nested.get("usage")
+                    if isinstance(usage, Mapping):
+                        payload = usage
+                        break
+
+    normalized: dict[str, Any] = {}
+    if isinstance(payload, Mapping):
+        aliases = {
+            "input_tokens": ("input_tokens", "prompt_tokens"),
+            "output_tokens": ("output_tokens", "completion_tokens"),
+            "cached_input_tokens": (
+                "cached_input_tokens",
+                "cache_read_input_tokens",
+                "cache_read_tokens",
+            ),
+            "cache_write_tokens": (
+                "cache_write_tokens",
+                "cache_creation_input_tokens",
+            ),
+            "reasoning_tokens": ("reasoning_tokens",),
+            "total_tokens": ("total_tokens",),
+        }
+        for target, candidates in aliases.items():
+            for candidate in candidates:
+                if candidate in payload:
+                    normalized[target] = payload[candidate]
+                    break
+
+        input_details = payload.get("input_tokens_details")
+        if isinstance(input_details, Mapping) and "cached_input_tokens" not in normalized:
+            normalized["cached_input_tokens"] = input_details.get("cached_tokens")
+        output_details = payload.get("output_tokens_details")
+        if isinstance(output_details, Mapping) and "reasoning_tokens" not in normalized:
+            normalized["reasoning_tokens"] = output_details.get("reasoning_tokens")
+
+    clean = _sanitize_usage(normalized)
+    if "total_tokens" not in clean:
+        input_tokens = clean.get("input_tokens")
+        output_tokens = clean.get("output_tokens")
+        if isinstance(input_tokens, (int, float)) and isinstance(output_tokens, (int, float)):
+            clean["total_tokens"] = input_tokens + output_tokens
+    clean["source"] = source
+    clean["coverage"] = "complete" if {
+        "input_tokens",
+        "output_tokens",
+    } <= clean.keys() else "partial" if any(field in clean for field in USAGE_FIELDS) else "unavailable"
+    return clean
+
+
 def _sanitize_cohort(value: Any) -> dict[str, str]:
     if not isinstance(value, Mapping):
         return {}
@@ -809,6 +876,28 @@ def verification_metrics(
     if extended:
         result["execution_mode_source_counts"] = dict(sorted(execution_mode_source_counts.items()))
         result["cache"] = cache
+        usage_coverage_counts: Counter[str] = Counter()
+        usage_source_counts: Counter[str] = Counter()
+        usage_samples = 0
+        for item in runs:
+            usage = item.get("usage")
+            if not isinstance(usage, Mapping):
+                usage_coverage_counts["unavailable"] += 1
+                continue
+            coverage = usage.get("coverage")
+            coverage_label = coverage if isinstance(coverage, str) and coverage else "unknown"
+            usage_coverage_counts[coverage_label] += 1
+            source = usage.get("source")
+            if isinstance(source, str) and source:
+                usage_source_counts[source] += 1
+            if any(_optional_non_negative_number(usage.get(field)) is not None for field in USAGE_FIELDS):
+                usage_samples += 1
+        result["usage_coverage"] = {
+            "token_samples": usage_samples,
+            "token_coverage_rate": round(usage_samples / len(runs), 4) if runs else None,
+            "coverage_counts": dict(sorted(usage_coverage_counts.items())),
+            "source_counts": dict(sorted(usage_source_counts.items())),
+        }
         failure_class_counts = Counter(
             item.get("failure_class")
             if isinstance(item.get("failure_class"), str) and item.get("failure_class")

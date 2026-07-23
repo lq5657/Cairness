@@ -156,6 +156,10 @@ def _record_phase_end(context: HarnessContext, state: dict[str, Any], *, status:
             attempt=len(state.get("steps", [])) + 1,
             terminal=True,
             activity="execute",
+            cohort={
+                "phase": str(state.get("phase", "apply")),
+                "adapter": context.adapter.name,
+            },
         )
     except Exception:
         pass

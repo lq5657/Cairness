@@ -12,6 +12,8 @@ import math
 from statistics import median
 from typing import Any
 
+from harness_runtime.observability import _is_quality_terminal
+
 
 DEFAULT_THRESHOLDS: dict[str, float] = {
     "input_tokens_reduction_pct": 20.0,
@@ -37,7 +39,7 @@ REQUIRED_QUALITY_METRICS = (
     "critical_escapes",
     "deterministic_failures",
 )
-COHORT_FIELDS = ("phase", "mode", "execution_mode", "cache_state", "framework_version", "change_size", "change_type")
+COHORT_FIELDS = ("phase", "mode", "execution_mode", "cache_state", "framework_version", "change_size", "change_type", "adapter")
 
 
 class BenchmarkError(ValueError):
@@ -63,6 +65,10 @@ def collect_runtime_events(
         event for event in events
         if event.get("event_type") in {"execution_run", "verification_run"}
         and (command is None or event.get("command") == command)
+        and (
+            event.get("event_type") != "verification_run"
+            or _is_quality_terminal(event)
+        )
     ]
     samples: list[dict[str, Any]] = []
     for index, event in enumerate(selected, start=1):
@@ -81,6 +87,20 @@ def collect_runtime_events(
         quality = event.get("quality")
         if isinstance(quality, Mapping):
             sample["quality"] = dict(quality)
+        raw_cohort = event.get("cohort")
+        cohort = {
+            field: value
+            for field in COHORT_FIELDS
+            if isinstance(raw_cohort, Mapping)
+            and isinstance(value := raw_cohort.get(field), str)
+            and value
+        }
+        for field in ("phase", "mode", "adapter"):
+            value = event.get(field)
+            if field not in cohort and isinstance(value, str) and value:
+                cohort[field] = value
+        if cohort:
+            sample["cohort"] = cohort
         samples.append(sample)
     return {"suite": suite, "label": label, "samples": samples}
 

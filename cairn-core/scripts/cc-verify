@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from time import monotonic
@@ -16,7 +17,7 @@ from time import monotonic
 from harness_runtime import LanguageProfile, load_yaml_mapping, resolve_language_profile
 from harness_runtime.config import HarnessConfigError, load_harness_config
 from harness_runtime.context import HarnessContext, HarnessContextError, load_harness_context
-from harness_runtime.observability import record_verification_run
+from harness_runtime.observability import normalize_adapter_usage, record_verification_run
 from harness_runtime.execution_policy import ExecutionPolicyError, resolve_execution_policy
 from harness_runtime.verification_capabilities import (
     capability_display_name,
@@ -105,6 +106,72 @@ def _change_cohort(project_root: Path, change_id: str | None) -> dict[str, str]:
     if change_type:
         cohort["change_type"] = change_type
     return cohort
+
+
+def _environment_choice(name: str, choices: tuple[str, ...]) -> str | None:
+    value = os.environ.get(name, "").strip()
+    return value if value in choices else None
+
+
+def _environment_attempt() -> int | None:
+    value = os.environ.get("CC_RUN_ATTEMPT", "").strip()
+    if not value:
+        return None
+    try:
+        attempt = int(value)
+    except ValueError:
+        return None
+    return attempt if attempt >= 1 else None
+
+
+def _environment_terminal() -> bool | None:
+    value = os.environ.get("CC_RUN_TERMINAL", "").strip().lower()
+    if value in {"1", "true", "yes"}:
+        return True
+    if value in {"0", "false", "no"}:
+        return False
+    return None
+
+
+def _adapter_usage_payload() -> object | None:
+    value = os.environ.get("CC_ADAPTER_USAGE_JSON", "").strip()
+    if not value:
+        return None
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return None
+
+
+def _apply_default_run_metadata(args: argparse.Namespace, report: dict[str, object]) -> None:
+    phase = args.phase or _environment_choice(
+        "CC_RUN_PHASE", ("propose", "apply", "review", "fix", "test", "archive")
+    ) or "test"
+    activity = args.activity or _environment_choice(
+        "CC_RUN_ACTIVITY", ("preflight", "execute", "verify", "transition", "wait")
+    ) or "verify"
+    attempt = args.attempt or _environment_attempt() or 1
+    run_kind = args.run_kind or _environment_choice(
+        "CC_RUN_KIND", ("primary", "retry", "shadow", "delta", "probe")
+    ) or ("retry" if attempt > 1 else "primary")
+    terminal = args.terminal
+    if terminal is None:
+        terminal = _environment_terminal()
+    if terminal is None:
+        terminal = activity != "preflight" and run_kind not in {"shadow", "probe"}
+    logical_run_id = (
+        args.logical_run_id
+        or os.environ.get("CC_LOGICAL_RUN_ID", "").strip()
+        or f"verify-{uuid.uuid4().hex}"
+    )
+    report.update({
+        "phase": phase,
+        "activity": activity,
+        "run_kind": run_kind,
+        "logical_run_id": logical_run_id,
+        "attempt": attempt,
+        "terminal": terminal,
+    })
 
 
 def command_text(command: list[str]) -> str:
@@ -528,12 +595,14 @@ def main(argv: list[str]) -> int:
         return 2
     started = monotonic()
     report = build_report(args, context)
-    for field in ("phase", "activity", "run_kind", "logical_run_id", "attempt", "terminal", "failure_class"):
-        value = getattr(args, field, None)
-        if value is not None:
-            report[field] = value
-    if usage is not None:
-        report["usage"] = usage
+    _apply_default_run_metadata(args, report)
+    if args.failure_class is not None:
+        report["failure_class"] = args.failure_class
+    usage_payload = usage if usage is not None else _adapter_usage_payload()
+    report["usage"] = normalize_adapter_usage(
+        usage_payload,
+        source=f"{context.adapter.name}_adapter",
+    )
     framework_version = args.framework_version
     if not framework_version:
         version_file = context.framework_root / "VERSION"
@@ -542,9 +611,20 @@ def main(argv: list[str]) -> int:
                 framework_version = version_file.read_text(encoding="utf-8").strip()
             except OSError:
                 framework_version = None
-    cohort: dict[str, str] = {"mode": str(report.get("mode", "unknown")), **_change_cohort(context.project_root, args.change)}
-    if args.execution_mode:
-        cohort["execution_mode"] = args.execution_mode
+    cohort: dict[str, str] = {
+        "phase": str(report["phase"]),
+        "mode": str(report.get("mode", "unknown")),
+        "adapter": context.adapter.name,
+        **_change_cohort(context.project_root, args.change),
+    }
+    resolved_execution_mode = args.execution_mode
+    selection = report.get("test_selection")
+    if not resolved_execution_mode and isinstance(selection, dict):
+        value = selection.get("execution_mode")
+        if isinstance(value, str) and value:
+            resolved_execution_mode = value
+    if resolved_execution_mode:
+        cohort["execution_mode"] = resolved_execution_mode
     if framework_version:
         cohort["framework_version"] = framework_version
     if args.change_size:

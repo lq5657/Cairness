@@ -22,6 +22,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from harness_runtime.observability import normalize_adapter_usage
+
 
 Executor = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -175,6 +177,7 @@ class HostOutput:
     hook_events: tuple[dict[str, str], ...]
     tool_names: tuple[str, ...]
     instability_reasons: tuple[str, ...]
+    usage: dict[str, int | float | str] | None = None
 
 
 @dataclass(frozen=True)
@@ -423,6 +426,21 @@ def parse_host_output(output: str) -> HostOutput:
     )
     tool_names = tuple(name for event in events for name in _tool_names(event))
     session_id = result_event.get("session_id")
+    usage_payload: Mapping[str, Any] | None = None
+    for event in reversed(events):
+        candidate = event.get("usage")
+        if isinstance(candidate, Mapping):
+            usage_payload = candidate
+            break
+        result = event.get("result")
+        if isinstance(result, Mapping) and isinstance(result.get("usage"), Mapping):
+            usage_payload = result
+            break
+    usage = (
+        normalize_adapter_usage(usage_payload, source="claude-code_adapter")
+        if usage_payload is not None
+        else None
+    )
     return HostOutput(
         status="unstable" if reasons else "passed",
         result=result_event.get("result"),
@@ -431,6 +449,7 @@ def parse_host_output(output: str) -> HostOutput:
         hook_events=hooks,
         tool_names=tool_names,
         instability_reasons=tuple(reasons),
+        usage=usage,
     )
 
 
@@ -659,6 +678,8 @@ class HostSmokeRunner:
             "tool_names": list(parsed.tool_names),
             "instability_reasons": list(parsed.instability_reasons),
         }
+        if parsed.usage is not None:
+            result["usage"] = parsed.usage
         if completed.returncode != 0:
             result["reason"] = "host_exit_nonzero"
             result["exit_code"] = completed.returncode

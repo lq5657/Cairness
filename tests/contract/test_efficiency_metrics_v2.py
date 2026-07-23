@@ -47,6 +47,111 @@ def test_benchmark_rejects_different_cohorts() -> None:
         compare(baseline, candidate)
 
 
+def test_benchmark_collection_filters_non_terminal_and_propagates_cohort() -> None:
+    from harness_runtime.benchmark import collect_runtime_events
+
+    events = [
+        {
+            "event_type": "verification_run",
+            "command": "cc-verify",
+            "duration_ms": 5,
+            "mode": "full",
+            "run_kind": "probe",
+            "terminal": False,
+            "cohort": {"phase": "test", "adapter": "codex"},
+        },
+        {
+            "event_type": "verification_run",
+            "command": "cc-verify",
+            "duration_ms": 20,
+            "mode": "changed-only",
+            "logical_run_id": "run-1",
+            "terminal": True,
+            "cohort": {
+                "phase": "test",
+                "mode": "changed-only",
+                "framework_version": "1.2.4",
+                "adapter": "codex",
+            },
+        },
+    ]
+
+    record = collect_runtime_events(events, suite="same", label="candidate")
+
+    assert record["samples"] == [{
+        "case_id": "event-0001",
+        "wall_time_ms": 20,
+        "full_verify_runs": 0,
+        "reused_verifications": 0,
+        "cohort": {
+            "phase": "test",
+            "mode": "changed-only",
+            "framework_version": "1.2.4",
+            "adapter": "codex",
+        },
+    }]
+
+
+def test_adapter_usage_normalizes_codex_and_claude_shapes() -> None:
+    from harness_runtime.observability import normalize_adapter_usage, verification_metrics
+
+    codex = normalize_adapter_usage(
+        {
+            "response": {
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 20,
+                    "input_tokens_details": {"cached_tokens": 40},
+                    "output_tokens_details": {"reasoning_tokens": 5},
+                }
+            }
+        },
+        source="codex_adapter",
+    )
+    claude = normalize_adapter_usage(
+        {
+            "usage": {
+                "input_tokens": 80,
+                "output_tokens": 10,
+                "cache_read_input_tokens": 30,
+                "cache_creation_input_tokens": 7,
+            }
+        },
+        source="claude-code_adapter",
+    )
+    unavailable = normalize_adapter_usage(None, source="codex_adapter")
+
+    assert codex == {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cached_input_tokens": 40,
+        "reasoning_tokens": 5,
+        "total_tokens": 120,
+        "source": "codex_adapter",
+        "coverage": "complete",
+    }
+    assert claude == {
+        "input_tokens": 80,
+        "output_tokens": 10,
+        "cached_input_tokens": 30,
+        "cache_write_tokens": 7,
+        "total_tokens": 90,
+        "source": "claude-code_adapter",
+        "coverage": "complete",
+    }
+    assert unavailable == {"source": "codex_adapter", "coverage": "unavailable"}
+    coverage = verification_metrics([
+        {"event_type": "verification_run", "status": "passed", "usage": codex},
+        {"event_type": "verification_run", "status": "passed", "usage": unavailable},
+    ], extended=True)["usage_coverage"]
+    assert coverage == {
+        "token_samples": 1,
+        "token_coverage_rate": 0.5,
+        "coverage_counts": {"complete": 1, "unavailable": 1},
+        "source_counts": {"codex_adapter": 2},
+    }
+
+
 def test_wave_execution_records_actual_parallelism(tmp_path: Path) -> None:
     from harness_runtime.observability import discover_runtime_events, record_wave_execution, wave_metrics
 
@@ -91,4 +196,6 @@ def test_loop_phase_pause_resume_and_end_emit_phase_events(harness_project: Path
     assert [item["event"] for item in audits] == ["phase_started", "phase_paused", "phase_resumed", "phase_ended", "phase_started"]
     phase_event = next(event for event in discover_runtime_events(harness_project) if event.get("event_type") == "phase_run")
     assert phase_event["phase"] == "propose"
+    assert phase_event["cohort"]["phase"] == "propose"
+    assert phase_event["cohort"]["adapter"]
     assert {"elapsed_ms", "active_ms", "wait_ms", "blocked_ms", "tool_ms", "verification_ms"} <= phase_event["timing"].keys()

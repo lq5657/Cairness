@@ -95,7 +95,18 @@ def test_parse_host_output_collects_result_hook_and_cost():
                     "tool_name": "Write",
                 }
             ),
-            _result_event("TRANSPORT_OK", cost=0.125),
+            json.dumps({
+                "type": "result",
+                "subtype": "success",
+                "result": "TRANSPORT_OK",
+                "session_id": "host-session",
+                "total_cost_usd": 0.125,
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 20,
+                    "cache_read_input_tokens": 10,
+                },
+            }),
         )
     )
 
@@ -114,6 +125,14 @@ def test_parse_host_output_collects_result_hook_and_cost():
         },
     )
     assert parsed.tool_names == ("Skill", "Read", "Write")
+    assert parsed.usage == {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "cached_input_tokens": 10,
+        "total_tokens": 120,
+        "source": "claude-code_adapter",
+        "coverage": "complete",
+    }
 
 
 @pytest.mark.parametrize(

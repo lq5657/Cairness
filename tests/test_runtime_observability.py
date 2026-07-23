@@ -406,6 +406,60 @@ def test_verify_cli_writes_an_automatic_runtime_event(
     assert len(events) >= 1
     assert events[-1]["status"] == report["status"]
     assert events[-1]["mode"] == "harness-only"
+    assert events[-1]["phase"] == "test"
+    assert events[-1]["activity"] == "verify"
+    assert events[-1]["run_kind"] == "primary"
+    assert events[-1]["attempt"] == 1
+    assert events[-1]["terminal"] is True
+    assert events[-1]["logical_run_id"].startswith("verify-")
+    assert events[-1]["cohort"]["phase"] == "test"
+    assert events[-1]["cohort"]["adapter"]
+    assert events[-1]["usage"] == {
+        "source": f"{events[-1]['cohort']['adapter']}_adapter",
+        "coverage": "unavailable",
+    }
+
+
+def test_verify_cli_propagates_run_context_and_adapter_usage(
+    harness_project: Path, run_harness_script, monkeypatch
+):
+    from harness_runtime.observability import discover_runtime_events
+
+    monkeypatch.setenv("CC_LOGICAL_RUN_ID", "logical-run-123")
+    monkeypatch.setenv("CC_RUN_ATTEMPT", "2")
+    monkeypatch.setenv("CC_RUN_TERMINAL", "false")
+    monkeypatch.setenv("CC_RUN_PHASE", "review")
+    monkeypatch.setenv("CC_RUN_ACTIVITY", "preflight")
+    monkeypatch.setenv(
+        "CC_ADAPTER_USAGE_JSON",
+        json.dumps({
+            "usage": {
+                "prompt_tokens": 50,
+                "completion_tokens": 10,
+                "cache_read_tokens": 20,
+            }
+        }),
+    )
+
+    completed = run_harness_script(harness_project, "cc-verify", "--harness-only", "--json")
+
+    assert completed.stdout
+    event = discover_runtime_events(harness_project)[-1]
+    assert event["logical_run_id"] == "logical-run-123"
+    assert event["attempt"] == 2
+    assert event["run_kind"] == "retry"
+    assert event["terminal"] is False
+    assert event["phase"] == "review"
+    assert event["activity"] == "preflight"
+    assert event["cohort"]["phase"] == "review"
+    assert event["usage"] == {
+        "input_tokens": 50,
+        "output_tokens": 10,
+        "cached_input_tokens": 20,
+        "total_tokens": 60,
+        "source": f"{event['cohort']['adapter']}_adapter",
+        "coverage": "complete",
+    }
 
 
 def test_stats_reports_automatic_collection_completeness():
