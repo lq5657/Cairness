@@ -55,6 +55,7 @@ from pathlib import Path
 from typing import Any
 
 from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.branch_contract import check_branch_contract
 from harness_runtime.enums import enum_set, load_enums
 from harness_runtime.events import COMMAND_TO
 from harness_runtime.issues import Issue, add, build_report
@@ -214,6 +215,15 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
             add(issues, "E_STATE001", ISSUE_PATH,
                 f"spec status {current!r} != --from {args.from_state!r} "
                 f"(already transitioned, or wrong --from; use cc-reconcile to diagnose)")
+            return _report(args, spec_path, issues)
+
+    # cc-apply has no physical command script; this transition is the final
+    # executable boundary shared by Claude and Codex. Enforce its branch
+    # contract here so an agent cannot promote work performed on main or on a
+    # different change branch merely by omitting the preflight check.
+    if args.command == "cc-apply" and args.result_status == "passed" and not args.dry_run:
+        issues.extend(check_branch_contract(project_root, args.change_id))
+        if issues:
             return _report(args, spec_path, issues)
 
     # 2. Event first — a crash after this leaves event ahead of spec (detectable

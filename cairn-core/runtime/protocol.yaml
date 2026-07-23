@@ -147,7 +147,7 @@ error_taxonomy:
   validation_failed:
     status: blocked
     blocking: true
-    error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_INDEX001]
+    error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_BRANCH001, E_BRANCH002, E_BRANCH003, E_BRANCH004, E_INDEX001]
   user_confirmation_required:
     status: blocked
     blocking: true

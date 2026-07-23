@@ -49,6 +49,8 @@ def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
 
 
 def _change_dir(tmp_path: Path, status: str = "review") -> Path:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "checkout", "-qb", "feat/c-evt"], cwd=tmp_path, check=True)
     change_dir = tmp_path / ".cairness" / "changes" / "c-evt"
     change_dir.mkdir(parents=True)
     (change_dir / "spec.md").write_text(_SPEC_FRONTMATTER.format(status=status), encoding="utf-8")

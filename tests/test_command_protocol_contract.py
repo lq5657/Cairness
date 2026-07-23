@@ -78,7 +78,7 @@ def test_schema131_rejects_malformed_error_code(harness_project):
 def test_schema131_rejects_non_list_error_codes(harness_project):
     original = PROTOCOL.read_text(encoding="utf-8")
     corrupt = original.replace(
-        "error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_INDEX001]",
+        "error_codes: [E_SCOPE001, E_SCOPE002, E_EVIDENCE001, E_EVIDENCE002, E_EVIDENCE003, E_SYNC001, E_LINT001, E_EVENT019, E_ROLE001, E_ROLE002, E_ROLE003, E_BRANCH001, E_BRANCH002, E_BRANCH003, E_BRANCH004, E_INDEX001]",
         "error_codes: E_SCOPE001",
     )
     issues = _run_with_protocol(harness_project, corrupt)

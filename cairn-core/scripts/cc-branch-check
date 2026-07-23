@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Enforce the cc-apply non-main and change-branch contract."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from harness_runtime.branch_contract import check_branch_contract
+from harness_runtime.context import HarnessContextError, load_harness_context
+from harness_runtime.issues import build_report
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Check current Git branch for a change.")
+    parser.add_argument("--change", "--change-id", dest="change_id", required=True)
+    parser.add_argument("--root", help="Explicit Cairness project root.")
+    parser.add_argument("--project-root", help="Legacy project root override.")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    if args.root and args.project_root:
+        parser.error("--root and --project-root are mutually exclusive")
+    if args.project_root:
+        project_root = Path(args.project_root).expanduser().resolve()
+    else:
+        try:
+            context = load_harness_context(
+                explicit_root=Path(args.root) if args.root else None,
+                framework_hint=None if args.root else Path(__file__).resolve().parent.parent,
+            )
+        except HarnessContextError as exc:
+            print(f"E_CONTEXT001 {exc}", file=sys.stderr)
+            return 2
+        project_root = context.project_root
+
+    issues = check_branch_contract(project_root, args.change_id)
+    report = build_report(
+        "cc-branch-check",
+        issues,
+        extra={"project_root": str(project_root), "change_id": args.change_id},
+    )
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    elif report["status"] == "passed":
+        print(f"cc-branch-check: {args.change_id} branch contract passed")
+    else:
+        for issue in report["issues"]:
+            print(f"{issue['code']} {issue['path']}: {issue['message']}", file=sys.stderr)
+    return 1 if issues else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

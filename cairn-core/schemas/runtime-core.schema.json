@@ -179,6 +179,9 @@
         "event-write": {
           "type": "string"
         },
+        "branch-check": {
+          "type": "string"
+        },
         "state-transition": {
           "type": "string"
         },

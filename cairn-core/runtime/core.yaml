@@ -101,6 +101,7 @@ scripts:
   doctor: core://scripts/cc-doctor-check
   event: core://scripts/cc-event-check
   event-write: core://scripts/cc-event-write
+  branch-check: core://scripts/cc-branch-check
   state-transition: core://scripts/cc-state-transition
   behavior: core://scripts/cc-behavior-check
   upgrade: core://scripts/cc-upgrade-check

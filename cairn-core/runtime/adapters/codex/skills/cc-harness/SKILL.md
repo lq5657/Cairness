@@ -75,7 +75,9 @@ result uses the manifest's `state.change_to`; blocked or partial results use
 When the effective profile is `loop` and `.cairness/loop-config.yaml` exists,
 `cc-propose` or `cc-apply` starts one lifecycle transaction in the same agent
 turn. Start the machine-readable planner with `.codex/scripts/cc-loop-step
-start --change-id <change-id> --command <command> --json`. Before the first write of each stage, run
+start --change-id <change-id> --command <command> --json`. Before the first write of `cc-apply`, run
+`.codex/scripts/cc-branch-check --change <change-id> --json`; it must report a non-main branch
+that exactly matches `spec.md`'s `branch`. Before the first write of each stage, run
 `.codex/scripts/cc-role-check --record-baseline --change <change-id>`.
 
 For the trust-envelope gate, invoke the physical adapter script with

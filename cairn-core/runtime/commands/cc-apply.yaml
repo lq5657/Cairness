@@ -217,6 +217,7 @@ red_flags:
   - wave_plan_not_disjoint_verified
 
 steps:
+  - run_branch_check_before_first_write
   - verify_hard_gate_current_or_present_resolution_choices
   - record_role_baseline_before_first_command_write
   - mark_change_apply
@@ -234,6 +235,7 @@ steps:
   - promote_change_to_review_via_cc_state_transition
 
 auto_validation:
+  - .claude/scripts/cc-branch-check --change <change-id> --json
   - .claude/scripts/cc-deps check --change <change-id>
   - .claude/scripts/cc-wave-plan --check --change <change-id>
   - .claude/scripts/cc-verify --json --output .cairness/changes/<change-id>/baseline/pre-apply.json --change <change-id>
