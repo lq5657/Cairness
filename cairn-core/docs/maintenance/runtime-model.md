@@ -309,6 +309,15 @@ tokens 以及 `source`、`coverage`；宿主无法提供时省略字段，不额
 也不把字节数估算成 token。Context Pack 的字节量使用 `source_bytes`/
 `output_bytes` 单独统计。
 
+Loop session 另外在 `.cairness/loop-audit/phases/` 记录 phase
+`started/paused/resumed/ended` 边界，并在结束时自动生成 `phase_run`；旧的
+`.cairness/loop-audit/sessions/` 命令审计格式保持不变。失败的 verification
+按 `environment/policy_block/test_failure/transient/unknown` 归类。cohort 指标按
+phase、verification mode、execution mode、cache hit/miss、framework version、
+change size/type 分组计算 p50/p95；benchmark 在样本携带 cohort 时拒绝跨 cohort
+比较。wave plan 仍表示计划并行度，实际执行器可通过 `cc-wave-plan
+--execution-summary` 写入每个 wave 的开始/结束时间、实际并发数和等待时间。
+
 ## 下一步
 
 跨多个版本推进的产品化与平台化工作统一跟踪于

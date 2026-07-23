@@ -12,14 +12,23 @@ from typing import Any
 
 from harness_runtime import require_yaml
 from harness_runtime.context import HarnessContext
-from harness_runtime.observability import record_loop_step
+from harness_runtime.observability import discover_runtime_events, record_loop_step, record_phase_run
 
 SESSION_ROOT = Path(".cairness/runtime/loop-sessions")
 LOOP_SESSION_GITIGNORE_RULE = ".cairness/runtime/loop-sessions/"
 AUDIT_ROOT = Path(".cairness/loop-audit/sessions")
+PHASE_AUDIT_ROOT = Path(".cairness/loop-audit/phases")
 SESSION_SCHEMA_VERSION = 1
 SESSION_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{7,63}$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
+COMMAND_PHASE = {
+    "cc-propose": "propose",
+    "cc-apply": "apply",
+    "cc-review": "review",
+    "cc-fix": "fix",
+    "cc-test": "test",
+    "cc-archive": "archive",
+}
 
 
 class LoopRuntimeError(ValueError):
@@ -28,6 +37,129 @@ class LoopRuntimeError(ValueError):
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _phase_for_command(command: str) -> str:
+    return COMMAND_PHASE.get(command, "apply")
+
+
+def _elapsed_ms(started_at: str | None, ended_at: str) -> int:
+    if not isinstance(started_at, str) or not started_at:
+        return 0
+    try:
+        started = datetime.fromisoformat(started_at)
+        ended = datetime.fromisoformat(ended_at)
+    except ValueError:
+        return 0
+    return max(0, int((ended - started).total_seconds() * 1000))
+
+
+def _phase_state_defaults(state: dict[str, Any]) -> None:
+    command = state.get("current_command") or state.get("entry_command") or "cc-apply"
+    state.setdefault("phase", _phase_for_command(str(command)))
+    state.setdefault("phase_started_at", state.get("started_at") or _now())
+    state.setdefault("phase_pause_started_at", None)
+    state.setdefault("phase_wait_ms", 0)
+    state.setdefault("phase_blocked_ms", 0)
+
+
+def _runtime_durations(project_root: Path, started_at: str, ended_at: str) -> tuple[int, int]:
+    tool_ms = 0
+    verification_ms = 0
+    try:
+        window_start = datetime.fromisoformat(started_at)
+        window_end = datetime.fromisoformat(ended_at)
+    except ValueError:
+        return 0, 0
+    for event in discover_runtime_events(project_root):
+        occurred_at = event.get("occurred_at")
+        if not isinstance(occurred_at, str):
+            continue
+        try:
+            occurred = datetime.fromisoformat(occurred_at)
+        except ValueError:
+            continue
+        try:
+            if occurred < window_start or occurred > window_end:
+                continue
+        except TypeError:
+            continue
+        if event.get("event_type") == "verification_run":
+            duration = event.get("duration_ms")
+            if isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration >= 0:
+                verification_ms += int(duration)
+        elif event.get("event_type") == "execution_run":
+            metrics = event.get("metrics")
+            if isinstance(metrics, dict):
+                duration = metrics.get("tool_time_ms", metrics.get("wall_time_ms"))
+                if isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration >= 0:
+                    tool_ms += int(duration)
+    return tool_ms + verification_ms, verification_ms
+
+
+def _phase_timing(
+    state: dict[str, Any],
+    ended_at: str,
+    *,
+    blocked: bool = False,
+    tool_ms: int = 0,
+    verification_ms: int = 0,
+) -> dict[str, int]:
+    _phase_state_defaults(state)
+    elapsed_ms = _elapsed_ms(state.get("phase_started_at"), ended_at)
+    wait_ms = max(0, int(state.get("phase_wait_ms", 0) or 0))
+    blocked_ms = elapsed_ms if blocked else max(0, int(state.get("phase_blocked_ms", 0) or 0))
+    active_ms = max(0, elapsed_ms - wait_ms - blocked_ms)
+    timing = {
+        "elapsed_ms": elapsed_ms,
+        "active_ms": active_ms,
+        "wait_ms": wait_ms,
+        "blocked_ms": blocked_ms,
+        "tool_ms": min(active_ms, max(0, int(tool_ms))),
+        "verification_ms": min(active_ms, max(0, int(verification_ms))),
+    }
+    return timing
+
+
+def _record_phase_end(context: HarnessContext, state: dict[str, Any], *, status: str, ended_at: str, tool_ms: int) -> dict[str, int]:
+    runtime_tool_ms, verification_ms = _runtime_durations(
+        context.project_root,
+        str(state.get("phase_started_at", ended_at)),
+        ended_at,
+    )
+    timing = _phase_timing(
+        state,
+        ended_at,
+        blocked=status == "blocked",
+        tool_ms=max(tool_ms, runtime_tool_ms),
+        verification_ms=verification_ms,
+    )
+    _append_phase_audit(
+        context.project_root,
+        state["session_id"],
+        {
+            "event": "phase_ended",
+            "at": ended_at,
+            "session_id": state["session_id"],
+            "phase": state.get("phase"),
+            "status": status,
+            "timing": timing,
+        },
+    )
+    try:
+        record_phase_run(
+            context.project_root,
+            phase=str(state.get("phase", "apply")),
+            status=status,
+            timing=timing,
+            logical_run_id=state["session_id"],
+            attempt=len(state.get("steps", [])) + 1,
+            terminal=True,
+            activity="execute",
+        )
+    except Exception:
+        pass
+    return timing
 
 
 def _safe_session_id(value: str) -> str:
@@ -55,6 +187,13 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _append_audit(project_root: Path, session_id: str, event: dict[str, Any]) -> None:
     path = project_root / AUDIT_ROOT / f"{_safe_session_id(session_id)}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _append_phase_audit(project_root: Path, session_id: str, event: dict[str, Any]) -> None:
+    path = project_root / PHASE_AUDIT_ROOT / f"{_safe_session_id(session_id)}.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
@@ -129,6 +268,7 @@ def start_session(
     path = session_path(context.project_root, session_id)
     if path.exists():
         raise LoopRuntimeError(f"loop session already exists: {session_id}")
+    started_at = _now()
     state: dict[str, Any] = {
         "schema_version": SESSION_SCHEMA_VERSION,
         "session_id": session_id,
@@ -137,8 +277,13 @@ def start_session(
         "entry_command": command,
         "current_command": command,
         "expected_command": command,
-        "started_at": _now(),
-        "updated_at": _now(),
+        "started_at": started_at,
+        "updated_at": started_at,
+        "phase": _phase_for_command(command),
+        "phase_started_at": started_at,
+        "phase_pause_started_at": None,
+        "phase_wait_ms": 0,
+        "phase_blocked_ms": 0,
         "steps": [],
     }
     _write_json(path, state)
@@ -146,6 +291,17 @@ def start_session(
         context.project_root,
         session_id,
         {"event": "session_started", "at": _now(), "change_id": change_id, "command": command},
+    )
+    _append_phase_audit(
+        context.project_root,
+        session_id,
+        {
+            "event": "phase_started",
+            "at": started_at,
+            "session_id": session_id,
+            "phase": state["phase"],
+            "command": command,
+        },
     )
     return state
 
@@ -170,6 +326,7 @@ def _load_state(context: HarnessContext, session_id: str) -> tuple[Path, dict[st
         or not isinstance(state.get("entry_command"), str)
     ):
         raise LoopRuntimeError(f"invalid loop session history: {session_id}")
+    _phase_state_defaults(state)
     if state["status"] == "active":
         expected = state["entry_command"] if not steps else steps[-1].get("next_command")
         if not isinstance(expected, str) or state.get("expected_command") != expected:
@@ -196,6 +353,8 @@ def record_step(
         raise LoopRuntimeError(
             f"unexpected loop command: expected {state.get('expected_command')}, got {command}"
         )
+    if state.get("phase_pause_started_at") is not None:
+        raise LoopRuntimeError(f"loop phase is paused: {session_id}; resume before recording a step")
     if status not in {"passed", "blocked", "partial"}:
         raise LoopRuntimeError("loop step status must be passed, blocked, or partial")
     manifest = _manifest(context, command)
@@ -243,7 +402,35 @@ def record_step(
         state["expected_command"] = ""
         state["stop_reason"] = stop_reason
         step["stop_reason"] = stop_reason
+    ended_at = step["at"]
+    phase_timing = _record_phase_end(
+        context,
+        state,
+        status=status,
+        ended_at=ended_at,
+        tool_ms=int((monotonic() - started) * 1000),
+    )
+    step["phase"] = state.get("phase")
+    step["phase_timing"] = phase_timing
     state.setdefault("steps", []).append(step)
+    if next_command:
+        next_phase = _phase_for_command(next_command)
+        state["phase"] = next_phase
+        state["phase_started_at"] = _now()
+        state["phase_pause_started_at"] = None
+        state["phase_wait_ms"] = 0
+        state["phase_blocked_ms"] = 0
+        _append_phase_audit(
+            context.project_root,
+            session_id,
+            {
+                "event": "phase_started",
+                "at": state["phase_started_at"],
+                "session_id": session_id,
+                "phase": next_phase,
+                "command": next_command,
+            },
+        )
     state["updated_at"] = _now()
     _write_json(path, state)
     _append_audit(
@@ -261,6 +448,54 @@ def record_step(
         )
     except Exception:
         pass
+    return state
+
+
+def pause_session(context: HarnessContext, session_id: str) -> dict[str, Any]:
+    """Pause the current Loop phase and begin accumulating wait time."""
+    _require_loop_enabled(context)
+    path, state = _load_state(context, session_id)
+    if state["status"] != "active":
+        raise LoopRuntimeError(f"loop session is already {state['status']}: {session_id}")
+    if state.get("phase_pause_started_at") is not None:
+        raise LoopRuntimeError(f"loop phase is already paused: {session_id}")
+    paused_at = _now()
+    state["phase_pause_started_at"] = paused_at
+    state["updated_at"] = paused_at
+    _write_json(path, state)
+    _append_phase_audit(
+        context.project_root,
+        session_id,
+        {"event": "phase_paused", "at": paused_at, "session_id": session_id, "phase": state.get("phase")},
+    )
+    return state
+
+
+def resume_session(context: HarnessContext, session_id: str) -> dict[str, Any]:
+    """Resume a paused Loop phase and add the pause interval to wait_ms."""
+    _require_loop_enabled(context)
+    path, state = _load_state(context, session_id)
+    if state["status"] != "active":
+        raise LoopRuntimeError(f"loop session is already {state['status']}: {session_id}")
+    paused_at = state.get("phase_pause_started_at")
+    if not isinstance(paused_at, str):
+        raise LoopRuntimeError(f"loop phase is not paused: {session_id}")
+    resumed_at = _now()
+    state["phase_wait_ms"] = max(0, int(state.get("phase_wait_ms", 0) or 0)) + _elapsed_ms(paused_at, resumed_at)
+    state["phase_pause_started_at"] = None
+    state["updated_at"] = resumed_at
+    _write_json(path, state)
+    _append_phase_audit(
+        context.project_root,
+        session_id,
+        {
+            "event": "phase_resumed",
+            "at": resumed_at,
+            "session_id": session_id,
+            "phase": state.get("phase"),
+            "wait_ms": state["phase_wait_ms"],
+        },
+    )
     return state
 
 

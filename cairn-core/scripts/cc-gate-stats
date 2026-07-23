@@ -32,11 +32,13 @@ from harness_runtime.config import load_harness_config
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.observability import (
     command_metrics,
+    cohort_metrics,
     collection_summary,
     discover_runtime_events,
     phase_metrics,
     upgrade_metrics,
     verification_metrics,
+    wave_metrics,
 )
 
 from change_docs import parse_findings
@@ -512,6 +514,8 @@ def main() -> None:
             "verification_efficiency": verification,
             "verification_quality": verification.get("quality_gate", {}),
             "phases": phase_metrics([*events, *runtime_events]),
+            "cohorts": cohort_metrics(runtime_events),
+            "waves": wave_metrics(runtime_events),
             "upgrade": upgrade,
         }
         if args.gates:

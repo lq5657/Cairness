@@ -41,6 +41,8 @@ EXECUTION_METRICS = (
 PHASES = ("propose", "apply", "review", "fix", "test", "archive")
 ACTIVITIES = ("preflight", "execute", "verify", "transition", "wait")
 RUN_KINDS = ("primary", "retry", "shadow", "delta", "probe")
+FAILURE_CLASSES = ("environment", "policy_block", "test_failure", "transient", "unknown")
+COHORT_FIELDS = ("phase", "mode", "execution_mode", "cache_state", "framework_version", "change_size", "change_type", "adapter")
 TIMING_FIELDS = ("elapsed_ms", "active_ms", "tool_ms", "verification_ms", "wait_ms", "blocked_ms")
 USAGE_FIELDS = (
     "input_tokens",
@@ -95,6 +97,17 @@ def _sanitize_usage(value: Any) -> dict[str, int | float | str]:
     return usage
 
 
+def _sanitize_cohort(value: Any) -> dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    cohort: dict[str, str] = {}
+    for field in COHORT_FIELDS:
+        item = value.get(field)
+        if isinstance(item, str) and item:
+            cohort[field] = item
+    return cohort
+
+
 def _event_metadata(
     *,
     phase: str | None,
@@ -107,6 +120,7 @@ def _event_metadata(
     timing: Mapping[str, Any] | None,
     duration_ms: Any = None,
     usage: Mapping[str, Any] | None = None,
+    cohort: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {}
     if isinstance(phase, str) and phase in PHASES:
@@ -125,7 +139,7 @@ def _event_metadata(
         metadata["failure_class"] = failure_class
     has_new_metadata = any(
         value is not None
-        for value in (phase, activity, run_kind, logical_run_id, attempt, terminal, failure_class, timing, usage)
+        for value in (phase, activity, run_kind, logical_run_id, attempt, terminal, failure_class, timing, usage, cohort)
     )
     clean_timing = _sanitize_timing(
         timing,
@@ -136,6 +150,9 @@ def _event_metadata(
     clean_usage = _sanitize_usage(usage)
     if clean_usage:
         metadata["usage"] = clean_usage
+    clean_cohort = _sanitize_cohort(cohort)
+    if clean_cohort:
+        metadata["cohort"] = clean_cohort
     return metadata
 
 
@@ -161,6 +178,39 @@ def _result_counts(report: Mapping[str, Any]) -> dict[str, int]:
         if isinstance(item, Mapping)
     )
     return dict(sorted(counts.items()))
+
+
+def classify_failure(report: Mapping[str, Any]) -> str | None:
+    """Classify a failed verification without making a second model call."""
+    status = str(report.get("status", "unknown"))
+    if status == "passed":
+        return None
+    results = report.get("results")
+    texts: list[str] = []
+    kinds: list[str] = []
+    if isinstance(results, list):
+        for item in results:
+            if not isinstance(item, Mapping):
+                continue
+            kinds.append(str(item.get("kind", "")))
+            for field in ("name", "stderr", "stdout", "diagnosis", "reason"):
+                value = item.get(field)
+                if isinstance(value, Mapping):
+                    texts.extend(str(v) for v in value.values())
+                elif value is not None:
+                    texts.append(str(value))
+    text = " ".join(texts).lower()
+    if any(marker in text for marker in ("timeout", "timed out", "temporar", "connection reset", "resource busy", "lock timeout")):
+        return "transient"
+    if any(marker in text for marker in ("policy", "forbidden", "role check", "scope check", "hard gate", "not allowed")):
+        return "policy_block"
+    if status == "blocked" or any(marker in text for marker in ("environment", "unavailable", "missing tool", "not installed", "executable not found")):
+        return "environment"
+    if any(kind.startswith("project:") or kind in {"test", "project"} for kind in kinds):
+        return "test_failure"
+    if status == "failed":
+        return "test_failure"
+    return "unknown"
 
 
 def _append_runtime_event(
@@ -206,6 +256,7 @@ def record_verification_run(
     failure_class: str | None = None,
     timing: Mapping[str, Any] | None = None,
     usage: Mapping[str, Any] | None = None,
+    cohort: Mapping[str, Any] | None = None,
 ) -> bool:
     """Append one automatic, local-only summary of a ``cc-verify`` execution."""
 
@@ -220,6 +271,9 @@ def record_verification_run(
         "duration_ms": max(0, int(duration_ms)),
         "result_counts": _result_counts(report),
     }
+    inferred_failure_class = failure_class or report.get("failure_class")
+    if not isinstance(inferred_failure_class, str) and str(report.get("status", "")) != "passed":
+        inferred_failure_class = classify_failure(report)
     metadata = _event_metadata(
         phase=phase or report.get("phase"),
         activity=activity or report.get("activity"),
@@ -227,10 +281,11 @@ def record_verification_run(
         logical_run_id=logical_run_id or report.get("logical_run_id"),
         attempt=attempt if attempt is not None else report.get("attempt"),
         terminal=terminal if terminal is not None else report.get("terminal"),
-        failure_class=failure_class or report.get("failure_class"),
+        failure_class=inferred_failure_class,
         timing=timing or report.get("timing"),
         duration_ms=duration_ms,
         usage=usage or report.get("usage"),
+        cohort=cohort or report.get("cohort"),
     )
     if metadata:
         event["schema_version"] = 2
@@ -357,6 +412,54 @@ def record_wave_plan(
     )
 
 
+def record_wave_execution(
+    project_root: Path,
+    *,
+    wave_id: str,
+    status: str,
+    task_count: int,
+    planned_parallelism: int,
+    actual_parallelism: int,
+    started_at: str,
+    ended_at: str,
+    wait_ms: int = 0,
+    task_wait_ms: int = 0,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Record actual wave execution, separate from the derived wave plan."""
+    if not wave_id:
+        raise ValueError("wave_id must be non-empty")
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    elapsed_ms = _elapsed_iso_ms(started_at, ended_at)
+    event = {
+        "schema_version": 2,
+        "event_type": "wave_run",
+        "occurred_at": timestamp.isoformat(),
+        "status": str(status),
+        "wave": {
+            "wave_id": wave_id,
+            "task_count": max(0, int(task_count)),
+            "planned_parallelism": max(0, int(planned_parallelism)),
+            "actual_parallelism": max(0, int(actual_parallelism)),
+            "started_at": str(started_at),
+            "ended_at": str(ended_at),
+            "wait_ms": max(0, int(wait_ms)),
+            "task_wait_ms": max(0, int(task_wait_ms)),
+        },
+        "timing": {"elapsed_ms": elapsed_ms, "wait_ms": max(0, int(wait_ms))},
+    }
+    return _append_runtime_event(project_root, event)
+
+
+def _elapsed_iso_ms(started_at: str, ended_at: str) -> int:
+    try:
+        started = datetime.fromisoformat(started_at)
+        ended = datetime.fromisoformat(ended_at)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, int((ended - started).total_seconds() * 1000))
+
+
 def record_context_pack(
     project_root: Path,
     *,
@@ -459,6 +562,7 @@ def record_execution_run(
     failure_class: str | None = None,
     timing: Mapping[str, Any] | None = None,
     usage: Mapping[str, Any] | None = None,
+    cohort: Mapping[str, Any] | None = None,
 ) -> bool:
     """Append a sanitized execution-cost event.
 
@@ -499,6 +603,7 @@ def record_execution_run(
         timing=timing,
         usage=usage,
         duration_ms=metrics.get("wall_time_ms"),
+        cohort=cohort,
     )
     if metadata:
         event["schema_version"] = 2
@@ -520,6 +625,7 @@ def record_phase_run(
     terminal: bool = True,
     failure_class: str | None = None,
     occurred_at: datetime | None = None,
+    cohort: Mapping[str, Any] | None = None,
 ) -> bool:
     """Record one phase summary; this is the compact phase-level telemetry API."""
     if phase not in PHASES:
@@ -539,6 +645,9 @@ def record_phase_run(
     }
     if logical_run_id:
         event["logical_run_id"] = logical_run_id
+    clean_cohort = _sanitize_cohort(cohort)
+    if clean_cohort:
+        event["cohort"] = clean_cohort
     if failure_class:
         event["failure_class"] = failure_class
     if clean_timing:
@@ -700,6 +809,14 @@ def verification_metrics(
     if extended:
         result["execution_mode_source_counts"] = dict(sorted(execution_mode_source_counts.items()))
         result["cache"] = cache
+        failure_class_counts = Counter(
+            item.get("failure_class")
+            if isinstance(item.get("failure_class"), str) and item.get("failure_class")
+            else "unclassified"
+            for item in runs
+            if item.get("status") != "passed"
+        )
+        result["failure_class_counts"] = dict(sorted(failure_class_counts.items()))
         terminal_runs = [item for item in runs if _is_quality_terminal(item)]
         terminal_status_counts = Counter(
             item.get("status")
@@ -891,6 +1008,43 @@ def execution_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]
     return summary
 
 
+def wave_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Compare planned and actual wave parallelism and wait time."""
+    runs = [item for item in runtime_events if item.get("event_type") == "wave_run" and isinstance(item.get("wave"), Mapping)]
+    planned: list[float] = []
+    actual: list[float] = []
+    elapsed: list[float] = []
+    waits: list[float] = []
+    for item in runs:
+        wave = item["wave"]
+        for source, target in (("planned_parallelism", planned), ("actual_parallelism", actual), ("wait_ms", waits)):
+            value = _optional_non_negative_number(wave.get(source))
+            if value is not None:
+                target.append(float(value))
+        timing = item.get("timing")
+        value = timing.get("elapsed_ms") if isinstance(timing, Mapping) else None
+        value = _optional_non_negative_number(value)
+        if value is not None:
+            elapsed.append(float(value))
+
+    def summary(values: list[float]) -> dict[str, Any]:
+        if not values:
+            return {"count": 0, "p50": None, "p95": None, "total": None}
+        ordered = sorted(values)
+        p50 = ordered[len(ordered) // 2] if len(ordered) % 2 else (ordered[len(ordered) // 2 - 1] + ordered[len(ordered) // 2]) / 2
+        p95 = ordered[min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * 0.95))))]
+        return {"count": len(values), "p50": round(p50, 4), "p95": round(p95, 4), "total": round(sum(values), 4)}
+
+    return {
+        "total_waves": len(runs),
+        "planned_parallelism": summary(planned),
+        "actual_parallelism": summary(actual),
+        "elapsed_ms": summary(elapsed),
+        "wait_ms": summary(waits),
+        "parallel_speedup_observations": sum(1 for plan, observed in zip(planned, actual) if plan > 1 and observed > 1),
+    }
+
+
 def phase_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
     """Summarize phase-level wall/active/tool time and token usage."""
     runs = [
@@ -939,6 +1093,78 @@ def phase_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
             "timing": {field: reduce_samples(values) for field, values in sorted(bucket["timing"].items())},
             "usage": {field: reduce_samples(values) for field, values in sorted(bucket["usage"].items())},
         }
+    return output
+
+
+def cohort_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Aggregate p50/p95 by phase, mode, cache state, version and change cohort."""
+    groups: dict[str, dict[str, Any]] = {}
+
+    def percentile(values: list[float], ratio: float) -> float | None:
+        if not values:
+            return None
+        ordered = sorted(values)
+        position = (len(ordered) - 1) * ratio
+        lower = int(position)
+        upper = min(lower + 1, len(ordered) - 1)
+        fraction = position - lower
+        return round(ordered[lower] + (ordered[upper] - ordered[lower]) * fraction, 4)
+
+    for event in runtime_events:
+        if event.get("event_type") not in {"verification_run", "execution_run", "phase_run"}:
+            continue
+        raw = event.get("cohort") if isinstance(event.get("cohort"), Mapping) else {}
+        cohort: dict[str, str] = {}
+        for field in COHORT_FIELDS:
+            value = raw.get(field) if isinstance(raw, Mapping) else None
+            if isinstance(value, str) and value:
+                cohort[field] = value
+        for field in ("phase", "mode", "adapter"):
+            value = event.get(field)
+            if field not in cohort and isinstance(value, str) and value:
+                cohort[field] = value
+        cache = event.get("cache")
+        if "cache_state" not in cohort and isinstance(cache, Mapping):
+            hits = cache.get("hits", 0)
+            misses = cache.get("misses", 0)
+            enabled = cache.get("enabled") is True
+            cohort["cache_state"] = "hit" if hits and not misses else "miss" if misses else "disabled" if not enabled else "none"
+        if not cohort:
+            continue
+        key = json.dumps(cohort, ensure_ascii=False, sort_keys=True)
+        bucket = groups.setdefault(key, {"cohort": cohort, "runs": 0, "elapsed_ms": [], "total_tokens": []})
+        bucket["runs"] += 1
+        timing = event.get("timing") if isinstance(event.get("timing"), Mapping) else {}
+        elapsed = timing.get("elapsed_ms") if isinstance(timing, Mapping) else None
+        if elapsed is None:
+            elapsed = event.get("duration_ms")
+        if elapsed is None and isinstance(event.get("metrics"), Mapping):
+            elapsed = event["metrics"].get("wall_time_ms")
+        value = _optional_non_negative_number(elapsed)
+        if value is not None:
+            bucket["elapsed_ms"].append(float(value))
+        usage = event.get("usage") if isinstance(event.get("usage"), Mapping) else {}
+        tokens = usage.get("total_tokens") if isinstance(usage, Mapping) else None
+        value = _optional_non_negative_number(tokens)
+        if value is not None:
+            bucket["total_tokens"].append(float(value))
+
+    output: dict[str, Any] = {"total_cohorts": len(groups), "cohorts": []}
+    for bucket in sorted(groups.values(), key=lambda item: json.dumps(item["cohort"], sort_keys=True)):
+        output["cohorts"].append({
+            "cohort": bucket["cohort"],
+            "runs": bucket["runs"],
+            "elapsed_ms": {
+                "count": len(bucket["elapsed_ms"]),
+                "p50": percentile(bucket["elapsed_ms"], 0.50),
+                "p95": percentile(bucket["elapsed_ms"], 0.95),
+            },
+            "total_tokens": {
+                "count": len(bucket["total_tokens"]),
+                "p50": percentile(bucket["total_tokens"], 0.50),
+                "p95": percentile(bucket["total_tokens"], 0.95),
+            },
+        })
     return output
 
 

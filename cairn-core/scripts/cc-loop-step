@@ -9,7 +9,14 @@ import sys
 from pathlib import Path
 
 from harness_runtime.context import HarnessContextError, load_harness_context
-from harness_runtime.loop_runtime import LoopRuntimeError, inspect_session, record_step, start_session
+from harness_runtime.loop_runtime import (
+    LoopRuntimeError,
+    inspect_session,
+    pause_session,
+    record_step,
+    resume_session,
+    start_session,
+)
 
 
 def main(argv: list[str]) -> int:
@@ -33,6 +40,14 @@ def main(argv: list[str]) -> int:
     inspect.add_argument("--session-id", required=True)
     inspect.add_argument("--root", help="Explicit Cairness project root")
     inspect.add_argument("--json", action="store_true")
+    pause = sub.add_parser("pause")
+    pause.add_argument("--session-id", required=True)
+    pause.add_argument("--root", help="Explicit Cairness project root")
+    pause.add_argument("--json", action="store_true")
+    resume = sub.add_parser("resume")
+    resume.add_argument("--session-id", required=True)
+    resume.add_argument("--root", help="Explicit Cairness project root")
+    resume.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
         context = load_harness_context(
@@ -51,7 +66,12 @@ def main(argv: list[str]) -> int:
                 evidence=args.evidence,
             )
         else:
-            result = inspect_session(context, args.session_id)
+            if args.action == "pause":
+                result = pause_session(context, args.session_id)
+            elif args.action == "resume":
+                result = resume_session(context, args.session_id)
+            else:
+                result = inspect_session(context, args.session_id)
     except (HarnessContextError, LoopRuntimeError) as exc:
         print(f"E_LOOP001 {exc}", file=sys.stderr)
         return 2

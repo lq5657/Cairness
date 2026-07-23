@@ -69,6 +69,44 @@ from harness_runtime.verification_steps import blocked_step, failed_step, skippe
 from harness_runtime.test_policy import TestPolicyError, routing_escape, select_tests
 
 
+def _change_cohort(project_root: Path, change_id: str | None) -> dict[str, str]:
+    if not change_id:
+        return {}
+    spec = project_root / ".cairness" / "changes" / change_id / "spec.md"
+    if not spec.is_file():
+        return {}
+    try:
+        lines = spec.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return {}
+    fields: dict[str, str] = {}
+    for line in lines[1:]:
+        stripped = line.strip()
+        if stripped == "---":
+            break
+        if ":" not in stripped:
+            continue
+        key, value = (part.strip() for part in stripped.split(":", 1))
+        if key in {"complexity", "proposal_profile", "change_type", "type"} and value:
+            fields[key] = value
+    size = fields.get("proposal_profile") or fields.get("complexity")
+    size_map = {
+        "simple": "small",
+        "medium": "medium",
+        "complex": "large",
+        "micro": "micro",
+        "standard": "medium",
+        "staged": "large",
+    }
+    cohort: dict[str, str] = {}
+    if size:
+        cohort["change_size"] = size_map.get(size, size)
+    change_type = fields.get("change_type") or fields.get("type")
+    if change_type:
+        cohort["change_type"] = change_type
+    return cohort
+
+
 def command_text(command: list[str]) -> str:
     return " ".join(command)
 
@@ -463,6 +501,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--terminal", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--failure-class")
     parser.add_argument("--usage", help="Adapter-provided JSON token usage object.")
+    parser.add_argument("--change-size", choices=("micro", "small", "medium", "large", "xlarge"))
+    parser.add_argument("--change-type")
+    parser.add_argument("--framework-version")
     args = parser.parse_args(argv)
 
     if args.attempt is not None and args.attempt < 1:
@@ -493,6 +534,35 @@ def main(argv: list[str]) -> int:
             report[field] = value
     if usage is not None:
         report["usage"] = usage
+    framework_version = args.framework_version
+    if not framework_version:
+        version_file = context.framework_root / "VERSION"
+        if version_file.is_file():
+            try:
+                framework_version = version_file.read_text(encoding="utf-8").strip()
+            except OSError:
+                framework_version = None
+    cohort: dict[str, str] = {"mode": str(report.get("mode", "unknown")), **_change_cohort(context.project_root, args.change)}
+    if args.execution_mode:
+        cohort["execution_mode"] = args.execution_mode
+    if framework_version:
+        cohort["framework_version"] = framework_version
+    if args.change_size:
+        cohort["change_size"] = args.change_size
+    if args.change_type:
+        cohort["change_type"] = args.change_type
+    execution_metrics = report.get("execution_metrics")
+    cache = execution_metrics.get("cache") if isinstance(execution_metrics, dict) else None
+    if isinstance(cache, dict):
+        if cache.get("hits", 0) and not cache.get("misses", 0):
+            cohort["cache_state"] = "hit"
+        elif cache.get("misses", 0):
+            cohort["cache_state"] = "miss"
+        elif cache.get("enabled") is True:
+            cohort["cache_state"] = "none"
+        else:
+            cohort["cache_state"] = "disabled"
+    report["cohort"] = cohort
     record_runtime_observability(
         context.project_root,
         report,

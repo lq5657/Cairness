@@ -12,11 +12,13 @@ from harness_runtime.change_findings import parse_findings
 from harness_runtime.deps import discover_changes
 from harness_runtime.observability import (
     command_metrics,
+    cohort_metrics,
     collection_summary,
     discover_runtime_events,
     phase_metrics,
     upgrade_metrics,
     verification_metrics,
+    wave_metrics,
 )
 
 
@@ -98,6 +100,8 @@ def build_dashboard(project_root: Path) -> dict[str, Any]:
         "verification_efficiency": verification_metrics(runtime_events, extended=True),
         "verification_quality": verification_metrics(runtime_events, extended=True).get("quality_gate", {}),
         "phases": phase_metrics([*events, *runtime_events]),
+        "cohorts": cohort_metrics(runtime_events),
+        "waves": wave_metrics(runtime_events),
         "upgrade": upgrade_metrics(runtime_events),
         "diagnostics": diagnostics,
     }

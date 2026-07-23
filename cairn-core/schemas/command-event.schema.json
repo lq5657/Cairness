@@ -131,6 +131,7 @@
     },
     "failure_class": {
       "type": "string",
+      "enum": ["environment", "policy_block", "test_failure", "transient", "unknown"],
       "minLength": 1
     },
     "timing": {
@@ -157,6 +158,20 @@
         "total_tokens": {"type": "number", "minimum": 0},
         "source": {"type": "string", "minLength": 1},
         "coverage": {"type": "string", "minLength": 1}
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phase": {"type": "string"},
+        "mode": {"type": "string"},
+        "execution_mode": {"type": "string"},
+        "cache_state": {"type": "string"},
+        "framework_version": {"type": "string"},
+        "change_size": {"type": "string"},
+        "change_type": {"type": "string"},
+        "adapter": {"type": "string"}
       }
     },
     "findings_summary": {

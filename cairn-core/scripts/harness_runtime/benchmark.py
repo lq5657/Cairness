@@ -37,6 +37,7 @@ REQUIRED_QUALITY_METRICS = (
     "critical_escapes",
     "deterministic_failures",
 )
+COHORT_FIELDS = ("phase", "mode", "execution_mode", "cache_state", "framework_version", "change_size", "change_type")
 
 
 class BenchmarkError(ValueError):
@@ -134,6 +135,18 @@ def validate_record(record: Mapping[str, Any]) -> dict[str, Any]:
         if quality is not None and not isinstance(quality, Mapping):
             raise BenchmarkError(f"samples[{index}].quality must be an object")
         quality_out = dict(quality or {})
+        cohort = sample.get("cohort")
+        if cohort is not None:
+            if not isinstance(cohort, Mapping):
+                raise BenchmarkError(f"samples[{index}].cohort must be an object")
+            cohort_out = {
+                field: value
+                for field in COHORT_FIELDS
+                if isinstance(value := cohort.get(field), str) and value
+            }
+            if not cohort_out:
+                raise BenchmarkError(f"samples[{index}].cohort must contain a supported dimension")
+            item["cohort"] = cohort_out
         if "task_success" in quality_out and not isinstance(quality_out["task_success"], bool):
             raise BenchmarkError(f"samples[{index}].quality.task_success must be boolean")
         for field in ("critical_escapes", "deterministic_failures"):
@@ -212,6 +225,18 @@ def compare(
         missing = sorted(base_cases - candidate_cases)
         extra = sorted(candidate_cases - base_cases)
         raise BenchmarkError(f"baseline/candidate case sets differ (missing={missing}, extra={extra})")
+    base_cohorts = {
+        sample["case_id"]: sample.get("cohort")
+        for sample in normalized_baseline["samples"]
+    }
+    candidate_cohorts = {
+        sample["case_id"]: sample.get("cohort")
+        for sample in normalized_candidate["samples"]
+    }
+    if any(value is not None for value in base_cohorts.values()) or any(value is not None for value in candidate_cohorts.values()):
+        if base_cohorts != candidate_cohorts:
+            mismatched = [case_id for case_id in sorted(base_cohorts) if base_cohorts[case_id] != candidate_cohorts[case_id]]
+            raise BenchmarkError(f"baseline/candidate cohorts differ for case_ids={mismatched}")
     configured = dict(DEFAULT_THRESHOLDS)
     for key, value in (thresholds or {}).items():
         if key not in configured:

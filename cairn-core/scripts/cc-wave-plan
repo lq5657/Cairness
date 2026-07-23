@@ -21,7 +21,7 @@ from pathlib import Path
 
 from harness_runtime.context import HarnessContextError, load_harness_context
 from harness_runtime.issues import Issue
-from harness_runtime.observability import record_wave_plan
+from harness_runtime.observability import record_wave_execution, record_wave_plan
 from harness_runtime.wave_plan import TaskNode, plan_waves
 
 from change_docs import parse_involved_files
@@ -110,14 +110,47 @@ def check_consistency(change_id: str, max_parallel: int) -> list[Issue]:
     return issues
 
 
+def record_execution_summary(project_root: Path, summary: object, *, status: str = "passed") -> int:
+    """Persist sanitized actual wave execution summaries supplied by an executor."""
+    items = summary if isinstance(summary, list) else [summary]
+    recorded = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        required = ("wave_id", "started_at", "ended_at")
+        if not all(isinstance(item.get(field), str) and item.get(field) for field in required):
+            continue
+        record_wave_execution(
+            project_root,
+            wave_id=item["wave_id"],
+            status=str(item.get("status", status)),
+            task_count=int(item.get("task_count", 0)),
+            planned_parallelism=int(item.get("planned_parallelism", 0)),
+            actual_parallelism=int(item.get("actual_parallelism", 0)),
+            started_at=item["started_at"],
+            ended_at=item["ended_at"],
+            wait_ms=int(item.get("wait_ms", 0)),
+            task_wait_ms=int(item.get("task_wait_ms", 0)),
+        )
+        recorded += 1
+    return recorded
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Derive wave plan from task DAG.")
     parser.add_argument("--change", required=True)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--max-parallel", type=int, default=10)
+    parser.add_argument("--execution-summary", help="JSON object/list with actual wave start/end/concurrency data")
     parser.add_argument("--root", help="Explicit Cairness project root; defaults to discovery")
     args = parser.parse_args(argv)
+    execution_summary = None
+    if args.execution_summary:
+        try:
+            execution_summary = json.loads(args.execution_summary)
+        except json.JSONDecodeError as exc:
+            parser.error(f"--execution-summary must be valid JSON: {exc}")
 
     try:
         context = load_harness_context(
@@ -153,6 +186,8 @@ def main(argv: list[str]) -> int:
 
         plan = generate(args.change, args.max_parallel)
         waves = plan.get("waves", []) if isinstance(plan, dict) else []
+        if execution_summary is not None:
+            record_execution_summary(context.project_root, execution_summary, status="passed" if plan.get("valid") else "failed")
         record_wave_plan(
             context.project_root,
             status="passed" if plan.get("valid") else "failed",

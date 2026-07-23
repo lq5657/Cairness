@@ -32,7 +32,7 @@ from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums
 from harness_runtime.issues import Issue, add
-from harness_runtime.observability import ACTIVITIES, PHASES, RUN_KINDS, TIMING_FIELDS, USAGE_FIELDS
+from harness_runtime.observability import ACTIVITIES, COHORT_FIELDS, FAILURE_CLASSES, PHASES, RUN_KINDS, TIMING_FIELDS, USAGE_FIELDS
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
@@ -133,6 +133,8 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
             add(issues, "E_EVENT024", path, f"line {line_no}: invalid activity {event.get('activity')}")
         if event.get("run_kind") is not None and event.get("run_kind") not in RUN_KINDS:
             add(issues, "E_EVENT025", path, f"line {line_no}: invalid run_kind {event.get('run_kind')}")
+        if event.get("failure_class") is not None and event.get("failure_class") not in FAILURE_CLASSES:
+            add(issues, "E_EVENT032", path, f"line {line_no}: invalid failure_class {event.get('failure_class')}")
         attempt = event.get("attempt")
         if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
             add(issues, "E_EVENT026", path, f"line {line_no}: attempt must be a positive integer")
@@ -157,6 +159,14 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
                     value = usage.get(field)
                     if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0):
                         add(issues, "E_EVENT031", path, f"line {line_no}: usage.{field} must be non-negative")
+        cohort = event.get("cohort")
+        if cohort is not None:
+            if not isinstance(cohort, dict):
+                add(issues, "E_EVENT033", path, f"line {line_no}: cohort must be an object")
+            else:
+                for field, value in cohort.items():
+                    if field not in COHORT_FIELDS or not isinstance(value, str) or not value:
+                        add(issues, "E_EVENT034", path, f"line {line_no}: invalid cohort field {field}")
         fs = event.get("findings_summary")
         if fs is not None:
             if not isinstance(fs, dict):
