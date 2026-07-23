@@ -109,6 +109,26 @@ def build_event(args: argparse.Namespace, now: datetime) -> tuple[dict[str, Any]
         event["gate_effectiveness"] = args.gate_effectiveness
     if args.error_codes:
         event["error_codes"] = list(args.error_codes)
+    for field in ("phase", "activity", "run_kind", "logical_run_id", "failure_class"):
+        value = getattr(args, field, None)
+        if value:
+            event[field] = value
+    if getattr(args, "attempt", None) is not None:
+        event["attempt"] = args.attempt
+    if getattr(args, "terminal", None) is not None:
+        event["terminal"] = args.terminal
+    if getattr(args, "timing", None) is not None:
+        event["timing"] = args.timing
+    elif event.get("phase") and getattr(args, "duration_ms", None) is not None:
+        event["timing"] = {"elapsed_ms": args.duration_ms}
+    if getattr(args, "usage", None) is not None:
+        event["usage"] = args.usage
+    elif event.get("phase") and getattr(args, "token_count", None) is not None:
+        event["usage"] = {
+            "total_tokens": args.token_count,
+            "source": "lifecycle_event",
+            "coverage": "estimated",
+        }
     return event, issues
 
 
@@ -212,6 +232,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--findings-summary", default=None, help="v2: JSON object.")
     parser.add_argument("--gate-effectiveness", default=None, help="v2: JSON object.")
     parser.add_argument("--error-codes", action="append", default=None, help="v2: error code (E_*), repeatable.")
+    parser.add_argument("--phase", choices=["propose", "apply", "review", "fix", "test", "archive"], default=None)
+    parser.add_argument("--activity", choices=["preflight", "execute", "verify", "transition", "wait"], default=None)
+    parser.add_argument("--run-kind", choices=["primary", "retry", "shadow", "delta", "probe"], default=None)
+    parser.add_argument("--logical-run-id", default=None)
+    parser.add_argument("--attempt", type=int, default=None)
+    parser.add_argument("--terminal", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--timing", default=None, help="v2: JSON timing object.")
+    parser.add_argument("--usage", default=None, help="v2: JSON token usage object.")
     root_group = parser.add_mutually_exclusive_group()
     root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
     root_group.add_argument("--project-root", default=None, help="Legacy project directory override.")
@@ -224,6 +252,15 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str]) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    for field in ("timing", "usage"):
+        value = getattr(args, field)
+        if value is not None:
+            parsed = _parse_json_flag(value, field, [])
+            if parsed is None or not isinstance(parsed, dict):
+                parser.error(f"--{field} must be a JSON object")
+            setattr(args, field, parsed)
+    if args.attempt is not None and args.attempt < 1:
+        parser.error("--attempt must be a positive integer")
     now = datetime.now(timezone.utc)
 
     if args.project_root:

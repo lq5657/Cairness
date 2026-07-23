@@ -455,7 +455,27 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--output", help="Write JSON report to this file.")
     parser.add_argument("--verbose", action="store_true", help="Show command output for passing steps.")
     parser.add_argument("--root", help="Explicit Cairness project root; overrides automatic discovery.")
+    parser.add_argument("--phase", choices=("propose", "apply", "review", "fix", "test", "archive"))
+    parser.add_argument("--activity", choices=("preflight", "execute", "verify", "transition", "wait"))
+    parser.add_argument("--run-kind", choices=("primary", "retry", "shadow", "delta", "probe"))
+    parser.add_argument("--logical-run-id")
+    parser.add_argument("--attempt", type=int)
+    parser.add_argument("--terminal", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--failure-class")
+    parser.add_argument("--usage", help="Adapter-provided JSON token usage object.")
     args = parser.parse_args(argv)
+
+    if args.attempt is not None and args.attempt < 1:
+        parser.error("--attempt must be a positive integer")
+    if args.usage:
+        try:
+            usage = json.loads(args.usage)
+        except json.JSONDecodeError as exc:
+            parser.error(f"--usage must be valid JSON: {exc}")
+        if not isinstance(usage, dict):
+            parser.error("--usage must be a JSON object")
+    else:
+        usage = None
 
     try:
         context = load_harness_context(
@@ -467,6 +487,12 @@ def main(argv: list[str]) -> int:
         return 2
     started = monotonic()
     report = build_report(args, context)
+    for field in ("phase", "activity", "run_kind", "logical_run_id", "attempt", "terminal", "failure_class"):
+        value = getattr(args, field, None)
+        if value is not None:
+            report[field] = value
+    if usage is not None:
+        report["usage"] = usage
     record_runtime_observability(
         context.project_root,
         report,

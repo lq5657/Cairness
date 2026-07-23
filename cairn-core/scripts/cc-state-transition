@@ -63,6 +63,14 @@ ISSUE_PATH = "<cc-state-transition>"  # synthetic path for transition-local issu
 
 _ENUMS = load_enums()
 CORE_STATUS = enum_set(_ENUMS, "change_status", "core")  # {propose, apply, review, done}
+COMMAND_PHASE = {
+    "cc-propose": "propose",
+    "cc-apply": "apply",
+    "cc-review": "review",
+    "cc-fix": "fix",
+    "cc-test": "test",
+    "cc-archive": "archive",
+}
 
 # The event writer is the events.jsonl SSOT; we shell out to it rather than
 # duplicate append/validate logic. Resolved relative to this script's dir so a
@@ -149,6 +157,24 @@ def run_event_write(args: argparse.Namespace) -> tuple[bool, str]:
         value = getattr(args, attribute, None)
         if value is not None:
             cmd += [option, str(value)]
+    for option, attribute in (
+        ("--phase", "phase"),
+        ("--activity", "activity"),
+        ("--run-kind", "run_kind"),
+        ("--logical-run-id", "logical_run_id"),
+        ("--failure-class", "failure_class"),
+    ):
+        value = getattr(args, attribute, None)
+        if value:
+            cmd += [option, str(value)]
+    if getattr(args, "attempt", None) is not None:
+        cmd += ["--attempt", str(args.attempt)]
+    if getattr(args, "terminal", None) is not None:
+        cmd += ["--terminal" if args.terminal else "--no-terminal"]
+    if getattr(args, "timing", None) is not None:
+        cmd += ["--timing", json.dumps(args.timing, ensure_ascii=False)]
+    if getattr(args, "usage", None) is not None:
+        cmd += ["--usage", json.dumps(args.usage, ensure_ascii=False)]
     if args.verification_status:
         cmd += ["--verification-status", args.verification_status]
     if args.dry_run:
@@ -165,6 +191,10 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
     project_root = Path(args.project_root)
     change_dir = project_root / ".cairness" / "changes" / args.change_id
     spec_path = change_dir / "spec.md"
+    if args.phase is None:
+        args.phase = COMMAND_PHASE.get(args.command)
+    if args.activity is None:
+        args.activity = "transition"
 
     if not change_dir.is_dir():
         add(issues, "E_STATE002", ISSUE_PATH, f"change dir not found: {change_dir}")
@@ -243,6 +273,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--subagent-count", type=int, default=None, help="Optional subagent count metric.")
     parser.add_argument("--files-changed", type=int, default=None, help="Optional changed-file count metric.")
     parser.add_argument("--verification-status", choices=["passed", "failed", "partial", "not_run"], default=None, help="Optional verification metric.")
+    parser.add_argument("--phase", choices=["propose", "apply", "review", "fix", "test", "archive"], default=None)
+    parser.add_argument("--activity", choices=["preflight", "execute", "verify", "transition", "wait"], default=None)
+    parser.add_argument("--run-kind", choices=["primary", "retry", "shadow", "delta", "probe"], default=None)
+    parser.add_argument("--logical-run-id", default=None)
+    parser.add_argument("--attempt", type=int, default=None)
+    parser.add_argument("--terminal", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--failure-class", default=None)
+    parser.add_argument("--timing", default=None, help="Optional JSON timing object.")
+    parser.add_argument("--usage", default=None, help="Optional JSON token usage object.")
     parser.add_argument("--result-status", choices=["passed", "blocked", "partial"], default="passed", help="Command outcome (default: passed); blocked/partial requires --to unchanged.")
     root_group = parser.add_mutually_exclusive_group()
     root_group.add_argument("--root", help="Explicit Cairness project root; defaults to discovery.")
@@ -260,6 +299,18 @@ def main(argv: list[str]) -> int:
         value = getattr(args, field)
         if value is not None and value < 0:
             parser.error(f"--{field.replace('_', '-')} must be non-negative")
+    for field in ("timing", "usage"):
+        value = getattr(args, field)
+        if value is not None:
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError as exc:
+                parser.error(f"--{field} must be valid JSON: {exc}")
+            if not isinstance(parsed, dict):
+                parser.error(f"--{field} must be a JSON object")
+            setattr(args, field, parsed)
+    if args.attempt is not None and args.attempt < 1:
+        parser.error("--attempt must be a positive integer")
 
     if args.project_root:
         args.project_root = str(Path(args.project_root).expanduser().resolve())

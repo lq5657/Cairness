@@ -34,6 +34,7 @@ from harness_runtime.observability import (
     command_metrics,
     collection_summary,
     discover_runtime_events,
+    phase_metrics,
     upgrade_metrics,
     verification_metrics,
 )
@@ -387,7 +388,8 @@ def print_verification_summary(
     verification: dict[str, Any],
     upgrade: dict[str, Any],
 ) -> None:
-    pass_rate = verification["pass_rate"]
+    quality = verification.get("quality_gate", {})
+    pass_rate = quality.get("pass_rate", verification["pass_rate"])
     average_duration = verification["average_duration_ms"]
     pass_rate_label = f"{pass_rate:.1%}" if pass_rate is not None else "无样本"
     duration_label = f"{average_duration} ms" if average_duration is not None else "无样本"
@@ -508,6 +510,8 @@ def main() -> None:
             "commands": commands,
             "verification": verification_metrics(runtime_events),
             "verification_efficiency": verification,
+            "verification_quality": verification.get("quality_gate", {}),
+            "phases": phase_metrics([*events, *runtime_events]),
             "upgrade": upgrade,
         }
         if args.gates:

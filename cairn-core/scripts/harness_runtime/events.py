@@ -32,6 +32,7 @@ from typing import Any
 
 from harness_runtime.enums import enum_set, load_enums
 from harness_runtime.issues import Issue, add
+from harness_runtime.observability import ACTIVITIES, PHASES, RUN_KINDS, TIMING_FIELDS, USAGE_FIELDS
 
 CHANGE_ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 COMMAND_RE = re.compile(r"^cc-[a-z0-9-]+$")
@@ -126,6 +127,36 @@ def validate_event(path: Path, line_no: int, event: Any, change_id: str, issues:
         result_status = event.get("result_status")
         if result_status is not None and result_status not in VALID_RESULT_STATUS:
             add(issues, "E_EVENT022", path, f"line {line_no}: invalid result_status {result_status}")
+        if event.get("phase") is not None and event.get("phase") not in PHASES:
+            add(issues, "E_EVENT023", path, f"line {line_no}: invalid phase {event.get('phase')}")
+        if event.get("activity") is not None and event.get("activity") not in ACTIVITIES:
+            add(issues, "E_EVENT024", path, f"line {line_no}: invalid activity {event.get('activity')}")
+        if event.get("run_kind") is not None and event.get("run_kind") not in RUN_KINDS:
+            add(issues, "E_EVENT025", path, f"line {line_no}: invalid run_kind {event.get('run_kind')}")
+        attempt = event.get("attempt")
+        if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
+            add(issues, "E_EVENT026", path, f"line {line_no}: attempt must be a positive integer")
+        terminal = event.get("terminal")
+        if terminal is not None and not isinstance(terminal, bool):
+            add(issues, "E_EVENT027", path, f"line {line_no}: terminal must be boolean")
+        timing = event.get("timing")
+        if timing is not None:
+            if not isinstance(timing, dict):
+                add(issues, "E_EVENT028", path, f"line {line_no}: timing must be an object")
+            else:
+                for field in TIMING_FIELDS:
+                    value = timing.get(field)
+                    if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0):
+                        add(issues, "E_EVENT029", path, f"line {line_no}: timing.{field} must be non-negative")
+        usage = event.get("usage")
+        if usage is not None:
+            if not isinstance(usage, dict):
+                add(issues, "E_EVENT030", path, f"line {line_no}: usage must be an object")
+            else:
+                for field in USAGE_FIELDS:
+                    value = usage.get(field)
+                    if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0):
+                        add(issues, "E_EVENT031", path, f"line {line_no}: usage.{field} must be non-negative")
         fs = event.get("findings_summary")
         if fs is not None:
             if not isinstance(fs, dict):

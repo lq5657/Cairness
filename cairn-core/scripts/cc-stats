@@ -33,6 +33,7 @@ from harness_runtime.observability import (
     collection_summary,
     discover_runtime_events,
     execution_metrics,
+    phase_metrics,
     upgrade_metrics,
     verification_metrics,
 )
@@ -257,6 +258,8 @@ def compute_stats(
         "commands": command_metrics(events),
         "verification": verification_metrics(runtime_events),
         "verification_efficiency": verification_metrics(runtime_events, extended=True),
+        "verification_quality": verification_metrics(runtime_events, extended=True).get("quality_gate", {}),
+        "phases": phase_metrics([*events, *runtime_events]),
         "execution": execution_metrics(runtime_events),
         "upgrade": upgrade_metrics(runtime_events),
     }
@@ -304,7 +307,8 @@ def print_readable(stats: dict[str, Any]) -> None:
     commands = stats["commands"]
     verification = stats["verification"]
     upgrade = stats["upgrade"]
-    pass_rate = verification["pass_rate"]
+    quality = stats.get("verification_quality", {})
+    pass_rate = quality.get("pass_rate")
     average_duration = verification["average_duration_ms"]
     pass_rate_label = f"{pass_rate:.1%}" if pass_rate is not None else "无样本"
     duration_label = f"{average_duration} ms" if average_duration is not None else "无样本"
@@ -333,6 +337,8 @@ def print_readable(stats: dict[str, Any]) -> None:
         f"  命令结果状态覆盖率: {result_status_coverage_label}\n"
         f"  命令阻塞率: {blocking_rate_label}\n"
         f"  自动验证通过率: {pass_rate_label}\n"
+        f"  质量门禁通过率（终态样本）: {pass_rate_label}\n"
+        f"  原始 verification 事件通过率: {verification.get('pass_rate') if verification.get('pass_rate') is not None else '无样本'}\n"
         f"  自动验证平均耗时: {duration_label}\n"
         f"  升级失败率: {failure_rate_label}\n"
         f"  升级平均耗时: {upgrade_duration_label}\n"

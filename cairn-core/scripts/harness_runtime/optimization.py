@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from harness_runtime.benchmark import BenchmarkError, compare
 from harness_runtime.observability import (
+    _is_quality_terminal,
     execution_metrics,
     test_routing_metrics,
     verification_metrics,
@@ -16,7 +17,11 @@ DEFAULT_MIN_SAMPLES = 5
 
 
 def _sample_count(runtime_events: list[Mapping[str, Any]]) -> int:
-    return sum(1 for item in runtime_events if item.get("event_type") in {"verification_run", "execution_run"})
+    return sum(
+        1
+        for item in runtime_events
+        if item.get("event_type") == "verification_run" and _is_quality_terminal(item)
+    )
 
 
 def _recommendations(
@@ -44,7 +49,9 @@ def _recommendations(
             "reason": "最近执行没有复用 verification cache",
             "action": "compare_cache_enabled_candidate",
         })
-    if verification.get("pass_rate") is not None and verification["pass_rate"] < 1:
+    quality = verification.get("quality_gate", {})
+    quality_pass_rate = quality.get("pass_rate", verification.get("pass_rate"))
+    if quality_pass_rate is not None and quality_pass_rate < 1:
         recommendations.append({
             "id": "investigate_verification_blocks",
             "reason": "存在未通过的 verification 样本，不应先调整效率策略",

@@ -293,6 +293,22 @@ runtime manifest 中的 `write_scope_policy: parent_writes_subset` 和 `parallel
 
 不再是内置 migrated command 的默认运行时读取面。
 
+## 阶段效率观测
+
+生命周期阶段固定为 `propose -> apply -> review -> fix -> test -> archive`；
+`preflight` 是正交的 `activity`，不能作为质量阶段。运行时事件可同时记录
+`run_kind`（`primary/retry/shadow/delta/probe`）、`logical_run_id`、`attempt`
+和 `terminal`，因此 `cc-stats`/Dashboard 会区分原始 verification 事件通过率
+与只使用终态质量门禁样本的通过率。预检、探针、shadow 和未终态重试不进入质量
+分母，优化采样也只统计终态 verification。
+
+阶段事件的 `timing` 分层记录 `elapsed_ms`、`active_ms`、`tool_ms`、
+`verification_ms`、`wait_ms` 和 `blocked_ms`；缺失层级保持缺失，不以 0 代替。
+宿主适配器若能提供用量，应在 `usage` 中写入 input/output/cache/reasoning/total
+tokens 以及 `source`、`coverage`；宿主无法提供时省略字段，不额外发起模型调用，
+也不把字节数估算成 token。Context Pack 的字节量使用 `source_bytes`/
+`output_bytes` 单独统计。
+
 ## 下一步
 
 跨多个版本推进的产品化与平台化工作统一跟踪于

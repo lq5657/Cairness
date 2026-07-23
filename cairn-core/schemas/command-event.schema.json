@@ -105,6 +105,60 @@
       "minimum": 0,
       "description": "修改的文件数量"
     },
+    "phase": {
+      "type": "string",
+      "enum": ["propose", "apply", "review", "fix", "test", "archive"],
+      "description": "生命周期阶段；preflight 是 activity，不是 phase"
+    },
+    "activity": {
+      "type": "string",
+      "enum": ["preflight", "execute", "verify", "transition", "wait"]
+    },
+    "run_kind": {
+      "type": "string",
+      "enum": ["primary", "retry", "shadow", "delta", "probe"]
+    },
+    "logical_run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "terminal": {
+      "type": "boolean"
+    },
+    "failure_class": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "elapsed_ms": {"type": "number", "minimum": 0},
+        "active_ms": {"type": "number", "minimum": 0},
+        "tool_ms": {"type": "number", "minimum": 0},
+        "verification_ms": {"type": "number", "minimum": 0},
+        "wait_ms": {"type": "number", "minimum": 0},
+        "blocked_ms": {"type": "number", "minimum": 0}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {"type": "number", "minimum": 0},
+        "output_tokens": {"type": "number", "minimum": 0},
+        "cached_input_tokens": {"type": "number", "minimum": 0},
+        "cache_write_tokens": {"type": "number", "minimum": 0},
+        "reasoning_tokens": {"type": "number", "minimum": 0},
+        "total_tokens": {"type": "number", "minimum": 0},
+        "source": {"type": "string", "minLength": 1},
+        "coverage": {"type": "string", "minLength": 1}
+      }
+    },
     "findings_summary": {
       "type": "object",
       "additionalProperties": false,

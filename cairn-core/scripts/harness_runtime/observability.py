@@ -34,6 +34,21 @@ EXECUTION_METRICS = (
     "serial_wave_count",
     "context_pack_reuses",
     "context_pack_builds",
+    "source_bytes",
+    "output_bytes",
+)
+
+PHASES = ("propose", "apply", "review", "fix", "test", "archive")
+ACTIVITIES = ("preflight", "execute", "verify", "transition", "wait")
+RUN_KINDS = ("primary", "retry", "shadow", "delta", "probe")
+TIMING_FIELDS = ("elapsed_ms", "active_ms", "tool_ms", "verification_ms", "wait_ms", "blocked_ms")
+USAGE_FIELDS = (
+    "input_tokens",
+    "output_tokens",
+    "cached_input_tokens",
+    "cache_write_tokens",
+    "reasoning_tokens",
+    "total_tokens",
 )
 
 
@@ -41,6 +56,87 @@ def _non_negative_int(value: Any) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         return None
     return value
+
+
+def _optional_non_negative_number(value: Any) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not math.isfinite(value) or value < 0:
+        return None
+    return value
+
+
+def _sanitize_timing(value: Any, *, duration_ms: Any = None) -> dict[str, int | float]:
+    timing: dict[str, int | float] = {}
+    if isinstance(value, Mapping):
+        for field in TIMING_FIELDS:
+            number = _optional_non_negative_number(value.get(field))
+            if number is not None:
+                timing[field] = round(float(number), 4)
+    if not timing:
+        number = _optional_non_negative_number(duration_ms)
+        if number is not None:
+            timing["elapsed_ms"] = round(float(number), 4)
+    return timing
+
+
+def _sanitize_usage(value: Any) -> dict[str, int | float | str]:
+    if not isinstance(value, Mapping):
+        return {}
+    usage: dict[str, int | float | str] = {}
+    for field in USAGE_FIELDS:
+        number = _optional_non_negative_number(value.get(field))
+        if number is not None:
+            usage[field] = int(number) if isinstance(number, int) else round(float(number), 4)
+    for field in ("source", "coverage"):
+        item = value.get(field)
+        if isinstance(item, str) and item:
+            usage[field] = item
+    return usage
+
+
+def _event_metadata(
+    *,
+    phase: str | None,
+    activity: str | None,
+    run_kind: str | None,
+    logical_run_id: str | None,
+    attempt: int | None,
+    terminal: bool | None,
+    failure_class: str | None,
+    timing: Mapping[str, Any] | None,
+    duration_ms: Any = None,
+    usage: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    if isinstance(phase, str) and phase in PHASES:
+        metadata["phase"] = phase
+    if isinstance(activity, str) and activity in ACTIVITIES:
+        metadata["activity"] = activity
+    if isinstance(run_kind, str) and run_kind in RUN_KINDS:
+        metadata["run_kind"] = run_kind
+    if isinstance(logical_run_id, str) and logical_run_id:
+        metadata["logical_run_id"] = logical_run_id
+    if isinstance(attempt, int) and not isinstance(attempt, bool) and attempt >= 1:
+        metadata["attempt"] = attempt
+    if isinstance(terminal, bool):
+        metadata["terminal"] = terminal
+    if isinstance(failure_class, str) and failure_class:
+        metadata["failure_class"] = failure_class
+    has_new_metadata = any(
+        value is not None
+        for value in (phase, activity, run_kind, logical_run_id, attempt, terminal, failure_class, timing, usage)
+    )
+    clean_timing = _sanitize_timing(
+        timing,
+        duration_ms=duration_ms if has_new_metadata else None,
+    )
+    if clean_timing:
+        metadata["timing"] = clean_timing
+    clean_usage = _sanitize_usage(usage)
+    if clean_usage:
+        metadata["usage"] = clean_usage
+    return metadata
 
 
 def _copy_sanitized_mapping(value: Any, allowed: tuple[str, ...]) -> dict[str, Any]:
@@ -101,6 +197,15 @@ def record_verification_run(
     *,
     duration_ms: int,
     occurred_at: datetime | None = None,
+    phase: str | None = None,
+    activity: str | None = None,
+    run_kind: str | None = None,
+    logical_run_id: str | None = None,
+    attempt: int | None = None,
+    terminal: bool | None = None,
+    failure_class: str | None = None,
+    timing: Mapping[str, Any] | None = None,
+    usage: Mapping[str, Any] | None = None,
 ) -> bool:
     """Append one automatic, local-only summary of a ``cc-verify`` execution."""
 
@@ -115,6 +220,26 @@ def record_verification_run(
         "duration_ms": max(0, int(duration_ms)),
         "result_counts": _result_counts(report),
     }
+    metadata = _event_metadata(
+        phase=phase or report.get("phase"),
+        activity=activity or report.get("activity"),
+        run_kind=run_kind or report.get("run_kind"),
+        logical_run_id=logical_run_id or report.get("logical_run_id"),
+        attempt=attempt if attempt is not None else report.get("attempt"),
+        terminal=terminal if terminal is not None else report.get("terminal"),
+        failure_class=failure_class or report.get("failure_class"),
+        timing=timing or report.get("timing"),
+        duration_ms=duration_ms,
+        usage=usage or report.get("usage"),
+    )
+    if metadata:
+        event["schema_version"] = 2
+        event.update(metadata)
+    report_usage = report.get("usage")
+    if isinstance(report_usage, Mapping) and "usage" not in event:
+        clean_usage = _sanitize_usage(report_usage)
+        if clean_usage:
+            event["usage"] = clean_usage
     execution = report.get("execution_metrics")
     if isinstance(execution, Mapping):
         for field in (
@@ -257,8 +382,8 @@ def record_context_pack(
             "context_pack_reuses": 1 if reused else 0,
             "context_pack_builds": 0 if reused else 1,
             "files_changed": max(0, source_count),
-            "input_tokens": max(0, source_bytes),
-            "output_tokens": max(0, output_bytes),
+            "source_bytes": max(0, source_bytes),
+            "output_bytes": max(0, output_bytes),
         },
         occurred_at=timestamp,
     )
@@ -325,6 +450,15 @@ def record_execution_run(
     profile: str | None = None,
     adapter: str | None = None,
     occurred_at: datetime | None = None,
+    phase: str | None = None,
+    activity: str | None = None,
+    run_kind: str | None = None,
+    logical_run_id: str | None = None,
+    attempt: int | None = None,
+    terminal: bool | None = None,
+    failure_class: str | None = None,
+    timing: Mapping[str, Any] | None = None,
+    usage: Mapping[str, Any] | None = None,
 ) -> bool:
     """Append a sanitized execution-cost event.
 
@@ -354,6 +488,64 @@ def record_execution_run(
     for key, value in (("suite", suite), ("case_id", case_id), ("profile", profile), ("adapter", adapter)):
         if isinstance(value, str) and value:
             event[key] = value
+    metadata = _event_metadata(
+        phase=phase,
+        activity=activity,
+        run_kind=run_kind,
+        logical_run_id=logical_run_id,
+        attempt=attempt,
+        terminal=terminal,
+        failure_class=failure_class,
+        timing=timing,
+        usage=usage,
+        duration_ms=metrics.get("wall_time_ms"),
+    )
+    if metadata:
+        event["schema_version"] = 2
+        event.update(metadata)
+    return _append_runtime_event(project_root, event)
+
+
+def record_phase_run(
+    project_root: Path,
+    *,
+    phase: str,
+    status: str,
+    timing: Mapping[str, Any] | None = None,
+    usage: Mapping[str, Any] | None = None,
+    run_kind: str = "primary",
+    activity: str = "execute",
+    logical_run_id: str | None = None,
+    attempt: int = 1,
+    terminal: bool = True,
+    failure_class: str | None = None,
+    occurred_at: datetime | None = None,
+) -> bool:
+    """Record one phase summary; this is the compact phase-level telemetry API."""
+    if phase not in PHASES:
+        raise ValueError(f"unsupported lifecycle phase: {phase}")
+    timestamp = occurred_at or datetime.now(timezone.utc)
+    clean_timing = _sanitize_timing(timing)
+    event: dict[str, Any] = {
+        "schema_version": 2,
+        "event_type": "phase_run",
+        "occurred_at": timestamp.isoformat(),
+        "phase": phase,
+        "activity": activity if activity in ACTIVITIES else "execute",
+        "run_kind": run_kind if run_kind in RUN_KINDS else "primary",
+        "status": str(status),
+        "attempt": max(1, int(attempt)),
+        "terminal": bool(terminal),
+    }
+    if logical_run_id:
+        event["logical_run_id"] = logical_run_id
+    if failure_class:
+        event["failure_class"] = failure_class
+    if clean_timing:
+        event["timing"] = clean_timing
+    clean_usage = _sanitize_usage(usage)
+    if clean_usage:
+        event["usage"] = clean_usage
     return _append_runtime_event(project_root, event)
 
 
@@ -508,7 +700,69 @@ def verification_metrics(
     if extended:
         result["execution_mode_source_counts"] = dict(sorted(execution_mode_source_counts.items()))
         result["cache"] = cache
+        terminal_runs = [item for item in runs if _is_quality_terminal(item)]
+        terminal_status_counts = Counter(
+            item.get("status")
+            if isinstance(item.get("status"), str) and item.get("status")
+            else "unknown"
+            for item in terminal_runs
+        )
+        logical_ids = {
+            item.get("logical_run_id")
+            for item in runs
+            if isinstance(item.get("logical_run_id"), str) and item.get("logical_run_id")
+        }
+        retry_runs = sum(
+            1 for item in runs
+            if item.get("run_kind") == "retry" or item.get("attempt", 1) not in {None, 1}
+        )
+        quality_total = len(terminal_runs)
+        grouped: dict[str, list[Mapping[str, Any]]] = {}
+        for item in runs:
+            logical_id = item.get("logical_run_id")
+            if isinstance(logical_id, str) and logical_id:
+                grouped.setdefault(logical_id, []).append(item)
+        failed_groups = [
+            values for values in grouped.values()
+            if any(value.get("status") in {"failed", "blocked"} for value in values)
+        ]
+        recovered_groups = [
+            values for values in failed_groups
+            if any(value.get("status") == "passed" and _is_quality_terminal(value) for value in values)
+        ]
+        recovery_rate = round(len(recovered_groups) / len(failed_groups), 4) if failed_groups else None
+        result["quality_gate"] = {
+            "total_runs": quality_total,
+            "status_counts": dict(sorted(terminal_status_counts.items())),
+            "pass_rate": (
+                round(terminal_status_counts.get("passed", 0) / quality_total, 4)
+                if quality_total else None
+            ),
+            "logical_runs": len(logical_ids) if logical_ids else quality_total,
+            "retry_runs": retry_runs,
+            "retry_rate": round(retry_runs / len(runs), 4) if runs else None,
+            "recovered_logical_runs": len(recovered_groups),
+            "recovery_rate": recovery_rate,
+            "excluded_non_terminal_runs": len(runs) - quality_total,
+        }
+        result["raw_pass_rate"] = result["pass_rate"]
+        result["terminal_runs"] = quality_total
+        result["terminal_pass_rate"] = result["quality_gate"]["pass_rate"]
+        result["retry_rate"] = result["quality_gate"]["retry_rate"]
+        result["recovery_rate"] = recovery_rate
     return result
+
+
+def _is_quality_terminal(item: Mapping[str, Any]) -> bool:
+    """Return whether an event is eligible for the quality-gate denominator."""
+    terminal = item.get("terminal")
+    if isinstance(terminal, bool):
+        return terminal
+    if item.get("run_kind") in {"retry", "shadow", "probe"}:
+        return False
+    if item.get("activity") == "preflight":
+        return False
+    return True
 
 
 def test_routing_metrics(
@@ -635,6 +889,57 @@ def execution_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]
             "total": round(sum(samples), 4),
         }
     return summary
+
+
+def phase_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Summarize phase-level wall/active/tool time and token usage."""
+    runs = [
+        item for item in runtime_events
+        if item.get("event_type") == "phase_run" or isinstance(item.get("phase"), str)
+    ]
+    phases: dict[str, dict[str, Any]] = {}
+    for run in runs:
+        phase = run.get("phase") if isinstance(run.get("phase"), str) else "unknown"
+        bucket = phases.setdefault(phase, {"runs": 0, "terminal_runs": 0, "timing": {}, "usage": {}})
+        bucket["runs"] += 1
+        if _is_quality_terminal(run):
+            bucket["terminal_runs"] += 1
+        timing = run.get("timing")
+        if isinstance(timing, Mapping):
+            for field in TIMING_FIELDS:
+                value = _optional_non_negative_number(timing.get(field))
+                if value is not None:
+                    bucket["timing"].setdefault(field, []).append(float(value))
+        usage = run.get("usage")
+        if isinstance(usage, Mapping):
+            for field in USAGE_FIELDS:
+                value = _optional_non_negative_number(usage.get(field))
+                if value is not None:
+                    bucket["usage"].setdefault(field, []).append(float(value))
+
+    def reduce_samples(samples: list[float]) -> dict[str, Any]:
+        ordered = sorted(samples)
+        if not ordered:
+            return {"count": 0, "total": None, "median": None, "p95": None}
+        midpoint = len(ordered) // 2
+        median = ordered[midpoint] if len(ordered) % 2 else (ordered[midpoint - 1] + ordered[midpoint]) / 2
+        p95_index = min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * 0.95))))
+        return {
+            "count": len(ordered),
+            "total": round(sum(ordered), 4),
+            "median": round(median, 4),
+            "p95": round(ordered[p95_index], 4),
+        }
+
+    output: dict[str, Any] = {"total_runs": len(runs), "phases": {}}
+    for phase, bucket in sorted(phases.items()):
+        output["phases"][phase] = {
+            "runs": bucket["runs"],
+            "terminal_runs": bucket["terminal_runs"],
+            "timing": {field: reduce_samples(values) for field, values in sorted(bucket["timing"].items())},
+            "usage": {field: reduce_samples(values) for field, values in sorted(bucket["usage"].items())},
+        }
+    return output
 
 
 def upgrade_metrics(runtime_events: list[Mapping[str, Any]]) -> dict[str, Any]:
